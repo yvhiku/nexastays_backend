@@ -1,0 +1,104 @@
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
+import { User } from '../../users/entities/user.entity';
+import { StaysListingRules } from './stays-listing-rules.entity';
+import { StaysListingMedia } from './stays-listing-media.entity';
+import { StaysRatePlan } from './stays-rate-plan.entity';
+import { StaysCheckInContact } from './stays-check-in-contact.entity';
+import { StaysBooking } from './stays-booking.entity';
+
+@Entity('stays_listings')
+export class StaysListing {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ type: 'uuid', name: 'host_user_id' })
+  host_user_id: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'host_user_id' })
+  host: User;
+
+  @Column({ type: 'varchar', length: 200 })
+  title: string;
+
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'listing_type',
+  })
+  listing_type: 'APARTMENT' | 'HOTEL' | 'RIAD' | 'VILLA';
+
+  @Column({ type: 'varchar', length: 100 })
+  city: string;
+
+  @Column({ type: 'text', name: 'address_encrypted', nullable: true })
+  address_encrypted: string | null;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, name: 'geo_lat', nullable: true })
+  geo_lat: number | null;
+
+  @Column({ type: 'decimal', precision: 11, scale: 8, name: 'geo_lng', nullable: true })
+  geo_lng: number | null;
+
+  @Column({
+    type: 'varchar',
+    length: 30,
+    default: 'DRAFT',
+  })
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'LIVE';
+
+  @Column({ type: 'time', name: 'checkin_time', default: '14:00' })
+  checkin_time: string;
+
+  @Column({ type: 'time', name: 'checkout_time', default: '11:00' })
+  checkout_time: string;
+
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
+
+  @Column({ type: 'boolean', name: 'instant_booking', default: false })
+  instant_booking: boolean;
+
+  @Column({
+    type: 'decimal',
+    precision: 4,
+    scale: 2,
+    name: 'avg_rating',
+    nullable: true,
+  })
+  avg_rating: number | null;
+
+  @Column({ type: 'int', name: 'review_count', default: 0 })
+  review_count: number;
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  created_at: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
+  updated_at: Date;
+
+  @OneToOne(() => StaysListingRules, (rules) => rules.listing, { cascade: true })
+  rules: StaysListingRules | null;
+
+  @OneToMany(() => StaysListingMedia, (m) => m.listing)
+  media: StaysListingMedia[];
+
+  @OneToOne(() => StaysRatePlan, (rp) => rp.listing, { cascade: true })
+  rate_plan: StaysRatePlan | null;
+
+  @OneToOne(() => StaysCheckInContact, (c) => c.listing, { cascade: true })
+  check_in_contact: StaysCheckInContact | null;
+
+  @OneToMany(() => StaysBooking, (b) => b.listing)
+  bookings: StaysBooking[];
+}

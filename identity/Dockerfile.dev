@@ -1,0 +1,16 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Expose port and debug port
+EXPOSE 3000 9229
+
+# Start in development mode with watch
+CMD ["npm", "run", "start:dev"]

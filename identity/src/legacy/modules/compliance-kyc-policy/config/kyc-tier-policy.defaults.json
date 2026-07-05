@@ -1,0 +1,6 @@
+{
+  "global": {
+    "default_allowed_sender_country_codes": ["MA"],
+    "default_blocked_sender_country_codes": []
+  }
+}

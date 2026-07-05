@@ -1,0 +1,37 @@
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { StaysListing } from './stays-listing.entity';
+
+@Entity('stays_listing_media')
+export class StaysListingMedia {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ type: 'uuid', name: 'listing_id' })
+  listing_id: string;
+
+  @ManyToOne(() => StaysListing, (l) => l.media, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'listing_id' })
+  listing: StaysListing;
+
+  @Column({ type: 'varchar', length: 20 })
+  kind: 'PHOTO' | 'VIDEO' | 'WALKTHROUGH';
+
+  @Column({ type: 'uuid', name: 'asset_id' })
+  asset_id: string;
+
+  @Column({ type: 'int', name: 'sort_order', default: 0 })
+  sort_order: number;
+
+  @Column({ type: 'boolean', name: 'is_required', default: false })
+  is_required: boolean;
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  created_at: Date;
+}

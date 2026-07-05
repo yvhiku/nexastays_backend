@@ -1,0 +1,1212 @@
+{
+	"info": {
+		"_postman_id": "nexapay-api-collection",
+		"name": "NexaPay Backend API",
+		"description": "Complete API collection for NexaPay Backend",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{access_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "otp_session_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "wallet_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "transaction_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Send OTP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone_number\": \"+212612345678\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/otp/send",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "otp", "send"]
+						}
+					}
+				},
+				{
+					"name": "Verify OTP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.otp_session_token) {",
+									"    pm.collectionVariables.set('otp_session_token', jsonData.data.otp_session_token);",
+									"} else if (jsonData.otp_session_token) {",
+									"    pm.collectionVariables.set('otp_session_token', jsonData.otp_session_token);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone_number\": \"+212612345678\",\n  \"otp\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/otp/verify",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "otp", "verify"]
+						}
+					}
+				},
+				{
+					"name": "Set PIN",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"otp_session_token\": \"{{otp_session_token}}\",\n  \"pin\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/pin/set",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "pin", "set"]
+						}
+					}
+				},
+				{
+					"name": "Verify PIN (Login)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.access_token) {",
+									"    pm.collectionVariables.set('access_token', jsonData.data.access_token);",
+									"    if (jsonData.data.user && jsonData.data.user.id) {",
+									"        pm.collectionVariables.set('user_id', jsonData.data.user.id);",
+									"    }",
+									"} else if (jsonData.access_token) {",
+									"    pm.collectionVariables.set('access_token', jsonData.access_token);",
+									"    if (jsonData.user && jsonData.user.id) {",
+									"        pm.collectionVariables.set('user_id', jsonData.user.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone_number\": \"+212612345678\",\n  \"pin\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/pin/verify",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "pin", "verify"]
+						}
+					}
+				},
+				{
+					"name": "Admin Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.access_token) {",
+									"    pm.collectionVariables.set('admin_token', jsonData.data.access_token);",
+									"} else if (jsonData.access_token) {",
+									"    pm.collectionVariables.set('admin_token', jsonData.access_token);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@nexapay.com\",\n  \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/admin/login",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "admin", "login"]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "logout"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Create User",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone_number\": \"+212612345678\",\n  \"full_name\": \"Ahmed Benali\",\n  \"pin\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users",
+							"host": ["{{base_url}}"],
+							"path": ["users"]
+						}
+					}
+				},
+				{
+					"name": "Get Me",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["users", "me"]
+						}
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"full_name\": \"Ahmed Benali\",\n  \"email\": \"ahmed@nexa.ma\",\n  \"nationality\": \"MA\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/profile",
+							"host": ["{{base_url}}"],
+							"path": ["users", "profile"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Wallets",
+			"item": [
+				{
+					"name": "Get Wallet",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/wallets/me",
+							"host": ["{{base_url}}"],
+							"path": ["wallets", "me"]
+						}
+					}
+				},
+				{
+					"name": "Get Balance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/wallets/balance",
+							"host": ["{{base_url}}"],
+							"path": ["wallets", "balance"]
+						}
+					}
+				},
+				{
+					"name": "Topup",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 100.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wallets/topup",
+							"host": ["{{base_url}}"],
+							"path": ["wallets", "topup"]
+						}
+					}
+				},
+				{
+					"name": "Withdraw",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 50.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wallets/withdraw",
+							"host": ["{{base_url}}"],
+							"path": ["wallets", "withdraw"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Transactions",
+			"item": [
+				{
+					"name": "Transfer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.id) {",
+									"    pm.collectionVariables.set('transaction_id', jsonData.data.id);",
+									"} else if (jsonData.id) {",
+									"    pm.collectionVariables.set('transaction_id', jsonData.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"receiver_phone_number\": \"+212698765432\",\n  \"amount\": 20.00,\n  \"reference\": \"TXN-001\",\n  \"idempotency_key\": \"test-001\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/transactions/transfer",
+							"host": ["{{base_url}}"],
+							"path": ["transactions", "transfer"]
+						}
+					}
+				},
+				{
+					"name": "Get History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/transactions/history?page=1&limit=20",
+							"host": ["{{base_url}}"],
+							"path": ["transactions", "history"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "QR Payments",
+			"item": [
+				{
+					"name": "Generate QR",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"merchant_phone_number\": \"+212611111111\",\n  \"amount\": 12.50\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/qr/generate",
+							"host": ["{{base_url}}"],
+							"path": ["qr", "generate"]
+						}
+					}
+				},
+				{
+					"name": "Pay QR",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"payload\": \"<payload_from_generate>\",\n  \"signature\": \"<signature_from_generate>\",\n  \"amount\": 12.50,\n  \"idempotency_key\": \"optional-unique-key\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/qr/pay",
+							"host": ["{{base_url}}"],
+							"path": ["qr", "pay"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "NFC Payments",
+			"item": [
+				{
+					"name": "Prepare NFC",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"merchant_phone_number\": \"+212611111111\",\n  \"amount\": 12.50\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/nfc/prepare",
+							"host": ["{{base_url}}"],
+							"path": ["nfc", "prepare"]
+						}
+					}
+				},
+				{
+					"name": "Pay NFC",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"payload\": \"<payload_from_prepare>\",\n  \"signature\": \"<signature_from_prepare>\",\n  \"amount\": 12.50,\n  \"idempotency_key\": \"optional-unique-key\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/nfc/pay",
+							"host": ["{{base_url}}"],
+							"path": ["nfc", "pay"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "KYC",
+			"item": [
+				{
+					"name": "Submit KYC",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone_number\": \"+212612345678\",\n  \"documents\": {\n    \"id_document\": true,\n    \"selfie\": true\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/kyc/submit",
+							"host": ["{{base_url}}"],
+							"path": ["kyc", "submit"]
+						}
+					}
+				},
+				{
+					"name": "Get KYC Status",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/kyc/status?phone_number=+212612345678",
+							"host": ["{{base_url}}"],
+							"path": ["kyc", "status"],
+							"query": [
+								{
+									"key": "phone_number",
+									"value": "+212612345678"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{admin_token}}",
+						"type": "string"
+					}
+				]
+			},
+			"item": [
+				{
+					"name": "Dashboard",
+					"item": [
+						{
+							"name": "Get Stats",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/dashboard/stats",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "dashboard", "stats"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Users",
+					"item": [
+						{
+							"name": "Get All Users",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/users?page=1&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "users"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get User by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/users/:id",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "users", ":id"],
+									"variable": [
+										{
+											"key": "id",
+											"value": "{{user_id}}"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get User Wallet",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/users/:id/wallet",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "users", ":id", "wallet"],
+									"variable": [
+										{
+											"key": "id",
+											"value": "{{user_id}}"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get User KYC",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/users/:id/kyc",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "users", ":id", "kyc"],
+									"variable": [
+										{
+											"key": "id",
+											"value": "{{user_id}}"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Update User Status",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"ACTIVE\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/admin/users/:id/status",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "users", ":id", "status"],
+									"variable": [
+										{
+											"key": "id",
+											"value": "{{user_id}}"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Freeze User",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/users/:userId/freeze",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "users", ":userId", "freeze"],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "{{user_id}}"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Unfreeze User",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/users/:userId/unfreeze",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "users", ":userId", "unfreeze"],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "{{user_id}}"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Transactions",
+					"item": [
+						{
+							"name": "Get All Transactions",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/transactions?page=1&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "transactions"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Transaction by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/transactions/:id",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "transactions", ":id"],
+									"variable": [
+										{
+											"key": "id",
+											"value": "{{transaction_id}}"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Export Transactions",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/transactions/export?page=1&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "transactions", "export"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Reverse Transaction",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"reason\": \"Fraud detected\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/admin/transactions/:id/reverse",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "transactions", ":id", "reverse"],
+									"variable": [
+										{
+											"key": "id",
+											"value": "{{transaction_id}}"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Wallets",
+					"item": [
+						{
+							"name": "Get All Wallets",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/wallets?page=1&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "wallets"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Wallet by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/wallets/:id",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "wallets", ":id"],
+									"variable": [
+										{
+											"key": "id",
+											"value": "{{wallet_id}}"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Wallet Ledger",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/wallets/:id/ledger",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "wallets", ":id", "ledger"],
+									"variable": [
+										{
+											"key": "id",
+											"value": "{{wallet_id}}"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "KYC",
+					"item": [
+						{
+							"name": "Get KYC Applications",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/kyc/applications?page=1&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "kyc", "applications"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get KYC by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/kyc/:id",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "kyc", ":id"],
+									"variable": [
+										{
+											"key": "id",
+											"value": "{{user_id}}"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Approve KYC",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/kyc/:userId/approve",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "kyc", ":userId", "approve"],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "{{user_id}}"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Reject KYC",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"reason\": \"Document quality insufficient\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/admin/kyc/:userId/reject",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "kyc", ":userId", "reject"],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "{{user_id}}"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Risk & Audit",
+					"item": [
+						{
+							"name": "Get Risk Alerts",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/risk/alerts?page=1&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "risk", "alerts"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Risk Stats",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/risk/stats",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "risk", "stats"]
+								}
+							}
+						},
+						{
+							"name": "Escalate Risk Alert",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/risk/alerts/:alertId/escalate",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "risk", "alerts", ":alertId", "escalate"],
+									"variable": [
+										{
+											"key": "alertId",
+											"value": "alert-id-here"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Flag Transaction",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"reason\": \"Unusual transaction pattern\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/admin/risk/transactions/:transactionId/flag",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "risk", "transactions", ":transactionId", "flag"],
+									"variable": [
+										{
+											"key": "transactionId",
+											"value": "{{transaction_id}}"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Audit Logs",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/audit/logs?page=1&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "audit", "logs"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Export Audit Logs",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/audit/logs/export?page=1&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "audit", "logs", "export"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "System",
+					"item": [
+						{
+							"name": "Get System Accounts",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/system/accounts",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "system", "accounts"]
+								}
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}
