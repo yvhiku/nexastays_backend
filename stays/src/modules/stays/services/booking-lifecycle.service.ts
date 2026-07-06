@@ -109,7 +109,15 @@ export class BookingLifecycleService {
   }
 
   canReview(booking: StaysBooking, ctx: BookingLifecycleContext = {}): boolean {
-    return this.computeLifecycle(booking, ctx) === 'COMPLETED';
+    if (this.computeLifecycle(booking, ctx) !== 'COMPLETED') {
+      return false;
+    }
+    const hostId = (booking.listing as { host_user_id?: string } | undefined)
+      ?.host_user_id;
+    if (hostId && hostId === booking.guest_user_id) {
+      return false;
+    }
+    return true;
   }
 
   canComplain(booking: StaysBooking, ctx: BookingLifecycleContext = {}): boolean {

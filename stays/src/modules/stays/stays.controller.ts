@@ -163,26 +163,6 @@ export class StaysController {
   }
 
   /**
-   * Public reviews for a listing (newest first, paginated)
-   */
-  @Get('listings/:listingId/reviews')
-  @Public()
-  @ApiOperation({ summary: 'List reviews for a listing' })
-  async listListingReviews(
-    @Param('listingId') listingId: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    const p = page ? Number.parseInt(page, 10) : 1;
-    const l = limit ? Number.parseInt(limit, 10) : 10;
-    return this.staysReviewsService.listListingReviews(
-      listingId,
-      Number.isFinite(p) ? p : 1,
-      Number.isFinite(l) ? l : 10,
-    );
-  }
-
-  /**
    * Upload occupant ID document before booking (returns asset_id for create booking)
    */
   @Post('bookings/occupants/upload-id')
@@ -296,22 +276,6 @@ export class StaysController {
     @CurrentUser() user: { userId: string },
   ) {
     return this.staysService.getBookingById(id, user.userId);
-  }
-
-  /**
-   * Guest submits a written review after checkout (once per booking)
-   */
-  @Post('bookings/:id/review')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Submit a listing review for a booking' })
-  async submitBookingReview(
-    @Param('id') id: string,
-    @CurrentUser() user: { userId: string },
-    @Body() body: { rating: number; comment?: string },
-  ) {
-    return this.staysReviewsService.createReview(user.userId, id, body);
   }
 
   /**

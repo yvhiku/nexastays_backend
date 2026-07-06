@@ -7,6 +7,7 @@ export * from './stays-rate-plan.entity';
 export * from './stays-check-in-contact.entity';
 export * from './stays-booking.entity';
 export * from './stays-listing-review.entity';
+export * from './stays-review-media.entity';
 export * from './stays-booking-occupant.entity';
 export * from './stays-availability-block.entity';
 export * from './stays-payment-intent.entity';

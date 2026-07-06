@@ -74,6 +74,21 @@ export class StaysListing {
   @Column({ type: 'int', name: 'review_count', default: 0 })
   review_count: number;
 
+  @Column({ type: 'int', name: 'ratings_1', default: 0 })
+  ratings_1: number;
+
+  @Column({ type: 'int', name: 'ratings_2', default: 0 })
+  ratings_2: number;
+
+  @Column({ type: 'int', name: 'ratings_3', default: 0 })
+  ratings_3: number;
+
+  @Column({ type: 'int', name: 'ratings_4', default: 0 })
+  ratings_4: number;
+
+  @Column({ type: 'int', name: 'ratings_5', default: 0 })
+  ratings_5: number;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;
 

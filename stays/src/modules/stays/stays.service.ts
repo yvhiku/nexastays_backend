@@ -15,6 +15,10 @@ import { StaysBookingOccupant } from './entities/stays-booking-occupant.entity';
 import { StaysPaymentIntent } from './entities/stays-payment-intent.entity';
 import { StaysAvailabilityBlock } from './entities/stays-availability-block.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import {
+  assertMinOneNightStay,
+  parseBookingDateOnly,
+} from './utils/booking-date.util';
 import { HostsService } from './hosts/hosts.service';
 import { StaysAvailabilityService } from './services/stays-availability.service';
 import { StaysAuditService } from './services/stays-audit.service';
@@ -25,6 +29,7 @@ import type { IdentitySnapshot } from '../../common/identity/identity-snapshot.t
 import { DomainEventsService } from '../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import { BookingLifecycleService } from './services/booking-lifecycle.service';
+import { StaysReviewsService } from './services/stays-reviews.service';
 
 @Injectable()
 export class StaysService {
@@ -45,6 +50,7 @@ export class StaysService {
     private readonly kycPolicy: StaysKycPolicyService,
     private readonly domainEvents: DomainEventsService,
     private readonly lifecycleService: BookingLifecycleService,
+    private readonly reviewsService: StaysReviewsService,
   ) {}
 
   isGuestVerifiedForBooking(snapshot?: IdentitySnapshot | null): boolean {
@@ -373,12 +379,9 @@ export class StaysService {
           throw new BadRequestException('Listing is not available for booking');
         }
 
-        const checkin = new Date(dto.checkin_date);
-        const checkout = new Date(dto.checkout_date);
-
-        if (checkout <= checkin) {
-          throw new BadRequestException('Checkout must be after check-in');
-        }
+        const checkin = parseBookingDateOnly(dto.checkin_date);
+        const checkout = parseBookingDateOnly(dto.checkout_date);
+        assertMinOneNightStay(dto.checkin_date, dto.checkout_date);
 
         // Re-check idempotency inside transaction
         if (dto.idempotency_key) {
@@ -500,29 +503,58 @@ export class StaysService {
       throw new NotFoundException('Booking not found');
     }
 
-    if (booking.guest_user_id !== userId) {
-      const listing = booking.listing as StaysListing;
-      if (listing.host_user_id !== userId) {
-        throw new NotFoundException('Booking not found');
-      }
+    const listing = booking.listing as StaysListing;
+    const isGuest = booking.guest_user_id === userId;
+    const isHost = !isGuest && listing?.host_user_id === userId;
+
+    if (!isGuest && !isHost) {
+      throw new NotFoundException('Booking not found');
     }
 
     const canReveal = this.shouldRevealContactForBooking(booking);
+    const revealForViewer = isHost ? true : canReveal;
+    const extras = await this.lifecycleExtrasForBooking(booking);
 
-    return this.toBookingResponse(booking, canReveal, true, await this.lifecycleExtrasForBooking(booking));
+    const base = this.toBookingResponse(
+      booking,
+      revealForViewer,
+      true,
+      extras,
+      isHost,
+    );
+
+    if (isHost) {
+      return {
+        ...base,
+        viewer_role: 'HOST' as const,
+        guest_name: this.resolveGuestDisplayName(booking),
+        guest_phone: this.resolveGuestPhone(booking),
+        can_review: false,
+        listing: base.listing
+          ? {
+              ...base.listing,
+              address: listing.address_encrypted ?? base.listing.address,
+              check_in_contact: null,
+            }
+          : null,
+      };
+    }
+
+    return { ...base, viewer_role: 'GUEST' as const };
   }
 
   private async lifecycleExtrasForBooking(
     booking: StaysBooking,
-  ): Promise<{ paymentFailed?: boolean }> {
+  ): Promise<{ paymentFailed?: boolean; has_reviewed?: boolean }> {
+    const has_reviewed = await this.reviewsService.hasReviewForBooking(booking.id);
     if (booking.status !== 'PAYMENT_PENDING' && booking.status !== 'INITIATED') {
-      return {};
+      return { has_reviewed };
     }
     const latest = await this.paymentIntentRepo.findOne({
       where: { booking_id: booking.id },
       order: { created_at: 'DESC' },
     });
-    return { paymentFailed: latest?.status === 'FAILED' };
+    return { paymentFailed: latest?.status === 'FAILED', has_reviewed };
   }
 
   async getGuestBookings(guestUserId: string) {
@@ -548,6 +580,10 @@ export class StaysService {
       }
     }
 
+    const reviewedIds = await this.reviewsService.getReviewedBookingIds(
+      bookings.map((b) => b.id),
+    );
+
     return bookings.map((b) =>
       this.toBookingResponse(
         b,
@@ -555,6 +591,7 @@ export class StaysService {
         false,
         {
           paymentFailed: failedIntentBookingIds.has(b.id),
+          has_reviewed: reviewedIds.has(b.id),
         },
       ),
     );
@@ -579,7 +616,7 @@ export class StaysService {
       (b) => (b.listing as StaysListing).host_user_id === hostUserId,
     );
     return filtered.map((b) => {
-      const response = this.toBookingResponse(b, false, true);
+      const response = this.toBookingResponse(b, false, true, {}, true);
       const guestName = this.resolveGuestDisplayName(b);
       return {
         ...response,
@@ -616,7 +653,8 @@ export class StaysService {
     booking: StaysBooking,
     revealContact = false,
     includeOccupants = false,
-    extras: { paymentFailed?: boolean } = {},
+    extras: { paymentFailed?: boolean; has_reviewed?: boolean } = {},
+    hostView = false,
   ) {
     const listing = booking.listing as StaysListing & {
       check_in_contact?: {
@@ -658,14 +696,27 @@ export class StaysService {
       completed_at: booking.completed_at,
       payment_expires_at,
       payment_failed: !!extras.paymentFailed,
-      can_review: this.lifecycleService.canReview(booking, lifecycleCtx),
+      can_review:
+        this.lifecycleService.canReview(booking, lifecycleCtx) &&
+        !extras.has_reviewed,
+      review_blocked_reason:
+        !extras.has_reviewed &&
+        this.lifecycleService.computeLifecycle(booking, lifecycleCtx) ===
+          'COMPLETED' &&
+        (listing as StaysListing | undefined)?.host_user_id ===
+          booking.guest_user_id
+          ? ('OWN_LISTING' as const)
+          : undefined,
       can_complain: this.lifecycleService.canComplain(booking, lifecycleCtx),
       can_cancel: this.lifecycleService.canCancel(booking, lifecycleCtx),
+      has_reviewed: !!extras.has_reviewed,
       listing: listing
         ? {
             id: listing.id,
             title: listing.title,
             city: listing.city,
+            checkin_time: listing.checkin_time ?? null,
+            checkout_time: listing.checkout_time ?? null,
             address: revealContact && listing.address_encrypted ? listing.address_encrypted : null,
             check_in_instructions:
               revealContact && contact?.access_instructions
@@ -695,6 +746,13 @@ export class StaysService {
               full_name: o.full_name,
               id_number: o.id_number ?? null,
               is_primary: o.is_primary,
+              ...(hostView
+                ? {
+                    phone: o.phone ?? null,
+                    email: o.email ?? null,
+                    gender: o.gender ?? null,
+                  }
+                : {}),
             }))
           : undefined,
     };

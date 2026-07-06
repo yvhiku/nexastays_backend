@@ -40,3 +40,6 @@ desktop.ini
 
 # Debug keys
 *.pem
+
+# Local dev seeds (may contain test credentials)
+**/seed-*-test-user.sql

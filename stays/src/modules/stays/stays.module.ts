@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StaysController } from './stays.controller';
+import { ReviewsController } from './reviews/reviews.controller';
 import { StaysService } from './stays.service';
 import { HostsModule } from './hosts/hosts.module';
 import {
@@ -12,6 +13,7 @@ import {
   StaysCheckInContact,
   StaysBooking,
   StaysListingReview,
+  StaysReviewMedia,
   StaysHostProfile,
   StaysAvailabilityBlock,
   StaysPaymentIntent,
@@ -26,10 +28,13 @@ import { HostDashboardService } from './services/host-dashboard.service';
 import { StaysReviewsService } from './services/stays-reviews.service';
 import { BookingLifecycleService } from './services/booking-lifecycle.service';
 import { BookingLifecycleSchedulerService } from './services/booking-lifecycle-scheduler.service';
+import { ReviewAggregateService } from './reviews/review-aggregate.service';
+import { DomainEventsModule } from '../../common/events/domain-events.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    DomainEventsModule,
     TypeOrmModule.forFeature([
       StaysListing,
       StaysListingRules,
@@ -38,19 +43,20 @@ import { BookingLifecycleSchedulerService } from './services/booking-lifecycle-s
       StaysCheckInContact,
       StaysBooking,
       StaysListingReview,
+      StaysReviewMedia,
       StaysHostProfile,
       StaysAvailabilityBlock,
-      StaysPaymentIntent,
       StaysPaymentIntent,
       StaysLedgerEntry,
       StaysAuditLog,
     ]),
     HostsModule,
   ],
-  controllers: [StaysController],
+  controllers: [StaysController, ReviewsController],
   providers: [
     StaysService,
     StaysReviewsService,
+    ReviewAggregateService,
     StaysAvailabilityService,
     StaysAuditService,
     StaysCancellationService,
@@ -59,6 +65,6 @@ import { BookingLifecycleSchedulerService } from './services/booking-lifecycle-s
     BookingLifecycleService,
     BookingLifecycleSchedulerService,
   ],
-  exports: [StaysService],
+  exports: [StaysService, StaysReviewsService],
 })
 export class StaysModule {}

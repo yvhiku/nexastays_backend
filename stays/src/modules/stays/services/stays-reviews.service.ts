@@ -7,16 +7,24 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager, In } from 'typeorm';
+import { EVENTS } from '@nexa/event-bus';
+import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysBooking } from '../entities/stays-booking.entity';
-import { StaysListingReview } from '../entities/stays-listing-review.entity';
+import { StaysBookingOccupant } from '../entities/stays-booking-occupant.entity';
+import {
+  StaysListingReview,
+  type ReviewStatus,
+} from '../entities/stays-listing-review.entity';
+import { StaysReviewMedia } from '../entities/stays-review-media.entity';
 import { BookingLifecycleService } from './booking-lifecycle.service';
+import { ReviewAggregateService } from '../reviews/review-aggregate.service';
 
-const REVIEWABLE_STATUSES: StaysBooking['status'][] = [
-  'CONFIRMED',
-  'CHECKED_IN',
-  'COMPLETED',
-];
+const ALLOWED_RATINGS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
+const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
+const PUBLISHED: ReviewStatus = 'PUBLISHED';
+
+export type ReviewSort = 'newest' | 'highest' | 'lowest';
 
 @Injectable()
 export class StaysReviewsService {
@@ -24,40 +32,57 @@ export class StaysReviewsService {
     private readonly dataSource: DataSource,
     @InjectRepository(StaysListingReview)
     private readonly reviewRepo: Repository<StaysListingReview>,
+    @InjectRepository(StaysReviewMedia)
+    private readonly reviewMediaRepo: Repository<StaysReviewMedia>,
     @InjectRepository(StaysListing)
     private readonly listingRepo: Repository<StaysListing>,
     private readonly lifecycleService: BookingLifecycleService,
+    private readonly aggregateService: ReviewAggregateService,
+    private readonly domainEvents: DomainEventsService,
   ) {}
 
-  /**
-   * Public reviews for a listing (newest first).
-   */
+  validateRating(rating: number): number {
+    const n = Math.round(Number(rating) * 2) / 2;
+    if (!ALLOWED_RATINGS.includes(n)) {
+      throw new BadRequestException(
+        'Rating must be in 0.5 increments between 0.5 and 5',
+      );
+    }
+    return n;
+  }
+
+  async hasReviewForBooking(bookingId: string): Promise<boolean> {
+    const count = await this.reviewRepo.count({ where: { booking_id: bookingId } });
+    return count > 0;
+  }
+
+  async getReviewedBookingIds(bookingIds: string[]): Promise<Set<string>> {
+    if (bookingIds.length === 0) return new Set();
+    const rows = await this.reviewRepo.find({
+      where: { booking_id: In(bookingIds) },
+      select: ['booking_id'],
+    });
+    return new Set(rows.map((r) => r.booking_id));
+  }
+
+  async getReviewByBookingId(bookingId: string, guestUserId?: string) {
+    const review = await this.reviewRepo.findOne({
+      where: { booking_id: bookingId },
+      relations: ['media'],
+    });
+    if (!review) return null;
+    if (guestUserId && review.guest_user_id !== guestUserId) {
+      throw new ForbiddenException('ReviewNotAllowed');
+    }
+    return this.toReviewResponse(review);
+  }
+
   async listListingReviews(
     listingId: string,
     page = 1,
     limit = 10,
-  ): Promise<{
-    reviews: Array<{
-      id: string;
-      listing_id: string;
-      guest_id: string;
-      guest_name: string;
-      guest_photo_url: string | null;
-      rating: number;
-      comment: string;
-      created_at: string;
-      is_verified_stay: boolean;
-      sub_ratings: Record<string, number>;
-    }>;
-    summary: {
-      overall_avg_rating: number | null;
-      total_count: number;
-      distribution_pct: Record<string, number>;
-    };
-    page: number;
-    limit: number;
-    total: number;
-  }> {
+    sort: ReviewSort = 'newest',
+  ) {
     const listing = await this.listingRepo.findOne({ where: { id: listingId } });
     if (!listing || (listing.status !== 'LIVE' && listing.status !== 'APPROVED')) {
       throw new NotFoundException('Listing not found');
@@ -67,61 +92,43 @@ export class StaysReviewsService {
     const safePage = Math.max(page, 1);
     const skip = (safePage - 1) * safeLimit;
 
+    const order =
+      sort === 'highest'
+        ? { rating: 'DESC' as const, created_at: 'DESC' as const }
+        : sort === 'lowest'
+          ? { rating: 'ASC' as const, created_at: 'DESC' as const }
+          : { created_at: 'DESC' as const };
+
     const [rows, total] = await this.reviewRepo.findAndCount({
-      where: { listing_id: listingId },
-      order: { created_at: 'DESC' },
+      where: { listing_id: listingId, status: PUBLISHED },
+      relations: ['media', 'booking', 'booking.occupants'],
+      order,
       take: safeLimit,
       skip,
     });
 
-    const histRows = await this.reviewRepo
-      .createQueryBuilder('r')
-      .select('r.rating', 'rating')
-      .addSelect('COUNT(*)', 'cnt')
-      .where('r.listing_id = :lid', { lid: listingId })
-      .groupBy('r.rating')
-      .getRawMany<{ rating: string; cnt: string }>();
+    const distribution = {
+      '5': listing.ratings_5 ?? 0,
+      '4': listing.ratings_4 ?? 0,
+      '3': listing.ratings_3 ?? 0,
+      '2': listing.ratings_2 ?? 0,
+      '1': listing.ratings_1 ?? 0,
+    };
 
-    let countAll = 0;
-    const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    for (const row of histRows) {
-      const st = Number(row.rating);
-      const c = Number(row.cnt);
-      if (starCounts[st] !== undefined) starCounts[st] = c;
-      countAll += c;
-    }
-    let sumWeighted = 0;
-    for (let s = 1; s <= 5; s++) sumWeighted += s * (starCounts[s] ?? 0);
-
-    const overall =
-      countAll > 0
-        ? Math.round((sumWeighted / countAll) * 100) / 100
-        : listing.avg_rating != null
-          ? Number(listing.avg_rating)
-          : null;
-
+    const countAll = listing.review_count ?? 0;
     const distribution_pct: Record<string, number> = {};
-    for (let s = 5; s >= 1; s--) {
-      const c = starCounts[s] ?? 0;
-      distribution_pct[String(s)] = countAll > 0 ? c / countAll : 0;
+    for (const star of ['5', '4', '3', '2', '1']) {
+      const c = distribution[star as keyof typeof distribution] ?? 0;
+      distribution_pct[star] = countAll > 0 ? c / countAll : 0;
     }
 
     return {
-      reviews: rows.map((r) => ({
-        id: r.id,
-        listing_id: r.listing_id,
-        guest_id: r.guest_user_id,
-        guest_name: 'Guest',
-        guest_photo_url: null,
-        rating: r.rating,
-        comment: r.comment ?? '',
-        created_at: r.created_at.toISOString(),
-        is_verified_stay: true,
-        sub_ratings: {} as Record<string, number>,
-      })),
+      reviews: rows.map((r) => this.toPublicReview(r)),
       summary: {
-        overall_avg_rating: overall,
-        total_count: total,
+        overall_avg_rating:
+          listing.avg_rating != null ? Number(listing.avg_rating) : null,
+        total_count: countAll,
+        distribution,
         distribution_pct,
       },
       page: safePage,
@@ -130,117 +137,161 @@ export class StaysReviewsService {
     };
   }
 
-  /**
-   * Guest submits a review for a stay they booked (after checkout).
-   */
   async createReview(
     guestUserId: string,
     bookingId: string,
-    body: { rating: number; comment?: string },
+    body: { rating: number; comment?: string; assetIds?: string[] },
   ) {
-    const rating = Math.round(Number(body.rating));
-    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-      throw new BadRequestException('Rating must be between 1 and 5');
-    }
+    const rating = this.validateRating(body.rating);
     const comment = (body.comment ?? '').trim();
-    if (comment.length > 2000) {
-      throw new BadRequestException('Comment is too long');
+    if (comment.length > 1000) {
+      throw new BadRequestException('Comment is too long (max 1000 characters)');
     }
+    const assetIds = (body.assetIds ?? []).slice(0, 5);
 
     return this.dataSource.transaction(async (manager) => {
-      const bookingRepo = manager.getRepository(StaysBooking);
+      const booking = await this.assertCanReview(manager, guestUserId, bookingId);
+
+      const listing = booking.listing as StaysListing;
       const reviewRepo = manager.getRepository(StaysListingReview);
-
-      const booking = await bookingRepo.findOne({
-        where: { id: bookingId },
-        relations: ['listing'],
-      });
-      if (!booking) {
-        throw new NotFoundException('Booking not found');
-      }
-      if (booking.guest_user_id !== guestUserId) {
-        throw new ForbiddenException('You can only review your own stays');
-      }
-      if (!REVIEWABLE_STATUSES.includes(booking.status)) {
-        throw new BadRequestException(
-          'You can only review after the booking is confirmed',
-        );
-      }
-
-      const lifecycle = this.lifecycleService.computeLifecycle(booking);
-      if (lifecycle !== 'COMPLETED') {
-        throw new BadRequestException(
-          'You can only review after your stay is completed',
-        );
-      }
-
-      const checkout = new Date(booking.checkout_date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      checkout.setHours(0, 0, 0, 0);
-      if (checkout > today && booking.status !== 'COMPLETED') {
-        throw new BadRequestException('You can review after the checkout date');
-      }
-
-      const existing = await reviewRepo.findOne({
-        where: { booking_id: bookingId },
-      });
-      if (existing) {
-        throw new ConflictException('You have already reviewed this stay');
-      }
-
-      const listing = booking.listing;
-      if (!listing || listing.status !== 'LIVE') {
-        throw new BadRequestException('Listing is not available for reviews');
-      }
+      const mediaRepo = manager.getRepository(StaysReviewMedia);
 
       const row = reviewRepo.create({
         listing_id: booking.listing_id,
         booking_id: booking.id,
         guest_user_id: guestUserId,
+        host_user_id: listing.host_user_id,
         rating,
         comment: comment.length ? comment : null,
+        status: PUBLISHED,
       });
       await reviewRepo.save(row);
-      await this.recalcListingAggregates(manager, booking.listing_id);
 
-      return {
-        id: row.id,
-        listing_id: row.listing_id,
-        booking_id: row.booking_id,
-        rating: row.rating,
-        comment: row.comment ?? '',
-        created_at: row.created_at.toISOString(),
-      };
+      if (assetIds.length > 0) {
+        await this.saveMedia(mediaRepo, row.id, assetIds);
+      }
+
+      await this.aggregateService.recalculateForListing(
+        manager,
+        booking.listing_id,
+      );
+
+      const saved = await reviewRepo.findOne({
+        where: { id: row.id },
+        relations: ['media', 'booking', 'booking.occupants'],
+      });
+
+      void this.domainEvents.publish(EVENTS.REVIEW_CREATED, 'stays', {
+        reviewId: row.id,
+        bookingId: booking.id,
+        listingId: booking.listing_id,
+        hostUserId: listing.host_user_id,
+        guestUserId,
+        rating: String(rating),
+      });
+
+      return this.toReviewResponse(saved!);
     });
   }
 
-  /**
-   * All reviews across the host's listings (newest first) + summary for dashboard.
-   */
-  async listHostReviews(
-    hostUserId: string,
-    page = 1,
-    limit = 20,
-  ): Promise<{
-    reviews: Array<{
-      id: string;
-      listing_id: string;
-      listing_title: string;
-      guest_name: string;
-      rating: number;
-      comment: string;
-      created_at: string;
-    }>;
-    summary: {
-      overall_avg_rating: number | null;
-      total_count: number;
-      distribution_pct: Record<string, number>;
-    };
-    page: number;
-    limit: number;
-    total: number;
-  }> {
+  async updateReview(
+    guestUserId: string,
+    reviewId: string,
+    body: { rating?: number; comment?: string; assetIds?: string[] },
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      const reviewRepo = manager.getRepository(StaysListingReview);
+      const mediaRepo = manager.getRepository(StaysReviewMedia);
+
+      const review = await reviewRepo.findOne({
+        where: { id: reviewId },
+        relations: ['media'],
+      });
+      if (!review) throw new NotFoundException('Review not found');
+      if (review.guest_user_id !== guestUserId) {
+        throw new ForbiddenException('ReviewNotAllowed');
+      }
+      if (review.status === 'REMOVED') {
+        throw new ForbiddenException('ReviewNotAllowed');
+      }
+
+      const age = Date.now() - review.created_at.getTime();
+      if (age > EDIT_WINDOW_MS) {
+        throw new ForbiddenException('Review edit window has expired');
+      }
+
+      if (body.rating != null) {
+        review.rating = this.validateRating(body.rating);
+      }
+      if (body.comment !== undefined) {
+        const comment = body.comment.trim();
+        if (comment.length > 1000) {
+          throw new BadRequestException('Comment is too long');
+        }
+        review.comment = comment.length ? comment : null;
+      }
+      review.edited_at = new Date();
+      await reviewRepo.save(review);
+
+      if (body.assetIds !== undefined) {
+        await mediaRepo.delete({ review_id: review.id });
+        const assetIds = body.assetIds.slice(0, 5);
+        if (assetIds.length > 0) {
+          await this.saveMedia(mediaRepo, review.id, assetIds);
+        }
+      }
+
+      await this.aggregateService.recalculateForListing(
+        manager,
+        review.listing_id,
+      );
+
+      const updated = await reviewRepo.findOne({
+        where: { id: reviewId },
+        relations: ['media', 'booking', 'booking.occupants'],
+      });
+
+      void this.domainEvents.publish(EVENTS.REVIEW_UPDATED, 'stays', {
+        reviewId: review.id,
+        listingId: review.listing_id,
+        guestUserId,
+      });
+
+      return this.toReviewResponse(updated!);
+    });
+  }
+
+  async adminSetReviewStatus(reviewId: string, status: ReviewStatus) {
+    return this.dataSource.transaction(async (manager) => {
+      const reviewRepo = manager.getRepository(StaysListingReview);
+      const review = await reviewRepo.findOne({ where: { id: reviewId } });
+      if (!review) throw new NotFoundException('Review not found');
+
+      review.status = status;
+      await reviewRepo.save(review);
+      await this.aggregateService.recalculateForListing(
+        manager,
+        review.listing_id,
+      );
+
+      if (status === 'REMOVED') {
+        void this.domainEvents.publish(EVENTS.REVIEW_DELETED, 'stays', {
+          reviewId: review.id,
+          listingId: review.listing_id,
+        });
+      } else if (status === 'PUBLISHED') {
+        void this.domainEvents.publish(EVENTS.REVIEW_UPDATED, 'stays', {
+          reviewId: review.id,
+          listingId: review.listing_id,
+          guestUserId: review.guest_user_id,
+        });
+      }
+
+      return { id: review.id, status: review.status };
+    });
+  }
+
+  async listHostReviews(hostUserId: string, page = 1, limit = 20) {
     const myListings = await this.listingRepo.find({
       where: { host_user_id: hostUserId },
       select: ['id'],
@@ -265,40 +316,34 @@ export class StaysReviewsService {
     const skip = (safePage - 1) * safeLimit;
 
     const total = await this.reviewRepo.count({
-      where: { listing_id: In(listingIds) },
+      where: { listing_id: In(listingIds), status: PUBLISHED },
     });
 
     const rows = await this.reviewRepo.find({
-      where: { listing_id: In(listingIds) },
-      relations: ['listing'],
+      where: { listing_id: In(listingIds), status: PUBLISHED },
+      relations: ['listing', 'booking', 'booking.occupants'],
       order: { created_at: 'DESC' },
       take: safeLimit,
       skip,
     });
 
-    const allForHistogram = await this.reviewRepo
-      .createQueryBuilder('r')
-      .select('r.rating', 'rating')
-      .addSelect('COUNT(*)', 'cnt')
-      .where('r.listing_id IN (:...ids)', { ids: listingIds })
-      .groupBy('r.rating')
-      .getRawMany<{ rating: string; cnt: string }>();
-
-    let sumWeighted = 0;
+    let sum = 0;
     let countAll = 0;
     const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    for (const row of allForHistogram) {
-      const st = Number(row.rating);
-      const c = Number(row.cnt);
-      if (!starCounts[st]) starCounts[st] = 0;
-      starCounts[st] = c;
-      sumWeighted += st * c;
-      countAll += c;
+    for (const lid of listingIds) {
+      const listing = await this.listingRepo.findOne({ where: { id: lid } });
+      if (!listing) continue;
+      sum += Number(listing.avg_rating ?? 0) * (listing.review_count ?? 0);
+      countAll += listing.review_count ?? 0;
+      starCounts[1] += listing.ratings_1 ?? 0;
+      starCounts[2] += listing.ratings_2 ?? 0;
+      starCounts[3] += listing.ratings_3 ?? 0;
+      starCounts[4] += listing.ratings_4 ?? 0;
+      starCounts[5] += listing.ratings_5 ?? 0;
     }
+
     const overall =
-      countAll > 0
-        ? Math.round((sumWeighted / countAll) * 100) / 100
-        : null;
+      countAll > 0 ? Math.round((sum / countAll) * 100) / 100 : null;
 
     const distribution_pct: Record<string, number> = {};
     for (let s = 5; s >= 1; s--) {
@@ -314,8 +359,8 @@ export class StaysReviewsService {
           id: r.id,
           listing_id: r.listing_id,
           listing_title: listing?.title ?? 'Listing',
-          guest_name: 'Guest',
-          rating: r.rating,
+          guest_name: this.resolveGuestName(r),
+          rating: Number(r.rating),
           comment: r.comment ?? '',
           created_at: r.created_at.toISOString(),
         };
@@ -331,27 +376,201 @@ export class StaysReviewsService {
     };
   }
 
-  private async recalcListingAggregates(manager: EntityManager, listingId: string) {
-    const raw = await manager
-      .createQueryBuilder(StaysListingReview, 'r')
-      .select('COUNT(r.id)::int', 'cnt')
-      .addSelect('AVG(r.rating)', 'avg')
-      .where('r.listing_id = :listingId', { listingId })
-      .getRawOne<{ cnt: string; avg: string | null }>();
+  async adminListReviews(params?: {
+    limit?: number;
+    offset?: number;
+    status?: ReviewStatus;
+  }) {
+    const limit = Math.min(params?.limit ?? 50, 200);
+    const offset = params?.offset ?? 0;
+    const where = params?.status ? { status: params.status } : {};
+    const [items, total] = await this.reviewRepo.findAndCount({
+      where,
+      relations: ['listing', 'media'],
+      order: { created_at: 'DESC' },
+      take: limit,
+      skip: offset,
+    });
+    return {
+      items: items.map((r) => this.toReviewResponse(r)),
+      total,
+    };
+  }
 
-    const cnt = raw?.cnt != null ? Number(raw.cnt) : 0;
-    const avg =
-      cnt > 0 && raw?.avg != null && raw.avg !== ''
-        ? Math.round(parseFloat(raw.avg) * 100) / 100
-        : null;
+  async getReviewMediaPath(assetId: string): Promise<string> {
+    const media = await this.reviewMediaRepo.findOne({
+      where: { asset_id: assetId },
+      relations: ['review'],
+    });
+    if (!media) throw new NotFoundException('Media not found');
+    const review = media.review as StaysListingReview;
+    if (review.status !== PUBLISHED) {
+      throw new NotFoundException('Media not found');
+    }
 
-    await manager.update(
-      StaysListing,
-      { id: listingId },
-      {
-        review_count: cnt,
-        avg_rating: avg,
-      },
-    );
+    const root = process.env.MEDIA_STORAGE_ROOT ?? 'uploads';
+    const base = `${root}/reviews`;
+    const extensions = ['.jpg', '.jpeg', '.png', '.webp'];
+    const fs = await import('fs/promises');
+    const path = await import('path');
+
+    for (const ext of extensions) {
+      const candidate = path.join(base, `review_${assetId}${ext}`);
+      try {
+        await fs.access(candidate);
+        return path.resolve(candidate);
+      } catch {
+        // try next
+      }
+    }
+
+    const remoteUrl = process.env.MEDIA_SERVICE_URL;
+    if (remoteUrl) {
+      return `${remoteUrl.replace(/\/$/, '')}/api/v1/media/file?key=${encodeURIComponent(`stays/reviews/review_${assetId}`)}`;
+    }
+
+    throw new NotFoundException('Media file not found');
+  }
+
+  private async assertCanReview(
+    manager: EntityManager,
+    guestUserId: string,
+    bookingId: string,
+  ): Promise<StaysBooking & { listing: StaysListing; occupants?: StaysBookingOccupant[] }> {
+    const bookingRepo = manager.getRepository(StaysBooking);
+    const reviewRepo = manager.getRepository(StaysListingReview);
+
+    const booking = await bookingRepo.findOne({
+      where: { id: bookingId },
+      relations: ['listing', 'occupants'],
+    });
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    if (booking.guest_user_id !== guestUserId) {
+      throw new ForbiddenException('ReviewNotAllowed');
+    }
+
+    const lifecycle = this.lifecycleService.computeLifecycle(booking);
+    if (!this.lifecycleService.canReview(booking)) {
+      throw new ForbiddenException('ReviewNotAllowed');
+    }
+
+    const paidCompleteStatuses: StaysBooking['status'][] = [
+      'CONFIRMED',
+      'CHECKED_IN',
+    ];
+    if (
+      lifecycle === 'COMPLETED' &&
+      paidCompleteStatuses.includes(booking.status)
+    ) {
+      const completedAt = booking.completed_at ?? new Date();
+      await bookingRepo.update(
+        { id: booking.id },
+        { status: 'COMPLETED', completed_at: completedAt },
+      );
+      booking.status = 'COMPLETED';
+      booking.completed_at = completedAt;
+    }
+
+    const listing = booking.listing as StaysListing;
+    const reviewableListingStatuses: StaysListing['status'][] = [
+      'LIVE',
+      'PAUSED',
+      'APPROVED',
+    ];
+    if (!listing || !reviewableListingStatuses.includes(listing.status)) {
+      throw new ForbiddenException('ReviewNotAllowed');
+    }
+    if (listing.host_user_id === guestUserId) {
+      throw new ForbiddenException('ReviewOwnListingNotAllowed');
+    }
+
+    const existing = await reviewRepo.findOne({
+      where: { booking_id: bookingId },
+    });
+    if (existing) {
+      throw new ConflictException('ReviewAlreadyExists');
+    }
+
+    return booking as StaysBooking & {
+      listing: StaysListing;
+      occupants?: StaysBookingOccupant[];
+    };
+  }
+
+  private async saveMedia(
+    mediaRepo: Repository<StaysReviewMedia>,
+    reviewId: string,
+    assetIds: string[],
+  ) {
+    for (let i = 0; i < assetIds.length; i++) {
+      await mediaRepo.save(
+        mediaRepo.create({
+          review_id: reviewId,
+          asset_id: assetIds[i],
+          display_order: i,
+        }),
+      );
+    }
+  }
+
+  private resolveGuestName(review: StaysListingReview): string {
+    const booking = review.booking as StaysBooking & {
+      occupants?: StaysBookingOccupant[];
+    };
+    const occupants = booking?.occupants ?? [];
+    if (occupants.length > 0) {
+      const primary =
+        occupants.find((o) => o.is_primary) ??
+        occupants.find((o) => o.full_name?.trim()) ??
+        occupants[0];
+      const full = primary?.full_name?.trim() ?? '';
+      if (full) {
+        const first = full.split(/\s+/)[0];
+        return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+      }
+    }
+    return 'Guest';
+  }
+
+  private toPublicReview(review: StaysListingReview) {
+    const media = (review.media ?? [])
+      .sort((a, b) => a.display_order - b.display_order)
+      .map((m) => ({
+        asset_id: m.asset_id,
+        display_order: m.display_order,
+      }));
+
+    return {
+      id: review.id,
+      listing_id: review.listing_id,
+      guest_id: review.guest_user_id,
+      guest_name: this.resolveGuestName(review),
+      guest_photo_url: null as string | null,
+      rating: Number(review.rating),
+      comment: review.comment ?? '',
+      created_at: review.created_at.toISOString(),
+      edited_at: review.edited_at?.toISOString() ?? null,
+      is_verified_stay: true,
+      is_edited: review.edited_at != null,
+      media,
+      sub_ratings: {} as Record<string, number>,
+    };
+  }
+
+  private toReviewResponse(review: StaysListingReview) {
+    const publicFields = this.toPublicReview(review);
+    const editable =
+      review.guest_user_id &&
+      review.status !== 'REMOVED' &&
+      Date.now() - review.created_at.getTime() <= EDIT_WINDOW_MS;
+
+    return {
+      ...publicFields,
+      booking_id: review.booking_id,
+      status: review.status,
+      can_edit: editable,
+    };
   }
 }

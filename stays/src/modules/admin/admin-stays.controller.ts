@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Query,
   Body,
@@ -19,6 +20,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AdminStaysService } from './admin-stays.service';
+import { StaysReviewsService } from '../stays/services/stays-reviews.service';
 import { HostApplicationsService } from '../stays/hosts/host-applications.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { UpdateFeeSettingsDto } from '../platform-settings/dto/update-fee-settings.dto';
@@ -34,6 +36,7 @@ export class AdminStaysController {
     private readonly adminStaysService: AdminStaysService,
     private readonly hostApplicationsService: HostApplicationsService,
     private readonly platformSettings: PlatformSettingsService,
+    private readonly staysReviewsService: StaysReviewsService,
   ) {}
 
   @Get('settings/fees')
@@ -202,11 +205,32 @@ export class AdminStaysController {
   getReviews(
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('status') status?: string,
   ) {
-    return this.adminStaysService.getReviews({
+    const normalized =
+      status === 'PUBLISHED' || status === 'HIDDEN' || status === 'REMOVED'
+        ? status
+        : undefined;
+    return this.staysReviewsService.adminListReviews({
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
+      status: normalized,
     });
+  }
+
+  @Patch('reviews/:id/hide')
+  hideReview(@Param('id') id: string) {
+    return this.staysReviewsService.adminSetReviewStatus(id, 'HIDDEN');
+  }
+
+  @Patch('reviews/:id/publish')
+  publishReview(@Param('id') id: string) {
+    return this.staysReviewsService.adminSetReviewStatus(id, 'PUBLISHED');
+  }
+
+  @Delete('reviews/:id')
+  deleteReview(@Param('id') id: string) {
+    return this.staysReviewsService.adminSetReviewStatus(id, 'REMOVED');
   }
 
   @Get('audit-logs')
