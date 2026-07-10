@@ -6,35 +6,63 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 import { json, urlencoded } from 'express';
-import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { appConfig } from './common/config';
 import { HttpExceptionFilter } from './common/filters';
 import { TransformInterceptor } from './common/interceptors';
 import { safeLogger } from './common/logging/safe-logger';
 import { createHttpTelemetryMiddleware, initOpenTelemetry } from '@nexa/telemetry';
+import { applySecureHttp } from './common/security/secure-http';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-identity');
-  // Production: require KYC_HASH_PEPPER so CNIE hashes are stable and independent of JWT_SECRET
+  // Production: require secrets so auth material is never ephemeral / defaulted
   if (process.env.NODE_ENV === 'production') {
     void appConfig.kycHashPepper;
+    void appConfig.refreshTokenPepper;
+    void appConfig.otpPepper;
     appConfig.resolvePaymentHmacSecrets();
+    if (!process.env.JWT_PRIVATE_KEY || !process.env.JWT_PUBLIC_KEY) {
+      throw new Error(
+        'JWT_PRIVATE_KEY and JWT_PUBLIC_KEY are required in production.',
+      );
+    }
+    if (process.env.DEMO_OTP_CODE) {
+      throw new Error(
+        'DEMO_OTP_CODE must not be set in production.',
+      );
+    }
+    if (!process.env.ADMIN_PASSWORD_HASH) {
+      throw new Error(
+        'ADMIN_PASSWORD_HASH (Argon2id) is required in production. Do not use plaintext ADMIN_PASSWORD.',
+      );
+    }
+    if (!process.env.DB_PASSWORD?.trim()) {
+      throw new Error('DB_PASSWORD is required in production.');
+    }
+    if (!process.env.INTERNAL_SERVICE_KEY?.trim()) {
+      throw new Error('INTERNAL_SERVICE_KEY is required in production.');
+    }
+    if (!process.env.CORS_ORIGINS?.trim()) {
+      throw new Error(
+        'CORS_ORIGINS is required in production (comma-separated https origins).',
+      );
+    }
+    if (
+      process.env.SUMSUB_APP_TOKEN?.trim() &&
+      !process.env.SUMSUB_SECRET_KEY?.trim()
+    ) {
+      throw new Error(
+        'SUMSUB_SECRET_KEY is required when SUMSUB_APP_TOKEN is set.',
+      );
+    }
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
   });
 
-  // Security headers
-  app.use(
-    helmet({
-      contentSecurityPolicy: process.env.NODE_ENV === 'production',
-      crossOriginEmbedderPolicy: false,
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
-    }),
-  );
-  app.disable('x-powered-by');
+  applySecureHttp(app);
 
   // Body size limits (JSON and urlencoded; 1MB default). Keep raw JSON bytes for
   // webhook HMAC verification before Express parses the body.
@@ -88,10 +116,8 @@ async function bootstrap() {
   );
   app.use(createHttpTelemetryMiddleware({ service: 'nexa-identity' }));
 
-  // Global prefix
   app.setGlobalPrefix(appConfig.apiPrefix);
 
-  // Global validation pipe (strict: whitelist, forbid extra props, explicit types)
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -101,38 +127,37 @@ async function bootstrap() {
     }),
   );
 
-  // Global exception filter
   app.useGlobalFilters(new HttpExceptionFilter());
-
-  // Global interceptor
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  // Swagger / OpenAPI
-  const config = new DocumentBuilder()
-    .setTitle('Nexa Identity API')
-    .setVersion('1.0')
-    .setDescription(
-      'Nexa Identity SSO — auth, OTP, PIN, sessions, user profile, KYC.\n\n' +
-        'Issues RS256 JWTs verified via `GET /.well-known/jwks.json`.',
-    )
-    .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', in: 'header' },
-      'bearer',
-    )
-    .addTag('Auth', 'OTP, PIN, login, refresh')
-    .addTag('Users', 'Profile, registration, consents')
-    .addTag('Compliance', 'KYC submit, status, Sumsub webhooks')
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup(`${appConfig.apiPrefix}/docs`, app, document);
-
-  // CORS: production = allowed origins only; development = localhost + env origins
-  const origins = appConfig.corsOrigins;
   const isProd = process.env.NODE_ENV === 'production';
+  if (!isProd || process.env.ENABLE_SWAGGER === 'true') {
+    const config = new DocumentBuilder()
+      .setTitle('Nexa Identity API')
+      .setVersion('1.0')
+      .setDescription(
+        'Nexa Identity SSO — auth, OTP, PIN, sessions, user profile, KYC.\n\n' +
+          'Issues RS256 JWTs verified via `GET /.well-known/jwks.json`.',
+      )
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', in: 'header' },
+        'bearer',
+      )
+      .addTag('Auth', 'OTP, PIN, login, refresh')
+      .addTag('Users', 'Profile, registration, consents')
+      .addTag('Compliance', 'KYC submit, status, Sumsub webhooks')
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup(`${appConfig.apiPrefix}/docs`, app, document);
+  }
+
+  const origins = appConfig.corsOrigins;
   const allowOrigins = isProd
     ? origins.length > 0
       ? origins
-      : ['https://nexa.ma', 'https://admin.nexa.ma']
+      : (() => {
+          throw new Error('CORS_ORIGINS must be set in production.');
+        })()
     : true;
   app.enableCors({
     origin: allowOrigins,
@@ -146,13 +171,20 @@ async function bootstrap() {
       'X-Device-Id',
       'X-Device-Integrity',
       'X-Nexa-Product',
+      'X-Internal-Key',
     ],
     exposedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
   });
 
-  // Listen on all network interfaces (0.0.0.0) to allow connections from other devices
   await app.listen(appConfig.port, '0.0.0.0');
   const base = `http://0.0.0.0:${appConfig.port}/${appConfig.apiPrefix}`;
-  safeLogger.info('Nexa Identity started', { base, swagger: `${base}/docs`, jwks: `${base}/.well-known/jwks.json` });
+  safeLogger.info('Nexa Identity started', {
+    base,
+    swagger:
+      !isProd || process.env.ENABLE_SWAGGER === 'true'
+        ? `${base}/docs`
+        : 'disabled',
+    jwks: `${base}/.well-known/jwks.json`,
+  });
 }
 void bootstrap();

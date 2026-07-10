@@ -107,6 +107,21 @@ export class StaysService {
     return { asset_id: assetId };
   }
 
+  /** Ensure occupant ID asset was uploaded by this guest (prevents attaching another user's docs). */
+  private async assertOwnedOccupantAsset(
+    userId: string,
+    assetId: string,
+    side: 'front' | 'back',
+  ): Promise<void> {
+    try {
+      await this.getOccupantIdDocumentPath(userId, assetId, side);
+    } catch {
+      throw new BadRequestException(
+        `Invalid occupant ID asset_id (${side}) — upload the document first`,
+      );
+    }
+  }
+
   async getOccupantIdDocumentPath(
     guestUserId: string,
     assetId: string,
@@ -137,7 +152,7 @@ export class StaysService {
       relations: ['media'],
     });
     if (!listing) throw new NotFoundException('Listing not found');
-    if (listing.status !== 'LIVE' && listing.status !== 'APPROVED') throw new NotFoundException('Listing not found');
+    if (listing.status !== 'LIVE') throw new NotFoundException('Listing not found');
     const media = listing.media?.find((m) => m.asset_id === assetId);
     if (!media) throw new NotFoundException('Media not found');
     const dir = path.resolve(
@@ -147,13 +162,16 @@ export class StaysService {
       'listing',
     );
     if (media.kind === 'WALKTHROUGH') {
-      const p = path.join(dir, `walkthrough_${assetId}.mp4`);
-      try {
-        await fs.access(p);
-        return p;
-      } catch {
-        throw new NotFoundException('Walkthrough file not found');
+      for (const ext of ['.mp4', '.webm']) {
+        const p = path.join(dir, `walkthrough_${assetId}${ext}`);
+        try {
+          await fs.access(p);
+          return p;
+        } catch {
+          /* try next */
+        }
       }
+      throw new NotFoundException('Walkthrough file not found');
     }
     for (const ext of StaysService.PHOTO_EXTS) {
       const p = path.join(dir, `photo_${assetId}${ext}`);
@@ -174,26 +192,46 @@ export class StaysService {
     guests?: number;
     verified_walkthrough_only?: boolean;
     instant_booking_only?: boolean;
+    listing_type?: string;
   }) {
     const qb = this.listingRepo
       .createQueryBuilder('l')
       .leftJoinAndSelect('l.rate_plan', 'rp')
       .leftJoinAndSelect('l.rules', 'rules')
       .leftJoinAndSelect('l.media', 'media')
-      .where('l.status IN (:...statuses)', { statuses: ['LIVE', 'APPROVED'] });
+      .where('l.status = :status', { status: 'LIVE' });
 
     if (params.city) {
-      qb.andWhere('LOWER(l.city) = LOWER(:city)', { city: params.city });
+      qb.andWhere('LOWER(l.city) = LOWER(:city)', { city: params.city.trim() });
+    }
+
+    if (params.listing_type) {
+      qb.andWhere('UPPER(l.listing_type) = UPPER(:listingType)', {
+        listingType: params.listing_type.trim(),
+      });
     }
 
     if (params.instant_booking_only) {
       qb.andWhere('l.instant_booking = true');
     }
 
+    if (params.guests != null && params.guests > 0) {
+      qb.andWhere('rules.max_guests >= :guests', { guests: params.guests });
+    }
+
+    if (params.verified_walkthrough_only) {
+      qb.andWhere(
+        `EXISTS (
+          SELECT 1 FROM stays_listing_media m
+          WHERE m.listing_id = l.id AND m.kind = 'WALKTHROUGH'
+        )`,
+      );
+    }
+
     if (params.checkin_date && params.checkout_date) {
-      const checkin = new Date(params.checkin_date);
-      const checkout = new Date(params.checkout_date);
-      if (checkout > checkin) {
+      const checkin = params.checkin_date.trim();
+      const checkout = params.checkout_date.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(checkin) && /^\d{4}-\d{2}-\d{2}$/.test(checkout) && checkout > checkin) {
         const unavailable = await this.availabilityService.getUnavailableListingIds(
           checkin,
           checkout,
@@ -222,15 +260,58 @@ export class StaysService {
       throw new NotFoundException('Listing not found');
     }
 
-    if (listing.status !== 'LIVE' && listing.status !== 'APPROVED') {
+    if (listing.status !== 'LIVE') {
       throw new NotFoundException('Listing not found');
     }
 
-    const canRevealAddress = guestUserId
-      ? await this.canRevealAddressAndContact(listing.id, guestUserId)
-      : false;
+    const isOwner =
+      !!guestUserId && listing.host_user_id === guestUserId;
+    const canRevealAddress =
+      isOwner ||
+      (guestUserId
+        ? await this.canRevealAddressAndContact(listing.id, guestUserId)
+        : false);
 
     return this.toListingResponse(listing, canRevealAddress ? 'full' : 'masked');
+  }
+
+  async getListingAvailability(
+    listingId: string,
+    fromDate: string,
+    toDate: string,
+  ) {
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+      select: ['id', 'status'],
+    });
+    if (!listing) {
+      throw new NotFoundException('Listing not found');
+    }
+    if (listing.status !== 'LIVE') {
+      throw new NotFoundException('Listing not found');
+    }
+
+    const from = fromDate?.trim();
+    const to = toDate?.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+      throw new BadRequestException('from and to must be YYYY-MM-DD');
+    }
+    if (to <= from) {
+      throw new BadRequestException('to must be after from');
+    }
+
+    const blocked_ranges = await this.availabilityService.getBlockedDateRanges(
+      listingId,
+      from,
+      to,
+    );
+
+    return {
+      listing_id: listingId,
+      from,
+      to,
+      blocked_ranges,
+    };
   }
 
   private async canRevealAddressAndContact(
@@ -241,12 +322,10 @@ export class StaysService {
       where: {
         listing_id: listingId,
         guest_user_id: guestUserId,
-        status: 'CONFIRMED',
+        status: In(['CONFIRMED', 'CHECKED_IN', 'COMPLETED']),
       },
     });
-    if (!confirmed) return false;
-    // Booking is paid and confirmed - reveal address and contact to guest
-    return true;
+    return !!confirmed;
   }
 
   private extractNeighborhood(listing: StaysListing): string | null {
@@ -292,7 +371,10 @@ export class StaysService {
       review_count: listing.review_count ?? 0,
       geo_lat: listing.geo_lat,
       geo_lng: listing.geo_lng,
-      address: listing.address_encrypted ?? null,
+      address:
+        addressMode === 'full'
+          ? (listing.address_encrypted ?? null)
+          : null,
       neighborhood: this.extractNeighborhood(listing),
       status: listing.status,
       checkin_time: listing.checkin_time,
@@ -367,6 +449,7 @@ export class StaysService {
         const listing = await listingRepo
           .createQueryBuilder('l')
           .innerJoinAndSelect('l.rate_plan', 'rp')
+          .leftJoinAndSelect('l.rules', 'rules')
           .setLock('pessimistic_write')
           .where('l.id = :id', { id: dto.listing_id })
           .getOne();
@@ -375,8 +458,20 @@ export class StaysService {
           throw new NotFoundException('Listing not found');
         }
 
-        if (listing.status !== 'LIVE' && listing.status !== 'APPROVED') {
+        if (listing.status !== 'LIVE') {
           throw new BadRequestException('Listing is not available for booking');
+        }
+
+        const maxGuests = listing.rules?.max_guests ?? 50;
+        if (dto.guest_count > maxGuests) {
+          throw new BadRequestException(
+            `Guest count exceeds listing maximum of ${maxGuests}`,
+          );
+        }
+        if (dto.occupants && dto.occupants.length > dto.guest_count) {
+          throw new BadRequestException(
+            'Occupants list cannot exceed guest_count',
+          );
         }
 
         const checkin = parseBookingDateOnly(dto.checkin_date);
@@ -400,11 +495,12 @@ export class StaysService {
           }
         }
 
-        // Availability check inside transaction
+        // Availability check inside transaction (same connection as listing lock)
         const available = await this.availabilityService.isListingAvailable(
           dto.listing_id,
-          checkin,
-          checkout,
+          dto.checkin_date,
+          dto.checkout_date,
+          { manager },
         );
         if (!available) {
           throw new ConflictException(
@@ -447,6 +543,14 @@ export class StaysService {
         if (dto.occupants?.length) {
           const occupantRepo = manager.getRepository(StaysBookingOccupant);
           for (const o of dto.occupants) {
+            const frontId = o.id_document_front_asset_id?.trim() || null;
+            const backId = o.id_document_back_asset_id?.trim() || null;
+            if (frontId) {
+              await this.assertOwnedOccupantAsset(userId, frontId, 'front');
+            }
+            if (backId) {
+              await this.assertOwnedOccupantAsset(userId, backId, 'back');
+            }
             await occupantRepo.save(
               occupantRepo.create({
                 booking_id: newBooking.id,
@@ -456,8 +560,8 @@ export class StaysService {
                 phone: o.phone?.trim() || null,
                 email: o.email?.trim() || null,
                 gender: o.gender?.trim() || null,
-                id_document_front_asset_id: o.id_document_front_asset_id?.trim() || null,
-                id_document_back_asset_id: o.id_document_back_asset_id?.trim() || null,
+                id_document_front_asset_id: frontId,
+                id_document_back_asset_id: backId,
               }),
             );
           }
@@ -602,20 +706,16 @@ export class StaysService {
   }
 
   async getHostBookings(hostUserId: string) {
-    const bookings = await this.bookingRepo.find({
-      where: {},
-      relations: [
-        'listing',
-        'listing.check_in_contact',
-        'listing.media',
-        'occupants',
-      ],
-      order: { created_at: 'DESC' },
-    });
-    const filtered = bookings.filter(
-      (b) => (b.listing as StaysListing).host_user_id === hostUserId,
-    );
-    return filtered.map((b) => {
+    const bookings = await this.bookingRepo
+      .createQueryBuilder('b')
+      .innerJoinAndSelect('b.listing', 'listing')
+      .leftJoinAndSelect('listing.check_in_contact', 'check_in_contact')
+      .leftJoinAndSelect('listing.media', 'media')
+      .leftJoinAndSelect('b.occupants', 'occupants')
+      .where('listing.host_user_id = :hostUserId', { hostUserId })
+      .orderBy('b.created_at', 'DESC')
+      .getMany();
+    return bookings.map((b) => {
       const response = this.toBookingResponse(b, false, true, {}, true);
       const guestName = this.resolveGuestDisplayName(b);
       return {
@@ -686,11 +786,15 @@ export class StaysService {
       guest_count: booking.guest_count,
       total_subtotal: Number(booking.total_subtotal),
       guest_fee: Number(booking.guest_fee),
-      host_fee: Number(booking.host_fee),
+      ...(hostView
+        ? {
+            host_fee: Number(booking.host_fee),
+            payout_amount: booking.payout_amount
+              ? Number(booking.payout_amount)
+              : null,
+          }
+        : {}),
       total_paid: booking.total_paid ? Number(booking.total_paid) : null,
-      payout_amount: booking.payout_amount
-        ? Number(booking.payout_amount)
-        : null,
       currency: booking.currency,
       created_at: booking.created_at,
       completed_at: booking.completed_at,

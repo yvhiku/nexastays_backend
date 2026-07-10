@@ -13,19 +13,17 @@ import { IdentityComplianceModule } from './domains/identity-compliance/identity
 import { IdentitySecurityModule } from './domains/identity-security/identity-security.module';
 import { DomainEventsModule } from './common/events/domain-events.module';
 import { AdminCoreModule } from './modules/admin/admin-core.module';
+import {
+  THROTTLE_DEFAULT,
+  THROTTLE_SHORT,
+} from './common/abuse/throttle-presets';
 
 @Module({
   imports: [
     DatabaseModule,
     MetricsModule,
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([
-      {
-        name: 'default',
-        ttl: 60000,
-        limit: process.env.NODE_ENV === 'production' ? 120 : 5000,
-      },
-    ]),
+    ThrottlerModule.forRoot([THROTTLE_SHORT, THROTTLE_DEFAULT]),
     IdentityCoreModule,
     IdentityComplianceModule,
     IdentitySecurityModule,

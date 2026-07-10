@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -10,6 +12,7 @@ import { StaysLedgerEntry } from '../entities/stays-ledger-entry.entity';
 import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysAuditService } from '../services/stays-audit.service';
+import { StaysAvailabilityService } from '../services/stays-availability.service';
 import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import { CmiPaymentProvider } from './cmi-payment.provider';
@@ -27,6 +30,8 @@ export interface CreateIntentResult {
 
 @Injectable()
 export class StaysPaymentsService {
+  private readonly logger = new Logger(StaysPaymentsService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(StaysPaymentIntent)
@@ -38,6 +43,7 @@ export class StaysPaymentsService {
     @InjectRepository(StaysListing)
     private readonly listingRepo: Repository<StaysListing>,
     private readonly auditService: StaysAuditService,
+    private readonly availabilityService: StaysAvailabilityService,
     private readonly domainEvents: DomainEventsService,
     private readonly cmiProvider: CmiPaymentProvider,
   ) {}
@@ -55,14 +61,26 @@ export class StaysPaymentsService {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-
     if (booking.guest_user_id !== guestUserId) {
       throw new NotFoundException('Booking not found');
     }
-
     if (booking.status !== 'PAYMENT_PENDING') {
-      throw new BadRequestException(
-        'Booking is not in PAYMENT_PENDING status',
+      throw new BadRequestException('Booking is not awaiting payment');
+    }
+
+    const available = await this.availabilityService.isListingAvailable(
+      booking.listing_id,
+      booking.checkin_date,
+      booking.checkout_date,
+      { excludeBookingId: booking.id },
+    );
+    if (!available) {
+      await this.bookingRepo.update(
+        { id: booking.id },
+        { status: 'EXPIRED', updated_at: new Date() },
+      );
+      throw new ConflictException(
+        'Selected dates are no longer available. Please try different dates.',
       );
     }
 
@@ -135,6 +153,7 @@ export class StaysPaymentsService {
       const intentRepo = manager.getRepository(StaysPaymentIntent);
       const ledgerRepo = manager.getRepository(StaysLedgerEntry);
       const bookingRepo = manager.getRepository(StaysBooking);
+      const listingRepo = manager.getRepository(StaysListing);
 
       const booking = await bookingRepo.findOne({
         where: { id: intent.booking_id },
@@ -142,6 +161,45 @@ export class StaysPaymentsService {
       });
 
       if (!booking || booking.status !== 'PAYMENT_PENDING') {
+        return;
+      }
+
+      // Serialize confirms for the same listing, then re-check overlap
+      await listingRepo
+        .createQueryBuilder('l')
+        .setLock('pessimistic_write')
+        .where('l.id = :id', { id: booking.listing_id })
+        .getOne();
+
+      const stillAvailable = await this.availabilityService.isListingAvailable(
+        booking.listing_id,
+        booking.checkin_date,
+        booking.checkout_date,
+        { excludeBookingId: booking.id, manager },
+      );
+
+      if (!stillAvailable) {
+        this.logger.warn(
+          `Payment succeeded but dates unavailable for booking ${booking.id}; expiring hold`,
+        );
+        await intentRepo.update(
+          { id: intent.id },
+          { status: 'FAILED', updated_at: new Date() },
+        );
+        await bookingRepo.update(
+          { id: booking.id },
+          { status: 'EXPIRED', updated_at: new Date() },
+        );
+        await this.auditService.log({
+          entityType: 'BOOKING',
+          entityId: booking.id,
+          action: 'PAYMENT_REJECTED_DATES_UNAVAILABLE',
+          metadata: {
+            provider,
+            provider_intent_id: providerIntentId,
+          },
+        });
+        // Do not throw: acknowledge webhook so the provider does not retry.
         return;
       }
 

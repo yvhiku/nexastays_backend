@@ -36,9 +36,9 @@ import {
 import { accountTypeToService } from './profile-sync-policy';
 import { roleUsesConsumerForPayout } from './role-categories';
 import PDFDocument from 'pdfkit';
+import { detectImageType } from '../compliance/image-type.util';
 
 const PROFILE_PHOTO_DIR = 'uploads/profile';
-const PROFILE_PHOTO_ALLOWED_MIME = ['image/jpeg', 'image/png'];
 const PROFILE_PHOTO_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 /** URL path returned in profile; client uses baseURL + this with Authorization to load image */
 const PROFILE_PHOTO_URL_PATH = 'users/me/profile-photo';
@@ -986,7 +986,7 @@ export class UsersService {
 
   private validateProfilePhotoFile(
     file: Express.Multer.File | undefined,
-  ): void {
+  ): 'jpeg' | 'png' {
     if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('No file uploaded');
     }
@@ -995,25 +995,17 @@ export class UsersService {
         `File too large. Maximum size is ${PROFILE_PHOTO_MAX_SIZE / 1024 / 1024}MB`,
       );
     }
-    const allowed =
-      PROFILE_PHOTO_ALLOWED_MIME.includes(file.mimetype) ||
-      (file.originalname && /\.(jpg|jpeg|png)$/i.test(file.originalname));
-    if (!allowed) {
+    const detected = detectImageType(file.buffer);
+    if (detected !== 'jpeg' && detected !== 'png') {
       throw new BadRequestException(
         'Invalid file type. Only JPEG and PNG images are allowed.',
       );
     }
+    return detected;
   }
 
-  private getProfilePhotoExtension(
-    mimetype: string,
-    originalname?: string,
-  ): string {
-    if (originalname) {
-      const ext = path.extname(originalname).toLowerCase();
-      if (ext === '.jpg' || ext === '.jpeg' || ext === '.png') return ext;
-    }
-    return mimetype === 'image/png' ? '.png' : '.jpg';
+  private getProfilePhotoExtension(detected: 'jpeg' | 'png'): string {
+    return detected === 'png' ? '.png' : '.jpg';
   }
 
   /**
@@ -1024,15 +1016,12 @@ export class UsersService {
     userId: string,
     file: Express.Multer.File | undefined,
   ): Promise<{ profile_photo_url: string }> {
-    this.validateProfilePhotoFile(file);
+    const detected = this.validateProfilePhotoFile(file);
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    const ext = this.getProfilePhotoExtension(
-      file!.mimetype,
-      file!.originalname,
-    );
+    const ext = this.getProfilePhotoExtension(detected);
     const filename = `${userId}${ext}`;
     await fs.mkdir(PROFILE_PHOTO_DIR, { recursive: true });
     await fs.writeFile(path.join(PROFILE_PHOTO_DIR, filename), file!.buffer);

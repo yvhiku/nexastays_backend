@@ -1,9 +1,11 @@
+import { requireSecret } from '../security/secrets';
+
 export const databaseConfig = {
   type: 'postgres' as const,
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5433', 10),
   username: process.env.DB_USERNAME || 'nexa_identity',
-  password: process.env.DB_PASSWORD || 'nexa_identity_dev',
+  password: requireSecret('DB_PASSWORD', { devFallback: 'nexa_identity_dev' }),
   database: process.env.DB_NAME || 'nexa_identity',
   synchronize: process.env.DB_SYNCHRONIZE === 'true',
   logging: process.env.NODE_ENV === 'development',

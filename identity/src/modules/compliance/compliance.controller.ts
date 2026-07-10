@@ -4,7 +4,6 @@ import {
   Get,
   Headers,
   Post,
-  Query,
   Req,
   UseGuards,
   UseInterceptors,
@@ -21,7 +20,6 @@ import { OtpSessionResolverGuard } from '../../common/guards/otp-session-resolve
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ComplianceService } from './compliance.service';
 import { SubmitKycDto } from './dto/submit-kyc.dto';
-import { KycStatusQueryDto } from './dto/kyc-status-query.dto';
 import { DbCircuitBreakerGuard } from '../../common/guards/db-circuit-breaker.guard';
 import { HttpCacheInterceptor } from '../../common/cache/http-cache.interceptor';
 import { CacheTTL } from '../../common/cache/cache-ttl.decorator';
@@ -92,10 +90,12 @@ export class ComplianceController {
   }
 
   @Get('status')
-  @UseGuards(DbCircuitBreakerGuard)
+  @UseGuards(JwtAuthGuard, DbCircuitBreakerGuard)
+  @ApiBearerAuth('bearer')
   @UseInterceptors(HttpCacheInterceptor)
   @CacheTTL(30)
-  status(@Query() query: KycStatusQueryDto) {
-    return this.complianceService.getStatus(query.phone_number);
+  @ApiOperation({ summary: 'Get KYC status for the authenticated user' })
+  status(@CurrentUser() user: { userId: string }) {
+    return this.complianceService.getStatusForUser(user.userId);
   }
 }

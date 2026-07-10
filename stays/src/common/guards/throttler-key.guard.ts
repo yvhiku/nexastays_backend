@@ -1,30 +1,34 @@
 import { ExecutionContext, Injectable } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerException } from '@nestjs/throttler';
+import { noteRateLimited } from '../security/security-traffic';
 
 /**
  * Global throttle: prefer rate-limit by user id when authenticated, else by IP.
- * Note: For JWT-protected routes, auth runs after this guard, so req.user may be
- * unset here; in that case we fall back to IP (120/min per IP).
- * Admin routes (/admin/*) are never throttled.
  */
 @Injectable()
 export class ThrottlerKeyGuard extends ThrottlerGuard {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const path = (request.url || request.path || '').split('?')[0];
-    if (path.includes('/admin/')) return true;
-    // Skip throttle for /users/me (profile) - heavily used, has its own cache
     if (path.includes('/users/me') && request.method === 'GET') return true;
-    // Skip throttle for GET host/verification - read-only, called often on host pages
-    if (path.includes('/stays/host/verification') && request.method === 'GET') return true;
-    return super.canActivate(context);
+    if (path.includes('/stays/host/verification') && request.method === 'GET') {
+      return true;
+    }
+    try {
+      return await super.canActivate(context);
+    } catch (err) {
+      if (err instanceof ThrottlerException) {
+        noteRateLimited(request);
+      }
+      throw err;
+    }
   }
 
   protected async getTracker(req: Record<string, unknown>): Promise<string> {
-    const user = req.user as { sub?: string } | undefined;
-    const sub = user?.sub;
-    if (sub && typeof sub === 'string') {
-      return `user:${sub}`;
+    const user = req.user as { sub?: string; userId?: string } | undefined;
+    const id = user?.userId || user?.sub;
+    if (id && typeof id === 'string') {
+      return `user:${id}`;
     }
     const ip =
       (req as { ip?: string }).ip ||
@@ -38,6 +42,6 @@ export class ThrottlerKeyGuard extends ThrottlerGuard {
       : typeof ip === 'string'
         ? ip.split(',')[0].trim()
         : '';
-    return ipStr || '0.0.0.0';
+    return `ip:${ipStr || '0.0.0.0'}`;
   }
 }

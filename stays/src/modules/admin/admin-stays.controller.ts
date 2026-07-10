@@ -10,9 +10,10 @@ import {
   UseGuards,
   Req,
   Res,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { createReadStream } from 'fs';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -24,10 +25,14 @@ import { StaysReviewsService } from '../stays/services/stays-reviews.service';
 import { HostApplicationsService } from '../stays/hosts/host-applications.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { UpdateFeeSettingsDto } from '../platform-settings/dto/update-fee-settings.dto';
+import { RejectReasonDto } from '../stays/dto/input-security.dto';
 
 @ApiTags('Stays Admin')
 @Controller('admin/stays')
-@SkipThrottle()
+@Throttle({
+  short: { limit: 30, ttl: 1000 },
+  default: { limit: 300, ttl: 60000 },
+})
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
 @ApiBearerAuth()
@@ -130,8 +135,8 @@ export class AdminStaysController {
 
   @Post('host-applications/:id/reject')
   rejectHostApplication(
-    @Param('id') id: string,
-    @Body() body: { reason: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: RejectReasonDto,
     @CurrentUser() user: { userId: string },
   ) {
     return this.hostApplicationsService.reject(
@@ -265,8 +270,8 @@ export class AdminStaysController {
 
   @Post('hosts/:id/reject')
   rejectHost(
-    @Param('id') id: string,
-    @Body() body: { reason: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: RejectReasonDto,
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
@@ -324,8 +329,8 @@ export class AdminStaysController {
 
   @Post('listings/:id/reject')
   rejectListing(
-    @Param('id') id: string,
-    @Body() body: { reason: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: RejectReasonDto,
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {

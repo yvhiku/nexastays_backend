@@ -29,7 +29,7 @@ export class StaysListing {
     length: 20,
     name: 'listing_type',
   })
-  listing_type: 'APARTMENT' | 'HOTEL' | 'RIAD' | 'VILLA';
+  listing_type: 'APARTMENT' | 'HOTEL' | 'RIAD' | 'VILLA' | 'HOSTEL';
 
   @Column({ type: 'varchar', length: 100 })
   city: string;

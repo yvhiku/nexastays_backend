@@ -1,6 +1,12 @@
-import { Controller, Get } from '@nestjs/common';
+import {
+  Controller,
+  ForbiddenException,
+  Get,
+  Headers,
+} from '@nestjs/common';
 import { AppService } from './app.service';
 import { MetricsService } from './common/metrics';
+import { getInternalServiceKey } from './common/security/secrets';
 
 @Controller()
 export class AppController {
@@ -24,8 +30,14 @@ export class AppController {
     return this.appService.getHealth();
   }
 
+  /** Metrics are internal-only in production (X-Internal-Key). */
   @Get('metrics')
-  getMetrics() {
+  getMetrics(@Headers('x-internal-key') key?: string) {
+    if (process.env.NODE_ENV === 'production') {
+      if (key !== getInternalServiceKey()) {
+        throw new ForbiddenException('Metrics are not public');
+      }
+    }
     return this.metricsService.getMetrics();
   }
 }

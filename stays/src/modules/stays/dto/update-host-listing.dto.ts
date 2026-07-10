@@ -7,6 +7,10 @@ import {
   IsIn,
   ValidateNested,
   Min,
+  Max,
+  MaxLength,
+  Matches,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -22,11 +26,14 @@ class UpdateRulesDto {
   @IsOptional()
   @Type(() => Number)
   @Min(1)
+  @Max(50)
   max_guests?: number;
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(64)
   @IsString({ each: true })
+  @MaxLength(64, { each: true })
   amenities?: string[];
 
   @IsOptional()
@@ -37,31 +44,39 @@ class UpdateRulesDto {
 class UpdateRatePlanDto {
   @IsOptional()
   @IsString()
+  @MaxLength(3)
+  @Matches(/^[A-Z]{3}$/)
   currency?: string;
 
   @IsOptional()
   @IsNumber()
   @Min(0)
+  @Max(10_000_000)
   base_price?: number;
 
   @IsOptional()
   @Type(() => Number)
   @Min(0)
+  @Max(10_000_000)
   weekend_price?: number;
 
   @IsOptional()
   @Type(() => Number)
   @Min(0)
+  @Max(10_000_000)
   cleaning_fee?: number;
 }
 
 class UpdateCheckInContactDto {
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   full_name?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(30)
+  @Matches(/^[+\d\s\-()]*$/)
   phone?: string;
 
   @IsOptional()
@@ -70,36 +85,44 @@ class UpdateCheckInContactDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   access_instructions?: string;
 }
 
 export class UpdateHostListingDto {
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   title?: string;
 
   @IsOptional()
-  @IsIn(['APARTMENT', 'HOTEL', 'RIAD', 'VILLA'])
-  listing_type?: 'APARTMENT' | 'HOTEL' | 'RIAD' | 'VILLA';
+  @IsIn(['APARTMENT', 'HOTEL', 'RIAD', 'VILLA', 'HOSTEL'])
+  listing_type?: 'APARTMENT' | 'HOTEL' | 'RIAD' | 'VILLA' | 'HOSTEL';
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
+  @Matches(/^[\p{L}\p{N}\s\-'.]*$/u)
   city?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   address?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   description?: string;
 
   @IsOptional()
   @IsString()
+  @Matches(/^\d{2}:\d{2}$/)
   checkin_time?: string;
 
   @IsOptional()
   @IsString()
+  @Matches(/^\d{2}:\d{2}$/)
   checkout_time?: string;
 
   @IsOptional()

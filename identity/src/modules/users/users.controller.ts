@@ -47,12 +47,14 @@ import { OtpSessionResolverGuard } from '../../common/guards/otp-session-resolve
 import { AccountTypes } from '../../common/decorators/account-type.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
-import { SkipThrottle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { DbCircuitBreakerGuard } from '../../common/guards/db-circuit-breaker.guard';
 import { HttpCacheInterceptor } from '../../common/cache/http-cache.interceptor';
 import { CacheTTL } from '../../common/cache/cache-ttl.decorator';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
+import { BotProtectionGuard } from '../../common/abuse/bot-protection.guard';
+import { ACCOUNT_CREATE_THROTTLE } from '../../common/abuse/throttle-presets';
 
 @ApiTags('Pay Users')
 @Controller(['users', 'pay/users'])
@@ -68,8 +70,19 @@ export class UsersController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @Public()
+  @UseGuards(BotProtectionGuard)
+  @Throttle(ACCOUNT_CREATE_THROTTLE)
   async createUser(@Body() body: CreateUserDto) {
-    return this.usersService.createUser(body);
+    const user = await this.usersService.createUser(body);
+    return {
+      id: user.id,
+      phone_number: user.phone_number,
+      full_name: user.full_name,
+      account_type: user.account_type,
+      kyc_status: user.kyc_status,
+      status: user.status,
+      created_at: user.created_at,
+    };
   }
 
   @Delete('me')

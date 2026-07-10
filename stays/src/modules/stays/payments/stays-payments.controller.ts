@@ -4,12 +4,18 @@ import {
   Param,
   Body,
   UseGuards,
+  ForbiddenException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Public } from '../../../common/decorators/public.decorator';
 import { StaysPaymentsService } from './stays-payments.service';
+import {
+  CreatePaymentIntentDto,
+  MockPaymentWebhookDto,
+} from '../dto/input-security.dto';
 
 @ApiTags('Stays Payments')
 @Controller('stays')
@@ -21,9 +27,9 @@ export class StaysPaymentsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create CMI payment order for booking (returns redirect URL)' })
   async createIntent(
-    @Param('id') bookingId: string,
+    @Param('id', ParseUUIDPipe) bookingId: string,
     @CurrentUser() user: { userId: string },
-    @Body() body: { idempotency_key?: string },
+    @Body() body: CreatePaymentIntentDto,
   ) {
     return this.paymentsService.createOrGetIntent(
       bookingId,
@@ -35,15 +41,18 @@ export class StaysPaymentsController {
   @Post('webhooks/payments/mock')
   @Public()
   @ApiOperation({ summary: 'Mock payment webhook (development only)' })
-  async mockWebhook(@Body() body: Record<string, unknown>) {
-    const providerIntentId = body?.provider_intent_id as string | undefined;
-    if (providerIntentId) {
-      await this.paymentsService.handleWebhookSuccess(
-        'mock',
-        providerIntentId,
-        body,
-      );
+  async mockWebhook(@Body() body: MockPaymentWebhookDto) {
+    const allowMock =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.STAYS_PAYMENT_PROVIDER === 'mock';
+    if (!allowMock) {
+      throw new ForbiddenException('Mock payment webhook is disabled');
     }
+    await this.paymentsService.handleWebhookSuccess(
+      'mock',
+      body.provider_intent_id,
+      body as unknown as Record<string, unknown>,
+    );
     return { received: true };
   }
 

@@ -70,9 +70,11 @@ export class StaysReviewsService {
       where: { booking_id: bookingId },
       relations: ['media'],
     });
-    if (!review) return null;
-    if (guestUserId && review.guest_user_id !== guestUserId) {
-      throw new ForbiddenException('ReviewNotAllowed');
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+    if (!guestUserId || review.guest_user_id !== guestUserId) {
+      throw new NotFoundException('Review not found');
     }
     return this.toReviewResponse(review);
   }
@@ -84,7 +86,7 @@ export class StaysReviewsService {
     sort: ReviewSort = 'newest',
   ) {
     const listing = await this.listingRepo.findOne({ where: { id: listingId } });
-    if (!listing || (listing.status !== 'LIVE' && listing.status !== 'APPROVED')) {
+    if (!listing || listing.status !== 'LIVE') {
       throw new NotFoundException('Listing not found');
     }
 
@@ -168,7 +170,7 @@ export class StaysReviewsService {
       await reviewRepo.save(row);
 
       if (assetIds.length > 0) {
-        await this.saveMedia(mediaRepo, row.id, assetIds);
+        await this.saveMedia(mediaRepo, row.id, assetIds, guestUserId);
       }
 
       await this.aggregateService.recalculateForListing(
@@ -237,7 +239,7 @@ export class StaysReviewsService {
         await mediaRepo.delete({ review_id: review.id });
         const assetIds = body.assetIds.slice(0, 5);
         if (assetIds.length > 0) {
-          await this.saveMedia(mediaRepo, review.id, assetIds);
+          await this.saveMedia(mediaRepo, review.id, assetIds, guestUserId);
         }
       }
 
@@ -409,24 +411,30 @@ export class StaysReviewsService {
     }
 
     const root = process.env.MEDIA_STORAGE_ROOT ?? 'uploads';
-    const base = `${root}/reviews`;
     const extensions = ['.jpg', '.jpeg', '.png', '.webp'];
     const fs = await import('fs/promises');
     const path = await import('path');
 
-    for (const ext of extensions) {
-      const candidate = path.join(base, `review_${assetId}${ext}`);
-      try {
-        await fs.access(candidate);
-        return path.resolve(candidate);
-      } catch {
-        // try next
+    const ownerDirs = [
+      path.join(root, 'reviews', review.guest_user_id),
+      path.join(root, 'reviews'), // legacy flat path
+    ];
+
+    for (const base of ownerDirs) {
+      for (const ext of extensions) {
+        const candidate = path.join(base, `review_${assetId}${ext}`);
+        try {
+          await fs.access(candidate);
+          return path.resolve(candidate);
+        } catch {
+          // try next
+        }
       }
     }
 
     const remoteUrl = process.env.MEDIA_SERVICE_URL;
     if (remoteUrl) {
-      return `${remoteUrl.replace(/\/$/, '')}/api/v1/media/file?key=${encodeURIComponent(`stays/reviews/review_${assetId}`)}`;
+      return `${remoteUrl.replace(/\/$/, '')}/api/v1/media/file?key=${encodeURIComponent(`stays/reviews/${review.guest_user_id}/review_${assetId}`)}`;
     }
 
     throw new NotFoundException('Media file not found');
@@ -503,12 +511,41 @@ export class StaysReviewsService {
     mediaRepo: Repository<StaysReviewMedia>,
     reviewId: string,
     assetIds: string[],
+    ownerUserId: string,
   ) {
+    const root = process.env.MEDIA_STORAGE_ROOT ?? 'uploads';
+    const path = await import('path');
+    const fs = await import('fs/promises');
+    const extensions = ['.jpg', '.jpeg', '.png', '.webp'];
+    const ownerDir = path.join(root, 'reviews', ownerUserId);
+    const claimDir = path.join(ownerDir, 'claims');
+
     for (let i = 0; i < assetIds.length; i++) {
+      const assetId = assetIds[i];
+      let owned = false;
+      try {
+        await fs.access(path.join(claimDir, assetId));
+        owned = true;
+      } catch {
+        for (const ext of extensions) {
+          try {
+            await fs.access(path.join(ownerDir, `review_${assetId}${ext}`));
+            owned = true;
+            break;
+          } catch {
+            // try next
+          }
+        }
+      }
+      if (!owned) {
+        throw new BadRequestException(
+          'Invalid review media asset_id (must be uploaded by the current user)',
+        );
+      }
       await mediaRepo.save(
         mediaRepo.create({
           review_id: reviewId,
-          asset_id: assetIds[i],
+          asset_id: assetId,
           display_order: i,
         }),
       );
@@ -545,7 +582,6 @@ export class StaysReviewsService {
     return {
       id: review.id,
       listing_id: review.listing_id,
-      guest_id: review.guest_user_id,
       guest_name: this.resolveGuestName(review),
       guest_photo_url: null as string | null,
       rating: Number(review.rating),

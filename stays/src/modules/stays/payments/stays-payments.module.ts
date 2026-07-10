@@ -9,6 +9,7 @@ import { StaysPaymentsService } from './stays-payments.service';
 import { StaysPaymentsController } from './stays-payments.controller';
 import { StaysAuditService } from '../services/stays-audit.service';
 import { CmiPaymentProvider } from './cmi-payment.provider';
+import { StaysModule } from '../stays.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { CmiPaymentProvider } from './cmi-payment.provider';
       StaysAuditLog,
       StaysListing,
     ]),
+    StaysModule,
   ],
   controllers: [StaysPaymentsController],
   providers: [StaysPaymentsService, StaysAuditService, CmiPaymentProvider],

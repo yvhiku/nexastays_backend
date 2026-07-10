@@ -15,7 +15,7 @@ export class OtpCode {
   @Column({ type: 'varchar', length: 20 })
   phone_number: string;
 
-  @Column({ type: 'varchar', length: 10 })
+  @Column({ type: 'varchar', length: 128 })
   code: string;
 
   @Column({ type: 'timestamp', name: 'expires_at' })

@@ -18,6 +18,7 @@ import {
 } from '../entities';
 import { HostsService } from '../hosts/hosts.service';
 import { detectImageType } from '../../../common/utils/image-type.util';
+import { detectVideoType } from '../../../common/utils/video-type.util';
 import type { CreateHostListingDto } from '../dto/create-host-listing.dto';
 import type { UpdateHostListingDto } from '../dto/update-host-listing.dto';
 
@@ -351,6 +352,7 @@ export class HostListingsService {
 
       for (let i = 0; i < dto.media.length; i++) {
         const m = dto.media[i];
+        await this.assertOwnedListingAsset(userId, m.asset_id, m.kind);
         const media = mediaRepo.create({
           listing_id: listing.id,
           kind: m.kind,
@@ -367,6 +369,35 @@ export class HostListingsService {
         message: 'Listing submitted for review. You will be notified once approved.',
       };
     });
+  }
+
+  private async assertOwnedListingAsset(
+    userId: string,
+    assetId: string,
+    kind: string,
+  ): Promise<void> {
+    const dir = path.join(LISTING_UPLOAD_DIR, userId, 'listing');
+    const prefixes =
+      kind === 'WALKTHROUGH'
+        ? [`walkthrough_${assetId}`]
+        : [`photo_${assetId}`];
+    const exts =
+      kind === 'WALKTHROUGH'
+        ? ['.mp4', '.webm']
+        : ['.jpg', '.jpeg', '.png', '.webp'];
+    for (const prefix of prefixes) {
+      for (const ext of exts) {
+        try {
+          await fs.access(path.join(dir, `${prefix}${ext}`));
+          return;
+        } catch {
+          /* try next */
+        }
+      }
+    }
+    throw new BadRequestException(
+      'Invalid media asset_id — upload the file first as this host',
+    );
   }
 
   async uploadListingPhoto(
@@ -404,8 +435,14 @@ export class HostListingsService {
     if (file.size > MAX_VIDEO_SIZE) {
       throw new BadRequestException(`Video too large. Max ${MAX_VIDEO_SIZE / 1024 / 1024}MB`);
     }
+    const detected = detectVideoType(file.buffer);
+    if (!detected) {
+      throw new BadRequestException(
+        'Invalid video file. Only MP4/MOV (ftyp) or WebM are allowed.',
+      );
+    }
     const assetId = randomUUID();
-    const ext = '.mp4'; // Accept any; store as mp4 for simplicity
+    const ext = detected === 'webm' ? '.webm' : '.mp4';
     const dir = path.join(LISTING_UPLOAD_DIR, userId, 'listing');
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(

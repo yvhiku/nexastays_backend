@@ -6,6 +6,9 @@ import {
   IsUUID,
   MaxLength,
   ArrayMaxSize,
+  Min,
+  Max,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -16,6 +19,8 @@ export class CreateReviewDto {
 
   @ApiProperty({ example: 4.5, description: '0.5 increments from 0.5 to 5' })
   @IsNumber()
+  @Min(0.5)
+  @Max(5)
   rating: number;
 
   @ApiPropertyOptional({ maxLength: 1000 })
@@ -36,6 +41,8 @@ export class CreateReviewDto {
 export class LegacyCreateReviewDto {
   @ApiProperty({ example: 5 })
   @IsNumber()
+  @Min(0.5)
+  @Max(5)
   rating: number;
 
   @ApiPropertyOptional({ maxLength: 1000 })
@@ -49,6 +56,8 @@ export class UpdateReviewDto {
   @ApiPropertyOptional({ example: 4 })
   @IsOptional()
   @IsNumber()
+  @Min(0.5)
+  @Max(5)
   rating?: number;
 
   @ApiPropertyOptional({ maxLength: 1000 })
@@ -67,6 +76,6 @@ export class UpdateReviewDto {
 
 export class AdminReviewStatusDto {
   @ApiProperty({ enum: ['PUBLISHED', 'HIDDEN', 'REMOVED'] })
-  @IsString()
+  @IsIn(['PUBLISHED', 'HIDDEN', 'REMOVED'])
   status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED';
 }

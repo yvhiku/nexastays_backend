@@ -9,12 +9,14 @@ describe('StaysAvailabilityService', () => {
   let bookingRepo: { createQueryBuilder: jest.Mock };
   let availabilityRepo: { createQueryBuilder: jest.Mock };
 
-  const mockQueryBuilder = (rawResult: { listing_id: string }[]) => {
+  const mockQueryBuilder = (rawResult: { listing_id: string }[], count = 0) => {
     return {
       select: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       getRawMany: jest.fn().mockResolvedValue(rawResult),
+      getCount: jest.fn().mockResolvedValue(count),
+      getMany: jest.fn().mockResolvedValue([]),
     };
   };
 
@@ -42,8 +44,8 @@ describe('StaysAvailabilityService', () => {
     );
 
     const unavailable = await service.getUnavailableListingIds(
-      new Date('2026-03-10'),
-      new Date('2026-03-15'),
+      '2026-03-10',
+      '2026-03-15',
     );
 
     expect(unavailable).toContain('listing-1');
@@ -60,8 +62,8 @@ describe('StaysAvailabilityService', () => {
     );
 
     const unavailable = await service.getUnavailableListingIds(
-      new Date('2026-03-10'),
-      new Date('2026-03-15'),
+      '2026-03-10',
+      '2026-03-15',
     );
 
     expect(unavailable).toContain('listing-blocked');
@@ -76,8 +78,8 @@ describe('StaysAvailabilityService', () => {
     );
 
     const unavailable = await service.getUnavailableListingIds(
-      new Date('2026-03-10'),
-      new Date('2026-03-15'),
+      '2026-03-10',
+      '2026-03-15',
     );
 
     expect(unavailable).toContain('from-booking');
@@ -91,8 +93,8 @@ describe('StaysAvailabilityService', () => {
     availabilityRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder([]));
 
     await service.getUnavailableListingIds(
-      new Date('2026-03-10'),
-      new Date('2026-03-15'),
+      '2026-03-10',
+      '2026-03-15',
       ['listing-a', 'listing-b'],
     );
 
@@ -104,16 +106,16 @@ describe('StaysAvailabilityService', () => {
 
   it('should return true from isListingAvailable when listing is not unavailable', async () => {
     bookingRepo.createQueryBuilder.mockReturnValue(
-      mockQueryBuilder([]),
+      mockQueryBuilder([], 0),
     );
     availabilityRepo.createQueryBuilder.mockReturnValue(
-      mockQueryBuilder([]),
+      mockQueryBuilder([], 0),
     );
 
     const available = await service.isListingAvailable(
       'listing-ok',
-      new Date('2026-03-10'),
-      new Date('2026-03-15'),
+      '2026-03-10',
+      '2026-03-15',
     );
 
     expect(available).toBe(true);
@@ -121,18 +123,24 @@ describe('StaysAvailabilityService', () => {
 
   it('should return false from isListingAvailable when listing has overlapping booking', async () => {
     bookingRepo.createQueryBuilder.mockReturnValue(
-      mockQueryBuilder([{ listing_id: 'listing-ok' }]),
+      mockQueryBuilder([], 1),
     );
     availabilityRepo.createQueryBuilder.mockReturnValue(
-      mockQueryBuilder([]),
+      mockQueryBuilder([], 0),
     );
 
     const available = await service.isListingAvailable(
       'listing-ok',
-      new Date('2026-03-10'),
-      new Date('2026-03-15'),
+      '2026-03-10',
+      '2026-03-15',
     );
 
     expect(available).toBe(false);
+  });
+
+  it('formats Date values without UTC day shift', () => {
+    const local = new Date(2026, 6, 10); // July 10 local
+    expect(service.toDateString(local)).toBe('2026-07-10');
+    expect(service.toDateString('2026-07-10T00:00:00.000Z')).toBe('2026-07-10');
   });
 });

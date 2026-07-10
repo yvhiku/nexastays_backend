@@ -739,6 +739,22 @@ export class ComplianceService {
     return kyc;
   }
 
+  async getStatusForUser(userId: string) {
+    const kyc = await this.kycRepository.findOne({
+      where: { user_id: userId },
+    });
+    return {
+      user_id: userId,
+      status: kyc?.status ?? 'NOT_STARTED',
+      documents: kyc?.documents ?? {
+        id_document: false,
+        selfie: false,
+        liveness: false,
+      },
+    };
+  }
+
+  /** @deprecated Prefer getStatusForUser — phone-based lookup enables IDOR. */
   async getStatus(phoneNumber: string) {
     const norm = normalizePhoneOrThrow(phoneNumber);
     let user = await this.userRepository.findOne({
@@ -753,17 +769,6 @@ export class ComplianceService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    const kyc = await this.kycRepository.findOne({
-      where: { user_id: user.id },
-    });
-    return {
-      user_id: user.id,
-      status: kyc?.status ?? 'NOT_STARTED',
-      documents: kyc?.documents ?? {
-        id_document: false,
-        selfie: false,
-        liveness: false,
-      },
-    };
+    return this.getStatusForUser(user.id);
   }
 }

@@ -14,6 +14,7 @@ import {
   Req,
   Res,
   Logger,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -39,6 +40,7 @@ import { StaysCancellationService } from './services/stays-cancellation.service'
 import { StaysReviewsService } from './services/stays-reviews.service';
 import { HostDashboardService } from './services/host-dashboard.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { SearchListingsDto } from './dto/search-listings.dto';
@@ -46,9 +48,19 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreateHostListingDto } from './dto/create-host-listing.dto';
 import { UpdateHostListingDto } from './dto/update-host-listing.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
+import {
+  ListingAvailabilityQueryDto,
+  HostApplyDto,
+} from './dto/input-security.dto';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { IdentitySnapshotClient } from '../../common/identity/identity-snapshot.client';
 import type { IdentityJwtUser } from '../identity-auth/identity-jwt.strategy';
+import { BotProtectionGuard } from '../../common/abuse/bot-protection.guard';
+import {
+  PUBLIC_MEDIA_THROTTLE,
+  PUBLIC_SEARCH_THROTTLE,
+  SENSITIVE_WRITE_THROTTLE,
+} from '../../common/abuse/throttle-presets';
 
 @ApiTags('Stays')
 @Controller('stays')
@@ -101,12 +113,8 @@ export class StaysController {
    */
   @Get('listings/search')
   @Public()
-  @Throttle({
-    default: {
-      limit: process.env.NODE_ENV === 'production' ? 30 : 100,
-      ttl: 60000,
-    },
-  })
+  @UseGuards(BotProtectionGuard)
+  @Throttle(PUBLIC_SEARCH_THROTTLE)
   @ApiOperation({ summary: 'Search available listings' })
   async searchListings(@Query() query: SearchListingsDto) {
     return this.staysService.searchListings({
@@ -116,6 +124,7 @@ export class StaysController {
       guests: query.guests,
       verified_walkthrough_only: query.verified_walkthrough_only,
       instant_booking_only: query.instant_booking_only,
+      listing_type: query.listing_type,
     });
   }
 
@@ -124,7 +133,8 @@ export class StaysController {
    */
   @Get('listings/:id/media/:assetId')
   @Public()
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @UseGuards(BotProtectionGuard)
+  @Throttle(PUBLIC_MEDIA_THROTTLE)
   @ApiOperation({ summary: 'Get listing media file' })
   async getListingMedia(
     @Param('id') id: string,
@@ -136,13 +146,15 @@ export class StaysController {
     const contentType =
       ext === 'mp4'
         ? 'video/mp4'
-        : ext === 'png'
-          ? 'image/png'
-          : ext === 'webp'
-            ? 'image/webp'
-            : ext === 'jpg' || ext === 'jpeg'
-              ? 'image/jpeg'
-              : 'application/octet-stream';
+        : ext === 'webm'
+          ? 'video/webm'
+          : ext === 'png'
+            ? 'image/png'
+            : ext === 'webp'
+              ? 'image/webp'
+              : ext === 'jpg' || ext === 'jpeg'
+                ? 'image/jpeg'
+                : 'application/octet-stream';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=3600');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -154,12 +166,28 @@ export class StaysController {
    */
   @Get('listings/:id')
   @Public()
+  @UseGuards(BotProtectionGuard, OptionalJwtAuthGuard)
+  @Throttle(PUBLIC_SEARCH_THROTTLE)
   @ApiOperation({ summary: 'Get listing details' })
   async getListing(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user?: { userId?: string },
   ) {
     return this.staysService.getListingById(id, user?.userId ?? undefined);
+  }
+
+  @Get('listings/:id/availability')
+  @Public()
+  @UseGuards(BotProtectionGuard)
+  @Throttle(PUBLIC_SEARCH_THROTTLE)
+  @ApiOperation({
+    summary: 'Get blocked date ranges for a listing (booked / host-blocked nights)',
+  })
+  async getListingAvailability(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: ListingAvailabilityQueryDto,
+  ) {
+    return this.staysService.getListingAvailability(id, query.from, query.to);
   }
 
   /**
@@ -207,12 +235,7 @@ export class StaysController {
    */
   @Post('bookings')
   @UseGuards(JwtAuthGuard)
-  @Throttle({
-    default: {
-      limit: process.env.NODE_ENV === 'production' ? 5 : 20,
-      ttl: 60000,
-    },
-  })
+  @Throttle(SENSITIVE_WRITE_THROTTLE)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a booking' })
@@ -492,18 +515,13 @@ export class StaysController {
    */
   @Post('host/apply')
   @UseGuards(JwtAuthGuard)
+  @Throttle(SENSITIVE_WRITE_THROTTLE)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Apply to become a host' })
   async submitHostApplication(
     @CurrentUser() user: IdentityJwtUser,
-    @Body()
-    body: {
-      full_name?: string;
-      email?: string;
-      identity_reused?: boolean;
-      hosting_policies_accepted?: boolean;
-    },
+    @Body() body: HostApplyDto,
     @Req() req: Request,
   ) {
     return this.hostApplicationsService.submit(
@@ -543,34 +561,14 @@ export class StaysController {
    */
   @Post('host/verification')
   @UseGuards(JwtAuthGuard)
-  @Throttle({
-    default: {
-      limit: process.env.NODE_ENV === 'production' ? 3 : 50,
-      ttl: 86400000,
-    },
-  })
+  @Throttle(SENSITIVE_WRITE_THROTTLE)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Submit host identity verification' })
   async submitHostVerification(
     @CurrentUser() user: IdentityJwtUser,
     @Req() req: Request,
-    @Body()
-    body: {
-      full_name?: string;
-      email?: string;
-      phone?: string;
-      city?: string;
-      host_type?: string;
-      hosting_policies_accepted?: boolean;
-      document_type?: string;
-      document_number_hash?: string;
-      document_front_asset_id?: string;
-      document_back_asset_id?: string;
-      selfie_asset_id?: string;
-      use_existing_kyc?: boolean;
-      submitted_from?: string;
-    },
+    @Body() body: SubmitHostOnboardingDto,
   ) {
     const ctx = await this.userWithSnapshot(user, req);
     return this.hostsService.submitHostVerification(ctx, body);

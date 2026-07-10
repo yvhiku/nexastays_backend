@@ -37,6 +37,13 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Public } from '../../../common/decorators/public.decorator';
+import { Throttle } from '@nestjs/throttler';
+import { BotProtectionGuard } from '../../../common/abuse/bot-protection.guard';
+import {
+  PUBLIC_MEDIA_THROTTLE,
+  PUBLIC_SEARCH_THROTTLE,
+  SENSITIVE_WRITE_THROTTLE,
+} from '../../../common/abuse/throttle-presets';
 import {
   CreateReviewDto,
   LegacyCreateReviewDto,
@@ -58,6 +65,7 @@ export class ReviewsController {
 
   @Post('reviews')
   @UseGuards(JwtAuthGuard)
+  @Throttle(SENSITIVE_WRITE_THROTTLE)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Submit a review for a completed booking' })
@@ -101,6 +109,8 @@ export class ReviewsController {
 
   @Get('listings/:listingId/reviews')
   @Public()
+  @UseGuards(BotProtectionGuard)
+  @Throttle(PUBLIC_SEARCH_THROTTLE)
   @ApiOperation({ summary: 'List reviews for a listing' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -189,21 +199,34 @@ export class ReviewsController {
     if (process.env.MEDIA_SERVICE_URL) {
       const stored = await this.mediaStorage.store({
         buffer: file.buffer,
-        relativePath: `reviews/${user.userId}`,
+        relativePath: `reviews/${user.userId}/review`,
         mimeType: mime,
       });
+      const claimDir = path.join(
+        REVIEW_UPLOAD_ROOT,
+        'reviews',
+        user.userId,
+        'claims',
+      );
+      await fs.mkdir(claimDir, { recursive: true });
+      await fs.writeFile(path.join(claimDir, stored.assetId), '');
       return { asset_id: stored.assetId };
     }
 
     const assetId = randomUUID();
-    const dir = path.join(REVIEW_UPLOAD_ROOT, 'reviews');
+    const dir = path.join(REVIEW_UPLOAD_ROOT, 'reviews', user.userId);
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, `review_${assetId}${ext}`), file.buffer);
+    const claimDir = path.join(dir, 'claims');
+    await fs.mkdir(claimDir, { recursive: true });
+    await fs.writeFile(path.join(claimDir, assetId), '');
     return { asset_id: assetId };
   }
 
   @Get('reviews/media/:assetId')
   @Public()
+  @UseGuards(BotProtectionGuard)
+  @Throttle(PUBLIC_MEDIA_THROTTLE)
   @ApiOperation({ summary: 'Get review photo' })
   async getReviewMedia(
     @Param('assetId') assetId: string,

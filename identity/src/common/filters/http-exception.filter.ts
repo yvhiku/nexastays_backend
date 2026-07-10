@@ -5,6 +5,7 @@ import {
   HttpException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { noteApiError } from '../security/security-traffic';
 
 /** Standard error envelope (opt-in via x-api-envelope: 1): { data: null, error: { code, message, details? } } */
 export interface ApiErrorEnvelope {
@@ -30,7 +31,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: HttpException, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<Request & { requestId?: string }>();
     const status = exception.getStatus();
     const res = exception.getResponse();
     const message =
@@ -51,10 +52,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       Array.isArray((res as { message?: string[] }).message)
         ? (res as { message: string[] }).message
         : undefined;
-    const requestId = (request as Request & { requestId?: string }).requestId;
+    const requestId = request.requestId;
+
+    if (status >= 500 || status === 401 || status === 403 || status === 429) {
+      noteApiError(request, status, messageStr);
+    }
 
     if (wantsEnvelope(request)) {
-      // Envelope mode: always include meta.requestId for a predictable contract
       const body: ApiErrorEnvelope = {
         data: null,
         meta: { requestId: requestId ?? '' },
@@ -68,7 +72,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    // Legacy error shape (no envelope): statusCode, timestamp, path, message[, code]
     const legacyBody: Record<string, unknown> = {
       statusCode: status,
       timestamp: new Date().toISOString(),

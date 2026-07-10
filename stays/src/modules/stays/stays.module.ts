@@ -65,6 +65,6 @@ import { DomainEventsModule } from '../../common/events/domain-events.module';
     BookingLifecycleService,
     BookingLifecycleSchedulerService,
   ],
-  exports: [StaysService, StaysReviewsService],
+  exports: [StaysService, StaysReviewsService, StaysAvailabilityService],
 })
 export class StaysModule {}

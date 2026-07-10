@@ -30,25 +30,15 @@ export class HostsService {
 
   async submitHostVerification(
     user: StaysUserContext,
-    data: Record<string, unknown>,
+    data: SubmitHostOnboardingDto,
   ) {
     const useExisting = data.use_existing_kyc === true;
     const dto: SubmitHostOnboardingDto = {
-      full_name: data.full_name as string | undefined,
-      email: data.email as string | undefined,
-      phone: data.phone as string | undefined,
-      city: data.city as string | undefined,
-      host_type: data.host_type as SubmitHostOnboardingDto['host_type'],
+      ...data,
       use_existing_kyc: useExisting,
-      identity_reused: useExisting,
-      hosting_policies_accepted: data.hosting_policies_accepted as boolean | undefined,
-      document_type: data.document_type as string | undefined,
-      document_number_hash: data.document_number_hash as string | undefined,
-      document_front_asset_id: data.document_front_asset_id as string | undefined,
-      document_back_asset_id: data.document_back_asset_id as string | undefined,
-      selfie_asset_id: data.selfie_asset_id as string | undefined,
-      source: 'WEB',
-      submitted_from: (data.submitted_from as string | undefined) ?? 'WEB_BECOME_HOST',
+      identity_reused: useExisting || data.identity_reused,
+      source: data.source ?? 'WEB',
+      submitted_from: data.submitted_from ?? 'WEB_BECOME_HOST',
     };
     const result = await this.hostOnboarding.submitHostOnboarding(user, dto, {
       source: 'WEB',

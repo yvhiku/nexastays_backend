@@ -1,8 +1,9 @@
 import { generateKeyPairSync, createPublicKey } from 'crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class JwtKeysService {
+  private readonly logger = new Logger(JwtKeysService.name);
   private readonly privateKeyPem: string;
   private readonly publicKeyPem: string;
   readonly kid = process.env.JWT_KEY_ID || 'nexa-identity-1';
@@ -15,6 +16,16 @@ export class JwtKeysService {
       this.publicKeyPem = publicFromEnv;
       return;
     }
+
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'JWT_PRIVATE_KEY and JWT_PUBLIC_KEY are required in production. Ephemeral keys are not allowed.',
+      );
+    }
+
+    this.logger.warn(
+      'JWT_PRIVATE_KEY/JWT_PUBLIC_KEY unset — generating ephemeral RSA keys (dev only)',
+    );
     const { privateKey, publicKey } = generateKeyPairSync('rsa', {
       modulusLength: 2048,
       publicKeyEncoding: { type: 'spki', format: 'pem' },

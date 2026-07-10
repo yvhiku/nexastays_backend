@@ -1,5 +1,6 @@
 import { CircuitBreaker, retryWithBackoff } from '@nexa/event-bus';
 import type { MediaStorageBackend, StoredMediaObject } from './media-storage.interface';
+import { getInternalServiceKey } from '../security/secrets';
 
 /**
  * Remote backend — delegates storage to platform/media-service (:3004).
@@ -34,7 +35,7 @@ export class RemoteMediaStorageBackend implements MediaStorageBackend {
           const res = await fetch(`${this.baseUrl.replace(/\/$/, '')}/api/v1/media/upload`, {
             method: 'POST',
             headers: {
-              'X-Internal-Key': process.env.INTERNAL_SERVICE_KEY ?? 'dev-internal-key',
+              'X-Internal-Key': getInternalServiceKey(),
             },
             body: form,
           });

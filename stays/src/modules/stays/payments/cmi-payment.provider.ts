@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createHmac, randomBytes } from 'crypto';
+import { isProductionRuntime } from '../../../common/security/secrets';
 
 export interface CmiOrderResult {
   provider: 'cmi';
@@ -7,6 +8,28 @@ export interface CmiOrderResult {
   redirect_url: string;
   amount: number;
   currency: string;
+}
+
+function getCmiStoreKey(): string {
+  const key = (process.env.CMI_STORE_KEY ?? '').trim();
+  if (key) return key;
+  if (isProductionRuntime() || process.env.STAYS_PAYMENT_PROVIDER === 'cmi') {
+    throw new Error(
+      'CMI_STORE_KEY is required when using CMI payments (set via environment variables).',
+    );
+  }
+  return 'mock-store-key';
+}
+
+function getCmiClientId(): string {
+  const id = (process.env.CMI_CLIENT_ID ?? '').trim();
+  if (id) return id;
+  if (isProductionRuntime() || process.env.STAYS_PAYMENT_PROVIDER === 'cmi') {
+    throw new Error(
+      'CMI_CLIENT_ID is required when using CMI payments (set via environment variables).',
+    );
+  }
+  return 'mock-client';
 }
 
 @Injectable()
@@ -17,8 +40,8 @@ export class CmiPaymentProvider {
     currency: string;
     guestUserId: string;
   }): CmiOrderResult {
-    const clientId = process.env.CMI_CLIENT_ID || 'mock-client';
-    const storeKey = process.env.CMI_STORE_KEY || 'mock-store-key';
+    const clientId = getCmiClientId();
+    const storeKey = getCmiStoreKey();
     const baseUrl =
       process.env.CMI_PAYMENT_URL ||
       'https://testpayment.cmi.co.ma/fim/est3Dgate';
@@ -80,13 +103,13 @@ export class CmiPaymentProvider {
     providerIntentId?: string;
     success: boolean;
   } {
-    const storeKey = process.env.CMI_STORE_KEY || 'mock-store-key';
+    const storeKey = getCmiStoreKey();
     const oid = String(body.oid ?? body.OID ?? '');
-    const amount = String(body.amount ?? body.AMOUNT ?? '');
+    const amount = String(body.amount ?? body.amount ?? '');
     const procReturnCode = String(body.ProcReturnCode ?? body.procReturnCode ?? '');
     const hashFromGateway = String(body.HASH ?? body.hash ?? '');
 
-    if (process.env.NODE_ENV !== 'production' && !process.env.CMI_STORE_KEY) {
+    if (!isProductionRuntime() && !process.env.CMI_STORE_KEY) {
       return {
         valid: true,
         providerIntentId: oid || undefined,

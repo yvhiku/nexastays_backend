@@ -15,6 +15,10 @@ import { DomainEventsModule } from './common/events/domain-events.module';
 import { MediaStorageModule } from './common/media/media-storage.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PlatformSettingsModule } from './modules/platform-settings/platform-settings.module';
+import {
+  THROTTLE_DEFAULT,
+  THROTTLE_SHORT,
+} from './common/abuse/throttle-presets';
 
 @Module({
   imports: [
@@ -25,13 +29,7 @@ import { PlatformSettingsModule } from './modules/platform-settings/platform-set
     DomainEventsModule,
     MediaStorageModule,
     PlatformSettingsModule,
-    ThrottlerModule.forRoot([
-      {
-        name: 'default',
-        ttl: 60000,
-        limit: process.env.NODE_ENV === 'production' ? 120 : 5000,
-      },
-    ]),
+    ThrottlerModule.forRoot([THROTTLE_SHORT, THROTTLE_DEFAULT]),
     StaysModule,
     StaysPaymentsModule,
     AdminModule,

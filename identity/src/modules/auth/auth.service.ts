@@ -24,6 +24,11 @@ import { KycReuseService } from '../users/kyc-reuse.service';
 import type { AccountType } from '../users/entities/user.entity';
 import { safeLogger } from '../../common/logging/safe-logger';
 import { hashPin, verifyPinHash } from '../../common/security/pin-hasher';
+import {
+  hmacSha256Hex,
+  timingSafeEqualString,
+  verifyPasswordSecret,
+} from '../../common/security/secret-crypto';
 import { SmsService } from '../sms/sms.service';
 import { normalizePhoneOrThrow, tryNormalizePhoneNumber, phoneLookupCandidates } from '../../common/phone/phone-normalizer';
 import { KycProfile } from '../compliance/entities/kyc-profile.entity';
@@ -400,12 +405,16 @@ export class AuthService {
     const norm = normalizePhoneOrThrow(phoneNumber);
     const expiresAt = new Date(Date.now() + appConfig.otpExpirySeconds * 1000);
     const isDemoOtp = !!appConfig.demoOtpCode;
+    if (appConfig.env === 'production' && isDemoOtp) {
+      throw new BadRequestException('Demo OTP is not allowed in production');
+    }
     const otpCode = isDemoOtp
       ? appConfig.demoOtpCode
       : crypto.randomInt(100000, 999999).toString();
+    const codeHash = hmacSha256Hex(appConfig.otpPepper, otpCode);
     await this.otpRepository.save({
       phone_number: norm,
-      code: otpCode,
+      code: codeHash,
       expires_at: expiresAt,
       attempts: 0,
       consumed_at: null,
@@ -459,7 +468,7 @@ export class AuthService {
     const demoBypass =
       appConfig.env !== 'production' &&
       !!appConfig.demoOtpCode &&
-      submitted === appConfig.demoOtpCode;
+      timingSafeEqualString(submitted, appConfig.demoOtpCode);
 
     // Dev: DEMO_OTP_CODE lets testers recover after lockout / consumed OTP / wrong stored code.
     if (!demoBypass) {
@@ -486,7 +495,13 @@ export class AuthService {
       if (record.expires_at.getTime() < Date.now()) {
         return { verified: false };
       }
-      if (submitted !== (record.code ?? '').trim()) {
+      const submittedHash = hmacSha256Hex(appConfig.otpPepper, submitted);
+      const storedCode = (record.code ?? '').trim();
+      // Support legacy plaintext OTP rows until they expire/rotate.
+      const matchesHashed = timingSafeEqualString(submittedHash, storedCode);
+      const matchesLegacyPlain =
+        storedCode.length <= 8 && timingSafeEqualString(submitted, storedCode);
+      if (!matchesHashed && !matchesLegacyPlain) {
         await this.otpLockoutService.recordFailure(norm, ip);
         record.attempts += 1;
         if (record.attempts >= 5) {
@@ -1012,29 +1027,56 @@ export class AuthService {
   async adminLogin(
     email: string,
     password: string,
+    ip: string = '0.0.0.0',
   ): Promise<{ access_token: string; user: any } | null> {
-    // For MVP: Check if email is in allowed admin emails (case-insensitive)
-    // TODO: Add proper role field to User entity or create Admin entity
     const normalizedEmail = (email || '').trim().toLowerCase();
     const allowedEmails = appConfig.adminEmails;
-    const isAdminEmail = allowedEmails.length > 0 && allowedEmails.includes(normalizedEmail);
+    const isAdminEmail =
+      allowedEmails.length > 0 && allowedEmails.includes(normalizedEmail);
+
+    // Use OTP lockout table keyed by stable short hash of admin email.
+    const lockKey = `a:${crypto
+      .createHash('sha256')
+      .update(normalizedEmail || 'unknown')
+      .digest('hex')
+      .slice(0, 16)}`;
+    if (await this.otpLockoutService.isLockedOut(lockKey, ip)) {
+      throw new BadRequestException('Too many attempts. Try again later.');
+    }
 
     if (!isAdminEmail) {
+      await this.otpLockoutService.recordFailure(lockKey, ip);
       return null;
     }
 
-    // For MVP: Simple password check (demo password is "admin123"); trim to avoid copy-paste issues
-    // TODO: Store password hash in database and verify with bcrypt
-    const configuredAdminPassword = appConfig.adminPassword;
-    if (!configuredAdminPassword) {
-      safeLogger.error('Admin login is disabled: ADMIN_PASSWORD is not set');
+    const passwordHash = appConfig.adminPasswordHash;
+    const plaintextPassword = appConfig.adminPassword;
+    const isProd = appConfig.env === 'production';
+
+    if (isProd && !passwordHash) {
+      safeLogger.error(
+        'Admin login disabled: set ADMIN_PASSWORD_HASH (Argon2id) in production',
+      );
       return null;
     }
-    const validPassword = (password || '').trim() === configuredAdminPassword;
+    if (!passwordHash && !plaintextPassword) {
+      safeLogger.error(
+        'Admin login is disabled: ADMIN_PASSWORD_HASH (or ADMIN_PASSWORD in non-prod) is not set',
+      );
+      return null;
+    }
+
+    const stored = passwordHash || plaintextPassword;
+    const validPassword = await verifyPasswordSecret(password, stored, {
+      allowPlaintext: !isProd && !passwordHash,
+    });
 
     if (!validPassword) {
+      await this.otpLockoutService.recordFailure(lockKey, ip);
       return null;
     }
+
+    await this.otpLockoutService.recordSuccess(lockKey, ip);
 
     const adminEmail = normalizedEmail;
     let user = await this.userRepository.findOne({

@@ -8,10 +8,21 @@ function parseCorsOrigins(): string[] {
     .filter(Boolean);
 }
 
+const DEV_ONLY_SECRET = 'dev-only-secret-not-for-production';
+
 export const appConfig = {
   port: parseInt(process.env.PORT || '3001', 10),
   env: process.env.NODE_ENV || 'development',
-  jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
+  /** Legacy HS256 material — prefer RS256 JWT_PRIVATE_KEY/JWT_PUBLIC_KEY. Never hardcode in prod. */
+  get jwtSecret(): string {
+    const fromEnv = (process.env.JWT_SECRET ?? '').trim();
+    if (fromEnv) return fromEnv;
+    if (process.env.NODE_ENV === 'production') {
+      // RS256 keys are the production signing path; do not fall back to a shared default.
+      return '';
+    }
+    return DEV_ONLY_SECRET;
+  },
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m',
   apiPrefix: process.env.API_PREFIX || 'api/v1',
   demoOtpCode: process.env.DEMO_OTP_CODE || '',
@@ -30,30 +41,71 @@ export const appConfig = {
     process.env.REFRESH_TOKEN_EXPIRES_IN || '604800',
     10,
   ),
-  /** Pepper for HMAC of refresh token hashes. Defaults to JWT_SECRET. */
-  get refreshTokenPepper(): string {
-    return (
-      process.env.REFRESH_TOKEN_PEPPER ||
-      process.env.JWT_SECRET ||
-      'your-secret-key'
-    );
-  },
   /**
    * Pepper for hashing national_id_number (CNIE). Never log.
    * In production, KYC_HASH_PEPPER must be set (otherwise changing JWT_SECRET would change hashes).
    */
   get kycHashPepper(): string {
-    const pepper =
-      process.env.KYC_HASH_PEPPER ||
-      process.env.JWT_SECRET ||
-      'your-secret-key';
     if (process.env.NODE_ENV === 'production' && !process.env.KYC_HASH_PEPPER) {
       throw new Error(
         'KYC_HASH_PEPPER is required in production. Set it so CNIE hashes are stable and independent of JWT_SECRET.',
       );
     }
+    return (
+      process.env.KYC_HASH_PEPPER ||
+      process.env.JWT_SECRET ||
+      DEV_ONLY_SECRET
+    );
+  },
+  /**
+   * Argon2id hash of the admin password (preferred).
+   * Generate with: node -e "require('argon2').hash('your-password').then(console.log)"
+   */
+  get adminPasswordHash(): string {
+    return (process.env.ADMIN_PASSWORD_HASH ?? '').trim();
+  },
+  /**
+   * Legacy plaintext admin password — allowed only outside production.
+   * Prefer ADMIN_PASSWORD_HASH.
+   */
+  get adminPassword(): string {
+    return (process.env.ADMIN_PASSWORD ?? '').trim();
+  },
+  /** Pepper for hashing OTP codes / email verification tokens at rest. */
+  get otpPepper(): string {
+    const pepper =
+      process.env.OTP_PEPPER ||
+      process.env.REFRESH_TOKEN_PEPPER ||
+      process.env.JWT_SECRET ||
+      '';
+    if (process.env.NODE_ENV === 'production' && !process.env.OTP_PEPPER && !process.env.REFRESH_TOKEN_PEPPER) {
+      throw new Error(
+        'OTP_PEPPER (or REFRESH_TOKEN_PEPPER) is required in production for hashing one-time codes.',
+      );
+    }
+    return pepper || 'dev-otp-pepper-not-for-production';
+  },
+  /** Pepper for HMAC of refresh token hashes. Required in production. */
+  get refreshTokenPepper(): string {
+    const pepper =
+      process.env.REFRESH_TOKEN_PEPPER ||
+      process.env.JWT_SECRET ||
+      '';
+    if (process.env.NODE_ENV === 'production' && !process.env.REFRESH_TOKEN_PEPPER) {
+      throw new Error(
+        'REFRESH_TOKEN_PEPPER is required in production.',
+      );
+    }
+    if (!pepper) {
+      return 'dev-refresh-pepper-not-for-production';
+    }
     return pepper;
   },
+  /** Email verification / password-reset style tokens expire after this many seconds (default 1 hour). */
+  emailVerificationExpiresSeconds: parseInt(
+    process.env.EMAIL_VERIFICATION_EXPIRES_SECONDS || '3600',
+    10,
+  ),
   /** Single admin email (legacy). Keep empty unless explicitly configured. */
   adminEmail: process.env.ADMIN_EMAIL || '',
   /**
@@ -67,12 +119,6 @@ export const appConfig = {
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);
     return [...new Set(fromEnv)];
-  },
-  /**
-   * Requires explicit ADMIN_PASSWORD in every environment.
-   */
-  get adminPassword(): string {
-    return (process.env.ADMIN_PASSWORD ?? '').trim();
   },
   pinMaxAttempts: parseInt(process.env.PIN_MAX_ATTEMPTS || '5', 10),
   pinAttemptWindowMinutes: parseInt(
@@ -113,7 +159,7 @@ export const appConfig = {
       );
     }
     const fallback =
-      unified || qrOnly || nfcOnly || process.env.JWT_SECRET || 'your-secret-key';
+      unified || qrOnly || nfcOnly || process.env.JWT_SECRET || DEV_ONLY_SECRET;
     return { qr: qrOnly || fallback, nfc: nfcOnly || fallback };
   },
   /** @deprecated Prefer resolvePaymentHmacSecrets() or qrSigningSecret / nfcSigningSecret per surface. */

@@ -15,6 +15,8 @@ export const SECURITY_EVENT_TYPES = [
   'CONSENT_UPDATED',
   'DATA_EXPORT_REQUESTED',
   'ACCOUNT_DELETION_REQUESTED',
+  'UNUSUAL_TRAFFIC',
+  'ADMIN_LOGIN_FAILURE',
 ] as const;
 
 export type SecurityEventType = (typeof SECURITY_EVENT_TYPES)[number];
