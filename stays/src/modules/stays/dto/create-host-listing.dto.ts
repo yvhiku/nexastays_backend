@@ -5,12 +5,14 @@ import {
   IsNumber,
   IsArray,
   IsIn,
+  IsObject,
   ValidateNested,
   Min,
   Max,
   MaxLength,
   Matches,
   ArrayMaxSize,
+  ArrayMinSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -112,6 +114,93 @@ class MediaItemDto {
   @Min(0)
   @Max(1000)
   sort_order?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  category?: string;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  is_cover?: boolean;
+}
+
+class UnitTypeDto {
+  @IsIn([
+    'APARTMENT_UNIT',
+    'HOTEL_ROOM',
+    'RIAD_ROOM',
+    'HOSTEL_DORM',
+    'HOSTEL_PRIVATE',
+    'VILLA_UNIT',
+  ])
+  kind:
+    | 'APARTMENT_UNIT'
+    | 'HOTEL_ROOM'
+    | 'RIAD_ROOM'
+    | 'HOSTEL_DORM'
+    | 'HOSTEL_PRIVATE'
+    | 'VILLA_UNIT';
+
+  @IsString()
+  @MaxLength(160)
+  name: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1)
+  @Max(500)
+  quantity?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1)
+  @Max(50)
+  max_guests?: number;
+
+  @IsOptional()
+  @IsArray()
+  bed_config?: unknown[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  @Max(100000)
+  size_sqm?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(64)
+  amenities?: string[];
+
+  @IsOptional()
+  @IsIn(['NIGHT', 'BED_NIGHT', 'ROOM_NIGHT'])
+  pricing_unit?: 'NIGHT' | 'BED_NIGHT' | 'ROOM_NIGHT';
+
+  @IsNumber()
+  @Min(0)
+  @Max(10_000_000)
+  base_price: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(3)
+  currency?: string;
+
+  @IsOptional()
+  @IsObject()
+  details?: Record<string, unknown>;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  @Max(1000)
+  sort_order?: number;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  is_active?: boolean;
 }
 
 export class CreateHostListingDto {
@@ -122,6 +211,27 @@ export class CreateHostListingDto {
   @IsIn(['APARTMENT', 'HOTEL', 'RIAD', 'VILLA', 'HOSTEL'])
   listing_type: 'APARTMENT' | 'HOTEL' | 'RIAD' | 'VILLA' | 'HOSTEL';
 
+  @IsOptional()
+  @IsIn([
+    'ENTIRE_PROPERTY',
+    'PRIVATE_ROOM',
+    'MULTI_UNIT',
+    'ROOM_TYPES',
+    'DORM_BEDS',
+    'PRIVATE_ROOMS',
+    'DORM_AND_PRIVATE',
+    'BOTH',
+  ])
+  booking_model?:
+    | 'ENTIRE_PROPERTY'
+    | 'PRIVATE_ROOM'
+    | 'MULTI_UNIT'
+    | 'ROOM_TYPES'
+    | 'DORM_BEDS'
+    | 'PRIVATE_ROOMS'
+    | 'DORM_AND_PRIVATE'
+    | 'BOTH';
+
   @IsString()
   @MaxLength(100)
   @Matches(/^[\p{L}\p{N}\s\-'.]+$/u)
@@ -129,8 +239,41 @@ export class CreateHostListingDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2)
+  country?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  neighborhood?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  postal_code?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  building_name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  landmark?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(500)
   address?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  geo_lat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  geo_lng?: number;
 
   @IsOptional()
   @IsString()
@@ -152,6 +295,18 @@ export class CreateHostListingDto {
   instant_booking?: boolean;
 
   @IsOptional()
+  @IsObject()
+  property_details?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsObject()
+  safety_features?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsObject()
+  policies?: Record<string, unknown>;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => RulesDto)
   rules?: RulesDto;
@@ -165,7 +320,14 @@ export class CreateHostListingDto {
   check_in_contact: CheckInContactDto;
 
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => MediaItemDto)
   media: MediaItemDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UnitTypeDto)
+  unit_types?: UnitTypeDto[];
 }

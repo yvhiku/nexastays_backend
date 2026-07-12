@@ -148,10 +148,8 @@ export class AdminKycService {
         'u.city as user_city',
         'u.email as user_email',
       ])
-      .addSelect(
-        `(SELECT CASE WHEN EXISTS (SELECT 1 FROM stays_host_profiles shp WHERE shp.user_id = k.user_id) THEN true ELSE false END)`,
-        'is_host',
-      )
+      // Host profiles live in the stays DB — approximate via KYC source.
+      .addSelect(`(k.source = 'STAYS')`, 'is_host')
       .orderBy('k.created_at', 'DESC');
 
     if (query.status && query.status !== 'all') {
@@ -202,13 +200,9 @@ export class AdminKycService {
     ) {
       const role = query.stays_role.trim().toUpperCase();
       if (role === 'HOST') {
-        qb.andWhere(
-          'EXISTS (SELECT 1 FROM stays_host_profiles shp WHERE shp.user_id = k.user_id)',
-        );
+        qb.andWhere(`k.source = 'STAYS'`);
       } else if (role === 'USER') {
-        qb.andWhere(
-          'NOT EXISTS (SELECT 1 FROM stays_host_profiles shp WHERE shp.user_id = k.user_id)',
-        );
+        qb.andWhere(`(k.source IS NULL OR k.source <> 'STAYS')`);
       }
     }
 
@@ -372,10 +366,7 @@ export class AdminKycService {
         'u.city as user_city',
         'u.email as user_email',
       ])
-      .addSelect(
-        `(SELECT CASE WHEN EXISTS (SELECT 1 FROM stays_host_profiles shp WHERE shp.user_id = k.user_id) THEN true ELSE false END)`,
-        'is_host',
-      )
+      .addSelect(`(k.source = 'STAYS')`, 'is_host')
       .where('k.id = :id', { id });
     const row = await qb.getRawOne();
     if (!row) {

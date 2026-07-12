@@ -13,6 +13,7 @@ import {
   StaysListing,
   StaysListingRules,
   StaysListingMedia,
+  StaysListingUnitType,
   StaysRatePlan,
   StaysCheckInContact,
 } from '../entities';
@@ -50,12 +51,14 @@ export class HostListingsService {
     private readonly checkInContactRepo: Repository<StaysCheckInContact>,
     @InjectRepository(StaysListingMedia)
     private readonly mediaRepo: Repository<StaysListingMedia>,
+    @InjectRepository(StaysListingUnitType)
+    private readonly unitTypeRepo: Repository<StaysListingUnitType>,
   ) {}
 
   async getHostListings(userId: string) {
     const listings = await this.listingRepo.find({
       where: { host_user_id: userId },
-      relations: ['rate_plan', 'rules', 'media'],
+      relations: ['rate_plan', 'rules', 'media', 'unit_types'],
       order: { created_at: 'DESC' },
     });
     return listings.map((l) => this.toHostListingSummary(l));
@@ -67,6 +70,7 @@ export class HostListingsService {
       'rules',
       'media',
       'check_in_contact',
+      'unit_types',
     ]);
     return this.toHostListingDetail(listing);
   }
@@ -218,13 +222,24 @@ export class HostListingsService {
       id: listing.id,
       title: listing.title,
       listing_type: listing.listing_type,
+      booking_model: listing.booking_model,
       city: listing.city,
+      country: listing.country ?? 'MA',
+      neighborhood: listing.neighborhood,
+      postal_code: listing.postal_code,
+      building_name: listing.building_name,
+      landmark: listing.landmark,
       status: listing.status,
       description: listing.description,
       checkin_time: listing.checkin_time,
       checkout_time: listing.checkout_time,
       instant_booking: listing.instant_booking,
       address: listing.address_encrypted,
+      geo_lat: listing.geo_lat != null ? Number(listing.geo_lat) : null,
+      geo_lng: listing.geo_lng != null ? Number(listing.geo_lng) : null,
+      property_details: listing.property_details ?? {},
+      safety_features: listing.safety_features ?? {},
+      policies: listing.policies ?? {},
       rate_plan: listing.rate_plan
         ? {
             base_price: Number(listing.rate_plan.base_price),
@@ -242,6 +257,8 @@ export class HostListingsService {
             smoking_policy: listing.rules.smoking_policy,
             amenities: listing.rules.amenities,
             cancellation_policy: listing.rules.cancellation_policy,
+            quiet_hours: listing.rules.quiet_hours,
+            couples_welcome: listing.rules.couples_welcome,
           }
         : null,
       media: (listing.media || [])
@@ -250,6 +267,27 @@ export class HostListingsService {
           asset_id: m.asset_id,
           kind: m.kind,
           sort_order: m.sort_order ?? 0,
+          category: m.category ?? null,
+          unit_type_id: m.unit_type_id ?? null,
+          is_cover: m.is_cover ?? false,
+        })),
+      unit_types: (listing.unit_types || [])
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((u) => ({
+          id: u.id,
+          kind: u.kind,
+          name: u.name,
+          quantity: u.quantity,
+          max_guests: u.max_guests,
+          bed_config: u.bed_config ?? [],
+          size_sqm: u.size_sqm != null ? Number(u.size_sqm) : null,
+          amenities: u.amenities ?? [],
+          pricing_unit: u.pricing_unit,
+          base_price: Number(u.base_price),
+          currency: u.currency,
+          details: u.details ?? {},
+          sort_order: u.sort_order,
+          is_active: u.is_active,
         })),
       created_at: listing.created_at,
     };
@@ -304,13 +342,33 @@ export class HostListingsService {
       const ratePlanRepo = manager.getRepository(StaysRatePlan);
       const checkInRepo = manager.getRepository(StaysCheckInContact);
       const mediaRepo = manager.getRepository(StaysListingMedia);
+      const unitTypeRepo = manager.getRepository(StaysListingUnitType);
+
+      const defaultBookingModel =
+        dto.booking_model ??
+        (dto.listing_type === 'HOTEL'
+          ? 'ROOM_TYPES'
+          : dto.listing_type === 'HOSTEL'
+            ? 'DORM_AND_PRIVATE'
+            : 'ENTIRE_PROPERTY');
 
       const listing = listingRepo.create({
         host_user_id: userId,
         title: dto.title,
         listing_type: dto.listing_type,
+        booking_model: defaultBookingModel,
         city: dto.city,
+        country: dto.country ?? 'MA',
+        neighborhood: dto.neighborhood ?? null,
+        postal_code: dto.postal_code ?? null,
+        building_name: dto.building_name ?? null,
+        landmark: dto.landmark ?? null,
         address_encrypted: dto.address ?? null,
+        geo_lat: dto.geo_lat ?? null,
+        geo_lng: dto.geo_lng ?? null,
+        property_details: dto.property_details ?? {},
+        safety_features: dto.safety_features ?? {},
+        policies: dto.policies ?? {},
         status: 'SUBMITTED',
         checkin_time: dto.checkin_time ?? '14:00',
         checkout_time: dto.checkout_time ?? '11:00',
@@ -344,11 +402,59 @@ export class HostListingsService {
       const contact = checkInRepo.create({
         listing_id: listing.id,
         full_name: dto.check_in_contact.full_name,
-        phone_encrypted: dto.check_in_contact.phone, // Store plain for MVP
+        phone_encrypted: dto.check_in_contact.phone,
         role: dto.check_in_contact.role,
         access_instructions: dto.check_in_contact.access_instructions ?? null,
       });
       await checkInRepo.save(contact);
+
+      const unitTypesInput =
+        dto.unit_types && dto.unit_types.length > 0
+          ? dto.unit_types
+          : [
+              {
+                kind:
+                  dto.listing_type === 'VILLA'
+                    ? ('VILLA_UNIT' as const)
+                    : dto.listing_type === 'HOTEL'
+                      ? ('HOTEL_ROOM' as const)
+                      : dto.listing_type === 'HOSTEL'
+                        ? ('HOSTEL_PRIVATE' as const)
+                        : dto.listing_type === 'RIAD'
+                          ? ('RIAD_ROOM' as const)
+                          : ('APARTMENT_UNIT' as const),
+                name: dto.title,
+                quantity: 1,
+                max_guests: dto.rules?.max_guests ?? 4,
+                pricing_unit: 'NIGHT' as const,
+                base_price: dto.rate_plan.base_price,
+                currency: dto.rate_plan.currency ?? 'MAD',
+                sort_order: 0,
+                is_active: true,
+              },
+            ];
+
+      for (let i = 0; i < unitTypesInput.length; i++) {
+        const u = unitTypesInput[i];
+        await unitTypeRepo.save(
+          unitTypeRepo.create({
+            listing_id: listing.id,
+            kind: u.kind,
+            name: u.name,
+            quantity: u.quantity ?? 1,
+            max_guests: u.max_guests ?? 2,
+            bed_config: u.bed_config ?? [],
+            size_sqm: u.size_sqm ?? null,
+            amenities: u.amenities ?? [],
+            pricing_unit: u.pricing_unit ?? 'NIGHT',
+            base_price: u.base_price,
+            currency: u.currency ?? 'MAD',
+            details: u.details ?? {},
+            sort_order: u.sort_order ?? i,
+            is_active: u.is_active ?? true,
+          }),
+        );
+      }
 
       for (let i = 0; i < dto.media.length; i++) {
         const m = dto.media[i];
@@ -359,6 +465,8 @@ export class HostListingsService {
           asset_id: m.asset_id,
           sort_order: m.sort_order ?? i,
           is_required: m.kind === 'WALKTHROUGH',
+          category: m.category ?? null,
+          is_cover: m.is_cover ?? false,
         });
         await mediaRepo.save(media);
       }

@@ -3,6 +3,7 @@ export * from './stays-host-profile.entity';
 export * from './stays-listing.entity';
 export * from './stays-listing-rules.entity';
 export * from './stays-listing-media.entity';
+export * from './stays-listing-unit-type.entity';
 export * from './stays-rate-plan.entity';
 export * from './stays-check-in-contact.entity';
 export * from './stays-booking.entity';

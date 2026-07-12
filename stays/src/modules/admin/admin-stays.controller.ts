@@ -125,6 +125,35 @@ export class AdminStaysController {
     });
   }
 
+  @Get('host-applications/:id/documents/:kind')
+  async getHostApplicationDocument(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('kind') kind: string,
+    @Res() res: Response,
+  ) {
+    const normalized: 'front' | 'back' | 'selfie' =
+      kind === 'back' ? 'back' : kind === 'selfie' ? 'selfie' : 'front';
+    const fullPath =
+      await this.hostApplicationsService.getVerificationDocumentPath(
+        id,
+        normalized,
+      );
+    const ext = fullPath.includes('.')
+      ? fullPath.split('.').pop()?.toLowerCase()
+      : '';
+    const contentType =
+      ext === 'png'
+        ? 'image/png'
+        : ext === 'webp'
+          ? 'image/webp'
+          : ext === 'jpg' || ext === 'jpeg'
+            ? 'image/jpeg'
+            : 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    createReadStream(fullPath).pipe(res);
+  }
+
   @Post('host-applications/:id/approve')
   approveHostApplication(
     @Param('id') id: string,

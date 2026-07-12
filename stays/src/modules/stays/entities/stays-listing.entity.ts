@@ -12,6 +12,17 @@ import { StaysListingMedia } from './stays-listing-media.entity';
 import { StaysRatePlan } from './stays-rate-plan.entity';
 import { StaysCheckInContact } from './stays-check-in-contact.entity';
 import { StaysBooking } from './stays-booking.entity';
+import { StaysListingUnitType } from './stays-listing-unit-type.entity';
+
+export type ListingBookingModel =
+  | 'ENTIRE_PROPERTY'
+  | 'PRIVATE_ROOM'
+  | 'MULTI_UNIT'
+  | 'ROOM_TYPES'
+  | 'DORM_BEDS'
+  | 'PRIVATE_ROOMS'
+  | 'DORM_AND_PRIVATE'
+  | 'BOTH';
 
 @Entity('stays_listings')
 export class StaysListing {
@@ -31,8 +42,31 @@ export class StaysListing {
   })
   listing_type: 'APARTMENT' | 'HOTEL' | 'RIAD' | 'VILLA' | 'HOSTEL';
 
+  @Column({
+    type: 'varchar',
+    length: 30,
+    name: 'booking_model',
+    nullable: true,
+  })
+  booking_model: ListingBookingModel | null;
+
   @Column({ type: 'varchar', length: 100 })
   city: string;
+
+  @Column({ type: 'varchar', length: 2, default: 'MA' })
+  country: string;
+
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  neighborhood: string | null;
+
+  @Column({ type: 'varchar', length: 20, name: 'postal_code', nullable: true })
+  postal_code: string | null;
+
+  @Column({ type: 'varchar', length: 120, name: 'building_name', nullable: true })
+  building_name: string | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  landmark: string | null;
 
   @Column({ type: 'text', name: 'address_encrypted', nullable: true })
   address_encrypted: string | null;
@@ -42,6 +76,15 @@ export class StaysListing {
 
   @Column({ type: 'decimal', precision: 11, scale: 8, name: 'geo_lng', nullable: true })
   geo_lng: number | null;
+
+  @Column({ type: 'jsonb', name: 'property_details', default: () => "'{}'" })
+  property_details: Record<string, unknown>;
+
+  @Column({ type: 'jsonb', name: 'safety_features', default: () => "'{}'" })
+  safety_features: Record<string, unknown>;
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  policies: Record<string, unknown>;
 
   @Column({
     type: 'varchar',
@@ -100,6 +143,9 @@ export class StaysListing {
 
   @OneToMany(() => StaysListingMedia, (m) => m.listing)
   media: StaysListingMedia[];
+
+  @OneToMany(() => StaysListingUnitType, (u) => u.listing)
+  unit_types: StaysListingUnitType[];
 
   @OneToOne(() => StaysRatePlan, (rp) => rp.listing, { cascade: true })
   rate_plan: StaysRatePlan | null;

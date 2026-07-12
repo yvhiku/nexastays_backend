@@ -7,6 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { StaysListing } from './stays-listing.entity';
+import { StaysListingUnitType } from './stays-listing-unit-type.entity';
 
 @Entity('stays_listing_media')
 export class StaysListingMedia {
@@ -31,6 +32,22 @@ export class StaysListingMedia {
 
   @Column({ type: 'boolean', name: 'is_required', default: false })
   is_required: boolean;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  category: string | null;
+
+  @Column({ type: 'uuid', name: 'unit_type_id', nullable: true })
+  unit_type_id: string | null;
+
+  @ManyToOne(() => StaysListingUnitType, (u) => u.media, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'unit_type_id' })
+  unit_type: StaysListingUnitType | null;
+
+  @Column({ type: 'boolean', name: 'is_cover', default: false })
+  is_cover: boolean;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;
