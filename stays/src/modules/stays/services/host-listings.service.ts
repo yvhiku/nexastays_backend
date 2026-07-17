@@ -94,7 +94,10 @@ export class HostListingsService {
     if (dto.title != null) listing.title = dto.title;
     if (dto.listing_type != null) listing.listing_type = dto.listing_type;
     if (dto.city != null) listing.city = dto.city;
+    if (dto.neighborhood !== undefined) listing.neighborhood = dto.neighborhood;
     if (dto.address !== undefined) listing.address_encrypted = dto.address;
+    if (dto.geo_lat !== undefined) listing.geo_lat = dto.geo_lat;
+    if (dto.geo_lng !== undefined) listing.geo_lng = dto.geo_lng;
     if (dto.description !== undefined) listing.description = dto.description;
     if (dto.checkin_time != null) listing.checkin_time = dto.checkin_time;
     if (dto.checkout_time != null) listing.checkout_time = dto.checkout_time;

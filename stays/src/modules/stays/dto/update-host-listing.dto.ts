@@ -107,8 +107,27 @@ export class UpdateHostListingDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(120)
+  neighborhood?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(500)
   address?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  geo_lat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  geo_lng?: number;
 
   @IsOptional()
   @IsString()

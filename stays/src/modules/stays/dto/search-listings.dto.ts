@@ -10,7 +10,14 @@ import {
   MaxLength,
   Matches,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+
+function toQueryBoolean({ value }: { value: unknown }): boolean | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (value === true || value === 'true' || value === '1') return true;
+  if (value === false || value === 'false' || value === '0') return false;
+  return undefined;
+}
 
 export class SearchListingsDto {
   @IsOptional()
@@ -37,16 +44,19 @@ export class SearchListingsDto {
   guests?: number;
 
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(toQueryBoolean)
   @IsBoolean()
   verified_walkthrough_only?: boolean;
 
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(toQueryBoolean)
   @IsBoolean()
   instant_booking_only?: boolean;
 
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsString()
   @IsIn(['APARTMENT', 'HOTEL', 'RIAD', 'VILLA', 'HOSTEL'])
   listing_type?: 'APARTMENT' | 'HOTEL' | 'RIAD' | 'VILLA' | 'HOSTEL';

@@ -179,8 +179,8 @@ export class StaysPaymentsService {
       );
 
       if (!stillAvailable) {
-        this.logger.warn(
-          `Payment succeeded but dates unavailable for booking ${booking.id}; expiring hold`,
+        this.logger.error(
+          `PAYMENT_REFUND_REQUIRED: payment succeeded but dates unavailable for booking ${booking.id}; expiring hold and creating refund ledger entry`,
         );
         await intentRepo.update(
           { id: intent.id },
@@ -190,6 +190,22 @@ export class StaysPaymentsService {
           { id: booking.id },
           { status: 'EXPIRED', updated_at: new Date() },
         );
+        await ledgerRepo.save(
+          ledgerRepo.create({
+            booking_id: booking.id,
+            type: 'REFUND',
+            amount: Number(intent.amount),
+            currency: booking.currency,
+            status: 'PENDING',
+            metadata: {
+              reason: 'PAYMENT_REJECTED_DATES_UNAVAILABLE',
+              provider,
+              provider_intent_id: providerIntentId,
+              requires_manual_review: true,
+              alert_key: 'PAYMENT_REFUND_REQUIRED',
+            },
+          }),
+        );
         await this.auditService.log({
           entityType: 'BOOKING',
           entityId: booking.id,
@@ -197,6 +213,8 @@ export class StaysPaymentsService {
           metadata: {
             provider,
             provider_intent_id: providerIntentId,
+            refund_amount: Number(intent.amount),
+            alert_key: 'PAYMENT_REFUND_REQUIRED',
           },
         });
         // Do not throw: acknowledge webhook so the provider does not retry.

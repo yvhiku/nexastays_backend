@@ -40,7 +40,7 @@ export class StaysPaymentIntent {
   })
   status: 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
-  @Column({ type: 'varchar', length: 64, name: 'idempotency_key', nullable: true, unique: true })
+  @Column({ type: 'varchar', length: 64, name: 'idempotency_key', nullable: true })
   idempotency_key: string | null;
 
   @Column({ type: 'jsonb', default: {} })

@@ -20,6 +20,10 @@ describe('StaysCancellationService', () => {
     total_subtotal: string;
     guest_fee: string;
     currency: string;
+    listing: {
+      host_user_id: string;
+      rules: { cancellation_policy: 'FLEXIBLE' | 'MODERATE' | 'STRICT' };
+    };
   }>) => ({
     id: 'booking-1',
     guest_user_id: 'guest-1',

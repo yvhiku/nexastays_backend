@@ -1,5 +1,6 @@
 import { HostOnboardingService } from './host-onboarding.service';
 import { StaysHostProfile } from '../entities/stays-host-profile.entity';
+import type { StaysUserContext } from './host-onboarding.types';
 
 describe('HostOnboardingService', () => {
   let service: HostOnboardingService;
@@ -10,20 +11,15 @@ describe('HostOnboardingService', () => {
     count: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
-  let usersService: {
-    findById: jest.Mock;
-    findByUnifiedIdentityIdAndAccountType: jest.Mock;
-  };
   let dataSource: { query: jest.Mock; transaction: jest.Mock };
+  let kycPolicy: { meetsHostIdentityReuse: jest.Mock };
 
-  const consumerUser = {
-    id: 'consumer-1',
+  const consumerUser: StaysUserContext = {
+    userId: 'consumer-1',
     account_type: 'CONSUMER',
     unified_identity_id: 'identity-1',
     phone_number: '+212612345678',
-    full_name: 'Test Host',
     email: 'host@test.com',
-    kyc_status: 'APPROVED',
   };
 
   const existingProfile = {
@@ -48,29 +44,17 @@ describe('HostOnboardingService', () => {
       createQueryBuilder: jest.fn(),
     };
 
-    usersService = {
-      findById: jest.fn().mockResolvedValue(consumerUser),
-      findByUnifiedIdentityIdAndAccountType: jest.fn().mockResolvedValue(null),
-    };
-
     dataSource = {
       query: jest.fn().mockResolvedValue([]),
       transaction: jest.fn(),
     };
+    kycPolicy = { meetsHostIdentityReuse: jest.fn().mockReturnValue(true) };
 
     service = new HostOnboardingService(
       hostProfileRepo as never,
-      { findOne: jest.fn() } as never,
-      { findOne: jest.fn() } as never,
       { create: jest.fn((x) => x), save: jest.fn() } as never,
       dataSource as never,
-      usersService as never,
-      {
-        findById: jest.fn().mockResolvedValue({
-          id: 'identity-1',
-          phone_number: '+212612345678',
-        }),
-      } as never,
+      kycPolicy as never,
     );
   });
 
@@ -78,12 +62,11 @@ describe('HostOnboardingService', () => {
     hostProfileRepo.findOne!.mockResolvedValue(existingProfile);
 
     const result = await service.submitHostOnboarding(
-      'consumer-1',
+      consumerUser,
       { hosting_policies_accepted: true, use_existing_kyc: true },
       {
         source: 'MOBILE',
         submitted_from: 'MOBILE_BECOME_HOST',
-        requireConsumer: true,
         requirePolicies: true,
       },
     );

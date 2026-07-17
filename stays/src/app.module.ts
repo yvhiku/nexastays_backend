@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './common/database/database.module';
 import { ThrottlerKeyGuard } from './common/guards/throttler-key.guard';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { MetricsInterceptor } from './common/metrics';
 import { StaysModule } from './modules/stays/stays.module';
@@ -38,6 +39,7 @@ import {
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerKeyGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
   ],
 })

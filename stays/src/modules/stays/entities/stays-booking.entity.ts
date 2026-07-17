@@ -68,7 +68,7 @@ export class StaysBooking {
   @Column({ type: 'char', length: 3, default: 'MAD' })
   currency: string;
 
-  @Column({ type: 'varchar', length: 64, name: 'idempotency_key', nullable: true, unique: true })
+  @Column({ type: 'varchar', length: 64, name: 'idempotency_key', nullable: true })
   idempotency_key: string | null;
 
   @Column({ type: 'varchar', length: 128, name: 'payment_intent_id', nullable: true })

@@ -17,6 +17,19 @@ export class ListingAvailabilityQueryDto {
   to: string;
 }
 
+export class HostAvailabilityBlockDto {
+  @IsDateString()
+  from: string;
+
+  @IsDateString()
+  to: string;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  is_blocked?: boolean;
+}
+
 export class CreatePaymentIntentDto {
   @IsOptional()
   @IsString()

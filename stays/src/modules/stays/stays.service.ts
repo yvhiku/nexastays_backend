@@ -202,7 +202,9 @@ export class StaysService {
       .where('l.status = :status', { status: 'LIVE' });
 
     if (params.city) {
-      qb.andWhere('LOWER(l.city) = LOWER(:city)', { city: params.city.trim() });
+      qb.andWhere('LOWER(l.city) LIKE LOWER(:city)', {
+        city: `%${params.city.trim()}%`,
+      });
     }
 
     if (params.listing_type) {
@@ -311,6 +313,69 @@ export class StaysService {
       from,
       to,
       blocked_ranges,
+    };
+  }
+
+  async setHostAvailabilityBlock(
+    listingId: string,
+    hostUserId: string,
+    fromDate: string,
+    toDate: string,
+    isBlocked = true,
+  ) {
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+      select: ['id', 'host_user_id'],
+    });
+    if (!listing || listing.host_user_id !== hostUserId) {
+      throw new NotFoundException('Listing not found');
+    }
+
+    const from = fromDate?.trim();
+    const to = toDate?.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+      throw new BadRequestException('from and to must be YYYY-MM-DD');
+    }
+    if (to <= from) {
+      throw new BadRequestException('to must be after from');
+    }
+
+    const dates: string[] = [];
+    const cursor = parseBookingDateOnly(from);
+    const end = parseBookingDateOnly(to);
+    while (cursor < end) {
+      dates.push(this.availabilityService.toDateString(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+      if (dates.length > 366) {
+        throw new BadRequestException('Availability range cannot exceed 366 nights');
+      }
+    }
+
+    await this.availabilityRepo.upsert(
+      dates.map((date) => ({
+        listing_id: listingId,
+        date: parseBookingDateOnly(date),
+        is_blocked: isBlocked,
+        source: 'HOST' as const,
+      })),
+      ['listing_id', 'date'],
+    );
+
+    await this.auditService.log({
+      actorUserId: hostUserId,
+      actorRole: 'HOST',
+      entityType: 'LISTING',
+      entityId: listingId,
+      action: isBlocked ? 'HOST_BLOCKED_DATES' : 'HOST_UNBLOCKED_DATES',
+      metadata: { from, to, nights: dates.length },
+    });
+
+    return {
+      listing_id: listingId,
+      from,
+      to,
+      is_blocked: isBlocked,
+      nights: dates.length,
     };
   }
 
@@ -445,14 +510,22 @@ export class StaysService {
       const listingRepo = manager.getRepository(StaysListing);
       const bookingRepo = manager.getRepository(StaysBooking);
 
-        // SELECT FOR UPDATE to prevent double-booking (INNER JOIN required: FOR UPDATE cannot apply to nullable side of outer join)
-        const listing = await listingRepo
+        // Lock listing row only — FOR UPDATE cannot target nullable OUTER JOIN sides
+        // (e.g. left-joined rules). Load relations after the lock is held.
+        const locked = await listingRepo
           .createQueryBuilder('l')
-          .innerJoinAndSelect('l.rate_plan', 'rp')
-          .leftJoinAndSelect('l.rules', 'rules')
           .setLock('pessimistic_write')
           .where('l.id = :id', { id: dto.listing_id })
           .getOne();
+
+        if (!locked) {
+          throw new NotFoundException('Listing not found');
+        }
+
+        const listing = await listingRepo.findOne({
+          where: { id: dto.listing_id },
+          relations: ['rate_plan', 'rules'],
+        });
 
         if (!listing) {
           throw new NotFoundException('Listing not found');

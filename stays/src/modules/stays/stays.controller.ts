@@ -51,6 +51,7 @@ import { CancelBookingDto } from './dto/cancel-booking.dto';
 import {
   ListingAvailabilityQueryDto,
   HostApplyDto,
+  HostAvailabilityBlockDto,
 } from './dto/input-security.dto';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { IdentitySnapshotClient } from '../../common/identity/identity-snapshot.client';
@@ -357,6 +358,26 @@ export class StaysController {
     @Param('id') id: string,
   ) {
     return this.hostListingsService.resumeListing(user.userId, id);
+  }
+
+  @Post('host/listings/:id/availability-blocks')
+  @UseGuards(JwtAuthGuard)
+  @Throttle(SENSITIVE_WRITE_THROTTLE)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Set or clear host-blocked dates for a listing' })
+  async setHostAvailabilityBlock(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: HostAvailabilityBlockDto,
+  ) {
+    return this.staysService.setHostAvailabilityBlock(
+      id,
+      user.userId,
+      body.from,
+      body.to,
+      body.is_blocked ?? true,
+    );
   }
 
   /**
