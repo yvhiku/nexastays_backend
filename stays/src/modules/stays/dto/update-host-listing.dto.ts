@@ -49,6 +49,7 @@ class UpdateRatePlanDto {
   currency?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   @Max(10_000_000)
@@ -136,12 +137,12 @@ export class UpdateHostListingDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d{2}:\d{2}$/)
+  @Matches(/^\d{2}:\d{2}(:\d{2})?$/)
   checkin_time?: string;
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d{2}:\d{2}$/)
+  @Matches(/^\d{2}:\d{2}(:\d{2})?$/)
   checkout_time?: string;
 
   @IsOptional()
