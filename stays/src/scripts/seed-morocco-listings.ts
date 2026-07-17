@@ -203,7 +203,10 @@ async function main() {
         weekend_price: number;
         cleaning_fee: number;
         unit_kind: string;
+        created_at: string;
       }> = [];
+
+      const batchBaseMs = Date.now() - offset * 1000;
 
       for (let i = 0; i < n; i++) {
         const idx = offset + i + 1;
@@ -245,16 +248,18 @@ async function main() {
             Math.round(price * (1.05 + Math.random() * 0.2) * 100) / 100,
           cleaning_fee: Math.round(Math.random() * 150 * 100) / 100,
           unit_kind: unitKind(listingType),
+          // Stagger timestamps so keyset pagination never collapses a whole batch.
+          created_at: new Date(batchBaseMs - i * 1000).toISOString(),
         });
       }
 
       const listingRes = await client.query<{ id: string; title: string }>(
-        `INSERT INTO stays_listings (
+         `INSERT INTO stays_listings (
            host_user_id, title, listing_type, booking_model, city, country,
            neighborhood, geo_lat, geo_lng, status, description,
            property_details, safety_features, policies,
            instant_booking, avg_rating, review_count,
-           checkin_time, checkout_time
+           checkin_time, checkout_time, created_at, updated_at
          )
          SELECT
            $1::uuid,
@@ -275,7 +280,9 @@ async function main() {
            x.avg_rating,
            x.review_count,
            '14:00',
-           '11:00'
+           '11:00',
+           x.created_at::timestamptz,
+           x.created_at::timestamptz
          FROM jsonb_to_recordset($2::jsonb) AS x(
            title text,
            listing_type text,
@@ -287,7 +294,8 @@ async function main() {
            property_details jsonb,
            instant_booking boolean,
            avg_rating double precision,
-           review_count int
+           review_count int,
+           created_at text
          )
          RETURNING id, title`,
         [hostUserId, JSON.stringify(listings)],

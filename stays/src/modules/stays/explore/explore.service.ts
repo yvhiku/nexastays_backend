@@ -455,13 +455,26 @@ export class ExploreService {
       }
     }
 
-    // Keyset pagination
+    // Keyset pagination.
+    // Use an exclusive +1ms window for the "equal created_at" branch: JS Date / toISOString
+    // only has millisecond precision, while Postgres timestamptz keeps microseconds.
+    // Without this, batches that share one created_at (e.g. seed inserts) stall after page 1.
     if (opts.cursor?.c && opts.cursor?.i) {
+      const cursorCreated = new Date(opts.cursor.c);
+      const cursorCreatedEnd = new Date(cursorCreated.getTime() + 1);
       if (opts.sort === 'newest') {
         qb.andWhere(
-          '(l.created_at, l.id) < (:cursorCreated, :cursorId)',
+          `(
+            l.created_at < :cursorCreated
+            OR (
+              l.created_at >= :cursorCreated
+              AND l.created_at < :cursorCreatedEnd
+              AND l.id < :cursorId
+            )
+          )`,
           {
-            cursorCreated: new Date(opts.cursor.c),
+            cursorCreated,
+            cursorCreatedEnd,
             cursorId: opts.cursor.i,
           },
         );
@@ -479,7 +492,14 @@ export class ExploreService {
                 l.review_count < :cursorReviews
                 OR (
                   l.review_count = :cursorReviews
-                  AND (l.created_at, l.id) < (:cursorCreated, :cursorId)
+                  AND (
+                    l.created_at < :cursorCreated
+                    OR (
+                      l.created_at >= :cursorCreated
+                      AND l.created_at < :cursorCreatedEnd
+                      AND l.id < :cursorId
+                    )
+                  )
                 )
               )
             )
@@ -487,7 +507,8 @@ export class ExploreService {
           {
             cursorRating: r,
             cursorReviews: n,
-            cursorCreated: new Date(opts.cursor.c),
+            cursorCreated,
+            cursorCreatedEnd,
             cursorId: opts.cursor.i,
           },
         );
