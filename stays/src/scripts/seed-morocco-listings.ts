@@ -1,6 +1,9 @@
 /**
  * DEV-ONLY: seed random LIVE Morocco listings for Explore / map load testing.
  *
+ * Ratings are NOT faked — avg_rating / review_count stay at DB defaults until
+ * real PUBLISHED rows exist in stays_listing_reviews (ReviewAggregateService).
+ *
  * Usage:
  *   npm run seed:listings
  *   npm run seed:listings -- --count 1000
@@ -191,8 +194,6 @@ async function main() {
         geo_lng: number;
         property_details: object;
         instant_booking: boolean;
-        avg_rating: number | null;
-        review_count: number;
         max_guests: number;
         amenities: string[];
         pets_policy: string;
@@ -215,11 +216,6 @@ async function main() {
         const guests = 1 + Math.floor(Math.random() * 8);
         const bedroomCount = 1 + Math.floor(Math.random() * 4);
         const price = Math.round((150 + Math.random() * 2350) * 100) / 100;
-        const reviews = Math.floor(Math.random() * 80);
-        const rating =
-          reviews === 0
-            ? null
-            : Math.round((3.5 + Math.random() * 1.5) * 100) / 100;
 
         listings.push({
           title: `${TITLE_PREFIX}${listingType.charAt(0)}${listingType.slice(1).toLowerCase()} in ${place.city} #${idx}`,
@@ -235,8 +231,6 @@ async function main() {
             guest_language: 'fr',
           },
           instant_booking: Math.random() < 0.45,
-          avg_rating: rating,
-          review_count: reviews,
           max_guests: guests,
           amenities: pick(AMENITY_POOLS),
           pets_policy: pick(['NO', 'ALLOWED', 'DOGS_CATS'] as const),
@@ -258,7 +252,7 @@ async function main() {
            host_user_id, title, listing_type, booking_model, city, country,
            neighborhood, geo_lat, geo_lng, status, description,
            property_details, safety_features, policies,
-           instant_booking, avg_rating, review_count,
+           instant_booking,
            checkin_time, checkout_time, created_at, updated_at
          )
          SELECT
@@ -277,8 +271,6 @@ async function main() {
            '{}'::jsonb,
            '{}'::jsonb,
            x.instant_booking,
-           x.avg_rating,
-           x.review_count,
            '14:00',
            '11:00',
            x.created_at::timestamptz,
@@ -293,8 +285,6 @@ async function main() {
            geo_lng double precision,
            property_details jsonb,
            instant_booking boolean,
-           avg_rating double precision,
-           review_count int,
            created_at text
          )
          RETURNING id, title`,
