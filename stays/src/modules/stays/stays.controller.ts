@@ -44,6 +44,8 @@ import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guar
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { SearchListingsDto } from './dto/search-listings.dto';
+import { ExploreListingsDto, ExploreMapDto } from './dto/explore-listings.dto';
+import { ExploreService } from './explore/explore.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreateHostListingDto } from './dto/create-host-listing.dto';
 import { UpdateHostListingDto } from './dto/update-host-listing.dto';
@@ -70,6 +72,7 @@ export class StaysController {
 
   constructor(
     private readonly staysService: StaysService,
+    private readonly exploreService: ExploreService,
     private readonly hostsService: HostsService,
     private readonly hostListingsService: HostListingsService,
     private readonly hostApplicationsService: HostApplicationsService,
@@ -110,15 +113,15 @@ export class StaysController {
   }
 
   /**
-   * Search listings - public, no auth required for browsing
+   * Explore listings — cursor-paginated lightweight cards (search service).
    */
-  @Get('listings/search')
+  @Get('explore')
   @Public()
   @UseGuards(BotProtectionGuard)
   @Throttle(PUBLIC_SEARCH_THROTTLE)
-  @ApiOperation({ summary: 'Search available listings' })
-  async searchListings(@Query() query: SearchListingsDto) {
-    return this.staysService.searchListings({
+  @ApiOperation({ summary: 'Explore listings (cursor pagination, card payload)' })
+  async explore(@Query() query: ExploreListingsDto) {
+    return this.exploreService.exploreListings({
       city: query.city,
       checkin_date: query.checkin_date,
       checkout_date: query.checkout_date,
@@ -126,6 +129,64 @@ export class StaysController {
       verified_walkthrough_only: query.verified_walkthrough_only,
       instant_booking_only: query.instant_booking_only,
       listing_type: query.listing_type,
+      limit: query.limit,
+      cursor: query.cursor,
+      sort: query.sort,
+      north: query.north,
+      south: query.south,
+      east: query.east,
+      west: query.west,
+    });
+  }
+
+  /**
+   * Explore map pins for a viewport (bounds required).
+   */
+  @Get('explore/map')
+  @Public()
+  @UseGuards(BotProtectionGuard)
+  @Throttle(PUBLIC_SEARCH_THROTTLE)
+  @ApiOperation({ summary: 'Explore map pins for viewport bounds' })
+  async exploreMap(@Query() query: ExploreMapDto) {
+    return this.exploreService.exploreMap({
+      city: query.city,
+      checkin_date: query.checkin_date,
+      checkout_date: query.checkout_date,
+      guests: query.guests,
+      verified_walkthrough_only: query.verified_walkthrough_only,
+      instant_booking_only: query.instant_booking_only,
+      listing_type: query.listing_type,
+      north: query.north,
+      south: query.south,
+      east: query.east,
+      west: query.west,
+    });
+  }
+
+  /**
+   * Search listings — compatibility shim → Explore card envelope.
+   */
+  @Get('listings/search')
+  @Public()
+  @UseGuards(BotProtectionGuard)
+  @Throttle(PUBLIC_SEARCH_THROTTLE)
+  @ApiOperation({ summary: 'Search available listings (shim → /stays/explore)' })
+  async searchListings(@Query() query: SearchListingsDto) {
+    return this.exploreService.exploreListings({
+      city: query.city,
+      checkin_date: query.checkin_date,
+      checkout_date: query.checkout_date,
+      guests: query.guests,
+      verified_walkthrough_only: query.verified_walkthrough_only,
+      instant_booking_only: query.instant_booking_only,
+      listing_type: query.listing_type,
+      limit: query.limit,
+      cursor: query.cursor,
+      sort: query.sort,
+      north: query.north,
+      south: query.south,
+      east: query.east,
+      west: query.west,
     });
   }
 

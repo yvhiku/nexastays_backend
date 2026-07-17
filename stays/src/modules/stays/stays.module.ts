@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { StaysController } from './stays.controller';
 import { ReviewsController } from './reviews/reviews.controller';
 import { StaysService } from './stays.service';
+import { ExploreService } from './explore/explore.service';
 import { HostsModule } from './hosts/hosts.module';
 import {
   StaysListing,
@@ -31,11 +32,13 @@ import { BookingLifecycleService } from './services/booking-lifecycle.service';
 import { BookingLifecycleSchedulerService } from './services/booking-lifecycle-scheduler.service';
 import { ReviewAggregateService } from './reviews/review-aggregate.service';
 import { DomainEventsModule } from '../../common/events/domain-events.module';
+import { CommonCacheModule } from '../../common/cache/cache.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     DomainEventsModule,
+    CommonCacheModule,
     TypeOrmModule.forFeature([
       StaysListing,
       StaysListingRules,
@@ -57,6 +60,7 @@ import { DomainEventsModule } from '../../common/events/domain-events.module';
   controllers: [StaysController, ReviewsController],
   providers: [
     StaysService,
+    ExploreService,
     StaysReviewsService,
     ReviewAggregateService,
     StaysAvailabilityService,
@@ -67,6 +71,11 @@ import { DomainEventsModule } from '../../common/events/domain-events.module';
     BookingLifecycleService,
     BookingLifecycleSchedulerService,
   ],
-  exports: [StaysService, StaysReviewsService, StaysAvailabilityService],
+  exports: [
+    StaysService,
+    StaysReviewsService,
+    StaysAvailabilityService,
+    ExploreService,
+  ],
 })
 export class StaysModule {}

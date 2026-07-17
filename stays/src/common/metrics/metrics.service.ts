@@ -12,6 +12,14 @@ export class MetricsService {
   private dbQueryFailures = 0;
   private dbCacheHits = 0;
   private dbCacheMisses = 0;
+  private exploreCacheHits = 0;
+  private exploreCacheMisses = 0;
+  private exploreCacheBypasses = 0;
+  private exploreCursorFailures = 0;
+  private exploreQueryMsTotal = 0;
+  private exploreQueryCount = 0;
+  private exploreMapQueryMsTotal = 0;
+  private exploreMapQueryCount = 0;
 
   incrementTotal(): void {
     this.totalRequests += 1;
@@ -31,6 +39,32 @@ export class MetricsService {
 
   incrementDbCacheMiss(): void {
     this.dbCacheMisses += 1;
+  }
+
+  incrementExploreCacheHit(): void {
+    this.exploreCacheHits += 1;
+  }
+
+  incrementExploreCacheMiss(): void {
+    this.exploreCacheMisses += 1;
+  }
+
+  incrementExploreCacheBypass(): void {
+    this.exploreCacheBypasses += 1;
+  }
+
+  incrementExploreCursorFailure(): void {
+    this.exploreCursorFailures += 1;
+  }
+
+  recordExploreQueryMs(ms: number): void {
+    this.exploreQueryMsTotal += ms;
+    this.exploreQueryCount += 1;
+  }
+
+  recordExploreMapQueryMs(ms: number): void {
+    this.exploreMapQueryMsTotal += ms;
+    this.exploreMapQueryCount += 1;
   }
 
   increment4xx(): void {
@@ -65,6 +99,20 @@ export class MetricsService {
       db_query_failures: this.dbQueryFailures,
       db_cache_hits: this.dbCacheHits,
       db_cache_misses: this.dbCacheMisses,
+      explore_cache_hits: this.exploreCacheHits,
+      explore_cache_misses: this.exploreCacheMisses,
+      explore_cache_bypasses: this.exploreCacheBypasses,
+      explore_cursor_failures: this.exploreCursorFailures,
+      explore_query_count: this.exploreQueryCount,
+      explore_query_ms_avg:
+        this.exploreQueryCount > 0
+          ? Math.round(this.exploreQueryMsTotal / this.exploreQueryCount)
+          : 0,
+      explore_map_query_count: this.exploreMapQueryCount,
+      explore_map_query_ms_avg:
+        this.exploreMapQueryCount > 0
+          ? Math.round(this.exploreMapQueryMsTotal / this.exploreMapQueryCount)
+          : 0,
     };
   }
 }

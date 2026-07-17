@@ -20,11 +20,8 @@ function toQueryBoolean({ value }: { value: unknown }): boolean | undefined {
   return undefined;
 }
 
-/**
- * Legacy search DTO — accepts Explore pagination fields so /listings/search
- * can shim to the Explore envelope without forbidNonWhitelisted failures.
- */
-export class SearchListingsDto {
+/** Shared Explore / map search filters + pagination. */
+export class ExploreListingsDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -102,3 +99,9 @@ export class SearchListingsDto {
   @IsNumber()
   west?: number;
 }
+
+/**
+ * Map pins require bounds. Same filters as ExploreListingsDto;
+ * required north/south/east/west are enforced in ExploreService.validateBounds.
+ */
+export class ExploreMapDto extends ExploreListingsDto {}
