@@ -1,13 +1,10 @@
 import { createHash } from 'crypto';
 import {
   BadRequestException,
-  Inject,
   Injectable,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
 import { Repository } from 'typeorm';
 import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysListingMedia } from '../entities/stays-listing-media.entity';
@@ -93,9 +90,13 @@ export type ExploreQueryParams = {
   west?: number;
 };
 
+type MemoryCacheEntry = { expiresAt: number; value: unknown };
+
 @Injectable()
 export class ExploreService {
   private readonly logger = new Logger(ExploreService.name);
+  /** Process-local short TTL cache (avoids Nest cache-manager peer conflicts). */
+  private readonly memoryCache = new Map<string, MemoryCacheEntry>();
 
   constructor(
     @InjectRepository(StaysListing)
@@ -104,7 +105,6 @@ export class ExploreService {
     private readonly mediaRepo: Repository<StaysListingMedia>,
     private readonly availabilityService: StaysAvailabilityService,
     private readonly metrics: MetricsService,
-    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
 
   async exploreListings(params: ExploreQueryParams): Promise<ExploreListEnvelope> {
@@ -625,12 +625,13 @@ export class ExploreService {
   }
 
   private async safeCacheGet<T>(key: string): Promise<T | null> {
-    try {
-      const v = await this.cache.get<T>(key);
-      return v ?? null;
-    } catch {
+    const entry = this.memoryCache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      this.memoryCache.delete(key);
       return null;
     }
+    return entry.value as T;
   }
 
   private async safeCacheSet(
@@ -645,7 +646,14 @@ export class ExploreService {
         this.logger.warn(`explore cache bypass: payload > ${CACHE_MAX_BYTES} bytes`);
         return;
       }
-      await this.cache.set(key, value, ttlMs);
+      // Bound memory: drop expired entries occasionally.
+      if (this.memoryCache.size > 500) {
+        const now = Date.now();
+        for (const [k, v] of this.memoryCache) {
+          if (now > v.expiresAt) this.memoryCache.delete(k);
+        }
+      }
+      this.memoryCache.set(key, { expiresAt: Date.now() + ttlMs, value });
     } catch (err) {
       this.logger.warn(`explore cache set failed: ${String(err)}`);
     }

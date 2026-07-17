@@ -32,13 +32,11 @@ import { BookingLifecycleService } from './services/booking-lifecycle.service';
 import { BookingLifecycleSchedulerService } from './services/booking-lifecycle-scheduler.service';
 import { ReviewAggregateService } from './reviews/review-aggregate.service';
 import { DomainEventsModule } from '../../common/events/domain-events.module';
-import { CommonCacheModule } from '../../common/cache/cache.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     DomainEventsModule,
-    CommonCacheModule,
     TypeOrmModule.forFeature([
       StaysListing,
       StaysListingRules,
