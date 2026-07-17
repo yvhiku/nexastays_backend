@@ -21,6 +21,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "seed:listings": "npx ts-node -r tsconfig-paths/register src/scripts/seed-morocco-listings.ts",
     "seed:taxi": "npx ts-node -r tsconfig-paths/register src/scripts/seed-taxi-test-data.ts",
     "seed:food": "npx ts-node -r tsconfig-paths/register src/scripts/seed-food-test-data.ts",
     "test:taxi": "npx ts-node scripts/test-taxi-ride.ts",
