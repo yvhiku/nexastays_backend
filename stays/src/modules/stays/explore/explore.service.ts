@@ -13,6 +13,7 @@ import { MetricsService } from '../../../common/metrics/metrics.service';
 import {
   decodeExploreCursor,
   encodeExploreCursor,
+  normalizeExploreSort,
   nowSnapshotIso,
   type ExploreCursorPayload,
   type ExploreSort,
@@ -126,7 +127,7 @@ export class ExploreService {
 
   async exploreListings(params: ExploreQueryParams): Promise<ExploreListEnvelope> {
     const started = Date.now();
-    const sort: ExploreSort = params.sort === 'rating' ? 'rating' : 'newest';
+    const sort = normalizeExploreSort(params.sort);
     const limit = Math.min(
       Math.max(params.limit ?? CARD_LIMIT_DEFAULT, 1),
       CARD_LIMIT_MAX,
@@ -462,22 +463,50 @@ export class ExploreService {
     if (opts.cursor?.c && opts.cursor?.i) {
       const cursorCreated = new Date(opts.cursor.c);
       const cursorCreatedEnd = new Date(cursorCreated.getTime() + 1);
+      const createdTie = `(
+        l.created_at < :cursorCreated
+        OR (
+          l.created_at >= :cursorCreated
+          AND l.created_at < :cursorCreatedEnd
+          AND l.id < :cursorId
+        )
+      )`;
+
       if (opts.sort === 'newest') {
-        qb.andWhere(
-          `(
-            l.created_at < :cursorCreated
-            OR (
-              l.created_at >= :cursorCreated
-              AND l.created_at < :cursorCreatedEnd
-              AND l.id < :cursorId
-            )
-          )`,
-          {
-            cursorCreated,
-            cursorCreatedEnd,
-            cursorId: opts.cursor.i,
-          },
-        );
+        qb.andWhere(createdTie, {
+          cursorCreated,
+          cursorCreatedEnd,
+          cursorId: opts.cursor.i,
+        });
+      } else if (opts.sort === 'price_asc' || opts.sort === 'price_desc') {
+        const cursorPrice =
+          opts.cursor.p != null && Number.isFinite(Number(opts.cursor.p))
+            ? Number(opts.cursor.p)
+            : null;
+        const priceCmp =
+          opts.sort === 'price_asc'
+            ? `(
+                (rp.base_price IS NULL AND :cursorPrice IS NOT NULL)
+                OR (rp.base_price IS NOT NULL AND :cursorPrice IS NOT NULL AND rp.base_price > :cursorPrice)
+                OR (
+                  ((rp.base_price IS NULL AND :cursorPrice IS NULL) OR rp.base_price = :cursorPrice)
+                  AND ${createdTie}
+                )
+              )`
+            : `(
+                (rp.base_price IS NULL AND :cursorPrice IS NOT NULL)
+                OR (rp.base_price IS NOT NULL AND :cursorPrice IS NOT NULL AND rp.base_price < :cursorPrice)
+                OR (
+                  ((rp.base_price IS NULL AND :cursorPrice IS NULL) OR rp.base_price = :cursorPrice)
+                  AND ${createdTie}
+                )
+              )`;
+        qb.andWhere(priceCmp, {
+          cursorPrice,
+          cursorCreated,
+          cursorCreatedEnd,
+          cursorId: opts.cursor.i,
+        });
       } else {
         const r = opts.cursor.r ?? null;
         const n = opts.cursor.n ?? 0;
@@ -492,14 +521,7 @@ export class ExploreService {
                 l.review_count < :cursorReviews
                 OR (
                   l.review_count = :cursorReviews
-                  AND (
-                    l.created_at < :cursorCreated
-                    OR (
-                      l.created_at >= :cursorCreated
-                      AND l.created_at < :cursorCreatedEnd
-                      AND l.id < :cursorId
-                    )
-                  )
+                  AND ${createdTie}
                 )
               )
             )
@@ -518,6 +540,14 @@ export class ExploreService {
     if (opts.sort === 'rating') {
       qb.orderBy('l.avg_rating', 'DESC', 'NULLS LAST')
         .addOrderBy('l.review_count', 'DESC')
+        .addOrderBy('l.created_at', 'DESC')
+        .addOrderBy('l.id', 'DESC');
+    } else if (opts.sort === 'price_asc') {
+      qb.orderBy('rp.base_price', 'ASC', 'NULLS LAST')
+        .addOrderBy('l.created_at', 'DESC')
+        .addOrderBy('l.id', 'DESC');
+    } else if (opts.sort === 'price_desc') {
+      qb.orderBy('rp.base_price', 'DESC', 'NULLS LAST')
         .addOrderBy('l.created_at', 'DESC')
         .addOrderBy('l.id', 'DESC');
     } else {
@@ -544,6 +574,12 @@ export class ExploreService {
       base.r =
         last.avg_rating != null ? Number(last.avg_rating) : null;
       base.n = last.review_count ?? 0;
+    }
+    if (sort === 'price_asc' || sort === 'price_desc') {
+      base.p =
+        last.rate_plan?.base_price != null
+          ? Number(last.rate_plan.base_price)
+          : null;
     }
     return base;
   }

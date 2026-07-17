@@ -6,7 +6,14 @@ import { BadRequestException } from '@nestjs/common';
  * Phase 2 ranking roadmap: Bayesian average and/or Wilson score lower bound
  * before personalization / hybrid rank.
  */
-export type ExploreSort = 'newest' | 'rating';
+export type ExploreSort = 'newest' | 'rating' | 'price_asc' | 'price_desc';
+
+export const EXPLORE_SORTS: readonly ExploreSort[] = [
+  'newest',
+  'rating',
+  'price_asc',
+  'price_desc',
+] as const;
 
 export type ExploreCursorPayload = {
   v: 1;
@@ -20,6 +27,8 @@ export type ExploreCursorPayload = {
   /** rating sort keys */
   r?: number | null;
   n?: number;
+  /** price sort key (base_price) */
+  p?: number | null;
 };
 
 const CURSOR_PREFIX = 'v1.';
@@ -43,7 +52,7 @@ export function decodeExploreCursor(raw: string | undefined | null): ExploreCurs
       'utf8',
     );
     const parsed = JSON.parse(json) as ExploreCursorPayload;
-    if (parsed?.v !== 1 || (parsed.s !== 'newest' && parsed.s !== 'rating')) {
+    if (parsed?.v !== 1 || !EXPLORE_SORTS.includes(parsed.s)) {
       throw new Error('bad shape');
     }
     return parsed;
@@ -57,4 +66,11 @@ export function decodeExploreCursor(raw: string | undefined | null): ExploreCurs
 
 export function nowSnapshotIso(): string {
   return new Date().toISOString();
+}
+
+export function normalizeExploreSort(raw: string | undefined | null): ExploreSort {
+  if (raw && EXPLORE_SORTS.includes(raw as ExploreSort)) {
+    return raw as ExploreSort;
+  }
+  return 'newest';
 }

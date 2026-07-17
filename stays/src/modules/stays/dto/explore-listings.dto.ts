@@ -76,8 +76,8 @@ export class ExploreListingsDto {
   cursor?: string;
 
   @IsOptional()
-  @IsIn(['newest', 'rating'])
-  sort?: 'newest' | 'rating';
+  @IsIn(['newest', 'rating', 'price_asc', 'price_desc'])
+  sort?: 'newest' | 'rating' | 'price_asc' | 'price_desc';
 
   @IsOptional()
   @Type(() => Number)
