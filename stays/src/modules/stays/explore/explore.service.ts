@@ -47,9 +47,19 @@ export type ExploreCard = {
 export type ExploreMapPin = {
   id: string;
   title: string;
+  city: string;
+  neighborhood: string | null;
   geo_lat: number;
   geo_lng: number;
+  avg_rating: number | null;
+  review_count: number;
+  bedrooms: number | null;
+  max_guests: number | null;
+  has_wifi: boolean;
+  has_walkthrough: boolean;
+  instant_booking: boolean;
   price: { base_price: number; currency: string } | null;
+  cover: { asset_id: string; kind: 'PHOTO' } | null;
 };
 
 export type ExploreListEnvelope = {
@@ -250,21 +260,12 @@ export class ExploreService {
     const truncated =
       boundsCheck.forceTruncate || rows.length > MAP_PIN_MAX;
     const page = truncated ? rows.slice(0, MAP_PIN_MAX) : rows;
+    const ids = page.map((r) => r.id);
+    const { covers, walkthroughs } = await this.loadMediaHints(ids);
 
     const items: ExploreMapPin[] = page
       .filter((l) => l.geo_lat != null && l.geo_lng != null)
-      .map((l) => ({
-        id: l.id,
-        title: l.title,
-        geo_lat: Number(l.geo_lat),
-        geo_lng: Number(l.geo_lng),
-        price: l.rate_plan
-          ? {
-              base_price: Number(l.rate_plan.base_price),
-              currency: l.rate_plan.currency || 'MAD',
-            }
-          : null,
-      }));
+      .map((l) => this.toMapPin(l, covers, walkthroughs));
 
     const envelope: ExploreMapEnvelope = {
       items,
@@ -355,7 +356,7 @@ export class ExploreService {
     const qb = this.listingRepo
       .createQueryBuilder('l')
       .leftJoinAndSelect('l.rate_plan', 'rp')
-      .leftJoin('l.rules', 'rules')
+      .leftJoinAndSelect('l.rules', 'rules')
       .where('l.status = :status', { status: 'LIVE' })
       .andWhere('l.created_at <= :snapshot', {
         snapshot: new Date(opts.snapshot),
@@ -517,6 +518,55 @@ export class ExploreService {
       base.n = last.review_count ?? 0;
     }
     return base;
+  }
+
+  private toMapPin(
+    l: StaysListing,
+    covers: Map<string, string>,
+    walkthroughs: Set<string>,
+  ): ExploreMapPin {
+    const coverId = covers.get(l.id);
+    const amenities = (l.rules?.amenities ?? []).map((a) =>
+      String(a).toLowerCase(),
+    );
+    return {
+      id: l.id,
+      title: l.title,
+      city: l.city,
+      neighborhood: l.neighborhood,
+      geo_lat: Number(l.geo_lat),
+      geo_lng: Number(l.geo_lng),
+      avg_rating: l.avg_rating != null ? Number(l.avg_rating) : null,
+      review_count: l.review_count ?? 0,
+      bedrooms: this.bedroomCount(l.property_details),
+      max_guests: l.rules?.max_guests != null ? Number(l.rules.max_guests) : null,
+      has_wifi: amenities.some(
+        (a) => a === 'wifi' || a.includes('wifi') || a.includes('wi-fi'),
+      ),
+      has_walkthrough: walkthroughs.has(l.id),
+      instant_booking: Boolean(l.instant_booking),
+      price: l.rate_plan
+        ? {
+            base_price: Number(l.rate_plan.base_price),
+            currency: l.rate_plan.currency || 'MAD',
+          }
+        : null,
+      cover: coverId ? { asset_id: coverId, kind: 'PHOTO' } : null,
+    };
+  }
+
+  private bedroomCount(
+    details: Record<string, unknown> | null | undefined,
+  ): number | null {
+    if (!details || typeof details !== 'object') return null;
+    const bedrooms = details.bedrooms;
+    if (Array.isArray(bedrooms) && bedrooms.length > 0) return bedrooms.length;
+    if (typeof bedrooms === 'number' && Number.isFinite(bedrooms)) {
+      return bedrooms;
+    }
+    const count = details.bedroom_count ?? details.beds;
+    if (typeof count === 'number' && Number.isFinite(count)) return count;
+    return null;
   }
 
   private toCard(
