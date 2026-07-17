@@ -20,9 +20,16 @@ import {
 
 const CARD_LIMIT_DEFAULT = 24;
 const CARD_LIMIT_MAX = 48;
-const MAP_PIN_MAX = 200;
-/** Reject / truncate map boxes larger than this span (degrees). */
-const MAX_BOUNDS_SPAN_DEG = 5;
+/** Max pins returned by /explore/map (viewport may still truncate if denser). */
+const MAP_PIN_MAX = Math.min(
+  Math.max(parseInt(process.env.EXPLORE_MAP_PIN_MAX || '1500', 10) || 1500, 50),
+  5000,
+);
+/** Reject / truncate map boxes larger than this span (degrees). Morocco-wide ~12°. */
+const MAX_BOUNDS_SPAN_DEG = Math.min(
+  Math.max(parseInt(process.env.EXPLORE_MAX_BOUNDS_SPAN_DEG || '15', 10) || 15, 1),
+  40,
+);
 const CACHE_TTL_MS = 45_000;
 const CACHE_TTL_DATED_MS = 15_000;
 const CACHE_MAX_BYTES = 1_024 * 1_024;
