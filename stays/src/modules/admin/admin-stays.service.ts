@@ -43,9 +43,474 @@ export class AdminStaysService {
     private readonly domainEvents: DomainEventsService,
   ) {}
 
+  /** UTC calendar helpers for ops-overview (month/day boundaries). */
+  private utcStartOfDay(d = new Date()): Date {
+    return new Date(
+      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+    );
+  }
+
+  private utcStartOfMonth(d = new Date()): Date {
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+  }
+
+  private utcDaysAgo(n: number, from = new Date()): Date {
+    const d = this.utcStartOfDay(from);
+    d.setUTCDate(d.getUTCDate() - n);
+    return d;
+  }
+
+  private conversionRate(numerator: number, denominator: number): number | null {
+    if (!denominator || denominator <= 0) return null;
+    return Math.round((numerator / denominator) * 1000) / 10;
+  }
+
+  /**
+   * Health score formula (Phase 1, evolvable):
+   * start 100
+   * - min(40, pendingListings * 2 + pendingHosts * 3)
+   * - if avgRating > 0 && avgRating < 4: (4 - avgRating) * 10
+   * - cancellationRate * 50 (0–1 fraction of cancelled vs cancelled+paid)
+   * label: >= 80 Healthy, >= 55 Watch, else Critical
+   */
+  private computeHealthScore(input: {
+    pendingListings: number;
+    pendingHosts: number;
+    avgRating: number;
+    cancellationRate: number;
+  }): { score: number; label: 'Healthy' | 'Watch' | 'Critical' } {
+    let score = 100;
+    score -= Math.min(
+      40,
+      input.pendingListings * 2 + input.pendingHosts * 3,
+    );
+    if (input.avgRating > 0 && input.avgRating < 4) {
+      score -= (4 - input.avgRating) * 10;
+    }
+    score -= input.cancellationRate * 50;
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    const label =
+      score >= 80 ? 'Healthy' : score >= 55 ? 'Watch' : 'Critical';
+    return { score, label };
+  }
+
+  async getOpsOverview() {
+    const now = new Date();
+    const startOfDay = this.utcStartOfDay(now);
+    const startOfYesterday = this.utcDaysAgo(1, now);
+    const startOfMonth = this.utcStartOfMonth(now);
+    const seriesStart = this.utcDaysAgo(29, now);
+    const paidStatuses = ['CONFIRMED', 'CHECKED_IN', 'COMPLETED'];
+    const cancelledStatuses = [
+      'CANCELLED_BY_GUEST',
+      'CANCELLED_BY_HOST',
+      'EXPIRED',
+    ];
+    const submittedPlus = [
+      'SUBMITTED',
+      'APPROVED',
+      'REJECTED',
+      'LIVE',
+      'PAUSED',
+    ];
+
+    const [
+      liveListings,
+      activeHosts,
+      activeBookings,
+      pendingListings,
+      pendingHostApplications,
+      needsChangesListings,
+      avgRatingRow,
+      todayRevenueRow,
+      monthRevenueRow,
+      cancelledCount,
+      paidCount,
+      funnelApplications,
+      funnelApproved,
+      funnelDraft,
+      funnelSubmitted,
+      funnelLive,
+      funnelFirstBookingRow,
+      timingApprovalRow,
+      timingDraftRow,
+      seriesBookingRows,
+      seriesMoneyRows,
+      todayListingsApproved,
+      todayHostsApproved,
+      todayBookings,
+      todayReviews,
+      todayCancellations,
+      yesterdayListingsApproved,
+      yesterdayHostsApproved,
+      yesterdayBookings,
+      yesterdayReviews,
+      yesterdayCancellations,
+    ] = await Promise.all([
+      this.listingRepo.count({ where: { status: 'LIVE' } }),
+      this.hostProfileRepo.count({ where: { application_status: 'APPROVED' } }),
+      this.bookingRepo.count({
+        where: { status: In(['CONFIRMED', 'CHECKED_IN']) },
+      }),
+      this.listingRepo.count({ where: { status: 'SUBMITTED' } }),
+      this.hostProfileRepo.count({ where: { application_status: 'PENDING' } }),
+      this.listingRepo.count({ where: { status: 'REJECTED' } }),
+      this.reviewRepo
+        .createQueryBuilder('r')
+        .select('COALESCE(AVG(r.rating), 0)', 'avg')
+        .where('r.status = :status', { status: 'PUBLISHED' })
+        .getRawOne(),
+      this.bookingRepo
+        .createQueryBuilder('b')
+        .select('COALESCE(SUM(b.guest_fee + b.host_fee), 0)', 'total')
+        .where('b.status IN (:...statuses)', { statuses: paidStatuses })
+        .andWhere(
+          '(b.paid_at >= :start OR (b.paid_at IS NULL AND b.created_at >= :start))',
+          { start: startOfDay.toISOString() },
+        )
+        .getRawOne(),
+      this.bookingRepo
+        .createQueryBuilder('b')
+        .select('COALESCE(SUM(b.guest_fee + b.host_fee), 0)', 'total')
+        .where('b.status IN (:...statuses)', { statuses: paidStatuses })
+        .andWhere(
+          '(b.paid_at >= :start OR (b.paid_at IS NULL AND b.created_at >= :start))',
+          { start: startOfMonth.toISOString() },
+        )
+        .getRawOne(),
+      this.bookingRepo.count({ where: { status: In(cancelledStatuses) } }),
+      this.bookingRepo.count({ where: { status: In(paidStatuses) } }),
+      // Funnel MTD: host applications submitted this month
+      this.hostProfileRepo
+        .createQueryBuilder('h')
+        .where(
+          `COALESCE(h.submitted_at, h.created_at) >= :start AND h.application_status IN (:...statuses)`,
+          {
+            start: startOfMonth.toISOString(),
+            statuses: ['PENDING', 'APPROVED', 'REJECTED'],
+          },
+        )
+        .getCount(),
+      this.hostProfileRepo
+        .createQueryBuilder('h')
+        .where(
+          `h.application_status = :status AND COALESCE(h.reviewed_at, h.submitted_at, h.created_at) >= :start`,
+          { status: 'APPROVED', start: startOfMonth.toISOString() },
+        )
+        .getCount(),
+      this.listingRepo
+        .createQueryBuilder('l')
+        .where('l.created_at >= :start', { start: startOfMonth.toISOString() })
+        .getCount(),
+      // Approximation: left DRAFT (status in submitted+) and touched MTD
+      this.listingRepo
+        .createQueryBuilder('l')
+        .where('l.status IN (:...statuses)', { statuses: submittedPlus })
+        .andWhere('l.last_edited_at >= :start', {
+          start: startOfMonth.toISOString(),
+        })
+        .getCount(),
+      // LIVE set this month: audit preferred; fallback LIVE + updated MTD
+      this.auditRepo
+        .createQueryBuilder('a')
+        .where('a.action = :action', { action: 'LISTING_SET_LIVE' })
+        .andWhere('a.created_at >= :start', {
+          start: startOfMonth.toISOString(),
+        })
+        .getCount()
+        .then(async (n) => {
+          if (n > 0) return n;
+          return this.listingRepo
+            .createQueryBuilder('l')
+            .where('l.status = :status', { status: 'LIVE' })
+            .andWhere('l.updated_at >= :start', {
+              start: startOfMonth.toISOString(),
+            })
+            .getCount();
+        }),
+      this.bookingRepo.query(
+        `
+        SELECT COUNT(*)::int AS count FROM (
+          SELECT b.listing_id,
+                 MIN(COALESCE(b.paid_at, b.created_at)) AS first_paid
+          FROM stays_bookings b
+          WHERE b.status = ANY($1)
+          GROUP BY b.listing_id
+        ) t
+        WHERE t.first_paid >= $2
+        `,
+        [paidStatuses, startOfMonth.toISOString()],
+      ),
+      this.hostProfileRepo
+        .createQueryBuilder('h')
+        .select(
+          'AVG(EXTRACT(EPOCH FROM (h.reviewed_at - h.submitted_at)) / 3600.0)',
+          'avg',
+        )
+        .where('h.application_status = :status', { status: 'APPROVED' })
+        .andWhere('h.reviewed_at >= :start', {
+          start: startOfMonth.toISOString(),
+        })
+        .andWhere('h.submitted_at IS NOT NULL')
+        .andWhere('h.reviewed_at IS NOT NULL')
+        .getRawOne(),
+      // Approximation: last_edited_at ≈ submit time for non-draft listings edited MTD
+      this.listingRepo
+        .createQueryBuilder('l')
+        .select(
+          'AVG(EXTRACT(EPOCH FROM (l.last_edited_at - l.created_at)) / 86400.0)',
+          'avg',
+        )
+        .where('l.status IN (:...statuses)', { statuses: submittedPlus })
+        .andWhere('l.last_edited_at >= :start', {
+          start: startOfMonth.toISOString(),
+        })
+        .andWhere('l.last_edited_at > l.created_at')
+        .getRawOne(),
+      this.bookingRepo
+        .createQueryBuilder('b')
+        .select(`TO_CHAR(b.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD')`, 'day')
+        .addSelect('COUNT(*)', 'bookings')
+        .where('b.created_at >= :start', { start: seriesStart.toISOString() })
+        .groupBy('day')
+        .orderBy('day', 'ASC')
+        .getRawMany(),
+      this.bookingRepo
+        .createQueryBuilder('b')
+        .select(
+          `TO_CHAR(COALESCE(b.paid_at, b.created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+          'day',
+        )
+        .addSelect('COALESCE(SUM(b.total_paid), 0)', 'gmv')
+        .addSelect('COALESCE(SUM(b.guest_fee + b.host_fee), 0)', 'revenue')
+        .where('b.status IN (:...statuses)', { statuses: paidStatuses })
+        .andWhere('COALESCE(b.paid_at, b.created_at) >= :start', {
+          start: seriesStart.toISOString(),
+        })
+        .groupBy('day')
+        .orderBy('day', 'ASC')
+        .getRawMany(),
+      this.auditRepo.count({
+        where: {
+          action: 'LISTING_APPROVED',
+          created_at: MoreThanOrEqual(startOfDay),
+        },
+      }),
+      this.auditRepo.count({
+        where: {
+          action: 'HOST_ONBOARDING_APPROVED',
+          created_at: MoreThanOrEqual(startOfDay),
+        },
+      }),
+      this.bookingRepo.count({
+        where: { created_at: MoreThanOrEqual(startOfDay) },
+      }),
+      this.reviewRepo.count({
+        where: { created_at: MoreThanOrEqual(startOfDay) },
+      }),
+      this.bookingRepo
+        .createQueryBuilder('b')
+        .where('b.status IN (:...statuses)', { statuses: cancelledStatuses })
+        .andWhere('b.updated_at >= :start', {
+          start: startOfDay.toISOString(),
+        })
+        .getCount(),
+      this.auditRepo
+        .createQueryBuilder('a')
+        .where('a.action = :action', { action: 'LISTING_APPROVED' })
+        .andWhere('a.created_at >= :start AND a.created_at < :end', {
+          start: startOfYesterday.toISOString(),
+          end: startOfDay.toISOString(),
+        })
+        .getCount(),
+      this.auditRepo
+        .createQueryBuilder('a')
+        .where('a.action = :action', { action: 'HOST_ONBOARDING_APPROVED' })
+        .andWhere('a.created_at >= :start AND a.created_at < :end', {
+          start: startOfYesterday.toISOString(),
+          end: startOfDay.toISOString(),
+        })
+        .getCount(),
+      this.bookingRepo
+        .createQueryBuilder('b')
+        .where('b.created_at >= :start AND b.created_at < :end', {
+          start: startOfYesterday.toISOString(),
+          end: startOfDay.toISOString(),
+        })
+        .getCount(),
+      this.reviewRepo
+        .createQueryBuilder('r')
+        .where('r.created_at >= :start AND r.created_at < :end', {
+          start: startOfYesterday.toISOString(),
+          end: startOfDay.toISOString(),
+        })
+        .getCount(),
+      this.bookingRepo
+        .createQueryBuilder('b')
+        .where('b.status IN (:...statuses)', { statuses: cancelledStatuses })
+        .andWhere('b.updated_at >= :start AND b.updated_at < :end', {
+          start: startOfYesterday.toISOString(),
+          end: startOfDay.toISOString(),
+        })
+        .getCount(),
+    ]);
+
+    const avgRating = Number(avgRatingRow?.avg || 0);
+    const cancellationDenom = cancelledCount + paidCount;
+    const cancellationRate =
+      cancellationDenom > 0 ? cancelledCount / cancellationDenom : 0;
+
+    const applications = funnelApplications;
+    const approved = funnelApproved;
+    const draftListings = funnelDraft;
+    const submitted = funnelSubmitted;
+    const live = typeof funnelLive === 'number' ? funnelLive : 0;
+    const firstBooking = Number(
+      Array.isArray(funnelFirstBookingRow)
+        ? funnelFirstBookingRow[0]?.count ?? 0
+        : 0,
+    );
+
+    const bookingByDay = new Map(
+      (seriesBookingRows as { day: string; bookings: string }[]).map((r) => [
+        r.day,
+        Number(r.bookings || 0),
+      ]),
+    );
+    const moneyByDay = new Map(
+      (
+        seriesMoneyRows as { day: string; gmv: string; revenue: string }[]
+      ).map((r) => [
+        r.day,
+        { gmv: Number(r.gmv || 0), revenue: Number(r.revenue || 0) },
+      ]),
+    );
+
+    const series: {
+      date: string;
+      bookings: number;
+      gmv: number;
+      revenue: number;
+    }[] = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(seriesStart);
+      d.setUTCDate(seriesStart.getUTCDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      const money = moneyByDay.get(key) ?? { gmv: 0, revenue: 0 };
+      series.push({
+        date: key,
+        bookings: bookingByDay.get(key) ?? 0,
+        gmv: money.gmv,
+        revenue: money.revenue,
+      });
+    }
+
+    const avgHoursRaw = timingApprovalRow?.avg;
+    const avgDaysRaw = timingDraftRow?.avg;
+
+    return {
+      snapshot: {
+        liveListings,
+        activeHosts,
+        activeBookings,
+        revenueToday: Number(todayRevenueRow?.total || 0),
+        revenueMonth: Number(monthRevenueRow?.total || 0),
+        avgRating: Math.round(avgRating * 10) / 10,
+      },
+      attention: {
+        pendingListings,
+        pendingHostApplications,
+        pendingKyc: null as number | null,
+        needsChangesListings,
+        failedPayouts: 0,
+        urgentAlerts: 0,
+      },
+      healthScore: this.computeHealthScore({
+        pendingListings,
+        pendingHosts: pendingHostApplications,
+        avgRating,
+        cancellationRate,
+      }),
+      funnel: {
+        period: 'mtd_utc',
+        stages: [
+          {
+            key: 'applications',
+            label: 'Applications',
+            count: applications,
+            unit: 'hosts' as const,
+          },
+          {
+            key: 'approved',
+            label: 'Approved',
+            count: approved,
+            unit: 'hosts' as const,
+          },
+          {
+            key: 'draft',
+            label: 'Draft Listings',
+            count: draftListings,
+            unit: 'listings' as const,
+          },
+          {
+            key: 'submitted',
+            label: 'Submitted',
+            count: submitted,
+            unit: 'listings' as const,
+          },
+          {
+            key: 'live',
+            label: 'Live',
+            count: live,
+            unit: 'listings' as const,
+          },
+          {
+            key: 'firstBooking',
+            label: 'First Booking',
+            count: firstBooking,
+            unit: 'listings' as const,
+          },
+        ],
+        conversions: {
+          applicationsToApproved: this.conversionRate(approved, applications),
+          approvedToDraft: this.conversionRate(draftListings, approved),
+          draftToSubmitted: this.conversionRate(submitted, draftListings),
+          submittedToLive: this.conversionRate(live, submitted),
+          liveToFirstBooking: this.conversionRate(firstBooking, live),
+        },
+      },
+      opsTiming: {
+        avgHoursToHostApproval:
+          avgHoursRaw != null ? Math.round(Number(avgHoursRaw) * 10) / 10 : null,
+        avgDaysDraftToSubmit:
+          avgDaysRaw != null ? Math.round(Number(avgDaysRaw) * 10) / 10 : null,
+      },
+      series,
+      activityGrouped: [
+        {
+          key: 'today',
+          label: 'Today',
+          listingsApproved: todayListingsApproved,
+          hostsApproved: todayHostsApproved,
+          bookings: todayBookings,
+          reviews: todayReviews,
+          cancellations: todayCancellations,
+        },
+        {
+          key: 'yesterday',
+          label: 'Yesterday',
+          listingsApproved: yesterdayListingsApproved,
+          hostsApproved: yesterdayHostsApproved,
+          bookings: yesterdayBookings,
+          reviews: yesterdayReviews,
+          cancellations: yesterdayCancellations,
+        },
+      ],
+    };
+  }
+
   async getStats() {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDay = this.utcStartOfDay();
 
     const [
       totalListings,
@@ -122,18 +587,41 @@ export class AdminStaysService {
     };
   }
 
-  async getListings(params?: { status?: string; limit?: number; offset?: number }) {
-    const { status, limit = 50, offset = 0 } = params || {};
+  async getListings(params?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+    /** oldest = queue wait time (default for pending); newest; priority reserved */
+    sort?: 'oldest' | 'newest' | 'priority';
+  }) {
+    const { status, limit = 50, offset = 0, sort } = params || {};
     const qb = this.listingRepo
       .createQueryBuilder('l')
       .leftJoinAndSelect('l.rate_plan', 'rate_plan')
       .leftJoinAndSelect('l.media', 'media')
-      .orderBy('l.created_at', 'DESC')
       .take(limit)
       .skip(offset);
 
     if (status && status !== 'all') {
       qb.andWhere('l.status = :status', { status: status.toUpperCase() });
+    }
+
+    // Phase 1: oldest waiting first for review queues; leave room for priority later
+    const effectiveSort =
+      sort === 'newest'
+        ? 'newest'
+        : sort === 'priority'
+          ? 'oldest'
+          : sort === 'oldest'
+            ? 'oldest'
+            : status && status.toUpperCase() === 'SUBMITTED'
+              ? 'oldest'
+              : 'newest';
+
+    if (effectiveSort === 'oldest') {
+      qb.orderBy('l.last_edited_at', 'ASC').addOrderBy('l.created_at', 'ASC');
+    } else {
+      qb.orderBy('l.created_at', 'DESC');
     }
 
     const [items, total] = await qb.getManyAndCount();

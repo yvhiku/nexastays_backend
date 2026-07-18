@@ -66,16 +66,23 @@ export class AdminStaysController {
     return this.adminStaysService.getStats();
   }
 
+  @Get('ops-overview')
+  getOpsOverview() {
+    return this.adminStaysService.getOpsOverview();
+  }
+
   @Get('listings')
   getListings(
     @Query('status') status?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('sort') sort?: string,
   ) {
     return this.adminStaysService.getListings({
       status,
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
+      sort: sort === 'newest' || sort === 'oldest' || sort === 'priority' ? sort : undefined,
     });
   }
 
