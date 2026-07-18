@@ -20,12 +20,22 @@ import {
 import { HostsService } from '../hosts/hosts.service';
 import { detectImageType } from '../../../common/utils/image-type.util';
 import { detectVideoType } from '../../../common/utils/video-type.util';
+import type { CreateDraftListingDto } from '../dto/create-draft-listing.dto';
 import type { CreateHostListingDto } from '../dto/create-host-listing.dto';
 import type { UpdateHostListingDto } from '../dto/update-host-listing.dto';
+import type { ReplaceListingMediaDto } from '../dto/replace-listing-media.dto';
+import {
+  assertCanSubmit,
+  computeCompletionFlags,
+  computeCompletionPercentage,
+  listMissing,
+  roomsRequiredForType,
+} from '../listing-completion';
 
 const PAUSABLE_STATUSES: StaysListing['status'][] = ['LIVE', 'APPROVED'];
 const EDITABLE_STATUSES: StaysListing['status'][] = [
   'DRAFT',
+  'REJECTED',
   'SUBMITTED',
   'APPROVED',
   'LIVE',
@@ -84,6 +94,8 @@ export class HostListingsService {
       'rate_plan',
       'rules',
       'check_in_contact',
+      'media',
+      'unit_types',
     ]);
     if (!EDITABLE_STATUSES.includes(listing.status)) {
       throw new BadRequestException(
@@ -91,17 +103,53 @@ export class HostListingsService {
       );
     }
 
+    // LIVE edit policy: property type immutable; location blocked on LIVE/APPROVED/PAUSED
+    const locationLocked = ['LIVE', 'APPROVED', 'PAUSED'].includes(
+      listing.status,
+    );
+    if (dto.listing_type != null && dto.listing_type !== listing.listing_type) {
+      throw new BadRequestException(
+        'Property type cannot be changed after the listing is created.',
+      );
+    }
+    if (locationLocked) {
+      const locationTouched =
+        dto.city != null ||
+        dto.address !== undefined ||
+        dto.geo_lat !== undefined ||
+        dto.geo_lng !== undefined ||
+        dto.neighborhood !== undefined;
+      if (locationTouched) {
+        throw new BadRequestException(
+          'Location changes on live listings require moderation. Contact support or wait for the next release.',
+        );
+      }
+    }
+
     if (dto.title != null) listing.title = dto.title;
-    if (dto.listing_type != null) listing.listing_type = dto.listing_type;
-    if (dto.city != null) listing.city = dto.city;
-    if (dto.neighborhood !== undefined) listing.neighborhood = dto.neighborhood;
-    if (dto.address !== undefined) listing.address_encrypted = dto.address;
-    if (dto.geo_lat !== undefined) listing.geo_lat = dto.geo_lat;
-    if (dto.geo_lng !== undefined) listing.geo_lng = dto.geo_lng;
+    if (dto.city != null && !locationLocked) listing.city = dto.city;
+    if (dto.neighborhood !== undefined && !locationLocked) {
+      listing.neighborhood = dto.neighborhood;
+    }
+    if (dto.address !== undefined && !locationLocked) {
+      listing.address_encrypted = dto.address;
+    }
+    if (dto.geo_lat !== undefined && !locationLocked) listing.geo_lat = dto.geo_lat;
+    if (dto.geo_lng !== undefined && !locationLocked) listing.geo_lng = dto.geo_lng;
     if (dto.description !== undefined) listing.description = dto.description;
     if (dto.checkin_time != null) listing.checkin_time = dto.checkin_time;
     if (dto.checkout_time != null) listing.checkout_time = dto.checkout_time;
     if (dto.instant_booking != null) listing.instant_booking = dto.instant_booking;
+    if (dto.property_details != null) {
+      listing.property_details = {
+        ...(listing.property_details ?? {}),
+        ...dto.property_details,
+      };
+    }
+    if (dto.policies != null) {
+      listing.policies = { ...(listing.policies ?? {}), ...dto.policies };
+    }
+    listing.last_edited_at = new Date();
 
     await this.listingRepo.save(listing);
 
@@ -132,7 +180,7 @@ export class HostListingsService {
         listing.rate_plan.base_price = dto.rate_plan.base_price;
       }
       if (dto.rate_plan.weekend_price !== undefined) {
-        listing.rate_plan.weekend_price = dto.rate_plan.weekend_price;
+        listing.rate_plan.weekend_price = dto.rate_plan.weekend_price ?? null;
       }
       if (dto.rate_plan.cleaning_fee != null) {
         listing.rate_plan.cleaning_fee = dto.rate_plan.cleaning_fee;
@@ -140,36 +188,31 @@ export class HostListingsService {
       await this.ratePlanRepo.save(listing.rate_plan);
     }
 
-    if (dto.check_in_contact) {
-      let contact = listing.check_in_contact;
-      if (!contact) {
-        contact = this.checkInContactRepo.create({ listing_id: listing.id });
-      }
+    if (dto.check_in_contact && listing.check_in_contact) {
       if (dto.check_in_contact.full_name != null) {
-        contact.full_name = dto.check_in_contact.full_name;
+        listing.check_in_contact.full_name = dto.check_in_contact.full_name;
       }
       if (dto.check_in_contact.phone != null) {
-        contact.phone_encrypted = dto.check_in_contact.phone;
+        listing.check_in_contact.phone_encrypted = dto.check_in_contact.phone;
       }
       if (dto.check_in_contact.role != null) {
-        contact.role = dto.check_in_contact.role;
+        listing.check_in_contact.role = dto.check_in_contact.role;
       }
       if (dto.check_in_contact.access_instructions !== undefined) {
-        contact.access_instructions = dto.check_in_contact.access_instructions;
+        listing.check_in_contact.access_instructions =
+          dto.check_in_contact.access_instructions ?? null;
       }
-      await this.checkInContactRepo.save(contact);
+      await this.checkInContactRepo.save(listing.check_in_contact);
     }
 
     const refreshed = await this.requireOwnedListing(userId, listingId, [
       'rate_plan',
       'rules',
-      'media',
       'check_in_contact',
+      'media',
+      'unit_types',
     ]);
-    return {
-      ...this.toHostListingDetail(refreshed),
-      message: 'Listing updated successfully.',
-    };
+    return this.toHostListingDetail(refreshed);
   }
 
   async pauseListing(userId: string, listingId: string) {
@@ -220,7 +263,44 @@ export class HostListingsService {
     return listing;
   }
 
+  private completionPayload(listing: StaysListing) {
+    const photos = (listing.media || []).filter((m) => m.kind === 'PHOTO');
+    const hasWalkthrough = (listing.media || []).some(
+      (m) => m.kind === 'WALKTHROUGH',
+    );
+    const units = listing.unit_types || [];
+    const minUnitPrice =
+      units.length > 0
+        ? Math.min(...units.map((u) => Number(u.base_price) || 0))
+        : Number(listing.rate_plan?.base_price ?? 0);
+    const flags = computeCompletionFlags({
+      listing_type: listing.listing_type,
+      booking_model: listing.booking_model,
+      title: listing.title,
+      city: listing.city,
+      address: listing.address_encrypted,
+      geo_lat: listing.geo_lat != null ? Number(listing.geo_lat) : null,
+      geo_lng: listing.geo_lng != null ? Number(listing.geo_lng) : null,
+      description: listing.description,
+      max_guests: listing.rules?.max_guests ?? null,
+      base_price: minUnitPrice,
+      photo_count: photos.length,
+      has_walkthrough: hasWalkthrough,
+      unit_count: units.length,
+      amenities_count: listing.rules?.amenities?.length ?? 0,
+      has_house_rules_touch: Boolean(
+        listing.rules?.pets_policy || listing.rules?.smoking_policy,
+      ),
+    });
+    return {
+      completion_flags: flags,
+      completion_percentage: computeCompletionPercentage(flags),
+      missing: listMissing(flags),
+    };
+  }
+
   private toHostListingSummary(listing: StaysListing) {
+    const completion = this.completionPayload(listing);
     return {
       id: listing.id,
       title: listing.title,
@@ -243,6 +323,9 @@ export class HostListingsService {
       property_details: listing.property_details ?? {},
       safety_features: listing.safety_features ?? {},
       policies: listing.policies ?? {},
+      last_edited_at: listing.last_edited_at ?? listing.updated_at,
+      archived_at: listing.archived_at ?? null,
+      ...completion,
       rate_plan: listing.rate_plan
         ? {
             base_price: Number(listing.rate_plan.base_price),
@@ -311,12 +394,9 @@ export class HostListingsService {
     };
   }
 
-  async createListing(
-    userId: string,
-    dto: CreateHostListingDto,
-  ) {
-    const canList = await this.hostsService.canList(userId);
-    if (!canList) {
+  private assertCanList(userId: string) {
+    return this.hostsService.canList(userId).then(async (canList) => {
+      if (canList) return;
       const profile = await this.hostsService.getHostProfileOrNull(userId);
       if (profile?.listing_frozen) {
         throw new BadRequestException(
@@ -324,132 +404,239 @@ export class HostListingsService {
         );
       }
       throw new BadRequestException(
-        'Host verification required. Your host application must be approved before publishing listings.',
+        'Host verification required. Your host application must be approved before creating listings.',
       );
-    }
+    });
+  }
 
-    if (!dto.media || dto.media.length < 12) {
-      throw new BadRequestException(
-        'At least 12 photos plus a walkthrough video are required.',
-      );
-    }
+  /** Type-first DRAFT create (no media required). */
+  async createListing(userId: string, dto: CreateDraftListingDto) {
+    await this.assertCanList(userId);
 
-    const walkthroughCount = dto.media.filter((m) => m.kind === 'WALKTHROUGH').length;
-    if (walkthroughCount < 1) {
-      throw new BadRequestException('A walkthrough video is required.');
-    }
+    const defaultBookingModel =
+      dto.listing_type === 'HOTEL'
+        ? 'ROOM_TYPES'
+        : dto.listing_type === 'HOSTEL'
+          ? 'DORM_AND_PRIVATE'
+          : 'ENTIRE_PROPERTY';
+
+    const propertyDetails = {
+      ...(dto.property_details ?? {}),
+      ...(dto.guest_house ? { guest_house: true } : {}),
+    };
 
     return this.dataSource.transaction(async (manager) => {
       const listingRepo = manager.getRepository(StaysListing);
       const rulesRepo = manager.getRepository(StaysListingRules);
       const ratePlanRepo = manager.getRepository(StaysRatePlan);
       const checkInRepo = manager.getRepository(StaysCheckInContact);
-      const mediaRepo = manager.getRepository(StaysListingMedia);
       const unitTypeRepo = manager.getRepository(StaysListingUnitType);
 
-      const defaultBookingModel =
-        dto.booking_model ??
-        (dto.listing_type === 'HOTEL'
-          ? 'ROOM_TYPES'
-          : dto.listing_type === 'HOSTEL'
-            ? 'DORM_AND_PRIVATE'
-            : 'ENTIRE_PROPERTY');
-
+      const now = new Date();
       const listing = listingRepo.create({
         host_user_id: userId,
-        title: dto.title,
+        title: 'Untitled listing',
         listing_type: dto.listing_type,
         booking_model: defaultBookingModel,
-        city: dto.city,
-        country: dto.country ?? 'MA',
-        neighborhood: dto.neighborhood ?? null,
-        postal_code: dto.postal_code ?? null,
-        building_name: dto.building_name ?? null,
-        landmark: dto.landmark ?? null,
-        address_encrypted: dto.address ?? null,
-        geo_lat: dto.geo_lat ?? null,
-        geo_lng: dto.geo_lng ?? null,
-        property_details: dto.property_details ?? {},
-        safety_features: dto.safety_features ?? {},
-        policies: dto.policies ?? {},
-        status: 'SUBMITTED',
-        checkin_time: dto.checkin_time ?? '14:00',
-        checkout_time: dto.checkout_time ?? '11:00',
-        description: dto.description ?? null,
-        instant_booking: dto.instant_booking ?? false,
+        city: '',
+        country: 'MA',
+        neighborhood: null,
+        postal_code: null,
+        building_name: null,
+        landmark: null,
+        address_encrypted: null,
+        geo_lat: null,
+        geo_lng: null,
+        property_details: propertyDetails,
+        safety_features: {},
+        policies: {},
+        status: 'DRAFT',
+        checkin_time: '14:00',
+        checkout_time: '11:00',
+        description: null,
+        instant_booking: false,
+        last_edited_at: now,
+        archived_at: null,
       });
       await listingRepo.save(listing);
 
-      const rules = rulesRepo.create({
-        listing_id: listing.id,
-        pets_policy: dto.rules?.pets_policy ?? 'NO',
-        smoking_policy: dto.rules?.smoking_policy ?? 'NOT_ALLOWED',
-        quiet_hours: dto.rules?.quiet_hours ?? false,
-        couples_welcome: dto.rules?.couples_welcome ?? true,
-        max_guests: dto.rules?.max_guests ?? 4,
-        amenities: dto.rules?.amenities ?? [],
-        cancellation_policy: dto.rules?.cancellation_policy ?? 'MODERATE',
-      });
-      await rulesRepo.save(rules);
+      await rulesRepo.save(
+        rulesRepo.create({
+          listing_id: listing.id,
+          pets_policy: 'NO',
+          smoking_policy: 'NOT_ALLOWED',
+          quiet_hours: false,
+          couples_welcome: true,
+          max_guests: 2,
+          amenities: [],
+          cancellation_policy: 'MODERATE',
+        }),
+      );
 
-      const ratePlan = ratePlanRepo.create({
-        listing_id: listing.id,
-        currency: dto.rate_plan.currency ?? 'MAD',
-        base_price: dto.rate_plan.base_price,
-        weekend_price: dto.rate_plan.weekend_price ?? null,
-        cleaning_fee: dto.rate_plan.cleaning_fee ?? 0,
-        deposit_policy_text: dto.rate_plan.deposit_policy_text ?? null,
-      });
-      await ratePlanRepo.save(ratePlan);
+      await ratePlanRepo.save(
+        ratePlanRepo.create({
+          listing_id: listing.id,
+          currency: 'MAD',
+          base_price: 0,
+          weekend_price: null,
+          cleaning_fee: 0,
+          deposit_policy_text: null,
+        }),
+      );
 
-      const contact = checkInRepo.create({
-        listing_id: listing.id,
-        full_name: dto.check_in_contact.full_name,
-        phone_encrypted: dto.check_in_contact.phone,
-        role: dto.check_in_contact.role,
-        access_instructions: dto.check_in_contact.access_instructions ?? null,
-      });
-      await checkInRepo.save(contact);
+      await checkInRepo.save(
+        checkInRepo.create({
+          listing_id: listing.id,
+          full_name: '',
+          phone_encrypted: '',
+          role: 'OWNER',
+          access_instructions: null,
+        }),
+      );
 
-      const unitTypesInput =
-        dto.unit_types && dto.unit_types.length > 0
-          ? dto.unit_types
-          : [
-              {
-                kind:
-                  dto.listing_type === 'VILLA'
-                    ? ('VILLA_UNIT' as const)
-                    : dto.listing_type === 'HOTEL'
-                      ? ('HOTEL_ROOM' as const)
-                      : dto.listing_type === 'HOSTEL'
-                        ? ('HOSTEL_PRIVATE' as const)
-                        : dto.listing_type === 'RIAD'
-                          ? ('RIAD_ROOM' as const)
-                          : ('APARTMENT_UNIT' as const),
-                name: dto.title,
-                quantity: 1,
-                max_guests: dto.rules?.max_guests ?? 4,
-                pricing_unit: 'NIGHT' as const,
-                base_price: dto.rate_plan.base_price,
-                currency: dto.rate_plan.currency ?? 'MAD',
-                sort_order: 0,
-                is_active: true,
-              },
-            ];
-
-      for (let i = 0; i < unitTypesInput.length; i++) {
-        const u = unitTypesInput[i];
+      if (!roomsRequiredForType(dto.listing_type, defaultBookingModel)) {
+        const kind =
+          dto.listing_type === 'VILLA'
+            ? ('VILLA_UNIT' as const)
+            : dto.listing_type === 'RIAD'
+              ? ('RIAD_ROOM' as const)
+              : ('APARTMENT_UNIT' as const);
         await unitTypeRepo.save(
           unitTypeRepo.create({
             listing_id: listing.id,
-            kind: u.kind,
+            kind,
+            name: 'Entire place',
+            quantity: 1,
+            max_guests: 2,
+            bed_config: [],
+            size_sqm: null,
+            amenities: [],
+            pricing_unit: 'NIGHT',
+            base_price: 0,
+            currency: 'MAD',
+            details: {},
+            sort_order: 0,
+            is_active: true,
+          }),
+        );
+      }
+
+      return {
+        id: listing.id,
+        status: 'DRAFT' as const,
+        message: 'Draft listing created. Continue editing to submit for review.',
+      };
+    });
+  }
+
+  /** Legacy full create kept for compatibility — prefer createListing draft + submit. */
+  async createListingLegacy(userId: string, dto: CreateHostListingDto) {
+    const draft = await this.createListing(userId, {
+      listing_type: dto.listing_type,
+      property_details: dto.property_details,
+    });
+    await this.updateListing(userId, draft.id, {
+      title: dto.title,
+      city: dto.city,
+      neighborhood: dto.neighborhood,
+      address: dto.address,
+      geo_lat: dto.geo_lat,
+      geo_lng: dto.geo_lng,
+      description: dto.description,
+      checkin_time: dto.checkin_time,
+      checkout_time: dto.checkout_time,
+      instant_booking: dto.instant_booking,
+      property_details: dto.property_details,
+      rules: dto.rules,
+      rate_plan: dto.rate_plan,
+      check_in_contact: dto.check_in_contact,
+    });
+    if (dto.media?.length) {
+      await this.replaceListingMedia(userId, draft.id, { media: dto.media });
+    }
+    return this.submitListing(userId, draft.id);
+  }
+
+  async replaceListingMedia(
+    userId: string,
+    listingId: string,
+    dto: ReplaceListingMediaDto,
+  ) {
+    const listing = await this.requireOwnedListing(userId, listingId, ['media']);
+    if (!EDITABLE_STATUSES.includes(listing.status)) {
+      throw new BadRequestException(
+        'Media cannot be changed in the current listing status.',
+      );
+    }
+    for (const m of dto.media) {
+      await this.assertOwnedListingAsset(userId, m.asset_id, m.kind);
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const mediaRepo = manager.getRepository(StaysListingMedia);
+      await mediaRepo.delete({ listing_id: listingId });
+      for (let i = 0; i < dto.media.length; i++) {
+        const m = dto.media[i];
+        await mediaRepo.save(
+          mediaRepo.create({
+            listing_id: listingId,
+            kind: m.kind,
+            asset_id: m.asset_id,
+            sort_order: m.sort_order ?? i,
+            is_required: m.kind === 'WALKTHROUGH',
+            category: m.category ?? null,
+            is_cover: m.is_cover ?? false,
+          }),
+        );
+      }
+      await manager.getRepository(StaysListing).update(listingId, {
+        last_edited_at: new Date(),
+      });
+    });
+
+    return this.getHostListingById(userId, listingId);
+  }
+
+  async replaceListingUnitTypes(
+    userId: string,
+    listingId: string,
+    dto: { unit_types: Array<{
+      kind: string;
+      name: string;
+      quantity?: number;
+      max_guests?: number;
+      base_price: number;
+      currency?: string;
+      pricing_unit?: string;
+      amenities?: string[];
+      details?: Record<string, unknown>;
+      sort_order?: number;
+      is_active?: boolean;
+    }> },
+  ) {
+    const listing = await this.requireOwnedListing(userId, listingId);
+    if (!EDITABLE_STATUSES.includes(listing.status)) {
+      throw new BadRequestException(
+        'Unit types cannot be changed in the current listing status.',
+      );
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const unitRepo = manager.getRepository(StaysListingUnitType);
+      await unitRepo.delete({ listing_id: listingId });
+      for (let i = 0; i < dto.unit_types.length; i++) {
+        const u = dto.unit_types[i];
+        await unitRepo.save(
+          unitRepo.create({
+            listing_id: listingId,
+            kind: u.kind as StaysListingUnitType['kind'],
             name: u.name,
             quantity: u.quantity ?? 1,
             max_guests: u.max_guests ?? 2,
-            bed_config: u.bed_config ?? [],
-            size_sqm: u.size_sqm ?? null,
+            bed_config: [],
+            size_sqm: null,
             amenities: u.amenities ?? [],
-            pricing_unit: u.pricing_unit ?? 'NIGHT',
+            pricing_unit: (u.pricing_unit as StaysListingUnitType['pricing_unit']) ?? 'NIGHT',
             base_price: u.base_price,
             currency: u.currency ?? 'MAD',
             details: u.details ?? {},
@@ -458,30 +645,68 @@ export class HostListingsService {
           }),
         );
       }
-
-      for (let i = 0; i < dto.media.length; i++) {
-        const m = dto.media[i];
-        await this.assertOwnedListingAsset(userId, m.asset_id, m.kind);
-        const media = mediaRepo.create({
-          listing_id: listing.id,
-          kind: m.kind,
-          asset_id: m.asset_id,
-          sort_order: m.sort_order ?? i,
-          is_required: m.kind === 'WALKTHROUGH',
-          category: m.category ?? null,
-          is_cover: m.is_cover ?? false,
-        });
-        await mediaRepo.save(media);
-      }
-
-      return {
-        id: listing.id,
-        status: 'SUBMITTED',
-        message: 'Listing submitted for review. You will be notified once approved.',
-      };
+      const minPrice =
+        dto.unit_types.length > 0
+          ? Math.min(...dto.unit_types.map((x) => x.base_price))
+          : 0;
+      await manager.getRepository(StaysRatePlan).update(
+        { listing_id: listingId },
+        { base_price: minPrice },
+      );
+      await manager.getRepository(StaysListing).update(listingId, {
+        last_edited_at: new Date(),
+      });
     });
+
+    return this.getHostListingById(userId, listingId);
   }
 
+  async submitListing(userId: string, listingId: string) {
+    await this.assertCanList(userId);
+    const listing = await this.requireOwnedListing(userId, listingId, [
+      'rate_plan',
+      'rules',
+      'media',
+      'unit_types',
+      'check_in_contact',
+    ]);
+    if (listing.status !== 'DRAFT' && listing.status !== 'REJECTED') {
+      throw new BadRequestException(
+        'Only draft listings (or listings that need changes) can be submitted.',
+      );
+    }
+    if (listing.archived_at) {
+      throw new BadRequestException('This draft has been archived.');
+    }
+
+    const completion = this.completionPayload(listing);
+    const err = assertCanSubmit(completion.completion_flags);
+    if (err) throw new BadRequestException(err);
+
+    // Hotel/hostel: each unit must have price > 0
+    if (
+      roomsRequiredForType(listing.listing_type, listing.booking_model) &&
+      (listing.unit_types || []).some((u) => Number(u.base_price) <= 0)
+    ) {
+      throw new BadRequestException(
+        'Each room type needs a price greater than zero.',
+      );
+    }
+
+    listing.status = 'SUBMITTED';
+    listing.last_edited_at = new Date();
+    await this.listingRepo.save(listing);
+
+    return {
+      id: listing.id,
+      status: 'SUBMITTED' as const,
+      message:
+        'Listing submitted for review. Our team will review it within 1–2 business days.',
+      completion_percentage: completion.completion_percentage,
+    };
+  }
+
+  // --- media uploads (unchanged below) ---
   private async assertOwnedListingAsset(
     userId: string,
     assetId: string,

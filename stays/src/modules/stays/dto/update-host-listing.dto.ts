@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsArray,
   IsIn,
+  IsObject,
   ValidateNested,
   Min,
   Max,
@@ -163,4 +164,12 @@ export class UpdateHostListingDto {
   @ValidateNested()
   @Type(() => UpdateCheckInContactDto)
   check_in_contact?: UpdateCheckInContactDto;
+
+  @IsOptional()
+  @IsObject()
+  property_details?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsObject()
+  policies?: Record<string, unknown>;
 }

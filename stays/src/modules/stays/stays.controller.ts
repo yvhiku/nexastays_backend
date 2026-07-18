@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Put,
   Body,
   Param,
   Query,
@@ -47,7 +48,9 @@ import { SearchListingsDto } from './dto/search-listings.dto';
 import { ExploreListingsDto, ExploreMapDto } from './dto/explore-listings.dto';
 import { ExploreService } from './explore/explore.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
-import { CreateHostListingDto } from './dto/create-host-listing.dto';
+import { CreateDraftListingDto } from './dto/create-draft-listing.dto';
+import { ReplaceListingMediaDto } from './dto/replace-listing-media.dto';
+import { ReplaceListingUnitTypesDto } from './dto/replace-listing-unit-types.dto';
 import { UpdateHostListingDto } from './dto/update-host-listing.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
 import {
@@ -496,18 +499,58 @@ export class StaysController {
   }
 
   /**
-   * Create listing - requires approved host
+   * Create listing draft — requires approved host + listing_type
    */
   @Post('host/listings')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create listing' })
+  @ApiOperation({ summary: 'Create draft listing (type-first)' })
   async createHostListing(
     @CurrentUser() user: { userId: string },
-    @Body() body: CreateHostListingDto,
+    @Body() body: CreateDraftListingDto,
   ) {
     return this.hostListingsService.createListing(user.userId, body);
+  }
+
+  @Post('host/listings/:id/submit')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Submit draft listing for admin review' })
+  async submitHostListing(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.hostListingsService.submitListing(user.userId, id);
+  }
+
+  @Put('host/listings/:id/media')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Replace listing media (photos + walkthrough)' })
+  async replaceHostListingMedia(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ReplaceListingMediaDto,
+  ) {
+    return this.hostListingsService.replaceListingMedia(user.userId, id, body);
+  }
+
+  @Put('host/listings/:id/unit-types')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Replace listing unit / room types' })
+  async replaceHostListingUnitTypes(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ReplaceListingUnitTypesDto,
+  ) {
+    return this.hostListingsService.replaceListingUnitTypes(
+      user.userId,
+      id,
+      body,
+    );
   }
 
   /**

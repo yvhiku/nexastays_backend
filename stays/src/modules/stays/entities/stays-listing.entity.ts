@@ -106,6 +106,16 @@ export class StaysListing {
   instant_booking: boolean;
 
   @Column({
+    type: 'timestamptz',
+    name: 'last_edited_at',
+    default: () => 'NOW()',
+  })
+  last_edited_at: Date;
+
+  @Column({ type: 'timestamptz', name: 'archived_at', nullable: true })
+  archived_at: Date | null;
+
+  @Column({
     type: 'decimal',
     precision: 4,
     scale: 2,
