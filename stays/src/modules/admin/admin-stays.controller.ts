@@ -71,6 +71,11 @@ export class AdminStaysController {
     return this.adminStaysService.getOpsOverview();
   }
 
+  @Get('listing-counts')
+  getListingCounts() {
+    return this.adminStaysService.getListingCounts();
+  }
+
   @Get('listings')
   getListings(
     @Query('status') status?: string,

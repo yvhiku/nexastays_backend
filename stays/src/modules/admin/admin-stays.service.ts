@@ -618,6 +618,18 @@ export class AdminStaysService {
     };
   }
 
+  async getListingCounts() {
+    const [all, pending, approved, rejected, live, paused] = await Promise.all([
+      this.listingRepo.count(),
+      this.listingRepo.count({ where: { status: 'SUBMITTED' } }),
+      this.listingRepo.count({ where: { status: 'APPROVED' } }),
+      this.listingRepo.count({ where: { status: 'REJECTED' } }),
+      this.listingRepo.count({ where: { status: 'LIVE' } }),
+      this.listingRepo.count({ where: { status: 'PAUSED' } }),
+    ]);
+    return { all, pending, approved, rejected, live, paused };
+  }
+
   async getListings(params?: {
     status?: string;
     limit?: number;
@@ -625,7 +637,13 @@ export class AdminStaysService {
     /** oldest = queue wait time (default for pending); newest; priority reserved */
     sort?: 'oldest' | 'newest' | 'priority';
   }) {
-    const { status, limit = 50, offset = 0, sort } = params || {};
+    const rawLimit = params?.limit ?? 50;
+    const limit = Math.min(Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 50), 100);
+    const rawOffset = params?.offset ?? 0;
+    const offset = Math.max(0, Number.isFinite(rawOffset) ? rawOffset : 0);
+    const status = params?.status;
+    const sort = params?.sort;
+
     const qb = this.listingRepo
       .createQueryBuilder('l')
       .leftJoinAndSelect('l.rate_plan', 'rate_plan')
@@ -637,7 +655,7 @@ export class AdminStaysService {
       qb.andWhere('l.status = :status', { status: status.toUpperCase() });
     }
 
-    // Phase 1: oldest waiting first for review queues; leave room for priority later
+    // Explicit ORDER BY — never rely on implicit ordering
     const effectiveSort =
       sort === 'newest'
         ? 'newest'
@@ -652,7 +670,7 @@ export class AdminStaysService {
     if (effectiveSort === 'oldest') {
       qb.orderBy('l.last_edited_at', 'ASC').addOrderBy('l.created_at', 'ASC');
     } else {
-      qb.orderBy('l.created_at', 'DESC');
+      qb.orderBy('l.created_at', 'DESC').addOrderBy('l.id', 'DESC');
     }
 
     const [items, total] = await qb.getManyAndCount();
@@ -669,6 +687,10 @@ export class AdminStaysService {
         host_profile: hostByUserId.get(l.host_user_id) ?? null,
       })),
       total,
+      limit,
+      offset,
+      hasNext: offset + items.length < total,
+      hasPrevious: offset > 0,
     };
   }
 
