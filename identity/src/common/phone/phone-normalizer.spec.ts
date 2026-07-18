@@ -2,6 +2,7 @@ import {
   DEFAULT_COUNTRY_CODE,
   normalizePhoneNumber,
   normalizePhoneOrThrow,
+  phoneLookupCandidates,
   tryNormalizePhoneNumber,
   validatePhoneNumber,
 } from './phone-normalizer';
@@ -106,6 +107,20 @@ describe('phone-normalizer', () => {
   describe('DEFAULT_COUNTRY_CODE', () => {
     it('is 212 for Morocco', () => {
       expect(DEFAULT_COUNTRY_CODE).toBe('212');
+    });
+  });
+
+  describe('phoneLookupCandidates', () => {
+    it('includes Morocco legacy variants for MA numbers', () => {
+      const c = phoneLookupCandidates('+212612345678');
+      expect(c).toEqual(expect.arrayContaining(['+212612345678', '612345678', '0612345678', '212612345678']));
+    });
+
+    it('does not invent +212 variants for French numbers', () => {
+      const c = phoneLookupCandidates('+33612345678');
+      expect(c).toContain('+33612345678');
+      expect(c).toContain('33612345678');
+      expect(c.some((x) => x.startsWith('+212') || x.startsWith('212'))).toBe(false);
     });
   });
 });

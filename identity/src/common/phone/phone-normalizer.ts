@@ -1,6 +1,10 @@
 /**
  * Phone number normalization to E.164.
  * Used for identity_phone_numbers and consistent lookups across the system.
+ *
+ * Bare national digits (and leading 0) still default to Morocco (+212) — correct
+ * for local hosts. Clients that send an explicit `+` prefix are passed through
+ * as international E.164 (tourists).
  */
 
 import { BadRequestException } from '@nestjs/common';
@@ -111,28 +115,49 @@ export function normalizePhoneOrThrow(raw: string): string {
   return result.normalized!;
 }
 
+function looksLikeMorocco(raw: string, digits: string, normalized: string | null): boolean {
+  if (normalized?.startsWith('+212')) return true;
+  if (digits.startsWith('212')) return true;
+  const trimmed = raw.trim();
+  // Explicit non-MA international prefix — do not invent +212 variants
+  if (trimmed.startsWith('+') && !digits.startsWith('212')) return false;
+  if (trimmed.startsWith('00') && !digits.startsWith('00212') && !digits.startsWith('212')) {
+    return false;
+  }
+  // Bare national / leading 0 → treated as MA by normalizePhoneNumber
+  return true;
+}
+
 /**
- * All plausible stored forms for the same Moroccan (or E.164) number.
- * Used so logins with 0693211350 match DB rows stored as +212693211350 or 693211350.
+ * All plausible stored forms for the same number.
+ * Moroccan numbers also match legacy local/0/212 variants.
+ * Non-MA E.164 only matches the normalized form (and digit-only), avoiding
+ * false +212 merges from last-9 digits.
  */
 export function phoneLookupCandidates(raw: string): string[] {
   const trimmed = String(raw ?? '').trim();
   if (!trimmed) return [];
 
   const digits = trimmed.replace(/\D/g, '');
-  const local9 = digits.length >= 9 ? digits.slice(-9) : '';
   const normalized = tryNormalizePhoneNumber(trimmed);
 
   const out = new Set<string>();
   if (trimmed) out.add(trimmed);
   if (digits) out.add(digits);
-  if (local9) {
-    out.add(local9);
-    out.add(`0${local9}`);
-    out.add(`212${local9}`);
-    out.add(`+212${local9}`);
+  if (normalized) {
+    out.add(normalized);
+    out.add(normalized.slice(1));
   }
-  if (normalized) out.add(normalized);
+
+  if (looksLikeMorocco(trimmed, digits, normalized)) {
+    const local9 = digits.length >= 9 ? digits.slice(-9) : '';
+    if (local9) {
+      out.add(local9);
+      out.add(`0${local9}`);
+      out.add(`212${local9}`);
+      out.add(`+212${local9}`);
+    }
+  }
 
   return [...out];
 }
