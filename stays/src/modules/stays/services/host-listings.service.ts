@@ -442,6 +442,9 @@ export class HostListingsService {
   /** Type-first DRAFT create (no media required). */
   async createListing(userId: string, dto: CreateDraftListingDto) {
     await this.assertCanList(userId);
+    const hostProfile = await this.hostsService.getHostProfileOrNull(userId);
+    const hostName = (hostProfile?.full_name ?? '').trim();
+    const hostPhone = (hostProfile?.phone ?? '').trim();
 
     const defaultBookingModel =
       dto.listing_type === 'HOTEL'
@@ -517,8 +520,8 @@ export class HostListingsService {
       await checkInRepo.save(
         checkInRepo.create({
           listing_id: listing.id,
-          full_name: '',
-          phone_encrypted: '',
+          full_name: hostName,
+          phone_encrypted: hostPhone,
           role: 'OWNER',
           access_instructions: null,
         }),
