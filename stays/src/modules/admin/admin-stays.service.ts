@@ -146,6 +146,8 @@ export class AdminStaysService {
       yesterdayBookings,
       yesterdayReviews,
       yesterdayCancellations,
+      oldestPendingListingRow,
+      oldestPendingHostRow,
     ] = await Promise.all([
       this.listingRepo.count({ where: { status: 'LIVE' } }),
       this.hostProfileRepo.count({ where: { application_status: 'APPROVED' } }),
@@ -353,6 +355,20 @@ export class AdminStaysService {
           end: startOfDay.toISOString(),
         })
         .getCount(),
+      this.listingRepo
+        .createQueryBuilder('l')
+        .select('COALESCE(l.last_edited_at, l.created_at)', 'waiting_since')
+        .where('l.status = :status', { status: 'SUBMITTED' })
+        .orderBy('COALESCE(l.last_edited_at, l.created_at)', 'ASC')
+        .limit(1)
+        .getRawOne(),
+      this.hostProfileRepo
+        .createQueryBuilder('h')
+        .select('COALESCE(h.submitted_at, h.created_at)', 'waiting_since')
+        .where('h.application_status = :status', { status: 'PENDING' })
+        .orderBy('COALESCE(h.submitted_at, h.created_at)', 'ASC')
+        .limit(1)
+        .getRawOne(),
     ]);
 
     const avgRating = Number(avgRatingRow?.avg || 0);
@@ -408,6 +424,17 @@ export class AdminStaysService {
     const avgHoursRaw = timingApprovalRow?.avg;
     const avgDaysRaw = timingDraftRow?.avg;
 
+    const oldestListingAt = oldestPendingListingRow?.waiting_since
+      ? new Date(oldestPendingListingRow.waiting_since).toISOString()
+      : null;
+    const oldestHostAt = oldestPendingHostRow?.waiting_since
+      ? new Date(oldestPendingHostRow.waiting_since).toISOString()
+      : null;
+    const hoursSince = (iso: string | null): number | null => {
+      if (!iso) return null;
+      return Math.round(((Date.now() - new Date(iso).getTime()) / 3_600_000) * 10) / 10;
+    };
+
     return {
       snapshot: {
         liveListings,
@@ -424,6 +451,10 @@ export class AdminStaysService {
         needsChangesListings,
         failedPayouts: 0,
         urgentAlerts: 0,
+        oldestPendingListingAt: oldestListingAt,
+        oldestPendingListingHours: hoursSince(oldestListingAt),
+        oldestPendingHostApplicationAt: oldestHostAt,
+        oldestPendingHostApplicationHours: hoursSince(oldestHostAt),
       },
       healthScore: this.computeHealthScore({
         pendingListings,
