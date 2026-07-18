@@ -186,6 +186,21 @@ export class HostListingsService {
         listing.rate_plan.cleaning_fee = dto.rate_plan.cleaning_fee;
       }
       await this.ratePlanRepo.save(listing.rate_plan);
+
+      // Keep the default entire-place unit in sync so inventory price matches rate plan.
+      if (
+        dto.rate_plan.base_price != null &&
+        !roomsRequiredForType(listing.listing_type, listing.booking_model)
+      ) {
+        const units = await this.unitTypeRepo.find({
+          where: { listing_id: listing.id },
+          order: { sort_order: 'ASC' },
+        });
+        if (units.length === 1) {
+          units[0].base_price = dto.rate_plan.base_price;
+          await this.unitTypeRepo.save(units[0]);
+        }
+      }
     }
 
     if (dto.check_in_contact && listing.check_in_contact) {
@@ -269,10 +284,25 @@ export class HostListingsService {
       (m) => m.kind === 'WALKTHROUGH',
     );
     const units = listing.unit_types || [];
-    const minUnitPrice =
-      units.length > 0
-        ? Math.min(...units.map((u) => Number(u.base_price) || 0))
-        : Number(listing.rate_plan?.base_price ?? 0);
+    const roomsNeeded = roomsRequiredForType(
+      listing.listing_type,
+      listing.booking_model,
+    );
+    const ratePrice = Number(listing.rate_plan?.base_price ?? 0);
+    const unitPrices = units
+      .map((u) => Number(u.base_price) || 0)
+      .filter((n) => n > 0);
+    // Entire-place drafts keep a placeholder unit at 0 — use rate plan price.
+    // Hotels/hostels: price comes from configured unit types.
+    const effectivePrice = roomsNeeded
+      ? unitPrices.length
+        ? Math.min(...unitPrices)
+        : 0
+      : ratePrice > 0
+        ? ratePrice
+        : unitPrices.length
+          ? Math.min(...unitPrices)
+          : 0;
     const flags = computeCompletionFlags({
       listing_type: listing.listing_type,
       booking_model: listing.booking_model,
@@ -283,7 +313,7 @@ export class HostListingsService {
       geo_lng: listing.geo_lng != null ? Number(listing.geo_lng) : null,
       description: listing.description,
       max_guests: listing.rules?.max_guests ?? null,
-      base_price: minUnitPrice,
+      base_price: effectivePrice,
       photo_count: photos.length,
       has_walkthrough: hasWalkthrough,
       unit_count: units.length,
