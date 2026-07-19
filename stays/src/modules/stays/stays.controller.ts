@@ -589,6 +589,43 @@ export class StaysController {
   }
 
   /**
+   * Export host bookings as CSV (default). Unknown format → 400.
+   */
+  @Get('host/bookings/export')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Export host bookings CSV' })
+  async exportHostBookings(
+    @CurrentUser() user: { userId: string },
+    @Query('format') format: string | undefined,
+    @Query('period') period: string | undefined,
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Query('listing_id') listingId: string | undefined,
+    @Query('status') status: string | undefined,
+    @Res() res: Response,
+  ) {
+    const { csv, filename } = await this.staysService.exportHostBookingsCsv(
+      user.userId,
+      {
+        format,
+        period,
+        from,
+        to,
+        listing_id: listingId,
+        status,
+      },
+    );
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}"`,
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(csv);
+  }
+
+  /**
    * Reviews across host's listings (dashboard)
    */
   @Get('host/reviews')

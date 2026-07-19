@@ -19,6 +19,13 @@ import {
   assertMinOneNightStay,
   parseBookingDateOnly,
 } from './utils/booking-date.util';
+import { allocateBookingReference } from './utils/booking-reference.util';
+import {
+  bookingNights,
+  buildCsv,
+  formatCsvDate,
+  formatCsvTimestamp,
+} from './utils/csv.util';
 import { HostsService } from './hosts/hosts.service';
 import { StaysAvailabilityService } from './services/stays-availability.service';
 import { StaysAuditService } from './services/stays-audit.service';
@@ -596,9 +603,15 @@ export class StaysService {
         const { guestFee, hostFee, totalPaid, payoutAmount } =
           this.platformSettings.calculateFees(subtotal);
 
+        const bookingReference = await allocateBookingReference(
+          manager,
+          new Date(),
+        );
+
         const newBooking = bookingRepo.create({
           listing_id: dto.listing_id,
           guest_user_id: userId,
+          booking_reference: bookingReference,
           status: 'PAYMENT_PENDING',
           checkin_date: checkin,
           checkout_date: checkout,
@@ -800,6 +813,144 @@ export class StaysService {
     });
   }
 
+  async exportHostBookingsCsv(
+    hostUserId: string,
+    query: {
+      format?: string;
+      period?: string;
+      from?: string;
+      to?: string;
+      listing_id?: string;
+      status?: string;
+    },
+  ): Promise<{ csv: string; filename: string }> {
+    const format = (query.format || 'csv').toLowerCase();
+    if (format !== 'csv') {
+      throw new BadRequestException('Unsupported format');
+    }
+
+    const period = (query.period || 'all').toLowerCase();
+    if (!['last_30_days', 'this_year', 'all', 'custom'].includes(period)) {
+      throw new BadRequestException('Invalid period');
+    }
+
+    let fromDate: string | undefined;
+    let toDate: string | undefined;
+    const today = new Date();
+    const todayIso = formatCsvDate(today);
+
+    if (period === 'last_30_days') {
+      const from = new Date(
+        Date.UTC(
+          today.getUTCFullYear(),
+          today.getUTCMonth(),
+          today.getUTCDate() - 29,
+        ),
+      );
+      fromDate = formatCsvDate(from);
+      toDate = todayIso;
+    } else if (period === 'this_year') {
+      fromDate = `${today.getUTCFullYear()}-01-01`;
+      toDate = todayIso;
+    } else if (period === 'custom') {
+      if (!query.from || !query.to) {
+        throw new BadRequestException(
+          'Custom period requires from and to (YYYY-MM-DD)',
+        );
+      }
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(query.from) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(query.to)
+      ) {
+        throw new BadRequestException('from and to must be YYYY-MM-DD');
+      }
+      if (query.from > query.to) {
+        throw new BadRequestException('from must be on or before to');
+      }
+      fromDate = query.from;
+      toDate = query.to;
+    }
+
+    const qb = this.bookingRepo
+      .createQueryBuilder('b')
+      .innerJoinAndSelect('b.listing', 'listing')
+      .leftJoinAndSelect('b.occupants', 'occupants')
+      .where('listing.host_user_id = :hostUserId', { hostUserId });
+
+    if (fromDate) {
+      qb.andWhere('b.checkin_date >= :fromDate', { fromDate });
+    }
+    if (toDate) {
+      qb.andWhere('b.checkin_date <= :toDate', { toDate });
+    }
+    if (query.listing_id) {
+      qb.andWhere('b.listing_id = :listingId', { listingId: query.listing_id });
+    }
+    if (query.status) {
+      qb.andWhere('b.status = :status', { status: query.status });
+    }
+
+    qb.orderBy('b.created_at', 'DESC');
+    const bookings = await qb.getMany();
+
+    const headers = [
+      'Booking Reference',
+      'Internal ID',
+      'Guest Name',
+      'Listing',
+      'City',
+      'Check-in',
+      'Check-out',
+      'Nights',
+      'Guests',
+      'Status',
+      'Currency',
+      'Guest Total',
+      'Platform Commission',
+      'Host Payout',
+      'Created At',
+      'Completed At',
+    ];
+
+    const rows = bookings.map((b) => {
+      const hostFee = Number(b.host_fee ?? 0);
+      const subtotal = Number(b.total_subtotal ?? 0);
+      const payout =
+        b.payout_amount != null
+          ? Number(b.payout_amount)
+          : Math.max(0, subtotal - hostFee);
+      const guestTotal = b.total_paid != null ? Number(b.total_paid) : '';
+
+      return [
+        b.booking_reference ?? '',
+        b.id,
+        this.resolveGuestDisplayName(b) ?? '',
+        b.listing?.title ?? '',
+        b.listing?.city ?? '',
+        formatCsvDate(b.checkin_date),
+        formatCsvDate(b.checkout_date),
+        bookingNights(b.checkin_date, b.checkout_date),
+        b.guest_count,
+        b.status,
+        b.currency,
+        guestTotal,
+        hostFee,
+        payout,
+        formatCsvTimestamp(b.created_at),
+        formatCsvTimestamp(b.completed_at),
+      ];
+    });
+
+    let filename = 'nexa-bookings-all.csv';
+    if (period === 'last_30_days') filename = 'nexa-bookings-last-30-days.csv';
+    else if (period === 'this_year') filename = 'nexa-bookings-this-year.csv';
+    else if (period === 'custom' && fromDate && toDate) {
+      filename = `nexa-bookings-${fromDate}-to-${toDate}.csv`;
+    }
+
+    return { csv: buildCsv(headers, rows), filename };
+  }
+
   private resolveGuestDisplayName(booking: StaysBooking): string | null {
     const occupants = booking.occupants ?? [];
     if (occupants.length > 0) {
@@ -852,6 +1003,7 @@ export class StaysService {
 
     return {
       id: booking.id,
+      booking_reference: booking.booking_reference ?? null,
       listing_id: booking.listing_id,
       status: booking.status,
       booking_lifecycle,

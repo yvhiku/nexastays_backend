@@ -16,6 +16,10 @@ export class StaysBooking {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  /** Human-friendly reference, e.g. NST-2026-000184 */
+  @Column({ type: 'varchar', length: 32, name: 'booking_reference', unique: true })
+  booking_reference: string;
+
   @Column({ type: 'uuid', name: 'listing_id' })
   listing_id: string;
 
