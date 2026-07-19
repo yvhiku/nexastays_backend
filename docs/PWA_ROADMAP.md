@@ -6,57 +6,46 @@ Installable Progressive Web App and mobile shell for [`nexastays_web`](../nexast
 
 | Phase | Focus | Status |
 | --- | --- | --- |
-| 1 | PWA core (manifest, SW, install, offline, update banner) | **Done** |
-| 2 | Mobile shell (4-tab bottom nav, safe areas, slim top bar) | **Done** |
+| 1 | PWA core + installable polish (Sprint 1 B+) | **Done — launch-complete** |
+| 2 | Mobile shell (4-tab bottom nav, safe areas) | **Done** |
+| Sprint 2 | Interaction quality (skeletons, transitions, bottom sheets, PTR, Lighthouse 95+) | Deferred |
 | 3 | Search redesign + install funnel analytics | Deferred |
 | 4 | Explore map | Deferred |
-| 5 | Bottom sheets | Deferred |
-| 6 | Offline enhancements | Deferred |
+| 5 | Bottom sheets | Deferred (Sprint 2) |
+| 6 | Offline enhancements (saved trips) | Deferred |
 | 7 | Push notifications | Deferred |
-| 8 | Share + shortcuts (partial) | Shortcuts + share shipped; more later |
-| 9 | Performance budget enforcement | Documented now; CI gates later |
+| 8 | Share + shortcuts | Done |
+| 9 | Performance budget enforcement | Documented; CI later |
 | 10 | WebAuthn | Deferred |
 
-## Phase 1 — shipped
+## Sprint 1 B+ — shipped
 
-- `app/manifest.ts`: `start_url: "/"`, Nexa surface theme, dedicated N icons + maskable, shortcuts, screenshots
-- `@ducanh2912/next-pwa`: layered caches (shell / HTML NetworkFirst / fonts CacheFirst / images SWR / API GET NetworkFirst)
-- Premium `public/offline.html` with recently viewed from `localStorage`
-- Platform-specific `InstallAppPrompt`:
-  - **iOS Safari:** Share → Add to Home Screen (no fake Install button)
-  - **Android/Chromium:** only when `beforeinstallprompt` is available → benefit-led Install App → native dialog
-  - Eligibility: ≥2 listing views **or** wishlist **or** booking completed **or** host dashboard **or** return visit (not idle 45s)
-  - `appinstalled` success toast; Profile **App** row to install later after dismiss
-- `SwUpdateBanner` when a new service worker is waiting
+- Value-only install triggers (no 45s timer): 2nd listing, wishlist, booking, return visit; host listing submit, host approved, dashboard 3+
+- Contextual install copy; Android Install App / iOS Show me how + illustration
+- `dismissed_until` 30 days; install = never again
+- One-time standalone welcome screen
+- Premium update banner (Update Now / Dismiss)
+- Offline: No internet + recently viewed + Retry + Browse recently viewed
+- Adaptive splash 500–1200ms (standalone, once per open)
+- Icons: 16/32 favicon, 180 apple, 192/512, maskable, monochrome
+- Three intentional screenshots (explore / listing / host)
+- Manifest: description, categories, portrait, `start_url: "/"`
 
-## Phase 2 — shipped
+## Sprint 2 — post-launch UX
 
-- Guest tabs: Explore · Wishlist · Trips · Profile
-- Host tabs: Dashboard · Bookings · Listings · Profile (Earnings stay inside Dashboard)
-- Safe-area insets top + bottom; mobile top bar: logo · notifications stub · profile
+- Skeleton loading
+- Page transitions
+- Bottom sheets (filters / guests / dates)
+- Pull-to-refresh
+- Search improvements
+- Lighthouse 95+ (Performance / A11y / SEO / Best Practices)
 
-## Also shipped
+## Future
 
-- Recently viewed (localStorage, max 20) on home + offline browse
-- Listing share via `navigator.share()` with copy-link fallback
-
-## Phase 3 — deferred (install analytics)
-
-Track install conversion later:
-
-- `install_prompt_shown`
-- `install_clicked`
-- `install_accepted`
-- `install_dismissed`
-- `app_installed`
-
-## Out of scope (now)
-
-Push, WebAuthn, QR, pull-to-refresh, search bottom sheets, Explore map overhaul, Lighthouse CI fail gates, Flutter, fifth host Earnings tab.
+- Restore last-visited page on open (not search-first)
+- Install funnel analytics: `install_prompt_shown`, `install_clicked`, `install_accepted`, `install_dismissed`, `app_installed`
 
 ## Performance budget (enforce later)
-
-Documented targets for Phase 9:
 
 | Metric | Budget |
 | --- | --- |
@@ -65,13 +54,3 @@ Documented targets for Phase 9:
 | CLS | < 0.1 |
 | INP | < 200 ms |
 | Images | WebP/AVIF + lazy load |
-
-## Verify checklist
-
-- Install from `/` lands correct locale via middleware
-- iOS: instructional tip only; Android: Install App only when BIP fires
-- Offline: premium copy + recently viewed
-- Profile App: Install later after dismiss; Installed after install
-- Guest 4 tabs / Host 4 tabs; earnings only on dashboard
-- Safe-area top + bottom on notched iPhones
-- Share → native sheet or copy fallback
