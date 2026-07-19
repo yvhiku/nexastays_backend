@@ -18,6 +18,9 @@ import {
   StaysReviewMedia,
   StaysHostProfile,
   StaysAvailabilityBlock,
+  StaysExternalCalendar,
+  StaysExternalCalendarEvent,
+  StaysExternalCalendarSyncLog,
   StaysPaymentIntent,
   StaysLedgerEntry,
   StaysAuditLog,
@@ -30,6 +33,8 @@ import { HostDashboardService } from './services/host-dashboard.service';
 import { StaysReviewsService } from './services/stays-reviews.service';
 import { BookingLifecycleService } from './services/booking-lifecycle.service';
 import { BookingLifecycleSchedulerService } from './services/booking-lifecycle-scheduler.service';
+import { CalendarSyncService } from './services/calendar-sync.service';
+import { CalendarSyncSchedulerService } from './services/calendar-sync-scheduler.service';
 import { ReviewAggregateService } from './reviews/review-aggregate.service';
 import { DomainEventsModule } from '../../common/events/domain-events.module';
 
@@ -49,6 +54,9 @@ import { DomainEventsModule } from '../../common/events/domain-events.module';
       StaysReviewMedia,
       StaysHostProfile,
       StaysAvailabilityBlock,
+      StaysExternalCalendar,
+      StaysExternalCalendarEvent,
+      StaysExternalCalendarSyncLog,
       StaysPaymentIntent,
       StaysLedgerEntry,
       StaysAuditLog,
@@ -68,12 +76,15 @@ import { DomainEventsModule } from '../../common/events/domain-events.module';
     HostDashboardService,
     BookingLifecycleService,
     BookingLifecycleSchedulerService,
+    CalendarSyncService,
+    CalendarSyncSchedulerService,
   ],
   exports: [
     StaysService,
     StaysReviewsService,
     StaysAvailabilityService,
     ExploreService,
+    CalendarSyncService,
   ],
 })
 export class StaysModule {}

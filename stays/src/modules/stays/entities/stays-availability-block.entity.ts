@@ -29,7 +29,10 @@ export class StaysAvailabilityBlock {
   is_blocked: boolean;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
-  source: 'HOST' | 'ADMIN' | 'BOOKING' | null;
+  source: 'HOST' | 'ADMIN' | 'BOOKING' | 'ICAL' | null;
+
+  @Column({ type: 'uuid', name: 'external_calendar_id', nullable: true })
+  external_calendar_id: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;

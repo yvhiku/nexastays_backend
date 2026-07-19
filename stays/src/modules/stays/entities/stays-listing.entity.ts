@@ -142,6 +142,10 @@ export class StaysListing {
   @Column({ type: 'int', name: 'ratings_5', default: 0 })
   ratings_5: number;
 
+  /** Opaque token for public ICS export URL — never derived from listing id */
+  @Column({ type: 'uuid', name: 'calendar_export_token', nullable: true })
+  calendar_export_token: string | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;
 

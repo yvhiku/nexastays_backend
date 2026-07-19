@@ -92,3 +92,36 @@ export class BookingIdParamDto {
   @IsUUID()
   id: string;
 }
+
+export class ConnectExternalCalendarDto {
+  @IsString()
+  @Matches(/^(AIRBNB|BOOKING|VRBO|GOOGLE|APPLE|DIRECT|OTHER)$/)
+  provider: 'AIRBNB' | 'BOOKING' | 'VRBO' | 'GOOGLE' | 'APPLE' | 'DIRECT' | 'OTHER';
+
+  @IsString()
+  @MaxLength(2000)
+  ics_url: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  label?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  provider_listing_reference?: string;
+}
+
+export class UpdateExternalCalendarDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  label?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^(ACTIVE|PAUSED)$/)
+  status?: 'ACTIVE' | 'PAUSED';
+}
+

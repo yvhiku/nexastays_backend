@@ -357,6 +357,7 @@ export class StaysService {
         date: parseBookingDateOnly(date),
         is_blocked: isBlocked,
         source: 'HOST' as const,
+        external_calendar_id: null,
       })),
       ['listing_id', 'date'],
     );

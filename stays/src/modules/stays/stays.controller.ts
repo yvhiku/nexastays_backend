@@ -4,6 +4,7 @@ import {
   Post,
   Patch,
   Put,
+  Delete,
   Body,
   Param,
   Query,
@@ -14,6 +15,7 @@ import {
   HttpStatus,
   Req,
   Res,
+  Header,
   Logger,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -40,6 +42,7 @@ import { AccountTypes } from '../../common/decorators/account-type.decorator';
 import { StaysCancellationService } from './services/stays-cancellation.service';
 import { StaysReviewsService } from './services/stays-reviews.service';
 import { HostDashboardService } from './services/host-dashboard.service';
+import { CalendarSyncService } from './services/calendar-sync.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -57,6 +60,8 @@ import {
   ListingAvailabilityQueryDto,
   HostApplyDto,
   HostAvailabilityBlockDto,
+  ConnectExternalCalendarDto,
+  UpdateExternalCalendarDto,
 } from './dto/input-security.dto';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { IdentitySnapshotClient } from '../../common/identity/identity-snapshot.client';
@@ -83,6 +88,7 @@ export class StaysController {
     private readonly cancellationService: StaysCancellationService,
     private readonly staysReviewsService: StaysReviewsService,
     private readonly hostDashboardService: HostDashboardService,
+    private readonly calendarSyncService: CalendarSyncService,
     private readonly platformSettings: PlatformSettingsService,
     private readonly identitySnapshotClient: IdentitySnapshotClient,
   ) {}
@@ -442,6 +448,111 @@ export class StaysController {
       body.to,
       body.is_blocked ?? true,
     );
+  }
+
+  @Get('host/listings/:id/external-calendars')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List connected external calendars for a listing' })
+  async listExternalCalendars(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.calendarSyncService.listCalendars(id, user.userId);
+  }
+
+  @Post('host/listings/:id/external-calendars')
+  @UseGuards(JwtAuthGuard)
+  @Throttle(SENSITIVE_WRITE_THROTTLE)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Connect an external ICS calendar and sync immediately' })
+  async connectExternalCalendar(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ConnectExternalCalendarDto,
+  ) {
+    return this.calendarSyncService.connectCalendar(id, user.userId, body);
+  }
+
+  @Patch('host/listings/:id/external-calendars/:calId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update external calendar label or pause/resume' })
+  async updateExternalCalendar(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('calId', ParseUUIDPipe) calId: string,
+    @Body() body: UpdateExternalCalendarDto,
+  ) {
+    return this.calendarSyncService.updateCalendar(id, calId, user.userId, body);
+  }
+
+  @Delete('host/listings/:id/external-calendars/:calId')
+  @UseGuards(JwtAuthGuard)
+  @Throttle(SENSITIVE_WRITE_THROTTLE)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Disconnect external calendar and remove ICAL blocks' })
+  async deleteExternalCalendar(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('calId', ParseUUIDPipe) calId: string,
+  ) {
+    return this.calendarSyncService.deleteCalendar(id, calId, user.userId);
+  }
+
+  @Post('host/listings/:id/external-calendars/:calId/sync')
+  @UseGuards(JwtAuthGuard)
+  @Throttle(SENSITIVE_WRITE_THROTTLE)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Manually sync external calendar (30s cooldown)' })
+  async syncExternalCalendar(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('calId', ParseUUIDPipe) calId: string,
+  ) {
+    return this.calendarSyncService.syncNow(id, calId, user.userId);
+  }
+
+  @Get('host/listings/:id/calendar-export')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get or create Nexa calendar export URL for OTAs' })
+  async getCalendarExport(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.calendarSyncService.getOrCreateExport(id, user.userId);
+  }
+
+  @Post('host/listings/:id/calendar-export/regenerate')
+  @UseGuards(JwtAuthGuard)
+  @Throttle(SENSITIVE_WRITE_THROTTLE)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Regenerate calendar export token (invalidates old URL)' })
+  async regenerateCalendarExport(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.calendarSyncService.regenerateExport(id, user.userId);
+  }
+
+  @Public()
+  @Get('calendar/:token')
+  @Throttle(PUBLIC_SEARCH_THROTTLE)
+  @ApiOperation({ summary: 'Public ICS export feed for a listing export token' })
+  async exportCalendarIcs(
+    @Param('token') token: string,
+    @Res() res: Response,
+  ) {
+    const clean = token.replace(/\.ics$/i, '');
+    const body = await this.calendarSyncService.buildExportIcs(clean);
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.send(body);
   }
 
   /**
