@@ -16,6 +16,7 @@ import { StaysAvailabilityService } from '../services/stays-availability.service
 import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import { CmiPaymentProvider } from './cmi-payment.provider';
+import { lockIntentAmount } from '../security/financial-integrity';
 
 export interface CreateIntentResult {
   id: string;
@@ -93,7 +94,12 @@ export class StaysPaymentsService {
       }
     }
 
-    const totalPaid = Number(booking.total_paid ?? 0);
+    let totalPaid: number;
+    try {
+      totalPaid = lockIntentAmount(Number(booking.total_paid ?? 0));
+    } catch {
+      throw new BadRequestException('Booking total must be greater than zero');
+    }
     const currency = booking.currency ?? 'MAD';
     const useMock = process.env.STAYS_PAYMENT_PROVIDER === 'mock';
 

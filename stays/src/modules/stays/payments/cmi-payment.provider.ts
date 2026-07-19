@@ -103,22 +103,23 @@ export class CmiPaymentProvider {
     providerIntentId?: string;
     success: boolean;
   } {
+    // Always verify HMAC — never accept unsigned callbacks (fail closed).
     const storeKey = getCmiStoreKey();
     const oid = String(body.oid ?? body.OID ?? '');
-    const amount = String(body.amount ?? body.amount ?? '');
-    const procReturnCode = String(body.ProcReturnCode ?? body.procReturnCode ?? '');
+    const amount = String(body.amount ?? '');
+    const procReturnCode = String(
+      body.ProcReturnCode ?? body.procReturnCode ?? '',
+    );
     const hashFromGateway = String(body.HASH ?? body.hash ?? '');
 
-    if (!isProductionRuntime() && !process.env.CMI_STORE_KEY) {
-      return {
-        valid: true,
-        providerIntentId: oid || undefined,
-        success: procReturnCode === '00' || body.status === 'APPROVED',
-      };
+    if (!hashFromGateway || !oid) {
+      return { valid: false, providerIntentId: oid || undefined, success: false };
     }
 
     const hashPlain = [oid, storeKey, procReturnCode, amount].join('|');
-    const expected = createHmac('sha512', storeKey).update(hashPlain).digest('base64');
+    const expected = createHmac('sha512', storeKey)
+      .update(hashPlain)
+      .digest('base64');
     const valid = expected === hashFromGateway;
     return {
       valid,

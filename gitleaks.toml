@@ -1,0 +1,26 @@
+# Gitleaks — backend repo
+title = "nexa-backend"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dev placeholders and docs"
+paths = [
+  '''(.*?)(\.env)$''',
+  '''(.*?)(\.env\.local)$''',
+  '''(.*?)(\.env\.example)$''',
+  '''(.*?)(/docs/)''',
+  '''(.*?)(node_modules)''',
+  '''(.*?)(dist)''',
+  '''(.*?)(coverage)''',
+]
+regexes = [
+  '''dev-internal-key''',
+  '''dev-secret-change-me''',
+  '''mock-store-key''',
+  '''nexa_stays_dev''',
+  '''nexa_identity_dev''',
+  '''test-store-key''',
+  '''test-pepper''',
+]

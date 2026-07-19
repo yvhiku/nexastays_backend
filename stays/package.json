@@ -19,6 +19,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "audit": "npm audit --audit-level=high",
+    "audit:osv": "npx --yes @google/osv-scanner@latest -r . || npx --yes osv-scanner@latest -r .",
+    "audit:trivy": "trivy fs --severity HIGH,CRITICAL --exit-code 1 .",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed:listings": "npx ts-node -r tsconfig-paths/register src/scripts/seed-morocco-listings.ts",
@@ -57,6 +60,7 @@
     "dotenv": "^17.3.1",
     "helmet": "^8.1.0",
     "jwks-rsa": "^3.2.0",
+    "multer": "2.2.0",
     "node-ical": "^0.26.1",
     "openai": "^6.37.0",
     "passport": "^0.7.0",
@@ -97,6 +101,7 @@
     "typescript-eslint": "^8.20.0"
   },
   "overrides": {
+    "multer": "2.2.0",
     "axios": ">=1.15.0",
     "follow-redirects": ">=1.15.12",
     "protobufjs": ">=7.5.5",

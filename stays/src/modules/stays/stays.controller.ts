@@ -21,6 +21,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { multerLimits } from '../../common/security/multer-limits';
 import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
@@ -281,7 +282,7 @@ export class StaysController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: multerLimits(5 * 1024 * 1024),
     }),
   )
   async uploadOccupantIdDocument(
@@ -715,7 +716,7 @@ export class StaysController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: multerLimits(5 * 1024 * 1024),
     }),
   )
   async uploadListingPhoto(
@@ -739,7 +740,7 @@ export class StaysController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 100 * 1024 * 1024 },
+      limits: multerLimits(100 * 1024 * 1024),
     }),
   )
   async uploadListingWalkthrough(
@@ -861,7 +862,7 @@ export class StaysController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: multerLimits(5 * 1024 * 1024),
     }),
   )
   async uploadHostDocumentFront(
@@ -885,7 +886,7 @@ export class StaysController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: multerLimits(5 * 1024 * 1024),
     }),
   )
   async uploadHostDocumentBack(
@@ -909,7 +910,7 @@ export class StaysController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: multerLimits(5 * 1024 * 1024),
     }),
   )
   async uploadHostSelfie(

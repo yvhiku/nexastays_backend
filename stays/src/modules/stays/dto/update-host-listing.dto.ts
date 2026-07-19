@@ -52,7 +52,7 @@ class UpdateRatePlanDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(1)
   @Max(10_000_000)
   base_price?: number;
 

@@ -20,6 +20,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "audit": "npm audit --audit-level=high",
+    "audit:osv": "npx --yes @google/osv-scanner@latest -r . || npx --yes osv-scanner@latest -r .",
+    "audit:trivy": "trivy fs --severity HIGH,CRITICAL --exit-code 1 .",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed:taxi": "npx ts-node -r tsconfig-paths/register src/scripts/seed-taxi-test-data.ts",
@@ -55,6 +58,7 @@
     "dotenv": "^17.3.1",
     "firebase-admin": "^13.7.0",
     "helmet": "^8.1.0",
+    "multer": "2.2.0",
     "openai": "^6.37.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -94,6 +98,8 @@
     "typescript-eslint": "^8.20.0"
   },
   "overrides": {
+    "multer": "2.2.0",
+    "websocket-driver": ">=0.7.5",
     "axios": ">=1.15.0",
     "follow-redirects": ">=1.15.12",
     "protobufjs": ">=7.5.5",

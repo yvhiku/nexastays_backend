@@ -59,7 +59,7 @@ class RatePlanDto {
   currency?: string;
 
   @IsNumber()
-  @Min(0)
+  @Min(1)
   @Max(10_000_000)
   base_price: number;
 
@@ -179,7 +179,7 @@ class UnitTypeDto {
   pricing_unit?: 'NIGHT' | 'BED_NIGHT' | 'ROOM_NIGHT';
 
   @IsNumber()
-  @Min(0)
+  @Min(1)
   @Max(10_000_000)
   base_price: number;
 

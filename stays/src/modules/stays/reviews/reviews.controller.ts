@@ -17,6 +17,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { multerLimits } from '../../../common/security/multer-limits';
 import {
   ApiTags,
   ApiOperation,
@@ -170,7 +171,7 @@ export class ReviewsController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: MAX_REVIEW_PHOTO_SIZE },
+      limits: multerLimits(MAX_REVIEW_PHOTO_SIZE),
     }),
   )
   async uploadReviewPhoto(

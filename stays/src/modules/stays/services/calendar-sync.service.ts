@@ -16,6 +16,7 @@ import { StaysAvailabilityBlock } from '../entities/stays-availability-block.ent
 import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysBooking } from '../entities/stays-booking.entity';
 import { BOOKED_STATUSES } from './stays-availability.service';
+import { validateOutboundHttpsUrl } from '../../../common/security/outbound-url';
 
 const MAX_CALENDARS_PER_LISTING = 10;
 const SYNC_COOLDOWN_MS = 30_000;
@@ -25,8 +26,6 @@ const IMPORT_PAST_DAYS = 30;
 const HORIZON_MONTHS = 18;
 const BATCH_LIMIT = 100;
 
-const PRIVATE_HOST_RE =
-  /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|0\.0\.0\.0|\[::1\])/i;
 
 export type SyncSummary = {
   calendar_id: string;
@@ -767,19 +766,7 @@ export class CalendarSyncService {
   }
 
   private validateIcsUrl(raw: string): string {
-    let url: URL;
-    try {
-      url = new URL(raw.trim());
-    } catch {
-      throw new BadRequestException('Invalid calendar URL');
-    }
-    if (url.protocol !== 'https:') {
-      throw new BadRequestException('Calendar URL must use HTTPS');
-    }
-    if (PRIVATE_HOST_RE.test(url.hostname)) {
-      throw new BadRequestException('Calendar URL host is not allowed');
-    }
-    return url.toString();
+    return validateOutboundHttpsUrl(raw);
   }
 
   private publicExportUrl(token: string): string {
