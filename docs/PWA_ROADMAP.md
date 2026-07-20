@@ -7,9 +7,10 @@ Installable Progressive Web App and mobile shell for [`nexastays_web`](../nexast
 | Phase | Focus | Status |
 | --- | --- | --- |
 | 1 | PWA core + installable polish (Sprint 1 B+) | **Done — launch-complete** |
-| 2 | Mobile shell (4-tab bottom nav, safe areas) | **Done** |
-| Sprint 2 | Interaction quality (skeletons, transitions, bottom sheets, PTR, Lighthouse 95+) | Deferred |
-| 3 | Search redesign + install funnel analytics | Deferred |
+| 2 | Mobile shell (4-tab bottom nav, safe areas) | **Done** (superseded by floating glass below) |
+| Sprint 1 nav + Save | Floating glass nav, Search FAB sheet, Saved rename, premium Save UX | **Done** |
+| Sprint 2 | Rich search sheet + **Saved Collections** + interaction quality | Deferred |
+| 3 | Search redesign + install funnel analytics | Deferred (partially in Sprint 2) |
 | 4 | Explore map | Deferred |
 | 5 | Bottom sheets | Deferred (Sprint 2) |
 | 6 | Offline enhancements (saved trips) | Deferred |
@@ -31,13 +32,35 @@ Installable Progressive Web App and mobile shell for [`nexastays_web`](../nexast
 - Three intentional screenshots (explore / listing / host)
 - Manifest: description, categories, portrait, `start_url: "/"`
 
+## Sprint 1 — premium mobile nav + Save (shipped)
+
+**Guest nav:** Explore · Saved · Search (center FAB) · Trips · Profile — floating glass chrome (`rounded-[28px]`, blur, soft shadow).
+
+**Host nav:** Dashboard · Bookings · Listings · Profile — same chrome, no Search FAB.
+
+**Search FAB:** Opens a minimal sheet wrapping existing `SearchBar` → `/listings?...`. Recents / popular / recently viewed = Sprint 2.
+
+**Saved (renamed from Wishlist):** Bookmark metaphor; copy in en/fr/ar; manifest shortcut **Saved**; URL remains `/saved-listings`.
+
+**Premium Save UX:**
+
+- Bookmark fill/pop animation on save
+- First save ever: onboarding bottom sheet (listing preview + Browse Saved / Continue exploring)
+- Every save: toast “Saved · View Saved →” (~2s)
+- Once at 3+ saves: “You’re building your collection · See Saved →”
+- Unsave: “Removed · Undo” (~4s)
+- Empty Saved page: bookmark + travel copy + Explore CTA
+
+**Collections** (named lists) = Sprint 2 — Saved is designed to grow later.
+
 ## Sprint 2 — post-launch UX
 
+- Rich mobile search sheet (recents / popular / recently viewed)
+- **Saved Collections** (named lists)
 - Skeleton loading
 - Page transitions
 - Bottom sheets (filters / guests / dates)
 - Pull-to-refresh
-- Search improvements
 - Lighthouse 95+ (Performance / A11y / SEO / Best Practices)
 
 ## Future
