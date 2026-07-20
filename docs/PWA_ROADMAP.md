@@ -9,7 +9,8 @@ Installable Progressive Web App and mobile shell for [`nexastays_web`](../nexast
 | 1 | PWA core + installable polish (Sprint 1 B+) | **Done — launch-complete** |
 | 2 | Mobile shell (4-tab bottom nav, safe areas) | **Done** (superseded by floating glass below) |
 | Sprint 1 nav + Save | Floating glass nav, Search FAB sheet, Saved rename, premium Save UX | **Done** |
-| Sprint 2 | Rich search sheet + **Saved Collections** + interaction quality | Deferred |
+| Sprint 1 Product Guidance | Guest discovery engine (Welcome → Search → Save → Trips + Install queue) | **Done** |
+| Sprint 2 | Rich search sheet + **Saved Collections** + host guidance + interaction quality | Deferred |
 | 3 | Search redesign + install funnel analytics | Deferred (partially in Sprint 2) |
 | 4 | Explore map | Deferred |
 | 5 | Bottom sheets | Deferred (Sprint 2) |
@@ -45,18 +46,27 @@ Installable Progressive Web App and mobile shell for [`nexastays_web`](../nexast
 **Premium Save UX:**
 
 - Bookmark fill/pop animation on save
-- First save ever: onboarding bottom sheet (listing preview + Browse Saved / Continue exploring)
-- Every save: toast “Saved · View Saved →” (~2s)
+- First save: Product Guidance celebration (`save.png`) → Saved tab spotlight (replaces old sheet)
+- Every later save: toast “Saved · View Saved →” (~2s)
 - Once at 3+ saves: “You’re building your collection · See Saved →”
 - Unsave: “Removed · Undo” (~4s)
 - Empty Saved page: bookmark + travel copy + Explore CTA
 
-**Collections** (named lists) = Sprint 2 — Saved is designed to grow later.
+**Collections** (named lists) = Sprint 2.
+
+## Sprint 1 — Product Guidance (shipped)
+
+Unified `ProductGuidanceProvider` queue (never two at once; CRITICAL bypasses 30s cooldown).
+
+Guest journey: Splash → Home → 700ms → Welcome → Search FAB spotlight → (explore) → first Save celebration → Saved spotlight → booking celebration → Trips spotlight → Install (eligibility) in same queue.
+
+Host journey deferred. Search field multi-step coachmarks deferred.
 
 ## Sprint 2 — post-launch UX
 
 - Rich mobile search sheet (recents / popular / recently viewed)
 - **Saved Collections** (named lists)
+- Host Product Guidance (dashboard / calendar / pricing)
 - Skeleton loading
 - Page transitions
 - Bottom sheets (filters / guests / dates)
