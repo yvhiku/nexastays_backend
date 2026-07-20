@@ -57,12 +57,28 @@ export class StaysReviewsService {
   }
 
   async getReviewedBookingIds(bookingIds: string[]): Promise<Set<string>> {
-    if (bookingIds.length === 0) return new Set();
+    const map = await this.getReviewedBookingRatings(bookingIds);
+    return new Set(map.keys());
+  }
+
+  /** bookingId → rating for guest booking list cards */
+  async getReviewedBookingRatings(
+    bookingIds: string[],
+  ): Promise<Map<string, number>> {
+    if (bookingIds.length === 0) return new Map();
     const rows = await this.reviewRepo.find({
       where: { booking_id: In(bookingIds) },
-      select: ['booking_id'],
+      select: ['booking_id', 'rating'],
     });
-    return new Set(rows.map((r) => r.booking_id));
+    return new Map(rows.map((r) => [r.booking_id, Number(r.rating)]));
+  }
+
+  async getReviewRatingForBooking(bookingId: string): Promise<number | null> {
+    const row = await this.reviewRepo.findOne({
+      where: { booking_id: bookingId },
+      select: ['rating'],
+    });
+    return row ? Number(row.rating) : null;
   }
 
   async getReviewByBookingId(bookingId: string, guestUserId?: string) {

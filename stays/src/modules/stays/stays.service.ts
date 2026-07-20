@@ -721,6 +721,7 @@ export class StaysService {
         guest_name: this.resolveGuestDisplayName(booking),
         guest_phone: this.resolveGuestPhone(booking),
         can_review: false,
+        review_status: 'NONE' as const,
         listing: base.listing
           ? {
               ...base.listing,
@@ -736,16 +737,28 @@ export class StaysService {
 
   private async lifecycleExtrasForBooking(
     booking: StaysBooking,
-  ): Promise<{ paymentFailed?: boolean; has_reviewed?: boolean }> {
-    const has_reviewed = await this.reviewsService.hasReviewForBooking(booking.id);
+  ): Promise<{
+    paymentFailed?: boolean;
+    has_reviewed?: boolean;
+    review_rating?: number;
+  }> {
+    const rating = await this.reviewsService.getReviewRatingForBooking(booking.id);
+    const has_reviewed = rating != null;
     if (booking.status !== 'PAYMENT_PENDING' && booking.status !== 'INITIATED') {
-      return { has_reviewed };
+      return {
+        has_reviewed,
+        review_rating: rating ?? undefined,
+      };
     }
     const latest = await this.paymentIntentRepo.findOne({
       where: { booking_id: booking.id },
       order: { created_at: 'DESC' },
     });
-    return { paymentFailed: latest?.status === 'FAILED', has_reviewed };
+    return {
+      paymentFailed: latest?.status === 'FAILED',
+      has_reviewed,
+      review_rating: rating ?? undefined,
+    };
   }
 
   async getGuestBookings(guestUserId: string) {
@@ -771,7 +784,7 @@ export class StaysService {
       }
     }
 
-    const reviewedIds = await this.reviewsService.getReviewedBookingIds(
+    const reviewedRatings = await this.reviewsService.getReviewedBookingRatings(
       bookings.map((b) => b.id),
     );
 
@@ -782,7 +795,8 @@ export class StaysService {
         false,
         {
           paymentFailed: failedIntentBookingIds.has(b.id),
-          has_reviewed: reviewedIds.has(b.id),
+          has_reviewed: reviewedRatings.has(b.id),
+          review_rating: reviewedRatings.get(b.id),
         },
       ),
     );
@@ -978,7 +992,11 @@ export class StaysService {
     booking: StaysBooking,
     revealContact = false,
     includeOccupants = false,
-    extras: { paymentFailed?: boolean; has_reviewed?: boolean } = {},
+    extras: {
+      paymentFailed?: boolean;
+      has_reviewed?: boolean;
+      review_rating?: number;
+    } = {},
     hostView = false,
   ) {
     const listing = booking.listing as StaysListing & {
@@ -1000,6 +1018,28 @@ export class StaysService {
       booking.status === 'PAYMENT_PENDING' || booking.status === 'INITIATED'
         ? this.lifecycleService.getPaymentExpiresAt(booking.created_at).toISOString()
         : null;
+
+    const ownListing =
+      (listing as StaysListing | undefined)?.host_user_id ===
+      booking.guest_user_id;
+    const can_review =
+      !hostView &&
+      this.lifecycleService.canReview(booking, lifecycleCtx) &&
+      !extras.has_reviewed;
+    const review_blocked_reason =
+      !hostView &&
+      !extras.has_reviewed &&
+      booking_lifecycle === 'COMPLETED' &&
+      ownListing
+        ? ('OWN_LISTING' as const)
+        : undefined;
+
+    let review_status: 'NONE' | 'ELIGIBLE' | 'REVIEWED' | 'BLOCKED' = 'NONE';
+    if (!hostView && booking_lifecycle === 'COMPLETED') {
+      if (extras.has_reviewed) review_status = 'REVIEWED';
+      else if (can_review) review_status = 'ELIGIBLE';
+      else review_status = 'BLOCKED';
+    }
 
     return {
       id: booking.id,
@@ -1026,20 +1066,16 @@ export class StaysService {
       completed_at: booking.completed_at,
       payment_expires_at,
       payment_failed: !!extras.paymentFailed,
-      can_review:
-        this.lifecycleService.canReview(booking, lifecycleCtx) &&
-        !extras.has_reviewed,
-      review_blocked_reason:
-        !extras.has_reviewed &&
-        this.lifecycleService.computeLifecycle(booking, lifecycleCtx) ===
-          'COMPLETED' &&
-        (listing as StaysListing | undefined)?.host_user_id ===
-          booking.guest_user_id
-          ? ('OWN_LISTING' as const)
-          : undefined,
+      can_review,
+      review_blocked_reason,
       can_complain: this.lifecycleService.canComplain(booking, lifecycleCtx),
       can_cancel: this.lifecycleService.canCancel(booking, lifecycleCtx),
       has_reviewed: !!extras.has_reviewed,
+      review_status,
+      review_rating:
+        extras.has_reviewed && extras.review_rating != null
+          ? extras.review_rating
+          : undefined,
       listing: listing
         ? {
             id: listing.id,

@@ -108,6 +108,11 @@ export class BookingLifecycleService {
     return 'CANCELLED';
   }
 
+  /**
+   * Guest may leave a review after checkout (COMPLETED), unless reviewing own listing.
+   * Follow-on (not implemented): schedule 24h + 3-day “How was your stay?” reminders,
+   * then stop — email/in-app once the notification stack exists.
+   */
   canReview(booking: StaysBooking, ctx: BookingLifecycleContext = {}): boolean {
     if (this.computeLifecycle(booking, ctx) !== 'COMPLETED') {
       return false;
