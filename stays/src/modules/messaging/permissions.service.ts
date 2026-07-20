@@ -20,6 +20,10 @@ export class MessagingPermissionsService {
       conversation.messaging_state === 'LOCKED';
     const isReadOnly = readOnlyState || blocked;
 
+    const notificationLevel = isGuest
+      ? conversation.notification_level_guest
+      : conversation.notification_level_host;
+
     return {
       canSend: !isReadOnly && !blocked,
       canUpload: false,
@@ -30,6 +34,7 @@ export class MessagingPermissionsService {
       isReadOnly,
       canArchive: true,
       canDelete: true,
+      notificationLevel,
     };
   }
 
@@ -44,6 +49,7 @@ export class MessagingPermissionsService {
       isReadOnly: true,
       canArchive: false,
       canDelete: false,
+      notificationLevel: 'ALL',
     };
   }
 

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 import { StaysMessagingOutbox } from './entities/stays-messaging-outbox.entity';
 import { DomainEventsService } from '../../common/events/domain-events.service';
 
@@ -21,17 +21,8 @@ export class MessagingOutboxWorker {
     if (this.processing) return;
     this.processing = true;
     try {
-      const rows = await this.outboxRepo.find({
-        where: [
-          { status: 'PENDING', next_retry_at: LessThanOrEqual(new Date()) },
-          { status: 'FAILED', next_retry_at: LessThanOrEqual(new Date()) },
-        ],
-        order: { created_at: 'ASC' },
-        take: 20,
-      });
-
+      const rows = await this.claimPendingRows(20);
       for (const row of rows) {
-        await this.outboxRepo.update(row.id, { status: 'PROCESSING' });
         try {
           await this.domainEvents.publish(
             row.event_type as Parameters<DomainEventsService['publish']>[0],
@@ -56,5 +47,24 @@ export class MessagingOutboxWorker {
     } finally {
       this.processing = false;
     }
+  }
+
+  /** Atomically claim rows with SKIP LOCKED for multi-instance safety. */
+  async claimPendingRows(limit: number): Promise<StaysMessagingOutbox[]> {
+    const raw = await this.outboxRepo.manager.query(
+      `UPDATE stays_messaging_outbox
+       SET status = 'PROCESSING'
+       WHERE id IN (
+         SELECT id FROM stays_messaging_outbox
+         WHERE status IN ('PENDING', 'FAILED')
+           AND next_retry_at <= NOW()
+         ORDER BY created_at ASC
+         LIMIT $1
+         FOR UPDATE SKIP LOCKED
+       )
+       RETURNING *`,
+      [limit],
+    );
+    return raw as StaysMessagingOutbox[];
   }
 }

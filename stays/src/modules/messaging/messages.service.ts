@@ -115,19 +115,29 @@ export class MessagesService {
       const recipientId =
         userId === conv.guest_user_id ? conv.host_user_id : conv.guest_user_id;
 
+      const snapshot = conv.reservation_snapshot as {
+        hostDisplayName?: string | null;
+        guestDisplayName?: string | null;
+        listingTitle?: string;
+      };
+      const senderName =
+        userId === conv.guest_user_id
+          ? snapshot.guestDisplayName ?? 'Guest'
+          : snapshot.hostDisplayName ?? 'Host';
+
       if (recipientId) {
         await this.outbox.enqueue(manager, EVENTS.MESSAGE_RECEIVED, {
           messageId: message.id,
           conversationId: conv.id,
           recipientUserId: recipientId,
           senderUserId: userId,
+          senderName,
           preview: trimmed.slice(0, 120),
           bookingId: conv.booking_id,
           conversationVersion: refreshed?.conversation_version ?? conv.conversation_version + 1,
           lastMessageId: message.id,
           lastMessageSequence: Number(message.conversation_sequence),
-          listingTitle:
-            (conv.reservation_snapshot as { listingTitle?: string })?.listingTitle ?? '',
+          listingTitle: snapshot.listingTitle ?? '',
         });
       }
 
@@ -155,10 +165,11 @@ export class MessagesService {
     return this.toDto(saved, userId);
   }
 
-  async markRead(conversationId: string, userId: string): Promise<void> {
+  async markRead(conversationId: string, userId: string): Promise<{ conversationVersion: number }> {
     const conv = await this.getParticipantConversation(conversationId, userId);
     const isGuest = conv.guest_user_id === userId;
     const now = new Date();
+    const nextVersion = conv.conversation_version + 1;
 
     const lastMsg = conv.last_message_id
       ? await this.messageRepo.findOne({ where: { id: conv.last_message_id } })
@@ -173,14 +184,14 @@ export class MessagesService {
           guest_last_read_at: now,
           guest_last_read_message_id: lastMsg?.id ?? null,
           unread_guest: 0,
-          conversation_version: conv.conversation_version + 1,
+          conversation_version: nextVersion,
         });
       } else {
         await convRepo.update(conv.id, {
           host_last_read_at: now,
           host_last_read_message_id: lastMsg?.id ?? null,
           unread_host: 0,
-          conversation_version: conv.conversation_version + 1,
+          conversation_version: nextVersion,
         });
       }
 
@@ -199,6 +210,8 @@ export class MessagesService {
         readerUserId: userId,
       });
     });
+
+    return { conversationVersion: nextVersion };
   }
 
   private async getParticipantConversation(

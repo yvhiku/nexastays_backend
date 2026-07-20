@@ -94,7 +94,7 @@ export class MessagingController {
   @Post('conversations/:id/read')
   @ApiOperation({ summary: 'Mark conversation as read' })
   markRead(@Req() req: AuthRequest, @Param('id', ParseUUIDPipe) id: string) {
-    return this.messages.markRead(id, req.user.sub).then(() => ({ ok: true }));
+    return this.messages.markRead(id, req.user.sub);
   }
 
   @Patch('conversations/:id/visibility')
@@ -104,9 +104,7 @@ export class MessagingController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateVisibilityDto,
   ) {
-    return this.conversations
-      .updateVisibility(id, req.user.sub, dto.action)
-      .then(() => ({ ok: true }));
+    return this.conversations.updateVisibility(id, req.user.sub, dto.action);
   }
 
   @Post('conversations/:id/report')

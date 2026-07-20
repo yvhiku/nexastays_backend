@@ -62,7 +62,16 @@ export class ConversationsService {
             .orWhere("LOWER(c.reservation_snapshot->>'listingTitle') LIKE :term", { term })
             .orWhere("LOWER(c.reservation_snapshot->>'hostDisplayName') LIKE :term", { term })
             .orWhere("LOWER(c.reservation_snapshot->>'guestDisplayName') LIKE :term", { term })
-            .orWhere("LOWER(c.reservation_snapshot->>'bookingReference') LIKE :term", { term });
+            .orWhere("LOWER(c.reservation_snapshot->>'bookingReference') LIKE :term", { term })
+            .orWhere(
+              `EXISTS (
+                SELECT 1 FROM stays_messages sm
+                WHERE sm.conversation_id = c.id
+                  AND sm.deleted_at IS NULL
+                  AND sm.type = 'TEXT'
+                  AND LOWER(sm.body) LIKE :term
+              )`,
+            );
         }),
       );
     }
@@ -150,7 +159,7 @@ export class ConversationsService {
     conversationId: string,
     userId: string,
     action: 'archive' | 'delete' | 'restore',
-  ): Promise<void> {
+  ): Promise<{ conversationVersion: number }> {
     const conv = await this.convRepo.findOne({ where: { id: conversationId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) {
       throw new NotFoundException('Conversation not found');
@@ -165,11 +174,13 @@ export class ConversationsService {
     if (action === 'archive') value = 'ARCHIVED';
     if (action === 'delete') value = 'DELETED';
 
+    const nextVersion = conv.conversation_version + 1;
     await this.convRepo.update(conv.id, {
       [field]: value,
-      conversation_version: conv.conversation_version + 1,
+      conversation_version: nextVersion,
     });
     await this.audit.log(`visibility_${action}`, conv.id, userId, { field, value });
+    return { conversationVersion: nextVersion };
   }
 
   async report(conversationId: string, userId: string, reason?: string): Promise<void> {

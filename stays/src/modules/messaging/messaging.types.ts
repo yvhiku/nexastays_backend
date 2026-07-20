@@ -1,3 +1,5 @@
+export type NotificationLevel = 'ALL' | 'IMPORTANT' | 'MUTED';
+
 export interface ConversationPermissions {
   canSend: boolean;
   canUpload: boolean;
@@ -8,6 +10,8 @@ export interface ConversationPermissions {
   isReadOnly: boolean;
   canArchive: boolean;
   canDelete: boolean;
+  /** Reserved P0 — server column exists; mute is client-only until P1 sync. */
+  notificationLevel: NotificationLevel;
 }
 
 export interface ReservationSnapshot {
