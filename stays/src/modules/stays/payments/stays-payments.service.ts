@@ -297,6 +297,7 @@ export class StaysPaymentsService {
       const currency = confirmedBooking.currency ?? 'MAD';
       void this.domainEvents.publish(EVENTS.PAYMENT_SUCCEEDED, 'stays', {
         bookingId: intent.booking_id,
+        guestUserId: confirmedBooking.guest_user_id,
         provider,
         providerIntentId,
         amount: String(total),

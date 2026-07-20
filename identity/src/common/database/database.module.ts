@@ -21,6 +21,7 @@ import { PinAttempt } from '../../modules/auth/entities/pin-attempt.entity';
 import { RefreshToken } from '../../modules/auth/entities/refresh-token.entity';
 import { TrustedDevice } from '../../modules/auth/entities/trusted-device.entity';
 import { PushDeviceToken } from '../../modules/notifications/entities/push-device-token.entity';
+import { UserNotification } from '../../modules/notifications/entities/user-notification.entity';
 import { SecurityEvent } from '../../modules/security-events/entities/security-event.entity';
 import { FraudEvent } from '../../modules/fraud/entities/fraud-event.entity';
 
@@ -48,6 +49,7 @@ import { FraudEvent } from '../../modules/fraud/entities/fraud-event.entity';
         RefreshToken,
         TrustedDevice,
         PushDeviceToken,
+        UserNotification,
         SecurityEvent,
         FraudEvent,
       ],

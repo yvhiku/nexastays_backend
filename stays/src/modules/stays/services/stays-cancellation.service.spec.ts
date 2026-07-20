@@ -6,6 +6,7 @@ import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysLedgerEntry } from '../entities/stays-ledger-entry.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysAuditService } from './stays-audit.service';
+import { DomainEventsService } from '../../../common/events/domain-events.service';
 
 describe('StaysCancellationService', () => {
   let service: StaysCancellationService;
@@ -26,6 +27,7 @@ describe('StaysCancellationService', () => {
     };
   }>) => ({
     id: 'booking-1',
+    listing_id: 'listing-1',
     guest_user_id: 'guest-1',
     status: 'CONFIRMED',
     checkin_date: '2026-03-15',
@@ -70,6 +72,10 @@ describe('StaysCancellationService', () => {
         {
           provide: StaysAuditService,
           useValue: { log: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: DomainEventsService,
+          useValue: { publish: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();

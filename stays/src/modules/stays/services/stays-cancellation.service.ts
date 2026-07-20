@@ -9,6 +9,8 @@ import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysLedgerEntry } from '../entities/stays-ledger-entry.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysAuditService } from './stays-audit.service';
+import { DomainEventsService } from '../../../common/events/domain-events.service';
+import { EVENTS } from '@nexa/event-bus';
 
 type CancellationPolicy = 'FLEXIBLE' | 'MODERATE' | 'STRICT';
 
@@ -23,6 +25,7 @@ export class StaysCancellationService {
     @InjectRepository(StaysListing)
     private readonly listingRepo: Repository<StaysListing>,
     private readonly auditService: StaysAuditService,
+    private readonly domainEvents: DomainEventsService,
   ) {}
 
   async cancel(
@@ -113,6 +116,17 @@ export class StaysCancellationService {
         userAgent: auditContext?.userAgent,
       });
     });
+
+    const hostUserId = listing?.host_user_id;
+    if (hostUserId) {
+      void this.domainEvents.publish(EVENTS.BOOKING_CANCELLED, 'stays', {
+        bookingId,
+        listingId: booking.listing_id,
+        guestUserId: booking.guest_user_id,
+        hostUserId,
+        cancelledBy,
+      });
+    }
 
     const updated = await this.bookingRepo.findOne({ where: { id: bookingId } });
     return {

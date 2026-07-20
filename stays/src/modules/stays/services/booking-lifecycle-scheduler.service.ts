@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, In } from 'typeorm';
+import { Repository, LessThan, In, Between } from 'typeorm';
 import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
+import { StaysListingReview } from '../entities/stays-listing-review.entity';
 import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import {
@@ -18,6 +19,8 @@ export class BookingLifecycleSchedulerService {
   constructor(
     @InjectRepository(StaysBooking)
     private readonly bookingRepo: Repository<StaysBooking>,
+    @InjectRepository(StaysListingReview)
+    private readonly reviewRepo: Repository<StaysListingReview>,
     private readonly lifecycleService: BookingLifecycleService,
     private readonly domainEvents: DomainEventsService,
   ) {}
@@ -27,6 +30,7 @@ export class BookingLifecycleSchedulerService {
     await Promise.all([
       this.autoCompletePastStays(),
       this.expirePendingPayments(),
+      this.sendReviewReminders(),
     ]);
   }
 
@@ -109,6 +113,46 @@ export class BookingLifecycleSchedulerService {
       } catch (err) {
         this.logger.warn(
           `Failed to expire booking ${booking.id}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+  }
+
+  /** Remind guests ~24h after checkout to leave a review. */
+  private async sendReviewReminders(): Promise<void> {
+    const now = new Date();
+    const windowEnd = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const windowStart = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const startStr = windowStart.toISOString().slice(0, 10);
+    const endStr = windowEnd.toISOString().slice(0, 10);
+
+    const completed = await this.bookingRepo.find({
+      where: {
+        status: 'COMPLETED',
+        checkout_date: Between(startStr as unknown as Date, endStr as unknown as Date),
+      },
+    });
+
+    for (const booking of completed) {
+      try {
+        if (!this.lifecycleService.canReview(booking)) {
+          continue;
+        }
+        const existing = await this.reviewRepo.findOne({
+          where: { booking_id: booking.id },
+        });
+        if (existing) {
+          continue;
+        }
+        void this.domainEvents.publish(EVENTS.REVIEW_REMINDER, 'stays', {
+          bookingId: booking.id,
+          listingId: booking.listing_id,
+          guestUserId: booking.guest_user_id,
+        });
+        this.logger.log(`Review reminder queued for booking ${booking.id}`);
+      } catch (err) {
+        this.logger.warn(
+          `Failed review reminder for booking ${booking.id}: ${err instanceof Error ? err.message : err}`,
         );
       }
     }
