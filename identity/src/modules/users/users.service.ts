@@ -37,6 +37,8 @@ import { accountTypeToService } from './profile-sync-policy';
 import { roleUsesConsumerForPayout } from './role-categories';
 import PDFDocument from 'pdfkit';
 import { detectImageType } from '../compliance/image-type.util';
+import { UserNotificationsService } from '../notifications/user-notifications.service';
+import { appConfig } from '../../common/config/app.config';
 
 const PROFILE_PHOTO_DIR = 'uploads/profile';
 const PROFILE_PHOTO_MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -64,6 +66,7 @@ export class UsersService {
     private readonly identityPhoneNumbersService: IdentityPhoneNumbersService,
     private readonly profileSyncService: ProfileSyncService,
     private readonly dataSource: DataSource,
+    private readonly userNotificationsService: UserNotificationsService,
   ) {}
 
   async ensureMandatoryConsentsAccepted(userId: string): Promise<void> {
@@ -1255,5 +1258,67 @@ export class UsersService {
     }
 
     return { message: 'Account deleted successfully' };
+  }
+
+  async getHeaderState(
+    userId: string,
+    authorizationHeader?: string,
+  ): Promise<{
+    notificationCount: number;
+    inboxCount: number;
+    avatar: string | null;
+    hostMode: boolean;
+  }> {
+    const [me, notificationCount, stays] = await Promise.all([
+      this.getMe(userId),
+      this.userNotificationsService.unreadCount(userId),
+      this.fetchStaysHeaderState(authorizationHeader),
+    ]);
+
+    const profile = me as { profile_photo_url?: string | null };
+    return {
+      notificationCount,
+      inboxCount: stays.inboxCount,
+      avatar: profile.profile_photo_url ?? null,
+      hostMode: stays.hostMode,
+    };
+  }
+
+  private async fetchStaysHeaderState(authorizationHeader?: string): Promise<{
+    inboxCount: number;
+    hostMode: boolean;
+  }> {
+    if (!authorizationHeader?.startsWith('Bearer ')) {
+      return { inboxCount: 0, hostMode: false };
+    }
+    const base = appConfig.staysApiBaseUrl;
+    const headers = { Authorization: authorizationHeader };
+    const [inboxResult, hostResult] = await Promise.allSettled([
+      fetch(`${base}/messaging/conversations/unread-count`, { headers }),
+      fetch(`${base}/stays/host/me`, { headers }),
+    ]);
+
+    let inboxCount = 0;
+    let hostMode = false;
+
+    if (inboxResult.status === 'fulfilled' && inboxResult.value.ok) {
+      try {
+        const body = (await inboxResult.value.json()) as { count?: number };
+        inboxCount = body.count ?? 0;
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (hostResult.status === 'fulfilled' && hostResult.value.ok) {
+      try {
+        const body = (await hostResult.value.json()) as { is_host?: boolean };
+        hostMode = body.is_host === true;
+      } catch {
+        /* ignore */
+      }
+    }
+
+    return { inboxCount, hostMode };
   }
 }

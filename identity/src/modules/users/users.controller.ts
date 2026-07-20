@@ -142,6 +142,30 @@ export class UsersController {
     return this.usersService.getMe(user.userId);
   }
 
+  @Get('me/header')
+  @SkipThrottle()
+  @UseGuards(JwtAuthGuard, OtpSessionResolverGuard, DbCircuitBreakerGuard)
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheTTL(30)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Header badges, avatar, and host mode' })
+  @ApiResponse({ status: 200, description: 'Aggregated header state' })
+  async getHeader(@CurrentUser() user: any, @Req() req: Request) {
+    if (user?.pendingRegistration) {
+      return {
+        notificationCount: 0,
+        inboxCount: 0,
+        avatar: null,
+        hostMode: false,
+      };
+    }
+    const authHeader =
+      typeof req.headers.authorization === 'string'
+        ? req.headers.authorization
+        : undefined;
+    return this.usersService.getHeaderState(user.userId, authHeader);
+  }
+
   @Patch('profile')
   @SkipThrottle()
   @UseGuards(JwtAuthGuard, OtpSessionResolverGuard, AccountTypeGuard)

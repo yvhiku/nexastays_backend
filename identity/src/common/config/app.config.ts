@@ -36,6 +36,13 @@ export const appConfig = {
   },
   /** Body limit in bytes (JSON/urlencoded). Default 1MB. */
   bodyLimit: parseInt(process.env.BODY_LIMIT || '1048576', 10),
+  /** Stays service base URL for cross-service header aggregation. */
+  get staysApiBaseUrl(): string {
+    return (process.env.STAYS_API_BASE_URL || 'http://127.0.0.1:3002/api/v1').replace(
+      /\/$/,
+      '',
+    );
+  },
   /** Refresh token validity in seconds. Beta: 7 days. */
   refreshTokenExpiresIn: parseInt(
     process.env.REFRESH_TOKEN_EXPIRES_IN || '604800',
