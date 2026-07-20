@@ -11,6 +11,7 @@ import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysAuditService } from './stays-audit.service';
 import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
+import { MessagingStateService } from '../../messaging/messaging-state.service';
 
 type CancellationPolicy = 'FLEXIBLE' | 'MODERATE' | 'STRICT';
 
@@ -26,6 +27,7 @@ export class StaysCancellationService {
     private readonly listingRepo: Repository<StaysListing>,
     private readonly auditService: StaysAuditService,
     private readonly domainEvents: DomainEventsService,
+    private readonly messagingState: MessagingStateService,
   ) {}
 
   async cancel(
@@ -127,6 +129,8 @@ export class StaysCancellationService {
         cancelledBy,
       });
     }
+
+    void this.messagingState.syncFromBooking(bookingId);
 
     const updated = await this.bookingRepo.findOne({ where: { id: bookingId } });
     return {

@@ -15,6 +15,7 @@ import { IdentityModule } from './common/identity/identity.module';
 import { DomainEventsModule } from './common/events/domain-events.module';
 import { MediaStorageModule } from './common/media/media-storage.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
 import { PlatformSettingsModule } from './modules/platform-settings/platform-settings.module';
 import {
   THROTTLE_DEFAULT,
@@ -33,6 +34,7 @@ import {
     ThrottlerModule.forRoot([THROTTLE_SHORT, THROTTLE_DEFAULT]),
     StaysModule,
     StaysPaymentsModule,
+    MessagingModule,
     AdminModule,
   ],
   controllers: [AppController],

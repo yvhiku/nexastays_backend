@@ -7,6 +7,7 @@ import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysListingReview } from '../entities/stays-listing-review.entity';
 import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
+import { MessagingStateService } from '../../messaging/messaging-state.service';
 import {
   BookingLifecycleService,
   PAYMENT_PENDING_TTL_MINUTES,
@@ -23,6 +24,7 @@ export class BookingLifecycleSchedulerService {
     private readonly reviewRepo: Repository<StaysListingReview>,
     private readonly lifecycleService: BookingLifecycleService,
     private readonly domainEvents: DomainEventsService,
+    private readonly messagingState: MessagingStateService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -75,6 +77,8 @@ export class BookingLifecycleSchedulerService {
                 : String(booking.checkout_date),
           });
         }
+
+        void this.messagingState.syncFromBooking(booking.id);
 
         this.logger.log(`Auto-completed booking ${booking.id}`);
       } catch (err) {

@@ -1,0 +1,86 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { EntityManager } from 'typeorm';
+import { StaysBooking } from '../stays/entities/stays-booking.entity';
+import { StaysListing } from '../stays/entities/stays-listing.entity';
+import { StaysConversation } from './entities/stays-conversation.entity';
+import { MessagingOutboxService } from './outbox.service';
+import { TimelineSeederService } from './timeline-seeder.service';
+import { EVENTS } from '@nexa/event-bus';
+
+@Injectable()
+export class ConversationProvisionService {
+  private readonly logger = new Logger(ConversationProvisionService.name);
+
+  constructor(
+    private readonly timelineSeeder: TimelineSeederService,
+    private readonly outbox: MessagingOutboxService,
+  ) {}
+
+  /**
+   * Must run inside the payment success transaction.
+   */
+  async provisionWithinTransaction(
+    manager: EntityManager,
+    booking: StaysBooking,
+    listingId: string,
+    provider?: string,
+    providerIntentId?: string,
+  ): Promise<StaysConversation | null> {
+    const convRepo = manager.getRepository(StaysConversation);
+    const listingRepo = manager.getRepository(StaysListing);
+    const existing = await convRepo.findOne({ where: { booking_id: booking.id } });
+    if (existing) return existing;
+
+    const listing = await listingRepo.findOne({
+      where: { id: listingId },
+      relations: ['media'],
+    });
+    if (!listing) return null;
+
+    if (!listing.host_user_id) {
+      this.logger.warn(`No host for booking ${booking.id}; skipping conversation`);
+      return null;
+    }
+
+    const snapshot = this.timelineSeeder.buildSnapshot(booking, listing);
+    const conversation = await convRepo.save(
+      convRepo.create({
+        booking_id: booking.id,
+        type: 'BOOKING',
+        messaging_state: 'ACTIVE',
+        listing_id: listing.id,
+        host_user_id: listing.host_user_id,
+        guest_user_id: booking.guest_user_id,
+        snapshot_version: 1,
+        reservation_snapshot: snapshot as unknown as Record<string, unknown>,
+        conversation_version: 1,
+      }),
+    );
+
+    await this.timelineSeeder.seedBookingConfirmed(manager, conversation, snapshot, listing);
+
+    const total = Number(booking.total_paid ?? 0);
+    const currency = booking.currency ?? 'MAD';
+
+    await this.outbox.enqueue(manager, EVENTS.BOOKING_CONFIRMED, {
+      bookingId: booking.id,
+      listingId: listing.id,
+      hostUserId: listing.host_user_id,
+      guestUserId: booking.guest_user_id,
+      amount: String(total),
+      currency,
+      conversationId: conversation.id,
+    });
+
+    await this.outbox.enqueue(manager, EVENTS.PAYMENT_SUCCEEDED, {
+      bookingId: booking.id,
+      guestUserId: booking.guest_user_id,
+      provider: provider ?? 'payment',
+      providerIntentId: providerIntentId ?? booking.payment_intent_id ?? '',
+      amount: String(total),
+      currency,
+    });
+
+    return conversation;
+  }
+}

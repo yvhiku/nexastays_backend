@@ -37,11 +37,13 @@ import { CalendarSyncService } from './services/calendar-sync.service';
 import { CalendarSyncSchedulerService } from './services/calendar-sync-scheduler.service';
 import { ReviewAggregateService } from './reviews/review-aggregate.service';
 import { DomainEventsModule } from '../../common/events/domain-events.module';
+import { MessagingModule } from '../messaging/messaging.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     DomainEventsModule,
+    MessagingModule,
     TypeOrmModule.forFeature([
       StaysListing,
       StaysListingRules,

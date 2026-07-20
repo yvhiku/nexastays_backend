@@ -23,6 +23,13 @@ import {
   StaysListingReview,
 } from '../../modules/stays/entities';
 import { StaysPlatformSettings } from '../../modules/platform-settings/stays-platform-settings.entity';
+import {
+  StaysConversation,
+  StaysMessage,
+  StaysMessageAttachment,
+  StaysMessagingOutbox,
+  StaysMessagingAuditLog,
+} from '../../modules/messaging/entities';
 
 @Module({
   imports: [
@@ -48,6 +55,11 @@ import { StaysPlatformSettings } from '../../modules/platform-settings/stays-pla
         StaysAuditLog,
         StaysListingReview,
         StaysPlatformSettings,
+        StaysConversation,
+        StaysMessage,
+        StaysMessageAttachment,
+        StaysMessagingOutbox,
+        StaysMessagingAuditLog,
       ],
     }),
   ],

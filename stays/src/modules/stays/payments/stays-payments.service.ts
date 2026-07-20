@@ -13,10 +13,9 @@ import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysAuditService } from '../services/stays-audit.service';
 import { StaysAvailabilityService } from '../services/stays-availability.service';
-import { DomainEventsService } from '../../../common/events/domain-events.service';
-import { EVENTS } from '@nexa/event-bus';
 import { CmiPaymentProvider } from './cmi-payment.provider';
 import { lockIntentAmount } from '../security/financial-integrity';
+import { ConversationProvisionService } from '../../messaging/conversation-provision.service';
 
 export interface CreateIntentResult {
   id: string;
@@ -45,7 +44,7 @@ export class StaysPaymentsService {
     private readonly listingRepo: Repository<StaysListing>,
     private readonly auditService: StaysAuditService,
     private readonly availabilityService: StaysAvailabilityService,
-    private readonly domainEvents: DomainEventsService,
+    private readonly conversationProvision: ConversationProvisionService,
     private readonly cmiProvider: CmiPaymentProvider,
   ) {}
 
@@ -283,35 +282,15 @@ export class StaysPaymentsService {
           amount,
         },
       });
-    });
 
-    const confirmedBooking = await this.bookingRepo.findOne({
-      where: { id: intent.booking_id },
-      relations: ['listing'],
-    });
-    if (!confirmedBooking) return;
-    const listing = confirmedBooking.listing as StaysListing;
-    const hostUserId = listing?.host_user_id;
-    if (hostUserId) {
-      const total = Number(confirmedBooking.total_paid ?? 0);
-      const currency = confirmedBooking.currency ?? 'MAD';
-      void this.domainEvents.publish(EVENTS.PAYMENT_SUCCEEDED, 'stays', {
-        bookingId: intent.booking_id,
-        guestUserId: confirmedBooking.guest_user_id,
+      await this.conversationProvision.provisionWithinTransaction(
+        manager,
+        booking,
+        booking.listing_id,
         provider,
         providerIntentId,
-        amount: String(total),
-        currency,
-      });
-      void this.domainEvents.publish(EVENTS.BOOKING_CONFIRMED, 'stays', {
-        bookingId: intent.booking_id,
-        listingId: confirmedBooking.listing_id,
-        hostUserId,
-        guestUserId: confirmedBooking.guest_user_id,
-        amount: String(total),
-        currency,
-      });
-    }
+      );
+    });
   }
 
   async handleCmiCallback(body: Record<string, unknown>): Promise<void> {
