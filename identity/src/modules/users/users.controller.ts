@@ -15,6 +15,9 @@ import {
   Param,
   Req,
   Logger,
+  Query,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -52,6 +55,7 @@ import { DbCircuitBreakerGuard } from '../../common/guards/db-circuit-breaker.gu
 import { HttpCacheInterceptor } from '../../common/cache/http-cache.interceptor';
 import { CacheTTL } from '../../common/cache/cache-ttl.decorator';
 import { NotificationsService } from '../notifications/notifications.service';
+import { UserNotificationsService } from '../notifications/user-notifications.service';
 import { AuditService } from '../audit/audit.service';
 import { BotProtectionGuard } from '../../common/abuse/bot-protection.guard';
 import { ACCOUNT_CREATE_THROTTLE } from '../../common/abuse/throttle-presets';
@@ -64,6 +68,7 @@ export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
+    private readonly userNotificationsService: UserNotificationsService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -494,5 +499,47 @@ export class UsersController {
       deviceId,
     });
     return { success: true };
+  }
+
+  @Get('me/notifications')
+  @UseGuards(JwtAuthGuard, OtpSessionResolverGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'List inbox notifications (newest first, max 20)' })
+  async listNotifications(
+    @CurrentUser() user: { userId: string },
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    const items = await this.userNotificationsService.list(user.userId, limit);
+    return { data: items };
+  }
+
+  @Get('me/notifications/unread-count')
+  @UseGuards(JwtAuthGuard, OtpSessionResolverGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Unread notification count' })
+  async unreadNotificationCount(@CurrentUser() user: { userId: string }) {
+    const count = await this.userNotificationsService.unreadCount(user.userId);
+    return { data: { count } };
+  }
+
+  @Patch('me/notifications/read-all')
+  @UseGuards(JwtAuthGuard, OtpSessionResolverGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Mark all notifications as read' })
+  async markAllNotificationsRead(@CurrentUser() user: { userId: string }) {
+    const result = await this.userNotificationsService.markAllRead(user.userId);
+    return { data: result };
+  }
+
+  @Patch('me/notifications/:id/read')
+  @UseGuards(JwtAuthGuard, OtpSessionResolverGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Mark a notification as read' })
+  async markNotificationRead(
+    @CurrentUser() user: { userId: string },
+    @Param('id') id: string,
+  ) {
+    const item = await this.userNotificationsService.markRead(user.userId, id);
+    return { data: item };
   }
 }
