@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
@@ -10,7 +10,10 @@ import {
 } from './entities';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
+import { StaysHostProfile } from '../stays/entities/stays-host-profile.entity';
+import { StaysBookingOccupant } from '../stays/entities/stays-booking-occupant.entity';
 import { MessagingController } from './messaging.controller';
+import { MessagingMediaController } from './messaging-media.controller';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
 import { MessagingPermissionsService } from './permissions.service';
@@ -22,12 +25,18 @@ import { MessagingAuditService } from './audit.service';
 import { MessagingOutboxService } from './outbox.service';
 import { MessagingOutboxWorker } from './outbox.worker';
 import { MessagingLifecycleScheduler } from './messaging-lifecycle.scheduler';
+import { ParticipantPresentationService } from './participant-presentation.service';
+import { MessagingMediaService } from './messaging-media.service';
+import { ConversationPresentationService } from './conversation-presentation.service';
+import { SnapshotRepairService } from './snapshot-repair.service';
 import { DomainEventsModule } from '../../common/events/domain-events.module';
+import { StaysModule } from '../stays/stays.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     DomainEventsModule,
+    forwardRef(() => StaysModule),
     TypeOrmModule.forFeature([
       StaysConversation,
       StaysMessage,
@@ -36,9 +45,11 @@ import { DomainEventsModule } from '../../common/events/domain-events.module';
       StaysMessagingAuditLog,
       StaysBooking,
       StaysListing,
+      StaysHostProfile,
+      StaysBookingOccupant,
     ]),
   ],
-  controllers: [MessagingController],
+  controllers: [MessagingController, MessagingMediaController],
   providers: [
     ConversationsService,
     MessagesService,
@@ -51,6 +62,10 @@ import { DomainEventsModule } from '../../common/events/domain-events.module';
     MessagingOutboxService,
     MessagingOutboxWorker,
     MessagingLifecycleScheduler,
+    ParticipantPresentationService,
+    MessagingMediaService,
+    ConversationPresentationService,
+    SnapshotRepairService,
   ],
   exports: [ConversationProvisionService, MessagingStateService],
 })

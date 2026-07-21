@@ -7,9 +7,14 @@ import { MessagingPermissionsService } from './permissions.service';
 import { MessagesService } from './messages.service';
 import { MessagingAuditService } from './audit.service';
 import { ConversationProvisionService } from './conversation-provision.service';
+import { ConversationPresentationService } from './conversation-presentation.service';
+import { SnapshotRepairService } from './snapshot-repair.service';
+import { MessagingOutboxService } from './outbox.service';
+import { MESSAGING_INTERNAL_EVENTS } from './messaging-internal.events';
 import type {
-  ConversationDetail,
-  ConversationListItem,
+  ConversationDetailResponse,
+  ConversationDomain,
+  ConversationListResponse,
   ReservationSnapshot,
 } from './messaging.types';
 
@@ -24,13 +29,16 @@ export class ConversationsService {
     private readonly messagesService: MessagesService,
     private readonly audit: MessagingAuditService,
     private readonly conversationProvision: ConversationProvisionService,
+    private readonly presentation: ConversationPresentationService,
+    private readonly snapshotRepair: SnapshotRepairService,
+    private readonly outbox: MessagingOutboxService,
   ) {}
 
   async listConversations(
     userId: string,
     filter: string = 'all',
     q?: string,
-  ): Promise<ConversationListItem[]> {
+  ): Promise<ConversationListResponse[]> {
     const qb = this.convRepo
       .createQueryBuilder('c')
       .where(
@@ -65,6 +73,9 @@ export class ConversationsService {
             .orWhere("LOWER(c.reservation_snapshot->>'hostDisplayName') LIKE :term", { term })
             .orWhere("LOWER(c.reservation_snapshot->>'guestDisplayName') LIKE :term", { term })
             .orWhere("LOWER(c.reservation_snapshot->>'bookingReference') LIKE :term", { term })
+            .orWhere("LOWER(c.reservation_snapshot->>'listingReference') LIKE :term", { term })
+            .orWhere("LOWER(c.reservation_snapshot->>'city') LIKE :term", { term })
+            .orWhere("LOWER(c.reservation_snapshot->>'country') LIKE :term", { term })
             .orWhere(
               `EXISTS (
                 SELECT 1 FROM stays_messages sm
@@ -89,14 +100,26 @@ export class ConversationsService {
     );
 
     const rows = await qb.getMany();
-    return rows
+    const filtered = rows
       .filter((c) => this.permissions.visibilityFor(c, userId) !== 'DELETED')
       .filter((c) => {
         const vis = this.permissions.visibilityFor(c, userId);
         if (filter === 'all') return vis !== 'ARCHIVED' || this.hasUnread(c, userId);
         return true;
-      })
-      .map((c) => this.toListItem(c, userId));
+      });
+
+    for (const conv of filtered) {
+      const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
+      if (this.snapshotRepair.isSnapshotIncomplete(snapshot)) {
+        void this.outbox.enqueueDirect(MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED, {
+          conversationId: conv.id,
+        });
+      }
+    }
+
+    return Promise.all(
+      filtered.map(async (c) => this.toListResponse(c, userId)),
+    );
   }
 
   async getUnreadCount(userId: string): Promise<number> {
@@ -114,35 +137,42 @@ export class ConversationsService {
   async getConversationByBooking(
     bookingId: string,
     userId: string,
-  ): Promise<ConversationListItem | null> {
+  ): Promise<ConversationListResponse | null> {
     const conv = await this.convRepo.findOne({ where: { booking_id: bookingId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) return null;
     if (this.permissions.visibilityFor(conv, userId) === 'DELETED') return null;
-    return this.toListItem(conv, userId);
+    return this.toListResponse(conv, userId);
   }
 
   async ensureConversationForBooking(
     bookingId: string,
     userId: string,
-  ): Promise<ConversationListItem> {
+  ): Promise<ConversationListResponse> {
     const conv = await this.conversationProvision.ensureForBooking(
       bookingId,
       userId,
     );
-    return this.toListItem(conv, userId);
+    return this.toListResponse(conv, userId);
   }
 
   async getConversation(
     conversationId: string,
     userId: string,
     beforeSequence?: number,
-  ): Promise<ConversationDetail> {
+  ): Promise<ConversationDetailResponse> {
     const conv = await this.convRepo.findOne({ where: { id: conversationId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) {
       throw new NotFoundException('Conversation not found');
     }
     if (this.permissions.visibilityFor(conv, userId) === 'DELETED') {
       throw new NotFoundException('Conversation not found');
+    }
+
+    const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
+    if (this.snapshotRepair.isSnapshotIncomplete(snapshot)) {
+      void this.outbox.enqueueDirect(MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED, {
+        conversationId: conv.id,
+      });
     }
 
     const { messages, hasMore } = await this.messagesService.listMessages(
@@ -158,13 +188,15 @@ export class ConversationsService {
       bookingStatus = booking?.status ?? null;
     }
 
-    const item = this.toListItem(conv, userId);
+    const list = await this.toListResponse(conv, userId, bookingStatus);
     return {
-      ...item,
-      bookingId: conv.booking_id,
-      bookingStatus,
-      messages,
+      conversation: list.conversation,
+      presentation: list.presentation,
+      timeline: messages,
+      permissions: list.permissions,
+      sync: list.sync,
       hasMore,
+      bookingStatus,
     };
   }
 
@@ -234,36 +266,37 @@ export class ConversationsService {
     return false;
   }
 
-  private toListItem(conv: StaysConversation, userId: string): ConversationListItem {
-    const isGuest = conv.guest_user_id === userId;
-    const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
-    const unread = isGuest ? conv.unread_guest : conv.unread_host;
-    const counterpartName = isGuest
-      ? snapshot.hostDisplayName ?? 'Host'
-      : snapshot.guestDisplayName ?? 'Guest';
-
+  private toDomain(conv: StaysConversation, userId: string): ConversationDomain {
     return {
       id: conv.id,
       type: conv.type,
+      bookingId: conv.booking_id,
+      listingId: conv.listing_id,
       messagingState: conv.messaging_state,
       visibility: this.permissions.visibilityFor(conv, userId),
-      conversationVersion: conv.conversation_version,
-      lastMessageSequence: Number(conv.last_message_sequence ?? 0),
-      unreadCount: unread ?? 0,
-      counterpart: {
-        name: counterpartName,
-        avatarUrl: null,
-        isSuperhost: false,
-      },
-      listing: {
-        title: snapshot.listingTitle ?? 'Stay',
-        city: null,
-      },
+    };
+  }
+
+  private async toListResponse(
+    conv: StaysConversation,
+    userId: string,
+    bookingStatus?: string | null,
+  ): Promise<ConversationListResponse> {
+    const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
+    let status = bookingStatus ?? null;
+    if (status == null && conv.booking_id) {
+      const booking = await this.bookingRepo.findOne({ where: { id: conv.booking_id } });
+      status = booking?.status ?? null;
+    }
+
+    return {
+      conversation: this.toDomain(conv, userId),
+      presentation: this.presentation.buildPresentation(conv, userId, snapshot, status),
+      sync: this.presentation.buildSyncMeta(conv, userId),
       lastMessage: {
         preview: conv.last_message_preview,
         at: conv.last_message_at?.toISOString() ?? null,
       },
-      reservationSnapshot: snapshot,
       permissions: this.permissions.resolve(conv, userId),
     };
   }

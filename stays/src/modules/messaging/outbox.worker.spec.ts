@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { MessagingOutboxWorker } from './outbox.worker';
 import { StaysMessagingOutbox } from './entities/stays-messaging-outbox.entity';
 import { DomainEventsService } from '../../common/events/domain-events.service';
+import { SnapshotRepairService } from './snapshot-repair.service';
 
 describe('MessagingOutboxWorker', () => {
   let worker: MessagingOutboxWorker;
@@ -39,6 +40,10 @@ describe('MessagingOutboxWorker', () => {
         MessagingOutboxWorker,
         { provide: getRepositoryToken(StaysMessagingOutbox), useValue: outboxRepo },
         { provide: DomainEventsService, useValue: domainEvents },
+        {
+          provide: SnapshotRepairService,
+          useValue: { repairConversation: jest.fn().mockResolvedValue(true) },
+        },
       ],
     }).compile();
 

@@ -10,40 +10,106 @@ export interface ConversationPermissions {
   isReadOnly: boolean;
   canArchive: boolean;
   canDelete: boolean;
-  /** Reserved P0 — server column exists; mute is client-only until P1 sync. */
   notificationLevel: NotificationLevel;
+}
+
+export interface SignedMedia {
+  url: string;
+  version: number;
+  expiresAt: string;
 }
 
 export interface ReservationSnapshot {
   listingTitle: string;
+  listingId?: string | null;
+  coverMediaId?: string | null;
+  /** @deprecated derive via MessagingMediaService */
   primaryPhotoUrl?: string | null;
   addressDisplay?: string | null;
+  city?: string | null;
+  country?: string | null;
   checkinDate: string;
   checkoutDate: string;
   guestCount: number;
   hostDisplayName?: string | null;
   guestDisplayName?: string | null;
   bookingReference?: string | null;
+  listingReference?: string | null;
 }
 
-export interface TimelineCardMetadata {
-  schemaVersion: number;
-  cardVersion: number;
-  kind: string;
+export interface ReservationPresentation {
+  listingTitle: string;
+  listingId: string | null;
+  coverMedia: SignedMedia | null;
+  addressDisplay: string | null;
+  city: string | null;
+  country: string | null;
+  checkinDate: string;
+  checkoutDate: string;
+  guestCount: number;
+  bookingReference: string | null;
+  bookingId: string | null;
+}
+
+export interface ConversationPresentation {
   title: string;
-  body?: string;
-  icon?: string;
-  source?: 'USER' | 'SYSTEM' | 'AI' | 'HOST_AUTOMATION';
-  actions?: Array<{
+  subtitle: string;
+  avatar: SignedMedia | null;
+  bookingChip: string | null;
+  statusChip: string | null;
+  counterpart: {
     id: string;
-    label: string;
-    type: string;
-    value?: string;
-    url?: string;
-  }>;
-  snapshot?: Record<string, unknown>;
+    displayName: string;
+  };
+  listing: {
+    title: string;
+    city?: string | null;
+  };
+  reservation: ReservationPresentation;
 }
 
+export interface ConversationSyncMeta {
+  conversationVersion: number;
+  snapshotVersion: number;
+  lastMessageId: string | null;
+  unreadCount: number;
+  lastReadPointer: {
+    messageId: string | null;
+    readAt: string | null;
+  };
+}
+
+export interface ConversationDomain {
+  id: string;
+  type: string;
+  bookingId: string | null;
+  listingId: string | null;
+  messagingState: string;
+  visibility: string;
+}
+
+export interface ConversationListResponse {
+  conversation: ConversationDomain;
+  presentation: ConversationPresentation;
+  sync: ConversationSyncMeta;
+  lastMessage: {
+    preview: string | null;
+    at: string | null;
+  };
+  permissions: ConversationPermissions;
+}
+
+export interface ConversationDetailResponse {
+  conversation: ConversationDomain;
+  presentation: ConversationPresentation;
+  timeline: MessageDto[];
+  permissions: ConversationPermissions;
+  sync: ConversationSyncMeta;
+  hasMore: boolean;
+  bookingStatus: string | null;
+}
+
+/** @deprecated use ConversationListResponse */
 export interface ConversationListItem {
   id: string;
   type: string;
@@ -70,6 +136,28 @@ export interface ConversationListItem {
   permissions: ConversationPermissions;
 }
 
+export interface TimelineCardMetadata {
+  schemaVersion: number;
+  cardVersion: number;
+  presentationVersion?: number;
+  kind: string;
+  title: string;
+  body?: string;
+  icon?: string;
+  source?: 'USER' | 'SYSTEM' | 'AI' | 'HOST_AUTOMATION';
+  actions?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    value?: string;
+    url?: string;
+  }>;
+  snapshot?: Record<string, unknown>;
+  coverMediaId?: string | null;
+  listingId?: string | null;
+  bookingId?: string | null;
+}
+
 export interface MessageDto {
   id: string;
   conversationId: string;
@@ -86,8 +174,10 @@ export interface MessageDto {
   clientMessageId: string | null;
   createdAt: string;
   isOwn: boolean;
+  presentationVersion: number;
 }
 
+/** @deprecated use ConversationDetailResponse */
 export interface ConversationDetail extends ConversationListItem {
   bookingId: string | null;
   bookingStatus?: string | null;

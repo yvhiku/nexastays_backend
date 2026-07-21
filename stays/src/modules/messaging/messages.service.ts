@@ -103,7 +103,7 @@ export class MessagesService {
       const message = await this.timelineSeeder.insertMessage(manager, conv, {
         type: 'TEXT',
         body: trimmed,
-        metadata: { source: 'USER', schemaVersion: 1, cardVersion: 1 },
+        metadata: { source: 'USER', schemaVersion: 1, cardVersion: 1, presentationVersion: 1 },
         senderId: userId,
         clientMessageId: clientMessageId ?? null,
       });
@@ -226,6 +226,7 @@ export class MessagesService {
   }
 
   private toDto(message: StaysMessage, userId: string): MessageDto {
+    const meta = (message.metadata ?? {}) as { presentationVersion?: number };
     return {
       id: message.id,
       conversationId: message.conversation_id,
@@ -242,6 +243,7 @@ export class MessagesService {
       clientMessageId: message.client_message_id,
       createdAt: message.created_at.toISOString(),
       isOwn: message.sender_id === userId,
+      presentationVersion: meta.presentationVersion ?? 1,
     };
   }
 }

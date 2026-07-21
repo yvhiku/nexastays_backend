@@ -6,35 +6,54 @@ import { StaysConversation } from './entities/stays-conversation.entity';
 import { StaysMessage, MessageType } from './entities/stays-message.entity';
 import type { ReservationSnapshot, TimelineCardMetadata } from './messaging.types';
 
+export interface BuildSnapshotOptions {
+  hostDisplayName?: string | null;
+  guestDisplayName?: string | null;
+}
+
 @Injectable()
 export class TimelineSeederService {
   buildSnapshot(
     booking: StaysBooking,
     listing: StaysListing,
-    hostDisplayName?: string | null,
-    guestDisplayName?: string | null,
+    options?: BuildSnapshotOptions | string | null,
+    guestDisplayNameLegacy?: string | null,
   ): ReservationSnapshot {
+    const opts: BuildSnapshotOptions =
+      typeof options === 'object' && options !== null && !Array.isArray(options)
+        ? options
+        : {
+            hostDisplayName: typeof options === 'string' ? options : null,
+            guestDisplayName: guestDisplayNameLegacy ?? null,
+          };
+
     const cover =
       listing.media?.find((m) => m.is_cover && m.kind === 'PHOTO') ??
       listing.media?.find((m) => m.kind === 'PHOTO');
-    const photo = cover
-      ? `/api/v1/stays/listings/${listing.id}/media/${cover.asset_id}`
-      : null;
+
     const addressParts = [
       listing.building_name,
       listing.neighborhood,
       listing.city,
     ].filter(Boolean);
+
     return {
       listingTitle: listing.title,
-      primaryPhotoUrl: photo,
+      listingId: listing.id,
+      coverMediaId: cover?.asset_id ?? null,
+      primaryPhotoUrl: cover
+        ? `/api/v1/stays/listings/${listing.id}/media/${cover.asset_id}`
+        : null,
       addressDisplay: addressParts.join(', ') || listing.city,
+      city: listing.city ?? null,
+      country: listing.country ?? null,
       checkinDate: String(booking.checkin_date).slice(0, 10),
       checkoutDate: String(booking.checkout_date).slice(0, 10),
       guestCount: booking.guest_count,
-      hostDisplayName: hostDisplayName ?? null,
-      guestDisplayName: guestDisplayName ?? null,
+      hostDisplayName: opts.hostDisplayName ?? null,
+      guestDisplayName: opts.guestDisplayName ?? null,
       bookingReference: booking.booking_reference ?? null,
+      listingReference: listing.id,
     };
   }
 
@@ -44,22 +63,27 @@ export class TimelineSeederService {
     snapshot: ReservationSnapshot,
     listing: StaysListing,
   ): Promise<StaysMessage[]> {
-    const messageRepo = manager.getRepository(StaysMessage);
     const seeds: Array<{ type: MessageType; body: string | null; metadata: Record<string, unknown> }> = [
       {
         type: 'SYSTEM_EVENT',
         body: 'Booking confirmed',
-        metadata: { source: 'SYSTEM', schemaVersion: 1, cardVersion: 1 },
+        metadata: {
+          source: 'SYSTEM',
+          schemaVersion: 1,
+          cardVersion: 1,
+          presentationVersion: 1,
+          kind: 'system',
+        },
       },
       {
         type: 'BOOKING_CARD',
         body: null,
-        metadata: this.bookingCard(snapshot) as unknown as Record<string, unknown>,
+        metadata: this.bookingCard(snapshot, conversation.booking_id) as unknown as Record<string, unknown>,
       },
       {
         type: 'PROPERTY_CARD',
         body: null,
-        metadata: this.propertyCard(snapshot, listing) as unknown as Record<string, unknown>,
+        metadata: this.propertyCard(snapshot, listing, conversation.booking_id) as unknown as Record<string, unknown>,
       },
     ];
 
@@ -70,16 +94,28 @@ export class TimelineSeederService {
     return saved;
   }
 
-  private bookingCard(snapshot: ReservationSnapshot): TimelineCardMetadata {
+  private bookingCard(
+    snapshot: ReservationSnapshot,
+    bookingId: string | null,
+  ): TimelineCardMetadata {
     return {
       schemaVersion: 1,
       cardVersion: 1,
+      presentationVersion: 1,
       kind: 'booking',
       title: snapshot.listingTitle,
       body: `${snapshot.checkinDate} – ${snapshot.checkoutDate} · ${snapshot.guestCount} guests`,
       source: 'SYSTEM',
-      actions: snapshot.bookingReference
-        ? [{ id: 'view_booking', label: 'View booking', type: 'deep_link', url: `/bookings` }]
+      bookingId: bookingId ?? undefined,
+      actions: bookingId
+        ? [
+            {
+              id: 'view_booking',
+              label: 'View booking',
+              type: 'deep_link',
+              url: `/bookings/${bookingId}`,
+            },
+          ]
         : [],
     };
   }
@@ -87,6 +123,7 @@ export class TimelineSeederService {
   private propertyCard(
     snapshot: ReservationSnapshot,
     listing: StaysListing,
+    bookingId: string | null,
   ): TimelineCardMetadata {
     const mapsUrl =
       listing.geo_lat != null && listing.geo_lng != null
@@ -95,14 +132,29 @@ export class TimelineSeederService {
     return {
       schemaVersion: 1,
       cardVersion: 1,
+      presentationVersion: 1,
       kind: 'property',
       title: snapshot.listingTitle,
       body: snapshot.addressDisplay ?? undefined,
       source: 'SYSTEM',
-      snapshot: { primaryPhotoUrl: snapshot.primaryPhotoUrl },
-      actions: mapsUrl
-        ? [{ id: 'open_maps', label: 'Open in Maps', type: 'external_maps', url: mapsUrl }]
-        : [],
+      coverMediaId: snapshot.coverMediaId ?? null,
+      listingId: snapshot.listingId ?? listing.id,
+      bookingId: bookingId ?? undefined,
+      actions: [
+        ...(bookingId
+          ? [
+              {
+                id: 'view_booking',
+                label: 'View booking',
+                type: 'deep_link',
+                url: `/bookings/${bookingId}`,
+              },
+            ]
+          : []),
+        ...(mapsUrl
+          ? [{ id: 'open_maps', label: 'Open in Maps', type: 'external_maps', url: mapsUrl }]
+          : []),
+      ],
     };
   }
 

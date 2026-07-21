@@ -6,6 +6,10 @@ import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { MessagingPermissionsService } from './permissions.service';
 import { MessagesService } from './messages.service';
 import { MessagingAuditService } from './audit.service';
+import { ConversationProvisionService } from './conversation-provision.service';
+import { ConversationPresentationService } from './conversation-presentation.service';
+import { SnapshotRepairService } from './snapshot-repair.service';
+import { MessagingOutboxService } from './outbox.service';
 
 describe('ConversationsService', () => {
   let service: ConversationsService;
@@ -76,6 +80,37 @@ describe('ConversationsService', () => {
           },
         },
         { provide: MessagingAuditService, useValue: audit },
+        {
+          provide: ConversationProvisionService,
+          useValue: { ensureForBooking: jest.fn() },
+        },
+        {
+          provide: ConversationPresentationService,
+          useValue: {
+            buildPresentation: jest.fn().mockReturnValue({
+              title: 'Host',
+              subtitle: 'Upcoming Stay',
+              avatar: null,
+              bookingChip: null,
+              statusChip: null,
+              counterpart: { id: hostId, displayName: 'Host' },
+              listing: { title: 'Riad' },
+              reservation: {},
+            }),
+            buildSyncMeta: jest.fn().mockReturnValue({
+              conversationVersion: 5,
+              snapshotVersion: 1,
+              lastMessageId: null,
+              unreadCount: 0,
+              lastReadPointer: { messageId: null, readAt: null },
+            }),
+          },
+        },
+        {
+          provide: SnapshotRepairService,
+          useValue: { isSnapshotIncomplete: jest.fn().mockReturnValue(false) },
+        },
+        { provide: MessagingOutboxService, useValue: { enqueueDirect: jest.fn() } },
       ],
     }).compile();
 
@@ -92,7 +127,7 @@ describe('ConversationsService', () => {
 
     const list = await service.listConversations(guestId, 'all');
     expect(list).toHaveLength(1);
-    expect(list[0].id).toBe('conv-2');
+    expect(list[0].conversation.id).toBe('conv-2');
   });
 
   it('hides ARCHIVED unless unread resurfacing badge applies', async () => {
@@ -104,7 +139,7 @@ describe('ConversationsService', () => {
     ]);
 
     const list = await service.listConversations(guestId, 'all');
-    expect(list.map((c) => c.id)).toEqual(['conv-unread']);
+    expect(list.map((c) => c.conversation.id)).toEqual(['conv-unread']);
   });
 
   it('increments conversation_version on visibility archive', async () => {

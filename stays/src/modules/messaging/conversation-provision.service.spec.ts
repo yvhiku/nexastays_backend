@@ -6,6 +6,7 @@ import { MessagingOutboxService } from './outbox.service';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { EVENTS } from '@nexa/event-bus';
+import { ParticipantPresentationService } from './participant-presentation.service';
 
 describe('ConversationProvisionService', () => {
   let service: ConversationProvisionService;
@@ -54,7 +55,7 @@ describe('ConversationProvisionService', () => {
       }),
       seedBookingConfirmed: jest.fn().mockResolvedValue([]),
     };
-    outbox = { enqueue: jest.fn().mockResolvedValue(undefined) };
+    outbox = { enqueue: jest.fn().mockResolvedValue(undefined), enqueueDirect: jest.fn() };
 
     convRepo = {
       findOne: jest.fn().mockResolvedValue(null),
@@ -86,6 +87,13 @@ describe('ConversationProvisionService', () => {
         },
         { provide: TimelineSeederService, useValue: timelineSeeder },
         { provide: MessagingOutboxService, useValue: outbox },
+        {
+          provide: ParticipantPresentationService,
+          useValue: {
+            resolveHostDisplayName: jest.fn().mockResolvedValue('Malika'),
+            resolveGuestDisplayName: jest.fn().mockResolvedValue('Guest User'),
+          },
+        },
       ],
     }).compile();
 

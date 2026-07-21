@@ -1,0 +1,123 @@
+import { Injectable } from '@nestjs/common';
+import { StaysConversation } from './entities/stays-conversation.entity';
+import { MessagingMediaService } from './messaging-media.service';
+import type {
+  ConversationPresentation,
+  ConversationSyncMeta,
+  ReservationPresentation,
+  ReservationSnapshot,
+  SignedMedia,
+} from './messaging.types';
+
+function formatShortDate(value: string): string {
+  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function bookingLifecycleSubtitle(status: string | null | undefined): string {
+  const s = (status ?? '').toUpperCase();
+  if (s === 'CHECKED_IN') return 'Current Stay';
+  if (s === 'COMPLETED') return 'Completed';
+  if (s === 'CONFIRMED') return 'Upcoming Stay';
+  if (s === 'CANCELLED' || s === 'CANCELLED_BY_GUEST' || s === 'CANCELLED_BY_HOST') {
+    return 'Cancelled';
+  }
+  if (s === 'EXPIRED') return 'Expired';
+  return 'Stay';
+}
+
+@Injectable()
+export class ConversationPresentationService {
+  constructor(private readonly media: MessagingMediaService) {}
+
+  buildPresentation(
+    conv: StaysConversation,
+    viewerUserId: string,
+    snapshot: ReservationSnapshot,
+    bookingStatus?: string | null,
+  ): ConversationPresentation {
+    const isGuest = conv.guest_user_id === viewerUserId;
+    const counterpartId = isGuest ? conv.host_user_id : conv.guest_user_id;
+    const counterpartName = isGuest
+      ? snapshot.hostDisplayName?.trim() || 'Host'
+      : snapshot.guestDisplayName?.trim() || 'Guest';
+
+    const avatar = counterpartId
+      ? this.resolveCounterpartAvatar(counterpartId, conv.snapshot_version ?? 1)
+      : null;
+    const reservation = this.buildReservationPresentation(conv, snapshot);
+    const subtitle = bookingLifecycleSubtitle(bookingStatus);
+    const bookingChip = `${snapshot.listingTitle} • ${formatShortDate(snapshot.checkinDate)}–${formatShortDate(snapshot.checkoutDate)} • ${snapshot.guestCount} guests`;
+
+    return {
+      title: counterpartName,
+      subtitle,
+      avatar,
+      bookingChip,
+      statusChip: subtitle,
+      counterpart: {
+        id: counterpartId ?? '',
+        displayName: counterpartName,
+      },
+      listing: {
+        title: snapshot.listingTitle ?? 'Stay',
+        city: snapshot.city ?? null,
+      },
+      reservation,
+    };
+  }
+
+  buildSyncMeta(conv: StaysConversation, viewerUserId: string): ConversationSyncMeta {
+    const isGuest = conv.guest_user_id === viewerUserId;
+    const unreadCount = isGuest ? conv.unread_guest ?? 0 : conv.unread_host ?? 0;
+    const messageId = isGuest
+      ? conv.guest_last_read_message_id
+      : conv.host_last_read_message_id;
+    const readAt = isGuest ? conv.guest_last_read_at : conv.host_last_read_at;
+
+    return {
+      conversationVersion: conv.conversation_version,
+      snapshotVersion: conv.snapshot_version ?? 1,
+      lastMessageId: conv.last_message_id ?? null,
+      unreadCount,
+      lastReadPointer: {
+        messageId: messageId ?? null,
+        readAt: readAt?.toISOString() ?? null,
+      },
+    };
+  }
+
+  private resolveCounterpartAvatar(userId: string, version: number): SignedMedia | null {
+    if (!userId) return null;
+    return this.media.resolveAvatar(userId, version);
+  }
+
+  private buildReservationPresentation(
+    conv: StaysConversation,
+    snapshot: ReservationSnapshot,
+  ): ReservationPresentation {
+    const listingId = snapshot.listingId ?? conv.listing_id ?? null;
+    const coverMediaId = snapshot.coverMediaId ?? null;
+    const coverMedia =
+      listingId && coverMediaId
+        ? this.media.resolveListingCover(listingId, coverMediaId, {
+            w: 640,
+            h: 360,
+            fit: 'crop',
+          }, conv.snapshot_version ?? 1)
+        : null;
+
+    return {
+      listingTitle: snapshot.listingTitle ?? 'Stay',
+      listingId,
+      coverMedia,
+      addressDisplay: snapshot.addressDisplay ?? null,
+      city: snapshot.city ?? null,
+      country: snapshot.country ?? null,
+      checkinDate: snapshot.checkinDate,
+      checkoutDate: snapshot.checkoutDate,
+      guestCount: snapshot.guestCount,
+      bookingReference: snapshot.bookingReference ?? null,
+      bookingId: conv.booking_id ?? null,
+    };
+  }
+}

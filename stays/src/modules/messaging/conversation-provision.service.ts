@@ -11,6 +11,8 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { MessagingOutboxService } from './outbox.service';
 import { TimelineSeederService } from './timeline-seeder.service';
+import { ParticipantPresentationService } from './participant-presentation.service';
+import { MESSAGING_INTERNAL_EVENTS } from './messaging-internal.events';
 import { EVENTS } from '@nexa/event-bus';
 
 const MESSAGEABLE_BOOKING_STATUSES = new Set([
@@ -27,6 +29,7 @@ export class ConversationProvisionService {
     private readonly dataSource: DataSource,
     private readonly timelineSeeder: TimelineSeederService,
     private readonly outbox: MessagingOutboxService,
+    private readonly participants: ParticipantPresentationService,
   ) {}
 
   /**
@@ -55,7 +58,14 @@ export class ConversationProvisionService {
       return null;
     }
 
-    const snapshot = this.timelineSeeder.buildSnapshot(booking, listing);
+    const hostName = await this.participants.resolveHostDisplayName(listing.host_user_id);
+    const guestName = await this.participants.resolveGuestDisplayName(booking.id);
+
+    const snapshot = this.timelineSeeder.buildSnapshot(booking, listing, {
+      hostDisplayName: hostName,
+      guestDisplayName: guestName,
+    });
+
     const conversation = await convRepo.save(
       convRepo.create({
         booking_id: booking.id,
@@ -102,7 +112,7 @@ export class ConversationProvisionService {
     bookingId: string,
     userId: string,
   ): Promise<StaysConversation> {
-    return this.dataSource.transaction(async (manager) => {
+    const conv = await this.dataSource.transaction(async (manager) => {
       const convRepo = manager.getRepository(StaysConversation);
       const existing = await convRepo.findOne({ where: { booking_id: bookingId } });
       if (existing) {
@@ -112,6 +122,9 @@ export class ConversationProvisionService {
         ) {
           throw new ForbiddenException('Not a participant on this booking');
         }
+        await this.outbox.enqueue(manager, MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED, {
+          conversationId: existing.id,
+        });
         return existing;
       }
 
@@ -153,5 +166,11 @@ export class ConversationProvisionService {
       }
       return created;
     });
+
+    await this.outbox.enqueueDirect(MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED, {
+      conversationId: conv.id,
+    });
+
+    return conv;
   }
 }
