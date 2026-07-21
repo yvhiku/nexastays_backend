@@ -243,7 +243,7 @@ export class ConversationRepairService {
         nextSeq += 1;
         await messageRepo.update(message.id, {
           conversation_id: toConversationId,
-          conversation_sequence: nextSeq,
+          conversation_sequence: String(nextSeq),
         });
       }
 
