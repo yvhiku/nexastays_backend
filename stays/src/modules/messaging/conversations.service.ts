@@ -291,7 +291,7 @@ export class ConversationsService {
 
     return {
       conversation: this.toDomain(conv, userId),
-      presentation: this.presentation.buildPresentation(conv, userId, snapshot, status),
+      presentation: await this.presentation.buildPresentation(conv, userId, snapshot, status),
       sync: this.presentation.buildSyncMeta(conv, userId),
       lastMessage: {
         preview: conv.last_message_preview,

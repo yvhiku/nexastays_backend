@@ -10,10 +10,13 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createReadStream } from 'fs';
+import { Readable } from 'stream';
+import { ReadableStream } from 'stream/web';
 import type { Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { MessagingMediaService } from './messaging-media.service';
 import { StaysService } from '../stays/stays.service';
+import { IdentityProfilePhotoClient } from '../../common/identity/identity-profile-photo.client';
 
 @ApiTags('messaging-media')
 @Controller('messaging/media')
@@ -22,6 +25,7 @@ export class MessagingMediaController {
     private readonly media: MessagingMediaService,
     @Inject(forwardRef(() => StaysService))
     private readonly staysService: StaysService,
+    private readonly profilePhotos: IdentityProfilePhotoClient,
   ) {}
 
   @Get('avatars/:userId')
@@ -44,9 +48,13 @@ export class MessagingMediaController {
     );
     if (!valid) throw new NotFoundException();
 
-    // Avatar bytes resolved when identity S2S is wired; until then clients fall back to initials.
+    const photo = await this.profilePhotos.fetchProfilePhoto(userId);
+    if (!photo) throw new NotFoundException();
+
+    res.setHeader('Content-Type', photo.contentType);
     res.setHeader('Cache-Control', 'public, max-age=3600');
-    throw new NotFoundException();
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    Readable.fromWeb(photo.body as unknown as ReadableStream<Uint8Array>).pipe(res);
   }
 
   @Get('listings/:listingId/cover/:mediaId')

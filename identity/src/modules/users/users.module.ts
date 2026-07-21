@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersController } from './users.controller';
+import { InternalUsersController } from './internal-users.controller';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { UnifiedIdentity } from './entities/unified-identity.entity';
@@ -14,6 +15,7 @@ import { OtpSession } from '../auth/entities/otp-session.entity';
 import { OtpCode } from '../auth/entities/otp-code.entity';
 import { OtpAttempt } from '../auth/entities/otp-attempt.entity';
 import { TrustedDevice } from '../auth/entities/trusted-device.entity';
+import { InternalServiceGuard } from '../../common/guards/internal-service.guard';
 import { AccountTypeGuard } from '../../common/guards/account-type.guard';
 import { OtpSessionResolverGuard } from '../../common/guards/otp-session-resolver.guard';
 import { DatabaseModule } from '../../common/database/database.module';
@@ -48,7 +50,7 @@ import { IdentityPhoneNumbersService } from './identity-phone-numbers.service';
       UserConsent,
     ]),
   ],
-  controllers: [UsersController],
+  controllers: [UsersController, InternalUsersController],
   providers: [
     IdentityPhoneNumbersService,
     UsersService,
@@ -57,6 +59,7 @@ import { IdentityPhoneNumbersService } from './identity-phone-numbers.service';
     ProfileSyncService,
     AccountTypeGuard,
     OtpSessionResolverGuard,
+    InternalServiceGuard,
   ],
   exports: [
     IdentityPhoneNumbersService,

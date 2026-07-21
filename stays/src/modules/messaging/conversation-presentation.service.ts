@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { MessagingMediaService } from './messaging-media.service';
+import { IdentityProfilePhotoClient } from '../../common/identity/identity-profile-photo.client';
 import type {
   ConversationPresentation,
   ConversationSyncMeta,
@@ -27,14 +28,17 @@ function bookingLifecycleSubtitle(status: string | null | undefined): string {
 
 @Injectable()
 export class ConversationPresentationService {
-  constructor(private readonly media: MessagingMediaService) {}
+  constructor(
+    private readonly media: MessagingMediaService,
+    private readonly profilePhotos: IdentityProfilePhotoClient,
+  ) {}
 
-  buildPresentation(
+  async buildPresentation(
     conv: StaysConversation,
     viewerUserId: string,
     snapshot: ReservationSnapshot,
     bookingStatus?: string | null,
-  ): ConversationPresentation {
+  ): Promise<ConversationPresentation> {
     const isGuest = conv.guest_user_id === viewerUserId;
     const counterpartId = isGuest ? conv.host_user_id : conv.guest_user_id;
     const counterpartName = isGuest
@@ -42,7 +46,7 @@ export class ConversationPresentationService {
       : snapshot.guestDisplayName?.trim() || 'Guest';
 
     const avatar = counterpartId
-      ? this.resolveCounterpartAvatar(counterpartId, conv.snapshot_version ?? 1)
+      ? await this.resolveCounterpartAvatar(counterpartId, conv.snapshot_version ?? 1)
       : null;
     const reservation = this.buildReservationPresentation(conv, snapshot);
     const subtitle = bookingLifecycleSubtitle(bookingStatus);
@@ -86,8 +90,13 @@ export class ConversationPresentationService {
     };
   }
 
-  private resolveCounterpartAvatar(userId: string, version: number): SignedMedia | null {
+  private async resolveCounterpartAvatar(
+    userId: string,
+    version: number,
+  ): Promise<SignedMedia | null> {
     if (!userId) return null;
+    const hasPhoto = await this.profilePhotos.hasProfilePhoto(userId);
+    if (!hasPhoto) return null;
     return this.media.resolveAvatar(userId, version);
   }
 
