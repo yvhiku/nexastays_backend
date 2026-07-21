@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
 import { ConversationProvisionService } from './conversation-provision.service';
 import { TimelineSeederService } from './timeline-seeder.service';
 import { MessagingOutboxService } from './outbox.service';
@@ -75,6 +76,14 @@ describe('ConversationProvisionService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConversationProvisionService,
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) =>
+              fn(manager),
+            ),
+          },
+        },
         { provide: TimelineSeederService, useValue: timelineSeeder },
         { provide: MessagingOutboxService, useValue: outbox },
       ],

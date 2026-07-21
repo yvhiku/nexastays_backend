@@ -1,5 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { EntityManager } from 'typeorm';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
+import { DataSource, EntityManager } from 'typeorm';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysConversation } from './entities/stays-conversation.entity';
@@ -7,11 +13,18 @@ import { MessagingOutboxService } from './outbox.service';
 import { TimelineSeederService } from './timeline-seeder.service';
 import { EVENTS } from '@nexa/event-bus';
 
+const MESSAGEABLE_BOOKING_STATUSES = new Set([
+  'CONFIRMED',
+  'CHECKED_IN',
+  'COMPLETED',
+]);
+
 @Injectable()
 export class ConversationProvisionService {
   private readonly logger = new Logger(ConversationProvisionService.name);
 
   constructor(
+    private readonly dataSource: DataSource,
     private readonly timelineSeeder: TimelineSeederService,
     private readonly outbox: MessagingOutboxService,
   ) {}
@@ -82,5 +95,63 @@ export class ConversationProvisionService {
     });
 
     return conversation;
+  }
+
+  /** Backfill or return the booking thread (guest or host). */
+  async ensureForBooking(
+    bookingId: string,
+    userId: string,
+  ): Promise<StaysConversation> {
+    return this.dataSource.transaction(async (manager) => {
+      const convRepo = manager.getRepository(StaysConversation);
+      const existing = await convRepo.findOne({ where: { booking_id: bookingId } });
+      if (existing) {
+        if (
+          existing.guest_user_id !== userId &&
+          existing.host_user_id !== userId
+        ) {
+          throw new ForbiddenException('Not a participant on this booking');
+        }
+        return existing;
+      }
+
+      const bookingRepo = manager.getRepository(StaysBooking);
+      const booking = await bookingRepo.findOne({
+        where: { id: bookingId },
+      });
+      if (!booking) {
+        throw new NotFoundException('Booking not found');
+      }
+
+      const listingRepo = manager.getRepository(StaysListing);
+      const listing = await listingRepo.findOne({
+        where: { id: booking.listing_id },
+      });
+      const hostUserId = listing?.host_user_id ?? null;
+      const isGuest = booking.guest_user_id === userId;
+      const isHost = hostUserId === userId;
+      if (!isGuest && !isHost) {
+        throw new ForbiddenException('Not a participant on this booking');
+      }
+      if (!MESSAGEABLE_BOOKING_STATUSES.has(booking.status)) {
+        throw new BadRequestException(
+          'Messaging is available after the booking is confirmed',
+        );
+      }
+
+      const created = await this.provisionWithinTransaction(
+        manager,
+        booking,
+        booking.listing_id,
+        'backfill',
+        booking.payment_intent_id ?? undefined,
+      );
+      if (!created) {
+        throw new BadRequestException(
+          'Could not open conversation for this booking',
+        );
+      }
+      return created;
+    });
   }
 }

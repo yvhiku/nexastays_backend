@@ -6,6 +6,7 @@ import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { MessagingPermissionsService } from './permissions.service';
 import { MessagesService } from './messages.service';
 import { MessagingAuditService } from './audit.service';
+import { ConversationProvisionService } from './conversation-provision.service';
 import type {
   ConversationDetail,
   ConversationListItem,
@@ -22,6 +23,7 @@ export class ConversationsService {
     private readonly permissions: MessagingPermissionsService,
     private readonly messagesService: MessagesService,
     private readonly audit: MessagingAuditService,
+    private readonly conversationProvision: ConversationProvisionService,
   ) {}
 
   async listConversations(
@@ -116,6 +118,17 @@ export class ConversationsService {
     const conv = await this.convRepo.findOne({ where: { booking_id: bookingId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) return null;
     if (this.permissions.visibilityFor(conv, userId) === 'DELETED') return null;
+    return this.toListItem(conv, userId);
+  }
+
+  async ensureConversationForBooking(
+    bookingId: string,
+    userId: string,
+  ): Promise<ConversationListItem> {
+    const conv = await this.conversationProvision.ensureForBooking(
+      bookingId,
+      userId,
+    );
     return this.toListItem(conv, userId);
   }
 

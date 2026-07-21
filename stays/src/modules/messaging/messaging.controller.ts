@@ -54,6 +54,20 @@ export class MessagingController {
     return this.conversations.getConversationByBooking(bookingId, req.user.sub);
   }
 
+  @Post('conversations/ensure-for-booking/:bookingId')
+  @ApiOperation({
+    summary: 'Ensure inbox thread exists for a confirmed booking (backfill)',
+  })
+  ensureForBooking(
+    @Req() req: AuthRequest,
+    @Param('bookingId', ParseUUIDPipe) bookingId: string,
+  ) {
+    return this.conversations.ensureConversationForBooking(
+      bookingId,
+      req.user.sub,
+    );
+  }
+
   @Get('conversations/:id')
   @ApiOperation({ summary: 'Get conversation with messages' })
   getOne(
