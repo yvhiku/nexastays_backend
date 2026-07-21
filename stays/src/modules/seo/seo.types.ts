@@ -8,7 +8,8 @@ export type SeoPageType =
   | 'city_amenity'
   | 'city_neighborhood'
   | 'landmark'
-  | 'guide';
+  | 'guide'
+  | 'listing';
 
 export type SeoGuideType = 'travel' | 'experience' | 'seasonal' | 'event';
 
@@ -175,6 +176,34 @@ export interface SeoGuidePagePayload {
   relatedGuides: SeoGuideSummaryDto[];
   cityGuideLink: { slug: string; href: string; label: string } | null;
   exploreFilters: SeoExploreFiltersDto;
+  breadcrumbs: { name: string; path: string }[];
+  indexable: boolean;
+  seoScore: number;
+  lastmod: string;
+}
+
+export interface SeoListingPagePayload {
+  pageType: 'listing';
+  locale: SeoLocale;
+  listingId: string;
+  path: string;
+  title: string;
+  description: string;
+  h1: string;
+  canonical: string;
+  hreflang: Record<string, string>;
+  robots: string;
+  ogImageUrl: string | null;
+  listingType: string;
+  city: string;
+  neighborhood: string | null;
+  basePrice: number | null;
+  currency: string;
+  avgRating: number | null;
+  reviewCount: number;
+  hasWalkthrough: boolean;
+  geoLat: number | null;
+  geoLng: number | null;
   breadcrumbs: { name: string; path: string }[];
   indexable: boolean;
   seoScore: number;

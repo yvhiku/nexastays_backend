@@ -42,4 +42,44 @@ export function isPageIndexable(args: {
   );
 }
 
-export { INDEXABLE_SCORE_THRESHOLD, MIN_LISTINGS_INDEXABLE };
+const LISTING_INDEXABLE_SCORE_THRESHOLD = 70;
+
+export function computeListingSeoScore(args: {
+  photoCount: number;
+  descriptionLength: number;
+  reviewCount: number;
+  avgRating: number | null;
+  hasWalkthrough: boolean;
+}): number {
+  const photoScore = Math.min(100, args.photoCount >= 5 ? 100 : args.photoCount >= 1 ? 70 : 0);
+  const descScore = Math.min(100, (args.descriptionLength / 200) * 100);
+  const reviewScore =
+    args.avgRating != null
+      ? Math.min(100, (args.avgRating / 5) * 100)
+      : args.reviewCount > 0
+        ? 50
+        : 30;
+  const walkthroughScore = args.hasWalkthrough ? 100 : 40;
+
+  return Math.round(
+    photoScore * 0.35 + descScore * 0.3 + reviewScore * 0.2 + walkthroughScore * 0.15,
+  );
+}
+
+export function isListingIndexable(args: {
+  seoScore: number;
+  photoCount: number;
+  titleLength: number;
+  descriptionLength: number;
+  status: string;
+}): boolean {
+  return (
+    args.status === 'LIVE' &&
+    args.photoCount >= 1 &&
+    args.titleLength >= 5 &&
+    args.descriptionLength >= 30 &&
+    args.seoScore >= LISTING_INDEXABLE_SCORE_THRESHOLD
+  );
+}
+
+export { INDEXABLE_SCORE_THRESHOLD, MIN_LISTINGS_INDEXABLE, LISTING_INDEXABLE_SCORE_THRESHOLD };

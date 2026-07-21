@@ -19,6 +19,7 @@ import { SeoGuideService } from './seo-guide.service';
 import { SeoContentCmsService } from './seo-content-cms.service';
 import { SeoContentPipelineService } from './seo-content-pipeline.service';
 import { SeoGeoMonitoringService } from './seo-geo-monitoring.service';
+import { SeoListingService } from './seo-listing.service';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 
 @Module({
@@ -47,6 +48,7 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
     SeoContentCmsService,
     SeoContentPipelineService,
     SeoGeoMonitoringService,
+    SeoListingService,
   ],
   exports: [
     SeoEngineService,
@@ -58,6 +60,7 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
     SeoContentCmsService,
     SeoContentPipelineService,
     SeoGeoMonitoringService,
+    SeoListingService,
   ],
 })
 export class SeoModule implements OnModuleInit {

@@ -8,6 +8,7 @@ import { SeoEngineService } from './seo-engine.service';
 import { SeoPageRegistryService } from './seo-page-registry.service';
 import { SeoGuideService } from './seo-guide.service';
 import { SeoGeoMonitoringService } from './seo-geo-monitoring.service';
+import { SeoListingService } from './seo-listing.service';
 import type { SeoGuideType, SeoLocale } from './seo.types';
 
 function parseLocale(locale?: string): SeoLocale {
@@ -38,6 +39,7 @@ export class SeoController {
     private readonly registry: SeoPageRegistryService,
     private readonly guides: SeoGuideService,
     private readonly geoMonitoring: SeoGeoMonitoringService,
+    private readonly listingSeo: SeoListingService,
   ) {}
 
   @Public()
@@ -95,6 +97,16 @@ export class SeoController {
     @Query('locale') locale?: string,
   ) {
     return this.guides.getGuidePage(slug, parseLocale(locale));
+  }
+
+  @Public()
+  @Get('listings/:id')
+  @ApiOperation({ summary: 'SEO metadata payload for a listing detail page' })
+  getListingSeo(
+    @Param('id') id: string,
+    @Query('locale') locale?: string,
+  ) {
+    return this.listingSeo.buildListingPage(id, parseLocale(locale));
   }
 
   @Public()
