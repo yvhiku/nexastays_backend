@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysListingMedia } from '../stays/entities/stays-listing-media.entity';
 import { StaysListingRules } from '../stays/entities/stays-listing-rules.entity';
 import { StaysRatePlan } from '../stays/entities/stays-rate-plan.entity';
+import type { SeoExploreFilters } from './seo-catalog';
 import type { DestinationIntelligence } from './seo.types';
 
 const LUXURY_PRICE_MAD = 1500;
@@ -17,19 +18,14 @@ export class DestinationIntelligenceService {
   ) {}
 
   async computeForCity(searchCity: string): Promise<DestinationIntelligence> {
-    const cityPrefix = searchCity.trim();
-    if (!cityPrefix) {
-      return this.emptyIntelligence();
-    }
+    return this.compute({ city: searchCity });
+  }
 
-    const qb = this.listingRepo
-      .createQueryBuilder('l')
-      .leftJoin(StaysRatePlan, 'rp', 'rp.listing_id = l.id')
-      .leftJoin(StaysListingRules, 'rules', 'rules.listing_id = l.id')
-      .where('l.status = :status', { status: 'LIVE' })
-      .andWhere('LOWER(l.city) LIKE LOWER(:city)', { city: `${cityPrefix}%` });
+  async compute(filters: SeoExploreFilters): Promise<DestinationIntelligence> {
+    const baseQb = this.baseQuery(filters);
 
-    const stats = await qb
+    const stats = await baseQb
+      .clone()
       .select('COUNT(l.id)', 'listingCount')
       .addSelect('AVG(l.avg_rating)', 'avgRating')
       .addSelect('SUM(l.review_count)', 'reviewCount')
@@ -51,27 +47,24 @@ export class DestinationIntelligenceService {
       }>();
 
     const listingCount = Number(stats?.listingCount ?? 0);
-    const verifiedCount = await this.countVerified(cityPrefix);
+    const verifiedCount = await this.countVerified(filters);
 
-    const neighborhoodRows = await this.listingRepo
-      .createQueryBuilder('l')
-      .select('l.neighborhood', 'neighborhood')
-      .addSelect('COUNT(*)', 'cnt')
-      .where('l.status = :status', { status: 'LIVE' })
-      .andWhere('LOWER(l.city) LIKE LOWER(:city)', { city: `${cityPrefix}%` })
-      .andWhere('l.neighborhood IS NOT NULL')
-      .andWhere("TRIM(l.neighborhood) <> ''")
-      .groupBy('l.neighborhood')
-      .orderBy('cnt', 'DESC')
-      .limit(1)
-      .getRawOne<{ neighborhood: string }>();
+    let topNeighborhood: string | null = null;
+    if (filters.city?.trim()) {
+      const neighborhoodRows = await this.baseQuery(filters)
+        .select('l.neighborhood', 'neighborhood')
+        .addSelect('COUNT(*)', 'cnt')
+        .andWhere('l.neighborhood IS NOT NULL')
+        .andWhere("TRIM(l.neighborhood) <> ''")
+        .groupBy('l.neighborhood')
+        .orderBy('cnt', 'DESC')
+        .limit(1)
+        .getRawOne<{ neighborhood: string }>();
+      topNeighborhood = neighborhoodRows?.neighborhood?.trim() || null;
+    }
 
-    const amenityRows = await this.listingRepo
-      .createQueryBuilder('l')
-      .innerJoin(StaysListingRules, 'rules', 'rules.listing_id = l.id')
+    const amenityRows = await this.baseQuery(filters)
       .select('rules.amenities', 'amenities')
-      .where('l.status = :status', { status: 'LIVE' })
-      .andWhere('LOWER(l.city) LIKE LOWER(:city)', { city: `${cityPrefix}%` })
       .limit(200)
       .getRawMany<{ amenities: string[] }>();
 
@@ -98,48 +91,82 @@ export class DestinationIntelligenceService {
       avgRating:
         stats?.avgRating != null ? Math.round(Number(stats.avgRating) * 10) / 10 : null,
       reviewCount: Number(stats?.reviewCount ?? 0),
-      topNeighborhood: neighborhoodRows?.neighborhood?.trim() || null,
+      topNeighborhood,
       bestMonth: null,
       topAmenities,
       currency: 'MAD',
     };
   }
 
-  private async countVerified(cityPrefix: string): Promise<number> {
-    const row = await this.listingRepo
+  private baseQuery(filters: SeoExploreFilters): SelectQueryBuilder<StaysListing> {
+    const qb = this.listingRepo
+      .createQueryBuilder('l')
+      .leftJoin(StaysRatePlan, 'rp', 'rp.listing_id = l.id')
+      .leftJoin(StaysListingRules, 'rules', 'rules.listing_id = l.id')
+      .where('l.status = :status', { status: 'LIVE' });
+
+    if (filters.city?.trim()) {
+      qb.andWhere('LOWER(l.city) LIKE LOWER(:city)', {
+        city: `${filters.city.trim()}%`,
+      });
+    }
+
+    if (filters.listing_type) {
+      qb.andWhere('UPPER(l.listing_type) = UPPER(:listingType)', {
+        listingType: filters.listing_type,
+      });
+    }
+
+    if (filters.amenity?.trim()) {
+      qb.andWhere(`rules.amenities @> :amenityJson`, {
+        amenityJson: JSON.stringify([filters.amenity.trim()]),
+      });
+    }
+
+    if (filters.pets_allowed) {
+      qb.andWhere("rules.pets_policy IS NOT NULL AND rules.pets_policy <> 'NO'");
+    }
+
+    if (filters.family_friendly) {
+      qb.andWhere('rules.max_guests >= :minGuests', { minGuests: 4 });
+    }
+
+    if (filters.luxury_only) {
+      qb.andWhere(
+        `(l.listing_type IN ('VILLA','RIAD') OR rp.base_price >= ${LUXURY_PRICE_MAD})`,
+      );
+    }
+
+    return qb;
+  }
+
+  private async countVerified(filters: SeoExploreFilters): Promise<number> {
+    const qb = this.listingRepo
       .createQueryBuilder('l')
       .innerJoin(
         StaysListingMedia,
         'm',
         "m.listing_id = l.id AND m.kind = 'WALKTHROUGH'",
       )
-      .where('l.status = :status', { status: 'LIVE' })
-      .andWhere('LOWER(l.city) LIKE LOWER(:city)', { city: `${cityPrefix}%` })
-      .select('COUNT(DISTINCT l.id)', 'cnt')
-      .getRawOne<{ cnt: string }>();
+      .where('l.status = :status', { status: 'LIVE' });
+
+    if (filters.city?.trim()) {
+      qb.andWhere('LOWER(l.city) LIKE LOWER(:city)', {
+        city: `${filters.city.trim()}%`,
+      });
+    }
+    if (filters.listing_type) {
+      qb.leftJoin(StaysListingRules, 'rules', 'rules.listing_id = l.id');
+      qb.andWhere('UPPER(l.listing_type) = UPPER(:listingType)', {
+        listingType: filters.listing_type,
+      });
+    }
+
+    const row = await qb.select('COUNT(DISTINCT l.id)', 'cnt').getRawOne<{ cnt: string }>();
     return Number(row?.cnt ?? 0);
   }
 
   private formatAmenity(raw: string): string {
-    return raw
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-
-  private emptyIntelligence(): DestinationIntelligence {
-    return {
-      listingCount: 0,
-      verifiedCount: 0,
-      avgNightlyPrice: null,
-      minPrice: null,
-      maxPrice: null,
-      luxuryCount: 0,
-      avgRating: null,
-      reviewCount: 0,
-      topNeighborhood: null,
-      bestMonth: null,
-      topAmenities: [],
-      currency: 'MAD',
-    };
+    return raw.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 }

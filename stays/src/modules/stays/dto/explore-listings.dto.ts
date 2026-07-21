@@ -56,12 +56,29 @@ export class ExploreListingsDto {
   instant_booking_only?: boolean;
 
   @IsOptional()
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
-  @IsString()
   @IsIn(['APARTMENT', 'HOTEL', 'RIAD', 'VILLA', 'HOSTEL'])
   listing_type?: 'APARTMENT' | 'HOTEL' | 'RIAD' | 'VILLA' | 'HOSTEL';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  @Matches(/^[a-z0-9_]+$/)
+  amenity?: string;
+
+  @IsOptional()
+  @Transform(toQueryBoolean)
+  @IsBoolean()
+  pets_allowed?: boolean;
+
+  @IsOptional()
+  @Transform(toQueryBoolean)
+  @IsBoolean()
+  luxury_only?: boolean;
+
+  @IsOptional()
+  @Transform(toQueryBoolean)
+  @IsBoolean()
+  family_friendly?: boolean;
 
   @IsOptional()
   @Type(() => Number)

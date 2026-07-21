@@ -26,6 +26,7 @@ import { HostApplicationsService } from '../stays/hosts/host-applications.servic
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { UpdateFeeSettingsDto } from '../platform-settings/dto/update-fee-settings.dto';
 import { RejectReasonDto } from '../stays/dto/input-security.dto';
+import { SeoAdminService } from '../seo/seo-admin.service';
 
 @ApiTags('Stays Admin')
 @Controller('admin/stays')
@@ -42,6 +43,7 @@ export class AdminStaysController {
     private readonly hostApplicationsService: HostApplicationsService,
     private readonly platformSettings: PlatformSettingsService,
     private readonly staysReviewsService: StaysReviewsService,
+    private readonly seoAdmin: SeoAdminService,
   ) {}
 
   @Get('settings/fees')
@@ -383,6 +385,23 @@ export class AdminStaysController {
       user.userId,
       { ip, userAgent },
     );
+  }
+
+  @Get('seo/overview')
+  getSeoOverview() {
+    return this.seoAdmin.getOverview();
+  }
+
+  @Get('seo/pages')
+  listSeoPages(@Query('limit') limit?: string) {
+    const n = limit ? parseInt(limit, 10) : 100;
+    return this.seoAdmin.listPages(Number.isFinite(n) ? n : 100);
+  }
+
+  @Get('seo/thin-content')
+  listSeoThinContent(@Query('limit') limit?: string) {
+    const n = limit ? parseInt(limit, 10) : 50;
+    return this.seoAdmin.listThinContent(Number.isFinite(n) ? n : 50);
   }
 
   @Post('listings/:id/set-live')

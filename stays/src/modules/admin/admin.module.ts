@@ -4,6 +4,7 @@ import { AdminStaysController } from './admin-stays.controller';
 import { AdminStaysService } from './admin-stays.service';
 import { HostsModule } from '../stays/hosts/hosts.module';
 import { StaysModule } from '../stays/stays.module';
+import { SeoModule } from '../seo/seo.module';
 import {
   StaysListing,
   StaysBooking,
@@ -17,6 +18,7 @@ import {
   imports: [
     HostsModule,
     StaysModule,
+    SeoModule,
     TypeOrmModule.forFeature([
       StaysListing,
       StaysBooking,

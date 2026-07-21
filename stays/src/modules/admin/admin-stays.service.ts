@@ -18,6 +18,8 @@ import { StaysService } from '../stays/stays.service';
 import { StaysBookingOccupant } from '../stays/entities/stays-booking-occupant.entity';
 import { DomainEventsService } from '../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
+import { SeoFreshnessEngineService } from '../seo/seo-freshness-engine.service';
+import { SeoAdminService } from '../seo/seo-admin.service';
 
 @Injectable()
 export class AdminStaysService {
@@ -41,6 +43,7 @@ export class AdminStaysService {
     @InjectRepository(StaysBookingOccupant)
     private readonly occupantRepo: Repository<StaysBookingOccupant>,
     private readonly domainEvents: DomainEventsService,
+    private readonly seoFreshness: SeoFreshnessEngineService,
   ) {}
 
   /** UTC calendar helpers for ops-overview (month/day boundaries). */
@@ -1005,6 +1008,7 @@ export class AdminStaysService {
       listingId,
       hostUserId: listing.host_user_id,
     });
+    void this.seoFreshness.refreshForSearchCity(listing.city);
     return { status: 'LIVE', message: 'Listing is now live' };
   }
 

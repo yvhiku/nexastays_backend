@@ -7,6 +7,19 @@ import { SeoEngineService } from './seo-engine.service';
 import { SeoPageRegistryService } from './seo-page-registry.service';
 import type { SeoLocale } from './seo.types';
 
+function parseLocale(locale?: string): SeoLocale {
+  return locale === 'fr' || locale === 'ar' ? locale : 'en';
+}
+
+function parsePathSegments(path?: string): string[] {
+  if (!path?.trim()) return [];
+  return path
+    .trim()
+    .replace(/^\/+|\/+$/g, '')
+    .split('/')
+    .filter(Boolean);
+}
+
 @ApiTags('SEO')
 @Controller('stays/seo')
 export class SeoController {
@@ -39,14 +52,59 @@ export class SeoController {
   }
 
   @Public()
+  @Get('pages/resolve')
+  @ApiOperation({ summary: 'Resolve SEO page by path segments (e.g. marrakech/riads)' })
+  resolvePage(
+    @Query('path') path: string,
+    @Query('locale') locale?: string,
+  ) {
+    const segments = parsePathSegments(path);
+    return this.engine.resolveAndGenerate(segments, parseLocale(locale));
+  }
+
+  @Public()
   @Get('pages/city/:slug')
-  @ApiOperation({ summary: 'Full SEO page payload for a city landing page' })
+  @ApiOperation({ summary: 'Full SEO page payload for a city landing page (legacy)' })
   generateCityPage(
     @Param('slug') slug: string,
     @Query('locale') locale?: string,
   ) {
-    const loc = (locale === 'fr' || locale === 'ar' ? locale : 'en') as SeoLocale;
-    return this.engine.generateCityPage(slug, loc);
+    return this.engine.generateCityPage(slug, parseLocale(locale));
+  }
+
+  @Public()
+  @Get('pages/:segment/:combo')
+  @ApiOperation({ summary: 'City × filter combo SEO page (e.g. marrakech/riads)' })
+  generateComboPage(
+    @Param('segment') segment: string,
+    @Param('combo') combo: string,
+    @Query('locale') locale?: string,
+  ) {
+    return this.engine.resolveAndGenerate([segment, combo], parseLocale(locale));
+  }
+
+  @Public()
+  @Get('pages/:segment')
+  @ApiOperation({ summary: 'Single-segment SEO page (city, property type, or amenity)' })
+  generateSegmentPage(
+    @Param('segment') segment: string,
+    @Query('locale') locale?: string,
+  ) {
+    return this.engine.resolveAndGenerate([segment], parseLocale(locale));
+  }
+
+  @Public()
+  @Throttle({ default: THROTTLE_DEFAULT })
+  @Get('ai-context/resolve')
+  @ApiOperation({ summary: 'Structured page context for AI systems (path-based)' })
+  buildAiContextForPath(
+    @Query('path') path: string,
+    @Query('locale') locale?: string,
+    @Query('siteUrl') siteUrl?: string,
+  ) {
+    const segments = parsePathSegments(path);
+    const base = siteUrl?.trim() || process.env.STAYS_WEB_URL || 'http://localhost:3005';
+    return this.engine.buildAiContextForPath(segments, parseLocale(locale), base);
   }
 
   @Public()
@@ -58,9 +116,8 @@ export class SeoController {
     @Query('locale') locale?: string,
     @Query('siteUrl') siteUrl?: string,
   ) {
-    const loc = (locale === 'fr' || locale === 'ar' ? locale : 'en') as SeoLocale;
     const base = siteUrl?.trim() || process.env.STAYS_WEB_URL || 'http://localhost:3005';
-    return this.engine.buildAiContext(slug, loc, base);
+    return this.engine.buildAiContext(slug, parseLocale(locale), base);
   }
 
   @Public()

@@ -3,10 +3,15 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SeoDestination } from './entities/seo-destination.entity';
+import { SeoPageRegistry } from './entities/seo-page-registry.entity';
 import { DestinationIntelligenceService } from './destination-intelligence.service';
 import { SeoPageRegistryService } from './seo-page-registry.service';
-
-const MIN_LISTINGS_INDEXABLE = 3;
+import {
+  SEO_AMENITIES,
+  SEO_PROPERTY_TYPES,
+  amenityToExploreFilters,
+} from './seo-catalog';
+import { computeSeoQualityScore, isPageIndexable } from './seo-quality-scoring.service';
 
 @Injectable()
 export class SeoFreshnessEngineService {
@@ -15,6 +20,8 @@ export class SeoFreshnessEngineService {
   constructor(
     @InjectRepository(SeoDestination)
     private readonly destinationRepo: Repository<SeoDestination>,
+    @InjectRepository(SeoPageRegistry)
+    private readonly registryRepo: Repository<SeoPageRegistry>,
     private readonly intelligence: DestinationIntelligenceService,
     private readonly registry: SeoPageRegistryService,
   ) {}
@@ -24,11 +31,25 @@ export class SeoFreshnessEngineService {
     await this.runRefresh();
   }
 
-  /** Also callable on module init for dev feedback. */
+  @Cron(CronExpression.EVERY_HOUR)
+  async refreshHourlyLight(): Promise<void> {
+    if (process.env.SEO_FRESHNESS_HOURLY !== 'true') return;
+    await this.runRefresh();
+  }
+
   async runOnStartup(): Promise<void> {
     if (process.env.SEO_FRESHNESS_SYNC_ON_STARTUP === 'true') {
       await this.runRefresh();
     }
+  }
+
+  /** Refresh stats for a city when listings change. */
+  async refreshForSearchCity(searchCity: string): Promise<void> {
+    const dest = await this.destinationRepo.findOne({
+      where: { search_city: searchCity, content_status: 'published' },
+    });
+    if (!dest) return;
+    await this.refreshDestinationBundle(dest);
   }
 
   async runRefresh(): Promise<void> {
@@ -36,50 +57,136 @@ export class SeoFreshnessEngineService {
       where: { content_status: 'published' },
     });
     const now = new Date();
+
     for (const dest of destinations) {
       try {
-        const intel = await this.intelligence.computeForCity(dest.search_city);
-        const listingScore = Math.min(100, (intel.listingCount / 20) * 100);
-        const contentScore = dest.hero_image_url ? 80 : 60;
-        const reviewScore =
-          intel.avgRating != null
-            ? Math.min(100, (intel.avgRating / 5) * 100)
-            : 40;
-        const imageScore = dest.hero_image_url ? 90 : 50;
-        const linkScore = dest.nearby_city_slugs?.length ? 70 : 40;
-        const seoScore = Math.round(
-          listingScore * 0.4 +
-            contentScore * 0.3 +
-            reviewScore * 0.15 +
-            imageScore * 0.1 +
-            linkScore * 0.05,
-        );
-        const indexable =
-          dest.content_status === 'published' &&
-          intel.listingCount >= MIN_LISTINGS_INDEXABLE &&
-          seoScore >= 50;
-
-        await this.destinationRepo.update(dest.id, {
-          stats_cache_json: JSON.parse(JSON.stringify(intel)),
-          stats_refreshed_at: now,
-          listing_count_cache: intel.listingCount,
-          seo_score: seoScore,
-          indexable,
-        });
-
-        await this.registry.syncCityPage(
-          dest.id,
-          dest.slug,
-          indexable,
-          seoScore,
-          now,
-        );
+        await this.refreshDestinationBundle(dest, now);
       } catch (err) {
         this.logger.warn(
           `SEO freshness failed for ${dest.slug}: ${err instanceof Error ? err.message : err}`,
         );
       }
     }
-    this.logger.log(`SEO freshness refreshed ${destinations.length} destinations`);
+
+    for (const pt of SEO_PROPERTY_TYPES) {
+      try {
+        const intel = await this.intelligence.compute({
+          listing_type: pt.listingType,
+        });
+        const score = computeSeoQualityScore({ intelligence: intel });
+        const indexable = isPageIndexable({
+          seoScore: score,
+          listingCount: intel.listingCount,
+        });
+        await this.registry.syncPageAllLocales({
+          pageType: 'property_type',
+          slug: pt.slug,
+          indexable,
+          seoScore: score,
+          lastmod: now,
+        });
+      } catch (err) {
+        this.logger.warn(`SEO freshness property_type ${pt.slug}: ${err}`);
+      }
+    }
+
+    for (const am of SEO_AMENITIES) {
+      try {
+        const intel = await this.intelligence.compute(amenityToExploreFilters(am));
+        const score = computeSeoQualityScore({ intelligence: intel });
+        const indexable = isPageIndexable({
+          seoScore: score,
+          listingCount: intel.listingCount,
+        });
+        await this.registry.syncPageAllLocales({
+          pageType: 'amenity',
+          slug: am.slug,
+          indexable,
+          seoScore: score,
+          lastmod: now,
+        });
+      } catch (err) {
+        this.logger.warn(`SEO freshness amenity ${am.slug}: ${err}`);
+      }
+    }
+
+    this.logger.log(
+      `SEO freshness refreshed ${destinations.length} destinations + combos`,
+    );
+  }
+
+  private async refreshDestinationBundle(
+    dest: SeoDestination,
+    now: Date = new Date(),
+  ): Promise<void> {
+    const cityIntel = await this.intelligence.compute({ city: dest.search_city });
+    const cityScore = computeSeoQualityScore({
+      intelligence: cityIntel,
+      destination: dest,
+    });
+    const cityIndexable = isPageIndexable({
+      seoScore: cityScore,
+      listingCount: cityIntel.listingCount,
+    });
+
+    await this.destinationRepo.update(dest.id, {
+      stats_cache_json: JSON.parse(JSON.stringify(cityIntel)),
+      stats_refreshed_at: now,
+      listing_count_cache: cityIntel.listingCount,
+      seo_score: cityScore,
+      indexable: cityIndexable,
+    });
+
+    await this.registry.syncPageAllLocales({
+      pageType: 'city',
+      slug: dest.slug,
+      indexable: cityIndexable,
+      seoScore: cityScore,
+      lastmod: now,
+    });
+
+    for (const pt of SEO_PROPERTY_TYPES) {
+      const intel = await this.intelligence.compute({
+        city: dest.search_city,
+        listing_type: pt.listingType,
+      });
+      const score = computeSeoQualityScore({
+        intelligence: intel,
+        destination: dest,
+      });
+      const indexable = isPageIndexable({
+        seoScore: score,
+        listingCount: intel.listingCount,
+      });
+      await this.registry.syncPageAllLocales({
+        pageType: 'city_property_type',
+        slug: `${dest.slug}/${pt.slug}`,
+        indexable,
+        seoScore: score,
+        lastmod: now,
+      });
+    }
+
+    for (const am of SEO_AMENITIES) {
+      const intel = await this.intelligence.compute({
+        city: dest.search_city,
+        ...amenityToExploreFilters(am),
+      });
+      const score = computeSeoQualityScore({
+        intelligence: intel,
+        destination: dest,
+      });
+      const indexable = isPageIndexable({
+        seoScore: score,
+        listingCount: intel.listingCount,
+      });
+      await this.registry.syncPageAllLocales({
+        pageType: 'city_amenity',
+        slug: `${dest.slug}/${am.slug}`,
+        indexable,
+        seoScore: score,
+        lastmod: now,
+      });
+    }
   }
 }

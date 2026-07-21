@@ -24,6 +24,37 @@ export class SeoPageRegistryService {
     }));
   }
 
+  async syncPageEntry(args: {
+    pageType: string;
+    slug: string;
+    locale: string;
+    indexable: boolean;
+    seoScore: number;
+    lastmod: Date;
+  }): Promise<void> {
+    await this.registryRepo.update(
+      { page_type: args.pageType, slug: args.slug, locale: args.locale },
+      {
+        indexable: args.indexable,
+        seo_score: args.seoScore,
+        lastmod: args.lastmod,
+      },
+    );
+  }
+
+  async syncPageAllLocales(args: {
+    pageType: string;
+    slug: string;
+    indexable: boolean;
+    seoScore: number;
+    lastmod: Date;
+  }): Promise<void> {
+    for (const locale of ['en', 'fr', 'ar'] as const) {
+      await this.syncPageEntry({ ...args, locale });
+    }
+  }
+
+  /** @deprecated */
   async syncCityPage(
     destinationId: string,
     slug: string,
@@ -31,13 +62,13 @@ export class SeoPageRegistryService {
     seoScore: number,
     lastmod: Date,
   ): Promise<void> {
-    const locales = ['en', 'fr', 'ar'] as const;
-    for (const locale of locales) {
-      await this.registryRepo.update(
-        { page_type: 'city', slug, locale },
-        { indexable, seo_score: seoScore, lastmod },
-      );
-    }
+    await this.syncPageAllLocales({
+      pageType: 'city',
+      slug,
+      indexable,
+      seoScore,
+      lastmod,
+    });
     void destinationId;
   }
 }

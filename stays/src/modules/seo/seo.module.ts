@@ -7,6 +7,7 @@ import { SeoEngineService } from './seo-engine.service';
 import { DestinationIntelligenceService } from './destination-intelligence.service';
 import { SeoPageRegistryService } from './seo-page-registry.service';
 import { SeoFreshnessEngineService } from './seo-freshness-engine.service';
+import { SeoAdminService } from './seo-admin.service';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 
 @Module({
@@ -19,8 +20,14 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
     DestinationIntelligenceService,
     SeoPageRegistryService,
     SeoFreshnessEngineService,
+    SeoAdminService,
   ],
-  exports: [SeoEngineService, SeoPageRegistryService],
+  exports: [
+    SeoEngineService,
+    SeoPageRegistryService,
+    SeoFreshnessEngineService,
+    SeoAdminService,
+  ],
 })
 export class SeoModule implements OnModuleInit {
   constructor(private readonly freshness: SeoFreshnessEngineService) {}

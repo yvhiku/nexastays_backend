@@ -99,6 +99,10 @@ export type ExploreQueryParams = {
   verified_walkthrough_only?: boolean;
   instant_booking_only?: boolean;
   listing_type?: string;
+  amenity?: string;
+  pets_allowed?: boolean;
+  luxury_only?: boolean;
+  family_friendly?: boolean;
   limit?: number;
   cursor?: string;
   sort?: ExploreSort;
@@ -351,6 +355,10 @@ export class ExploreService {
     verified_walkthrough_only?: boolean;
     instant_booking_only?: boolean;
     listing_type?: string;
+    amenity?: string;
+    pets_allowed?: boolean;
+    luxury_only?: boolean;
+    family_friendly?: boolean;
     north?: number;
     south?: number;
     east?: number;
@@ -381,6 +389,26 @@ export class ExploreService {
       qb.andWhere('UPPER(l.listing_type) = UPPER(:listingType)', {
         listingType: opts.listing_type.trim(),
       });
+    }
+
+    if (opts.amenity?.trim()) {
+      qb.andWhere('rules.amenities @> :amenityJson', {
+        amenityJson: JSON.stringify([opts.amenity.trim()]),
+      });
+    }
+
+    if (opts.pets_allowed) {
+      qb.andWhere("rules.pets_policy IS NOT NULL AND rules.pets_policy <> 'NO'");
+    }
+
+    if (opts.family_friendly) {
+      qb.andWhere('rules.max_guests >= :minGuests', { minGuests: 4 });
+    }
+
+    if (opts.luxury_only) {
+      qb.andWhere(
+        `(l.listing_type IN ('VILLA','RIAD') OR rp.base_price >= 1500)`,
+      );
     }
 
     if (opts.instant_booking_only) {
@@ -722,6 +750,10 @@ export class ExploreService {
     put('verified_walkthrough_only', params.verified_walkthrough_only);
     put('instant_booking_only', params.instant_booking_only);
     put('listing_type', params.listing_type);
+    put('amenity', params.amenity);
+    put('pets_allowed', params.pets_allowed);
+    put('luxury_only', params.luxury_only);
+    put('family_friendly', params.family_friendly);
     put('limit', params.limit);
     put('cursor', params.cursor);
     put('sort', params.sort);

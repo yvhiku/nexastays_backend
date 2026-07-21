@@ -2,30 +2,39 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { SeoDestination } from './entities/seo-destination.entity';
+import { SeoPageRegistry } from './entities/seo-page-registry.entity';
 import { DestinationIntelligenceService } from './destination-intelligence.service';
+import {
+  SEO_AMENITIES,
+  SEO_PROPERTY_TYPES,
+  amenityBySlug,
+  amenityToExploreFilters,
+  propertyTypeBySlug,
+  resolveSeoSegments,
+  type ResolvedSeoPage,
+  type SeoExploreFilters,
+} from './seo-catalog';
+import { computeSeoQualityScore, isPageIndexable } from './seo-quality-scoring.service';
 import type {
   AiContextPayload,
   AiSnippet,
   GeoBlockDto,
   SeoDestinationDto,
+  SeoExploreFiltersDto,
   SeoLocale,
   SeoPagePayload,
+  SeoPageType,
 } from './seo.types';
 
 const LOCALES: SeoLocale[] = ['en', 'fr', 'ar'];
-const PROPERTY_TYPES = [
-  { slug: 'riads', label: 'Riads' },
-  { slug: 'apartments', label: 'Apartments' },
-  { slug: 'villas', label: 'Villas' },
-  { slug: 'hotels', label: 'Hotels' },
-  { slug: 'hostels', label: 'Hostels' },
-];
 
 @Injectable()
 export class SeoEngineService {
   constructor(
     @InjectRepository(SeoDestination)
     private readonly destinationRepo: Repository<SeoDestination>,
+    @InjectRepository(SeoPageRegistry)
+    private readonly registryRepo: Repository<SeoPageRegistry>,
     private readonly intelligence: DestinationIntelligenceService,
   ) {}
 
@@ -46,163 +55,374 @@ export class SeoEngineService {
   }
 
   async generateCityPage(slug: string, locale: SeoLocale): Promise<SeoPagePayload> {
-    const dest = await this.getDestinationBySlug(slug);
-    const intelligence =
-      (dest.stats_cache_json as unknown as SeoPagePayload['intelligence']) ??
-      (await this.intelligence.computeForCity(dest.search_city));
+    return this.resolveAndGenerate([slug], locale);
+  }
 
-    const nearby = await this.loadNearby(dest.nearby_city_slugs ?? []);
-    const geoBlocks = this.buildGeoBlocks(dest, intelligence);
-    const aiSnippets = this.buildAiSnippets(dest, intelligence);
-    const path = `/${locale}/stays/${dest.slug}`;
-    const title = `Stays in ${dest.name} | Hotels, Riads & Apartments | Nexa Stays`;
-    const description = this.buildDescription(dest, intelligence);
+  async resolveAndGenerate(
+    segments: string[],
+    locale: SeoLocale,
+  ): Promise<SeoPagePayload> {
+    const resolved = resolveSeoSegments(segments);
+    if (!resolved) throw new NotFoundException('Page not found');
+    return this.generateResolved(resolved, locale);
+  }
+
+  async generateResolved(
+    resolved: ResolvedSeoPage,
+    locale: SeoLocale,
+  ): Promise<SeoPagePayload> {
+    switch (resolved.kind) {
+      case 'city':
+        return this.buildCityPage(resolved.citySlug, locale);
+      case 'property_type':
+        return this.buildGlobalPropertyType(resolved.typeSlug, locale);
+      case 'amenity':
+        return this.buildGlobalAmenity(resolved.amenitySlug, locale);
+      case 'city_property_type':
+        return this.buildCityPropertyType(
+          resolved.citySlug,
+          resolved.typeSlug,
+          locale,
+        );
+      case 'city_amenity':
+        return this.buildCityAmenity(
+          resolved.citySlug,
+          resolved.amenitySlug,
+          locale,
+        );
+      default:
+        throw new NotFoundException('Page not found');
+    }
+  }
+
+  async buildAiContextForPath(
+    segments: string[],
+    locale: SeoLocale,
+    siteUrl: string,
+  ): Promise<AiContextPayload> {
+    const page = await this.resolveAndGenerate(segments, locale);
+    const geoBlocks = page.geoBlocks;
+    const summary =
+      page.intelligence.listingCount > 0
+        ? `${page.h1}: ${page.intelligence.listingCount} verified stays on Nexa Stays` +
+          (page.intelligence.avgNightlyPrice != null
+            ? `, average ${page.intelligence.avgNightlyPrice} ${page.intelligence.currency}/night.`
+            : '.')
+        : `${page.h1} on Nexa Stays — verified stays in Morocco.`;
 
     return {
+      pageType: page.pageType,
+      destination: page.destination?.name ?? null,
+      country: 'Morocco',
+      summary,
+      listingCount: page.intelligence.listingCount,
+      verifiedCount: page.intelligence.verifiedCount,
+      averagePrice: page.intelligence.avgNightlyPrice,
+      minPrice: page.intelligence.minPrice,
+      currency: page.intelligence.currency,
+      averageRating: page.intelligence.avgRating,
+      bestArea: page.intelligence.topNeighborhood,
+      familyArea: page.destination
+        ? this.areaHint(page.destination.slug, 'family')
+        : null,
+      nightlifeArea: page.destination
+        ? this.areaHint(page.destination.slug, 'nightlife')
+        : null,
+      couplesArea: page.destination
+        ? this.areaHint(page.destination.slug, 'couples')
+        : null,
+      nomadArea: page.destination
+        ? this.areaHint(page.destination.slug, 'nomads')
+        : null,
+      topAmenities: page.intelligence.topAmenities,
+      bestMonth: page.destination?.bestTimeToVisit?.split(';')[0]?.trim() ?? null,
+      safety: geoBlocks.find((b) => b.question.toLowerCase().includes('safe'))?.answer ?? null,
+      transport: null,
+      snippets: page.aiSnippets,
+      canonicalUrl: `${siteUrl.replace(/\/$/, '')}${page.canonical}`,
+      lastUpdated: page.lastmod,
+    };
+  }
+
+  /** @deprecated use buildAiContextForPath */
+  async buildAiContext(
+    slug: string,
+    locale: SeoLocale,
+    siteUrl: string,
+  ): Promise<AiContextPayload> {
+    return this.buildAiContextForPath([slug], locale, siteUrl);
+  }
+
+  private async buildCityPage(
+    citySlug: string,
+    locale: SeoLocale,
+  ): Promise<SeoPagePayload> {
+    const dest = await this.getDestinationBySlug(citySlug);
+    const exploreFilters: SeoExploreFilters = { city: dest.search_city };
+    return this.assemblePage({
       pageType: 'city',
       locale,
-      path,
-      title,
-      description,
+      registrySlug: dest.slug,
+      pathSuffix: dest.slug,
+      dest,
+      filterLabel: null,
+      exploreFilters,
+      title: `Stays in ${dest.name} | Hotels, Riads & Apartments | Nexa Stays`,
+      description: `Discover hotels, riads, apartments and villas in ${dest.name}. Compare verified listings and book securely with Nexa Stays.`,
       h1: `Stays in ${dest.name}`,
+      breadcrumbs: (p) => [
+        { name: 'Home', path: `/${locale}` },
+        { name: 'Stays', path: `/${locale}/stays` },
+        { name: dest.name, path: p },
+      ],
+    });
+  }
+
+  private async buildGlobalPropertyType(
+    typeSlug: string,
+    locale: SeoLocale,
+  ): Promise<SeoPagePayload> {
+    const pt = propertyTypeBySlug(typeSlug);
+    if (!pt) throw new NotFoundException('Property type not found');
+    const exploreFilters: SeoExploreFilters = {
+      listing_type: pt.listingType,
+    };
+    return this.assemblePage({
+      pageType: 'property_type',
+      locale,
+      registrySlug: pt.slug,
+      pathSuffix: pt.slug,
+      dest: null,
+      filterLabel: pt.pluralLabel,
+      exploreFilters,
+      title: `${pt.pluralLabel} in Morocco | Nexa Stays`,
+      description: `Browse verified ${pt.pluralLabel.toLowerCase()} across Morocco. Transparent fees and identity-checked hosts on Nexa Stays.`,
+      h1: `${pt.pluralLabel} in Morocco`,
+      breadcrumbs: (p) => [
+        { name: 'Home', path: `/${locale}` },
+        { name: 'Stays', path: `/${locale}/stays` },
+        { name: pt.pluralLabel, path: p },
+      ],
+    });
+  }
+
+  private async buildGlobalAmenity(
+    amenitySlug: string,
+    locale: SeoLocale,
+  ): Promise<SeoPagePayload> {
+    const am = amenityBySlug(amenitySlug);
+    if (!am) throw new NotFoundException('Amenity not found');
+    const exploreFilters: SeoExploreFilters = amenityToExploreFilters(am);
+    return this.assemblePage({
+      pageType: 'amenity',
+      locale,
+      registrySlug: am.slug,
+      pathSuffix: am.slug,
+      dest: null,
+      filterLabel: am.label,
+      exploreFilters,
+      title: `${am.label} Stays in Morocco | Nexa Stays`,
+      description: `Find ${am.label.toLowerCase()} stays across Morocco on Nexa Stays. Verified listings with clear pricing.`,
+      h1: `${am.label} stays in Morocco`,
+      breadcrumbs: (p) => [
+        { name: 'Home', path: `/${locale}` },
+        { name: 'Stays', path: `/${locale}/stays` },
+        { name: am.label, path: p },
+      ],
+    });
+  }
+
+  private async buildCityPropertyType(
+    citySlug: string,
+    typeSlug: string,
+    locale: SeoLocale,
+  ): Promise<SeoPagePayload> {
+    const dest = await this.getDestinationBySlug(citySlug);
+    const pt = propertyTypeBySlug(typeSlug);
+    if (!pt) throw new NotFoundException('Property type not found');
+    const exploreFilters: SeoExploreFilters = {
+      city: dest.search_city,
+      listing_type: pt.listingType,
+    };
+    return this.assemblePage({
+      pageType: 'city_property_type',
+      locale,
+      registrySlug: `${dest.slug}/${pt.slug}`,
+      pathSuffix: `${dest.slug}/${pt.slug}`,
+      dest,
+      filterLabel: pt.pluralLabel,
+      exploreFilters,
+      title: `${pt.pluralLabel} in ${dest.name} | Nexa Stays`,
+      description: `Browse ${pt.pluralLabel.toLowerCase()} in ${dest.name}. Verified listings on Nexa Stays.`,
+      h1: `${pt.pluralLabel} in ${dest.name}`,
+      breadcrumbs: (p) => [
+        { name: 'Home', path: `/${locale}` },
+        { name: 'Stays', path: `/${locale}/stays` },
+        { name: dest.name, path: `/${locale}/stays/${dest.slug}` },
+        { name: pt.pluralLabel, path: p },
+      ],
+    });
+  }
+
+  private async buildCityAmenity(
+    citySlug: string,
+    amenitySlug: string,
+    locale: SeoLocale,
+  ): Promise<SeoPagePayload> {
+    const dest = await this.getDestinationBySlug(citySlug);
+    const am = amenityBySlug(amenitySlug);
+    if (!am) throw new NotFoundException('Amenity not found');
+    const exploreFilters: SeoExploreFilters = {
+      city: dest.search_city,
+      ...amenityToExploreFilters(am),
+    };
+    return this.assemblePage({
+      pageType: 'city_amenity',
+      locale,
+      registrySlug: `${dest.slug}/${am.slug}`,
+      pathSuffix: `${dest.slug}/${am.slug}`,
+      dest,
+      filterLabel: am.label,
+      exploreFilters,
+      title: `${am.label} Stays in ${dest.name} | Nexa Stays`,
+      description: `Find ${am.label.toLowerCase()} stays in ${dest.name} on Nexa Stays.`,
+      h1: `${am.label} stays in ${dest.name}`,
+      breadcrumbs: (p) => [
+        { name: 'Home', path: `/${locale}` },
+        { name: 'Stays', path: `/${locale}/stays` },
+        { name: dest.name, path: `/${locale}/stays/${dest.slug}` },
+        { name: am.label, path: p },
+      ],
+    });
+  }
+
+  private async assemblePage(args: {
+    pageType: SeoPageType;
+    locale: SeoLocale;
+    registrySlug: string;
+    pathSuffix: string;
+    dest: SeoDestination | null;
+    filterLabel: string | null;
+    exploreFilters: SeoExploreFilters;
+    title: string;
+    description: string;
+    h1: string;
+    breadcrumbs: (path: string) => { name: string; path: string }[];
+  }): Promise<SeoPagePayload> {
+    const path = `/${args.locale}/stays/${args.pathSuffix}`;
+    const intel = await this.intelligence.compute(args.exploreFilters);
+    const seoScore = computeSeoQualityScore({
+      intelligence: intel,
+      destination: args.dest,
+    });
+    const registryRow = await this.registryRepo.findOne({
+      where: {
+        page_type: args.pageType,
+        slug: args.registrySlug,
+        locale: args.locale,
+      },
+    });
+    const indexable =
+      registryRow?.indexable ??
+      isPageIndexable({ seoScore, listingCount: intel.listingCount });
+
+    const destDto = args.dest ? this.toDestinationDto(args.dest) : null;
+    const nearby = args.dest
+      ? await this.loadNearby(args.dest.nearby_city_slugs ?? [])
+      : [];
+
+    const geoBlocks = this.buildGeoBlocks(args.h1, args.dest, intel);
+    const aiSnippets = this.buildAiSnippets(args.h1, intel);
+
+    const priceSuffix =
+      intel.avgNightlyPrice != null
+        ? ` From ${intel.avgNightlyPrice} ${intel.currency}/night.`
+        : '';
+    const description = `${args.description}${priceSuffix}`;
+
+    return {
+      pageType: args.pageType,
+      locale: args.locale,
+      path,
+      title: args.title,
+      description,
+      h1: args.h1,
       canonical: path,
       hreflang: Object.fromEntries(
-        LOCALES.map((loc) => [loc, `/${loc}/stays/${dest.slug}`]),
+        LOCALES.map((loc) => [loc, `/${loc}/stays/${args.pathSuffix}`]),
       ),
-      robots: dest.indexable ? 'index,follow' : 'noindex,follow',
-      destination: this.toDestinationDto(dest),
-      intelligence,
+      robots: indexable ? 'index,follow' : 'noindex,follow',
+      destination: destDto,
+      filterLabel: args.filterLabel,
+      exploreFilters: args.exploreFilters as SeoExploreFiltersDto,
+      intelligence: intel,
       geoBlocks,
       faq: geoBlocks,
       aiSnippets,
       nearbyDestinations: nearby,
-      propertyTypeLinks: PROPERTY_TYPES.map((pt) => ({
-        slug: pt.slug,
-        label: `${pt.label} in ${dest.name}`,
-        href: `/${locale}/stays/${dest.slug}/${pt.slug}`,
-      })),
-      breadcrumbs: [
-        { name: 'Home', path: `/${locale}` },
-        { name: 'Stays', path: `/${locale}/stays` },
-        { name: dest.name, path },
-      ],
-      indexable: dest.indexable,
-      seoScore: dest.seo_score,
-      lastmod: (dest.stats_refreshed_at ?? dest.updated_at).toISOString(),
+      propertyTypeLinks: destDto
+        ? SEO_PROPERTY_TYPES.map((pt) => ({
+            slug: pt.slug,
+            label: `${pt.pluralLabel} in ${destDto.name}`,
+            href: `/${args.locale}/stays/${destDto.slug}/${pt.slug}`,
+          }))
+        : [],
+      amenityLinks: destDto
+        ? SEO_AMENITIES.map((am) => ({
+            slug: am.slug,
+            label: `${am.label} in ${destDto.name}`,
+            href: `/${args.locale}/stays/${destDto.slug}/${am.slug}`,
+          }))
+        : [],
+      breadcrumbs: args.breadcrumbs(path),
+      indexable,
+      seoScore: registryRow?.seo_score ?? seoScore,
+      lastmod: registryRow?.lastmod?.toISOString() ?? new Date().toISOString(),
+      registrySlug: args.registrySlug,
     };
-  }
-
-  async buildAiContext(slug: string, locale: SeoLocale, siteUrl: string): Promise<AiContextPayload> {
-    const dest = await this.getDestinationBySlug(slug);
-    const intelligence =
-      (dest.stats_cache_json as unknown as SeoPagePayload['intelligence']) ??
-      (await this.intelligence.computeForCity(dest.search_city));
-    const snippets = this.buildAiSnippets(dest, intelligence);
-    const geoBlocks = this.buildGeoBlocks(dest, intelligence);
-    const canonicalUrl = `${siteUrl.replace(/\/$/, '')}/${locale}/stays/${dest.slug}`;
-
-    const summary =
-      intelligence.listingCount > 0
-        ? `${dest.name} offers ${intelligence.listingCount} verified stays` +
-          (intelligence.avgNightlyPrice != null
-            ? ` with an average nightly price of ${intelligence.avgNightlyPrice} ${intelligence.currency}.`
-            : '.')
-        : `${dest.name} is a popular destination for verified stays in Morocco on Nexa Stays.`;
-
-    return {
-      destination: dest.name,
-      country: 'Morocco',
-      summary,
-      listingCount: intelligence.listingCount,
-      verifiedCount: intelligence.verifiedCount,
-      averagePrice: intelligence.avgNightlyPrice,
-      minPrice: intelligence.minPrice,
-      currency: intelligence.currency,
-      averageRating: intelligence.avgRating,
-      bestArea: intelligence.topNeighborhood,
-      familyArea: this.areaHint(dest.slug, 'family'),
-      nightlifeArea: this.areaHint(dest.slug, 'nightlife'),
-      couplesArea: this.areaHint(dest.slug, 'couples'),
-      nomadArea: this.areaHint(dest.slug, 'nomads'),
-      topAmenities: intelligence.topAmenities,
-      bestMonth: dest.best_time_to_visit?.split(';')[0]?.trim() ?? null,
-      safety: geoBlocks.find((b) => b.question.toLowerCase().includes('safe'))?.answer ?? null,
-      transport: null,
-      snippets,
-      canonicalUrl,
-      lastUpdated: (dest.stats_refreshed_at ?? dest.updated_at).toISOString(),
-    };
-  }
-
-  private buildDescription(
-    dest: SeoDestination,
-    intel: SeoPagePayload['intelligence'],
-  ): string {
-    const price =
-      intel.avgNightlyPrice != null
-        ? ` Average from ${intel.avgNightlyPrice} ${intel.currency}/night.`
-        : '';
-    return `Discover hotels, riads, apartments and villas in ${dest.name}. Compare verified listings and book securely with Nexa Stays.${price}`;
   }
 
   private buildGeoBlocks(
-    dest: SeoDestination,
+    h1: string,
+    dest: SeoDestination | null,
     intel: SeoPagePayload['intelligence'],
   ): GeoBlockDto[] {
-    const stored = (dest.geo_blocks_json ?? []) as GeoBlockDto[];
-    if (stored.length > 0) return stored;
-
     const blocks: GeoBlockDto[] = [];
     if (intel.avgNightlyPrice != null) {
       blocks.push({
-        question: `Average stay price in ${dest.name}?`,
+        question: `Average price for ${h1}?`,
         answer: `Around ${intel.avgNightlyPrice} ${intel.currency}/night based on live Nexa Stays listings.`,
         statKey: 'avgNightlyPrice',
       });
     }
     if (intel.listingCount > 0) {
       blocks.push({
-        question: `How many verified stays in ${dest.name}?`,
+        question: `How many listings match ${h1}?`,
         answer: `${intel.listingCount} live listings (${intel.verifiedCount} with verified walkthrough).`,
         statKey: 'listingCount',
       });
     }
-    blocks.push({
-      question: `Is ${dest.name} safe for tourists?`,
-      answer: `Yes. Popular tourist districts in ${dest.name} are generally safe when using verified stays and standard travel precautions.`,
-    });
-    const family = this.areaHint(dest.slug, 'family');
-    if (family) {
+    if (dest) {
       blocks.push({
-        question: `Best area for families in ${dest.name}?`,
-        answer: family,
+        question: `Is ${dest.name} safe for tourists?`,
+        answer: `Yes. Popular tourist districts in ${dest.name} are generally safe when using verified stays.`,
       });
-    }
-    const nightlife = this.areaHint(dest.slug, 'nightlife');
-    if (nightlife) {
-      blocks.push({
-        question: `Best area for nightlife in ${dest.name}?`,
-        answer: nightlife,
-      });
-    }
-    if (dest.best_time_to_visit) {
-      blocks.push({
-        question: `Best time to visit ${dest.name}?`,
-        answer: dest.best_time_to_visit,
-      });
+      if (dest.best_time_to_visit) {
+        blocks.push({
+          question: `Best time to visit ${dest.name}?`,
+          answer: dest.best_time_to_visit,
+        });
+      }
     }
     return blocks;
   }
 
-  private buildAiSnippets(
-    dest: SeoDestination,
-    intel: SeoPagePayload['intelligence'],
-  ): AiSnippet[] {
+  private buildAiSnippets(label: string, intel: SeoPagePayload['intelligence']): AiSnippet[] {
     const snippets: AiSnippet[] = [];
     if (intel.listingCount > 0) {
       snippets.push({
         type: 'summary',
-        content: `${dest.name} has ${intel.listingCount} verified stays on Nexa Stays.`,
+        content: `${label}: ${intel.listingCount} verified stays on Nexa Stays.`,
         confidence: 1,
         source: 'marketplace',
       });
@@ -210,33 +430,11 @@ export class SeoEngineService {
     if (intel.avgNightlyPrice != null) {
       snippets.push({
         type: 'price',
-        content: `Average nightly price in ${dest.name} is about ${intel.avgNightlyPrice} ${intel.currency}.`,
+        content: `Average nightly price is about ${intel.avgNightlyPrice} ${intel.currency}.`,
         confidence: 1,
         source: 'marketplace',
       });
     }
-    if (intel.topNeighborhood) {
-      snippets.push({
-        type: 'nomads',
-        content: `${intel.topNeighborhood} is among the most booked areas in ${dest.name}.`,
-        confidence: 0.95,
-        source: 'marketplace',
-      });
-    }
-    if (dest.best_time_to_visit) {
-      snippets.push({
-        type: 'seasonality',
-        content: `Best time to visit ${dest.name}: ${dest.best_time_to_visit}.`,
-        confidence: 0.9,
-        source: 'editorial',
-      });
-    }
-    snippets.push({
-      type: 'safety',
-      content: `Tourist areas in ${dest.name} are generally safe; book verified stays on Nexa Stays for clearer host information.`,
-      confidence: 0.85,
-      source: 'editorial',
-    });
     return snippets;
   }
 
@@ -245,18 +443,8 @@ export class SeoEngineService {
     kind: 'family' | 'nightlife' | 'couples' | 'nomads',
   ): string | null {
     const hints: Record<string, Partial<Record<typeof kind, string>>> = {
-      marrakech: {
-        family: 'Palmeraie',
-        nightlife: 'Gueliz',
-        couples: 'Hivernage',
-        nomads: 'Gueliz',
-      },
-      casablanca: {
-        family: 'Anfa',
-        nightlife: 'Maarif',
-        couples: 'Ain Diab',
-        nomads: 'Maarif',
-      },
+      marrakech: { family: 'Palmeraie', nightlife: 'Gueliz', couples: 'Hivernage', nomads: 'Gueliz' },
+      casablanca: { family: 'Anfa', nightlife: 'Maarif', couples: 'Ain Diab', nomads: 'Maarif' },
       agadir: { family: 'Founty', nightlife: 'Marina', couples: 'Talborjt', nomads: 'Marina' },
       rabat: { family: 'Agdal', nightlife: 'Agdal', couples: 'Hassan', nomads: 'Agdal' },
       fes: { family: 'Zouagha', nightlife: 'Ville Nouvelle', couples: 'Medina', nomads: 'Ville Nouvelle' },
