@@ -17,7 +17,7 @@ export class DomainEventsService {
   /**
    * Publish a domain event (use EVENTS.* registry names).
    * Invalid events are REJECTED and logged as errors — never silently published.
-   * Transport failures are absorbed (event bus has its own buffering/retry).
+   * Transport failures propagate so outbox workers can retry instead of marking DONE.
    */
   publish<T extends Record<string, unknown>>(type: string, source: string, payload: T) {
     return this.publisher.publish(type, source, payload).catch((err: unknown) => {
@@ -30,7 +30,7 @@ export class DomainEventsService {
           `Event publish transport failure for "${type}": ${err instanceof Error ? err.message : err}`,
         );
       }
-      return undefined;
+      throw err;
     });
   }
 }
