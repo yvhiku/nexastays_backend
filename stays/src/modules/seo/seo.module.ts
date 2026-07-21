@@ -5,6 +5,9 @@ import { SeoPageRegistry } from './entities/seo-page-registry.entity';
 import { SeoNeighborhood } from './entities/seo-neighborhood.entity';
 import { SeoLandmark } from './entities/seo-landmark.entity';
 import { SeoDestinationRelation } from './entities/seo-destination-relation.entity';
+import { SeoGuide } from './entities/seo-guide.entity';
+import { SeoContentVersion } from './entities/seo-content-version.entity';
+import { SeoGeoRequestLog } from './entities/seo-geo-request-log.entity';
 import { SeoController } from './seo.controller';
 import { SeoEngineService } from './seo-engine.service';
 import { DestinationIntelligenceService } from './destination-intelligence.service';
@@ -12,6 +15,10 @@ import { SeoPageRegistryService } from './seo-page-registry.service';
 import { SeoFreshnessEngineService } from './seo-freshness-engine.service';
 import { SeoAdminService } from './seo-admin.service';
 import { SeoKnowledgeGraphService } from './seo-knowledge-graph.service';
+import { SeoGuideService } from './seo-guide.service';
+import { SeoContentCmsService } from './seo-content-cms.service';
+import { SeoContentPipelineService } from './seo-content-pipeline.service';
+import { SeoGeoMonitoringService } from './seo-geo-monitoring.service';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 
 @Module({
@@ -22,6 +29,9 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
       SeoNeighborhood,
       SeoLandmark,
       SeoDestinationRelation,
+      SeoGuide,
+      SeoContentVersion,
+      SeoGeoRequestLog,
       StaysListing,
     ]),
   ],
@@ -33,6 +43,10 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
     SeoFreshnessEngineService,
     SeoAdminService,
     SeoKnowledgeGraphService,
+    SeoGuideService,
+    SeoContentCmsService,
+    SeoContentPipelineService,
+    SeoGeoMonitoringService,
   ],
   exports: [
     SeoEngineService,
@@ -40,6 +54,10 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
     SeoFreshnessEngineService,
     SeoAdminService,
     SeoKnowledgeGraphService,
+    SeoGuideService,
+    SeoContentCmsService,
+    SeoContentPipelineService,
+    SeoGeoMonitoringService,
   ],
 })
 export class SeoModule implements OnModuleInit {

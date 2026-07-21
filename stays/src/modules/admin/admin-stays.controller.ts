@@ -27,6 +27,9 @@ import { PlatformSettingsService } from '../platform-settings/platform-settings.
 import { UpdateFeeSettingsDto } from '../platform-settings/dto/update-fee-settings.dto';
 import { RejectReasonDto } from '../stays/dto/input-security.dto';
 import { SeoAdminService } from '../seo/seo-admin.service';
+import { SeoContentCmsService } from '../seo/seo-content-cms.service';
+import { SeoContentPipelineService } from '../seo/seo-content-pipeline.service';
+import { SeoGeoMonitoringService } from '../seo/seo-geo-monitoring.service';
 
 @ApiTags('Stays Admin')
 @Controller('admin/stays')
@@ -44,6 +47,9 @@ export class AdminStaysController {
     private readonly platformSettings: PlatformSettingsService,
     private readonly staysReviewsService: StaysReviewsService,
     private readonly seoAdmin: SeoAdminService,
+    private readonly seoCms: SeoContentCmsService,
+    private readonly seoPipeline: SeoContentPipelineService,
+    private readonly seoGeo: SeoGeoMonitoringService,
   ) {}
 
   @Get('settings/fees')
@@ -402,6 +408,39 @@ export class AdminStaysController {
   listSeoThinContent(@Query('limit') limit?: string) {
     const n = limit ? parseInt(limit, 10) : 50;
     return this.seoAdmin.listThinContent(Number.isFinite(n) ? n : 50);
+  }
+
+  @Get('seo/geo/overview')
+  getSeoGeoOverview(@Query('days') days?: string) {
+    const n = days ? parseInt(days, 10) : 7;
+    return this.seoGeo.getOverview(Number.isFinite(n) ? n : 7);
+  }
+
+  @Get('seo/cms/drafts')
+  listSeoCmsDrafts(@Query('limit') limit?: string) {
+    const n = limit ? parseInt(limit, 10) : 50;
+    return this.seoCms.listDrafts(Number.isFinite(n) ? n : 50);
+  }
+
+  @Post('seo/cms/guides/:id/generate-draft')
+  generateSeoGuideDraft(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.seoPipeline.generateGuideDraft(id, user.userId);
+  }
+
+  @Post('seo/cms/versions/:id/submit-review')
+  submitSeoContentReview(@Param('id', ParseUUIDPipe) id: string) {
+    return this.seoCms.submitForReview(id);
+  }
+
+  @Post('seo/cms/versions/:id/publish')
+  publishSeoContent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.seoCms.publish(id, user.userId);
   }
 
   @Post('listings/:id/set-live')
