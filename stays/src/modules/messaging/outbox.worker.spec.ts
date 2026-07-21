@@ -60,6 +60,27 @@ describe('MessagingOutboxWorker', () => {
     expect(rows[0].event_type).toBe('message.received.v1');
   });
 
+  it('unwraps TypeORM [rows, rowCount] tuple from UPDATE RETURNING', async () => {
+    outboxRepo.manager.query.mockResolvedValueOnce([
+      [
+        {
+          id: 'outbox-2',
+          event_type: 'conversation.snapshot.repair.requested',
+          payload: { conversationId: 'c2' },
+          status: 'PROCESSING',
+          attempts: 0,
+          next_retry_at: new Date(),
+          created_at: new Date(),
+          processed_at: null,
+        },
+      ],
+      1,
+    ]);
+    const rows = await worker.claimPendingRows(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe('outbox-2');
+  });
+
   it('marks row DONE after successful publish', async () => {
     await worker.processOutbox();
     expect(domainEvents.publish).toHaveBeenCalledWith(

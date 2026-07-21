@@ -3,7 +3,8 @@ export const MESSAGING_INTERNAL_EVENTS = {
   SNAPSHOT_REPAIR_REQUESTED: 'conversation.snapshot.repair.requested',
 } as const;
 
-export function isMessagingInternalEvent(eventType: string): boolean {
+export function isMessagingInternalEvent(eventType: string | null | undefined): boolean {
+  if (!eventType) return false;
   return (
     eventType === MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED ||
     eventType.startsWith('conversation.')

@@ -24,8 +24,13 @@ export class MessagingOutboxWorker {
     if (this.processing) return;
     this.processing = true;
     try {
+      await this.recoverStaleProcessingRows();
       const rows = await this.claimPendingRows(20);
       for (const row of rows) {
+        if (!row?.id || !row.event_type) {
+          this.logger.warn('Skipping outbox row with missing id or event_type');
+          continue;
+        }
         try {
           if (isMessagingInternalEvent(row.event_type)) {
             await this.handleInternalEvent(row.event_type, row.payload as Record<string, unknown>);
@@ -87,6 +92,28 @@ export class MessagingOutboxWorker {
        RETURNING *`,
       [limit],
     );
-    return raw as StaysMessagingOutbox[];
+    return this.unwrapQueryRows(raw);
+  }
+
+  /** TypeORM 0.3 pg driver returns [rows, rowCount] for UPDATE…RETURNING. */
+  private unwrapQueryRows(raw: unknown): StaysMessagingOutbox[] {
+    if (Array.isArray(raw) && raw.length === 2 && Array.isArray(raw[0])) {
+      return raw[0] as StaysMessagingOutbox[];
+    }
+    if (Array.isArray(raw)) {
+      return raw as StaysMessagingOutbox[];
+    }
+    return [];
+  }
+
+  /** Re-queue rows left in PROCESSING after a crash or failed retry update. */
+  private async recoverStaleProcessingRows(): Promise<void> {
+    await this.outboxRepo.manager.query(
+      `UPDATE stays_messaging_outbox
+       SET status = 'PENDING', next_retry_at = NOW()
+       WHERE status = 'PROCESSING'
+         AND processed_at IS NULL
+         AND created_at < NOW() - INTERVAL '1 minute'`,
+    );
   }
 }
