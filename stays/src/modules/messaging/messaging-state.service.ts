@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { StaysConversation } from './entities/stays-conversation.entity';
+import { StaysMessage } from './entities/stays-message.entity';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
+import { TimelineSeederService } from './timeline-seeder.service';
 
 @Injectable()
 export class MessagingStateService {
@@ -11,6 +13,8 @@ export class MessagingStateService {
     private readonly convRepo: Repository<StaysConversation>,
     @InjectRepository(StaysBooking)
     private readonly bookingRepo: Repository<StaysBooking>,
+    private readonly dataSource: DataSource,
+    private readonly timelineSeeder: TimelineSeederService,
   ) {}
 
   async syncFromBooking(bookingId: string): Promise<void> {
@@ -32,21 +36,31 @@ export class MessagingStateService {
     }
 
     if (booking.status === 'COMPLETED') {
-      const checkout = new Date(booking.checkout_date);
-      const daysSince = (now.getTime() - checkout.getTime()) / 86_400_000;
-      if (daysSince >= 365) {
-        await this.convRepo.update(conv.id, {
-          messaging_state: 'ARCHIVED',
-          archived_at: conv.archived_at ?? now,
-          conversation_version: conv.conversation_version + 1,
+      const alreadyArchived =
+        conv.messaging_state === 'ARCHIVED' &&
+        conv.guest_visibility === 'ARCHIVED' &&
+        conv.host_visibility === 'ARCHIVED';
+
+      if (alreadyArchived) return;
+
+      await this.dataSource.transaction(async (manager) => {
+        const messageRepo = manager.getRepository(StaysMessage);
+        const hasReviewCard = await messageRepo.exists({
+          where: { conversation_id: conv.id, type: 'REVIEW_CARD' },
         });
-      } else if (daysSince >= 45) {
-        await this.convRepo.update(conv.id, {
-          messaging_state: 'READ_ONLY',
+        if (!hasReviewCard) {
+          await this.timelineSeeder.seedCheckoutComplete(manager, conv, booking);
+        }
+
+        await manager.getRepository(StaysConversation).update(conv.id, {
+          messaging_state: 'ARCHIVED',
+          guest_visibility: 'ARCHIVED',
+          host_visibility: 'ARCHIVED',
+          archived_at: conv.archived_at ?? now,
           read_only_at: conv.read_only_at ?? now,
           conversation_version: conv.conversation_version + 1,
         });
-      }
+      });
     }
   }
 }

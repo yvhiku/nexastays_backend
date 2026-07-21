@@ -111,6 +111,61 @@ export class TimelineSeederService {
     return saved;
   }
 
+  /** Post-checkout timeline: archive cue + review prompt in the booking thread. */
+  async seedCheckoutComplete(
+    manager: EntityManager,
+    conversation: StaysConversation,
+    booking: StaysBooking,
+  ): Promise<StaysMessage[]> {
+    const snapshot = conversation.reservation_snapshot as unknown as ReservationSnapshot;
+    const listingTitle = snapshot.listingTitle?.trim();
+    const reviewBody = listingTitle
+      ? `How was your stay at ${listingTitle}?`
+      : 'How was your stay?';
+
+    const seeds: Array<{ type: MessageType; body: string | null; metadata: Record<string, unknown> }> = [
+      {
+        type: 'SYSTEM_EVENT',
+        body: 'Checkout complete',
+        metadata: {
+          source: 'SYSTEM',
+          schemaVersion: 1,
+          cardVersion: 1,
+          presentationVersion: 1,
+          kind: 'system',
+        },
+      },
+      {
+        type: 'REVIEW_CARD',
+        body: null,
+        metadata: {
+          schemaVersion: 1,
+          cardVersion: 1,
+          presentationVersion: 1,
+          kind: 'review',
+          title: 'Review your stay',
+          body: reviewBody,
+          source: 'SYSTEM',
+          bookingId: booking.id,
+          actions: [
+            {
+              id: 'leave_review',
+              label: 'Leave a review',
+              type: 'deep_link',
+              url: `/bookings/${booking.id}/review`,
+            },
+          ],
+        },
+      },
+    ];
+
+    const saved: StaysMessage[] = [];
+    for (const seed of seeds) {
+      saved.push(await this.insertMessage(manager, conversation, seed));
+    }
+    return saved;
+  }
+
   private bookingCard(
     snapshot: ReservationSnapshot,
     bookingId: string | null,
