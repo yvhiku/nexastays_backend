@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets } from 'typeorm';
+import { Repository, Brackets, In } from 'typeorm';
 import { StaysConversation } from './entities/stays-conversation.entity';
+import { StaysMessage } from './entities/stays-message.entity';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
+import { formatInboxPreview } from './message-preview.util';
 import { MessagingPermissionsService } from './permissions.service';
 import { MessagesService } from './messages.service';
 import { MessagingAuditService } from './audit.service';
@@ -23,6 +25,8 @@ export class ConversationsService {
   constructor(
     @InjectRepository(StaysConversation)
     private readonly convRepo: Repository<StaysConversation>,
+    @InjectRepository(StaysMessage)
+    private readonly messageRepo: Repository<StaysMessage>,
     @InjectRepository(StaysBooking)
     private readonly bookingRepo: Repository<StaysBooking>,
     private readonly permissions: MessagingPermissionsService,
@@ -117,8 +121,18 @@ export class ConversationsService {
       }
     }
 
+    const lastMessageIds = filtered
+      .map((c) => c.last_message_id)
+      .filter((id): id is string => !!id);
+    const lastMessages = lastMessageIds.length
+      ? await this.messageRepo.find({ where: { id: In(lastMessageIds) } })
+      : [];
+    const lastMessageById = new Map(lastMessages.map((m) => [m.id, m]));
+
     return Promise.all(
-      filtered.map(async (c) => this.toListResponse(c, userId)),
+      filtered.map(async (c) =>
+        this.toListResponse(c, userId, lastMessageById.get(c.last_message_id ?? '')),
+      ),
     );
   }
 
@@ -141,7 +155,7 @@ export class ConversationsService {
     const conv = await this.convRepo.findOne({ where: { booking_id: bookingId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) return null;
     if (this.permissions.visibilityFor(conv, userId) === 'DELETED') return null;
-    return this.toListResponse(conv, userId);
+    return this.toListResponse(conv, userId, await this.loadLastMessage(conv.last_message_id));
   }
 
   async ensureConversationForBooking(
@@ -152,7 +166,7 @@ export class ConversationsService {
       bookingId,
       userId,
     );
-    return this.toListResponse(conv, userId);
+    return this.toListResponse(conv, userId, await this.loadLastMessage(conv.last_message_id));
   }
 
   async getConversation(
@@ -266,6 +280,13 @@ export class ConversationsService {
     return false;
   }
 
+  private async loadLastMessage(
+    messageId: string | null | undefined,
+  ): Promise<StaysMessage | undefined> {
+    if (!messageId) return undefined;
+    return (await this.messageRepo.findOne({ where: { id: messageId } })) ?? undefined;
+  }
+
   private toDomain(conv: StaysConversation, userId: string): ConversationDomain {
     return {
       id: conv.id,
@@ -280,21 +301,29 @@ export class ConversationsService {
   private async toListResponse(
     conv: StaysConversation,
     userId: string,
-    bookingStatus?: string | null,
+    lastMessage?: StaysMessage,
   ): Promise<ConversationListResponse> {
     const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
-    let status = bookingStatus ?? null;
-    if (status == null && conv.booking_id) {
+    let status: string | null = null;
+    if (conv.booking_id) {
       const booking = await this.bookingRepo.findOne({ where: { id: conv.booking_id } });
       status = booking?.status ?? null;
     }
+
+    const preview = lastMessage
+      ? formatInboxPreview({
+          type: lastMessage.type,
+          body: lastMessage.body,
+          metadata: lastMessage.metadata,
+        })
+      : conv.last_message_preview;
 
     return {
       conversation: this.toDomain(conv, userId),
       presentation: await this.presentation.buildPresentation(conv, userId, snapshot, status),
       sync: this.presentation.buildSyncMeta(conv, userId),
       lastMessage: {
-        preview: conv.last_message_preview,
+        preview,
         at: conv.last_message_at?.toISOString() ?? null,
       },
       permissions: this.permissions.resolve(conv, userId),

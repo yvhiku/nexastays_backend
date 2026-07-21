@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConversationsService } from './conversations.service';
 import { StaysConversation } from './entities/stays-conversation.entity';
+import { StaysMessage } from './entities/stays-message.entity';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { MessagingPermissionsService } from './permissions.service';
 import { MessagesService } from './messages.service';
@@ -72,6 +73,7 @@ describe('ConversationsService', () => {
         ConversationsService,
         MessagingPermissionsService,
         { provide: getRepositoryToken(StaysConversation), useValue: convRepo },
+        { provide: getRepositoryToken(StaysMessage), useValue: { find: jest.fn().mockResolvedValue([]), findOne: jest.fn() } },
         { provide: getRepositoryToken(StaysBooking), useValue: { findOne: jest.fn() } },
         {
           provide: MessagesService,

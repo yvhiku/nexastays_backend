@@ -5,6 +5,7 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { StaysMessage, MessageType } from './entities/stays-message.entity';
 import type { ReservationSnapshot, TimelineCardMetadata } from './messaging.types';
+import { formatInboxPreview } from './message-preview.util';
 
 export interface BuildSnapshotOptions {
   hostDisplayName?: string | null;
@@ -250,9 +251,11 @@ export class TimelineSeederService {
     });
     const saved = await messageRepo.save(message);
 
-    const preview =
-      input.body ??
-      (typeof input.metadata.title === 'string' ? input.metadata.title : 'Update');
+    const preview = formatInboxPreview({
+      type: input.type,
+      body: input.body,
+      metadata: input.metadata,
+    });
     await convRepo.update(locked.id, {
       last_message_id: saved.id,
       last_message_sequence: String(nextSeq),
