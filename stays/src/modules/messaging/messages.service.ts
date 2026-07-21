@@ -77,7 +77,9 @@ export class MessagesService {
         .execute();
     }
 
-    const attachmentMap = await this.attachments.loadForMessages(slice.map((m) => m.id));
+    const attachmentMap = await this.attachments.loadForMessages(
+      slice.map((m) => ({ id: m.id, metadata: m.metadata ?? {} })),
+    );
 
     return {
       messages: slice.map((m) =>
@@ -172,7 +174,9 @@ export class MessagesService {
         where: { conversation_id: conv.id, client_message_id: clientMessageId },
       });
       if (existing) {
-        const atts = await this.attachments.loadForMessages([existing.id]);
+        const atts = await this.attachments.loadForMessages([
+          { id: existing.id, metadata: existing.metadata ?? {} },
+        ]);
         return this.toDto(existing, userId, atts.get(existing.id) ?? []);
       }
     }
@@ -203,7 +207,9 @@ export class MessagesService {
       return message;
     });
 
-    const atts = await this.attachments.loadForMessages([saved.id]);
+    const atts = await this.attachments.loadForMessages([
+      { id: saved.id, metadata: saved.metadata ?? {} },
+    ]);
     return this.toDto(saved, userId, atts.get(saved.id) ?? []);
   }
 

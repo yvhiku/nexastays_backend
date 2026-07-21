@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { mkdir, writeFile } from 'fs/promises';
 import { join, extname } from 'path';
 import { randomUUID } from 'crypto';
-import { Repository, In } from 'typeorm';
+import { Repository, In, IsNull } from 'typeorm';
 import { StaysMessageAttachment } from './entities/stays-message-attachment.entity';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { MessagingPermissionsService } from './permissions.service';
@@ -94,13 +94,24 @@ export class AttachmentService {
   async linkToMessage(messageId: string, attachmentIds: string[]): Promise<void> {
     if (!attachmentIds.length) return;
     await this.attachmentRepo.update(
-      { id: In(attachmentIds), message_id: null as unknown as string },
+      { id: In(attachmentIds), message_id: IsNull() },
       { message_id: messageId },
     );
   }
 
-  async loadForMessages(messageIds: string[]): Promise<Map<string, AttachmentDto[]>> {
-    if (!messageIds.length) return new Map();
+  async loadForMessages(
+    messages: Array<{ id: string; metadata?: Record<string, unknown> }>,
+  ): Promise<Map<string, AttachmentDto[]>> {
+    if (!messages.length) return new Map();
+
+    for (const message of messages) {
+      const attachmentIds = (message.metadata?.attachment_ids as string[] | undefined) ?? [];
+      if (attachmentIds.length) {
+        await this.linkToMessage(message.id, attachmentIds);
+      }
+    }
+
+    const messageIds = messages.map((m) => m.id);
     const rows = await this.attachmentRepo.find({
       where: { message_id: In(messageIds) },
       order: { created_at: 'ASC' },
