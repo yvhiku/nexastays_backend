@@ -86,4 +86,25 @@ export class MessagingMediaService {
       expiresAt: new Date(exp).toISOString(),
     };
   }
+
+  resolveAttachment(
+    attachmentId: string,
+    variant: 'thumb' | 'full',
+    version = 1,
+    ttlMs = DEFAULT_TTL_MS,
+  ): SignedMedia {
+    const exp = Date.now() + ttlMs;
+    const sig = this.signPayload({
+      attachmentId,
+      exp,
+      v: version,
+      variant,
+      kind: 'attachment',
+    });
+    return {
+      url: `${this.publicBaseUrl()}/messaging/media/attachments/${encodeURIComponent(attachmentId)}?exp=${exp}&v=${version}&variant=${variant}&sig=${sig}`,
+      version,
+      expiresAt: new Date(exp).toISOString(),
+    };
+  }
 }

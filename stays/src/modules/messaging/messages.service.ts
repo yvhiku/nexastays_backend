@@ -5,14 +5,21 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository, LessThan } from 'typeorm';
+import { DataSource, Repository, EntityManager } from 'typeorm';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { StaysMessage } from './entities/stays-message.entity';
 import { MessagingPermissionsService } from './permissions.service';
 import { MessagingRateLimitService } from './rate-limit.service';
 import { TimelineSeederService } from './timeline-seeder.service';
 import { MessagingOutboxService } from './outbox.service';
+import { AttachmentService } from './attachment.service';
+import { ParticipantPresentationService } from './participant-presentation.service';
 import type { MessageDto } from './messaging.types';
+import { SendMessageDto } from './dto/send-message.dto';
+import {
+  buildMessagePayload,
+  resolveDeliveryState,
+} from './message-payload.mapper';
 import { EVENTS } from '@nexa/event-bus';
 
 @Injectable()
@@ -27,6 +34,8 @@ export class MessagesService {
     private readonly rateLimit: MessagingRateLimitService,
     private readonly timelineSeeder: TimelineSeederService,
     private readonly outbox: MessagingOutboxService,
+    private readonly attachments: AttachmentService,
+    private readonly participants: ParticipantPresentationService,
   ) {}
 
   async listMessages(
@@ -55,8 +64,6 @@ export class MessagesService {
     const slice = hasMore ? rows.slice(0, take) : rows;
     slice.reverse();
 
-    // Mark delivered for recipient
-    const isGuest = conv.guest_user_id === userId;
     const unreadFromOther = slice.filter(
       (m) => m.sender_id && m.sender_id !== userId && m.status !== 'READ',
     );
@@ -70,10 +77,43 @@ export class MessagesService {
         .execute();
     }
 
+    const attachmentMap = await this.attachments.loadForMessages(slice.map((m) => m.id));
+
     return {
-      messages: slice.map((m) => this.toDto(m, userId)),
+      messages: slice.map((m) =>
+        this.toDto(m, userId, attachmentMap.get(m.id) ?? []),
+      ),
       hasMore,
     };
+  }
+
+  async sendMessage(
+    conversationId: string,
+    userId: string,
+    dto: SendMessageDto,
+  ): Promise<MessageDto> {
+    const type = dto.type ?? 'TEXT';
+    const attachmentIds = dto.attachment_ids ?? [];
+
+    if (type === 'TEXT') {
+      return this.sendText(conversationId, userId, dto.body ?? '', dto.client_message_id);
+    }
+
+    if (type === 'IMAGE' || type === 'FILE') {
+      if (!attachmentIds.length) {
+        throw new BadRequestException('attachment_ids required');
+      }
+      return this.sendWithAttachments(
+        conversationId,
+        userId,
+        type,
+        attachmentIds,
+        dto.caption ?? dto.body,
+        dto.client_message_id,
+      );
+    }
+
+    throw new BadRequestException('Unsupported message type');
   }
 
   async sendText(
@@ -94,7 +134,7 @@ export class MessagesService {
       const existing = await this.messageRepo.findOne({
         where: { conversation_id: conv.id, client_message_id: clientMessageId },
       });
-      if (existing) return this.toDto(existing, userId);
+      if (existing) return this.toDto(existing, userId, []);
     }
 
     await this.rateLimit.assertCanSend(userId, conv.id, trimmed);
@@ -108,61 +148,63 @@ export class MessagesService {
         clientMessageId: clientMessageId ?? null,
       });
 
-      const refreshed = await manager.getRepository(StaysConversation).findOne({
-        where: { id: conv.id },
-      });
-
-      const recipientId =
-        userId === conv.guest_user_id ? conv.host_user_id : conv.guest_user_id;
-
-      const snapshot = conv.reservation_snapshot as {
-        hostDisplayName?: string | null;
-        guestDisplayName?: string | null;
-        listingTitle?: string;
-      };
-      const senderName =
-        userId === conv.guest_user_id
-          ? snapshot.guestDisplayName ?? 'Guest'
-          : snapshot.hostDisplayName ?? 'Host';
-
-      if (recipientId) {
-        await this.outbox.enqueue(manager, EVENTS.MESSAGE_RECEIVED, {
-          messageId: message.id,
-          conversationId: conv.id,
-          recipientUserId: recipientId,
-          senderUserId: userId,
-          senderName,
-          preview: trimmed.slice(0, 120),
-          bookingId: conv.booking_id,
-          conversationVersion: refreshed?.conversation_version ?? conv.conversation_version + 1,
-          lastMessageId: message.id,
-          lastMessageSequence: Number(message.conversation_sequence),
-          listingTitle: snapshot.listingTitle ?? '',
-        });
-      }
-
-      await this.outbox.enqueue(manager, EVENTS.MESSAGE_SENT, {
-        messageId: message.id,
-        conversationId: conv.id,
-        senderUserId: userId,
-      });
-
-      // Resurface archived for recipient
-      const visField =
-        userId === conv.guest_user_id ? 'host_visibility' : 'guest_visibility';
-      await manager
-        .getRepository(StaysConversation)
-        .createQueryBuilder()
-        .update()
-        .set({ [visField]: 'ACTIVE' })
-        .where('id = :id', { id: conv.id })
-        .andWhere(`${visField} = 'ARCHIVED'`)
-        .execute();
-
+      await this.enqueueDeliveryEvents(manager, conv, message, userId, trimmed);
       return message;
     });
 
-    return this.toDto(saved, userId);
+    return this.toDto(saved, userId, []);
+  }
+
+  private async sendWithAttachments(
+    conversationId: string,
+    userId: string,
+    type: 'IMAGE' | 'FILE',
+    attachmentIds: string[],
+    caption?: string,
+    clientMessageId?: string,
+  ): Promise<MessageDto> {
+    const conv = await this.getParticipantConversation(conversationId, userId);
+    const perms = this.permissions.resolve(conv, userId);
+    if (!perms.canSend) throw new ForbiddenException('Cannot send messages');
+
+    if (clientMessageId) {
+      const existing = await this.messageRepo.findOne({
+        where: { conversation_id: conv.id, client_message_id: clientMessageId },
+      });
+      if (existing) {
+        const atts = await this.attachments.loadForMessages([existing.id]);
+        return this.toDto(existing, userId, atts.get(existing.id) ?? []);
+      }
+    }
+
+    await this.attachments.assertReadyForSend(conv.id, userId, attachmentIds);
+
+    const preview = caption?.trim() || (type === 'IMAGE' ? 'Photo' : 'File');
+    await this.rateLimit.assertCanSend(userId, conv.id, preview);
+
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const message = await this.timelineSeeder.insertMessage(manager, conv, {
+        type,
+        body: caption?.trim() ?? null,
+        metadata: {
+          source: 'USER',
+          schemaVersion: 1,
+          cardVersion: 1,
+          presentationVersion: 1,
+          attachment_ids: attachmentIds,
+          caption: caption?.trim(),
+        },
+        senderId: userId,
+        clientMessageId: clientMessageId ?? null,
+      });
+
+      await this.attachments.linkToMessage(message.id, attachmentIds);
+      await this.enqueueDeliveryEvents(manager, conv, message, userId, preview);
+      return message;
+    });
+
+    const atts = await this.attachments.loadForMessages([saved.id]);
+    return this.toDto(saved, userId, atts.get(saved.id) ?? []);
   }
 
   async markRead(conversationId: string, userId: string): Promise<{ conversationVersion: number }> {
@@ -214,6 +256,63 @@ export class MessagesService {
     return { conversationVersion: nextVersion };
   }
 
+  private async enqueueDeliveryEvents(
+    manager: EntityManager,
+    conv: StaysConversation,
+    message: StaysMessage,
+    userId: string,
+    preview: string,
+  ): Promise<void> {
+    const refreshed = await manager.getRepository(StaysConversation).findOne({
+      where: { id: conv.id },
+    });
+
+    const recipientId =
+      userId === conv.guest_user_id ? conv.host_user_id : conv.guest_user_id;
+
+    const senderName =
+      userId === conv.guest_user_id
+        ? (await this.participants.resolveGuestDisplayName(conv.booking_id ?? '', userId)) ??
+          'Guest'
+        : conv.host_user_id
+          ? (await this.participants.resolveHostDisplayName(conv.host_user_id)) ?? 'Host'
+          : 'Host';
+
+    const snapshot = conv.reservation_snapshot as { listingTitle?: string };
+
+    if (recipientId) {
+      await this.outbox.enqueue(manager, EVENTS.MESSAGE_RECEIVED, {
+        messageId: message.id,
+        conversationId: conv.id,
+        recipientUserId: recipientId,
+        senderUserId: userId,
+        senderName,
+        preview: preview.slice(0, 120),
+        bookingId: conv.booking_id,
+        conversationVersion: refreshed?.conversation_version ?? conv.conversation_version + 1,
+        lastMessageId: message.id,
+        lastMessageSequence: Number(message.conversation_sequence),
+        listingTitle: snapshot.listingTitle ?? '',
+      });
+    }
+
+    await this.outbox.enqueue(manager, EVENTS.MESSAGE_SENT, {
+      messageId: message.id,
+      conversationId: conv.id,
+      senderUserId: userId,
+    });
+
+    const visField = userId === conv.guest_user_id ? 'host_visibility' : 'guest_visibility';
+    await manager
+      .getRepository(StaysConversation)
+      .createQueryBuilder()
+      .update()
+      .set({ [visField]: 'ACTIVE' })
+      .where('id = :id', { id: conv.id })
+      .andWhere(`${visField} = 'ARCHIVED'`)
+      .execute();
+  }
+
   private async getParticipantConversation(
     conversationId: string,
     userId: string,
@@ -225,8 +324,18 @@ export class MessagesService {
     return conv;
   }
 
-  private toDto(message: StaysMessage, userId: string): MessageDto {
+  private toDto(
+    message: StaysMessage,
+    userId: string,
+    attachments: MessageDto['attachments'],
+  ): MessageDto {
     const meta = (message.metadata ?? {}) as { presentationVersion?: number };
+    const payload = buildMessagePayload(
+      message.type,
+      message.body,
+      message.metadata ?? {},
+      attachments,
+    );
     return {
       id: message.id,
       conversationId: message.conversation_id,
@@ -235,7 +344,9 @@ export class MessagesService {
       type: message.type,
       body: message.body,
       metadata: message.metadata ?? {},
+      payload,
       status: message.status,
+      deliveryState: resolveDeliveryState(message),
       sentAt: message.sent_at?.toISOString() ?? null,
       deliveredAt: message.delivered_at?.toISOString() ?? null,
       readAt: message.read_at?.toISOString() ?? null,
@@ -244,6 +355,7 @@ export class MessagesService {
       createdAt: message.created_at.toISOString(),
       isOwn: message.sender_id === userId,
       presentationVersion: meta.presentationVersion ?? 1,
+      attachments,
     };
   }
 }

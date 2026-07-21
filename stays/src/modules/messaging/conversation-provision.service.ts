@@ -49,7 +49,7 @@ export class ConversationProvisionService {
 
     const listing = await listingRepo.findOne({
       where: { id: listingId },
-      relations: ['media'],
+      relations: ['media', 'check_in_contact'],
     });
     if (!listing) return null;
 

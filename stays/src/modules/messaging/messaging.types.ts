@@ -60,6 +60,8 @@ export interface ConversationPresentation {
   counterpart: {
     id: string;
     displayName: string;
+    verified?: boolean;
+    rating?: number | null;
   };
   listing: {
     title: string;
@@ -158,6 +160,51 @@ export interface TimelineCardMetadata {
   bookingId?: string | null;
 }
 
+export type DeliveryState = 'PENDING' | 'PERSISTED' | 'SENT' | 'DELIVERED' | 'READ';
+
+export interface AttachmentDto {
+  id: string;
+  status: 'PROCESSING' | 'READY' | 'FAILED';
+  mime: string | null;
+  sizeBytes: number | null;
+  width: number | null;
+  height: number | null;
+  blurhash: string | null;
+  originalFilename: string | null;
+  thumbnail: SignedMedia | null;
+  full: SignedMedia | null;
+}
+
+export interface TextPayload {
+  text: string;
+}
+
+export interface MediaPayload {
+  attachmentIds: string[];
+  caption?: string;
+  attachments?: AttachmentDto[];
+}
+
+export interface TimelineCardPayload {
+  kind: string;
+  title: string;
+  body?: string;
+  icon?: string;
+  actions?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    value?: string;
+    url?: string;
+  }>;
+  coverMediaId?: string | null;
+  listingId?: string | null;
+  bookingId?: string | null;
+  snapshot?: Record<string, unknown>;
+}
+
+export type MessagePayload = TextPayload | MediaPayload | TimelineCardPayload;
+
 export interface MessageDto {
   id: string;
   conversationId: string;
@@ -166,7 +213,9 @@ export interface MessageDto {
   type: string;
   body: string | null;
   metadata: Record<string, unknown>;
+  payload: MessagePayload;
   status: string;
+  deliveryState: DeliveryState;
   sentAt: string | null;
   deliveredAt: string | null;
   readAt: string | null;
@@ -175,6 +224,7 @@ export interface MessageDto {
   createdAt: string;
   isOwn: boolean;
   presentationVersion: number;
+  attachments: AttachmentDto[];
 }
 
 /** @deprecated use ConversationDetailResponse */

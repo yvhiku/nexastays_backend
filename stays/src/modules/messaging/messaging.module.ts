@@ -29,6 +29,8 @@ import { ParticipantPresentationService } from './participant-presentation.servi
 import { MessagingMediaService } from './messaging-media.service';
 import { ConversationPresentationService } from './conversation-presentation.service';
 import { SnapshotRepairService } from './snapshot-repair.service';
+import { AttachmentService } from './attachment.service';
+import { MessageSearchService } from './message-search.service';
 import { DomainEventsModule } from '../../common/events/domain-events.module';
 import { StaysModule } from '../stays/stays.module';
 
@@ -66,6 +68,8 @@ import { StaysModule } from '../stays/stays.module';
     MessagingMediaService,
     ConversationPresentationService,
     SnapshotRepairService,
+    AttachmentService,
+    MessageSearchService,
   ],
   exports: [ConversationProvisionService, MessagingStateService],
 })

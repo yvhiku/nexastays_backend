@@ -87,6 +87,22 @@ export class TimelineSeederService {
       },
     ];
 
+    const contact = listing.check_in_contact;
+    if (contact?.access_instructions) {
+      seeds.push({
+        type: 'CHECKIN_CARD',
+        body: null,
+        metadata: this.checkinCard(snapshot, contact.access_instructions, conversation.booking_id) as unknown as Record<string, unknown>,
+      });
+    }
+    if (contact?.wifi_ssid) {
+      seeds.push({
+        type: 'WIFI_CARD',
+        body: null,
+        metadata: this.wifiCard(contact.wifi_ssid, contact.wifi_password) as unknown as Record<string, unknown>,
+      });
+    }
+
     const saved: StaysMessage[] = [];
     for (const seed of seeds) {
       saved.push(await this.insertMessage(manager, conversation, seed));
@@ -155,6 +171,43 @@ export class TimelineSeederService {
           ? [{ id: 'open_maps', label: 'Open in Maps', type: 'external_maps', url: mapsUrl }]
           : []),
       ],
+    };
+  }
+
+  private checkinCard(
+    snapshot: ReservationSnapshot,
+    instructions: string,
+    bookingId: string | null,
+  ): TimelineCardMetadata {
+    return {
+      schemaVersion: 1,
+      cardVersion: 1,
+      presentationVersion: 1,
+      kind: 'checkin',
+      title: 'Check-in details',
+      body: instructions,
+      source: 'SYSTEM',
+      bookingId: bookingId ?? undefined,
+      snapshot: { checkInTime: snapshot.checkinDate },
+      actions: bookingId
+        ? [{ id: 'view_booking', label: 'Directions', type: 'OPEN_BOOKING', url: `/bookings/${bookingId}` }]
+        : [],
+    };
+  }
+
+  private wifiCard(ssid: string, password: string | null): TimelineCardMetadata {
+    return {
+      schemaVersion: 1,
+      cardVersion: 1,
+      presentationVersion: 1,
+      kind: 'wifi',
+      title: 'WiFi',
+      body: ssid,
+      source: 'SYSTEM',
+      snapshot: { ssid, password: password ?? '' },
+      actions: password
+        ? [{ id: 'copy_wifi', label: 'Copy password', type: 'COPY', value: password }]
+        : [],
     };
   }
 

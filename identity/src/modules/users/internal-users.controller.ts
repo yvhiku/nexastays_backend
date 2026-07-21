@@ -48,4 +48,19 @@ export class InternalUsersController {
     res.setHeader('Cache-Control', 'private, max-age=3600');
     createReadStream(filePath).pipe(res);
   }
+
+  @Get(':userId/profile-summary')
+  @ApiOperation({ summary: 'S2S: minimal profile for messaging presentation' })
+  async profileSummary(
+    @Param('userId') userId: string,
+  ): Promise<{ fullName: string | null; verified: boolean }> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return {
+      fullName: user.full_name?.trim() || null,
+      verified: user.kyc_status === 'VERIFIED',
+    };
+  }
 }

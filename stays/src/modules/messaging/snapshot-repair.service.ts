@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
-import { ParticipantPresentationService } from './participant-presentation.service';
 import { TimelineSeederService } from './timeline-seeder.service';
 import type { ReservationSnapshot } from './messaging.types';
 
@@ -19,14 +18,14 @@ export class SnapshotRepairService {
     private readonly bookingRepo: Repository<StaysBooking>,
     @InjectRepository(StaysListing)
     private readonly listingRepo: Repository<StaysListing>,
-    private readonly participants: ParticipantPresentationService,
     private readonly timelineSeeder: TimelineSeederService,
   ) {}
 
+  /** Booking facts only — identity is always live via PresentationService. */
   isSnapshotIncomplete(snapshot: ReservationSnapshot | null | undefined): boolean {
     if (!snapshot?.listingTitle) return true;
-    if (!snapshot.hostDisplayName?.trim()) return true;
     if (!snapshot.listingId) return true;
+    if (!snapshot.checkinDate || !snapshot.checkoutDate) return true;
     if (!snapshot.coverMediaId && !snapshot.primaryPhotoUrl) return true;
     return false;
   }
@@ -55,25 +54,13 @@ export class SnapshotRepairService {
 
     if (!booking || !listing) return false;
 
-    const hostName =
-      current.hostDisplayName?.trim() ||
-      (conv.host_user_id
-        ? await this.participants.resolveHostDisplayName(conv.host_user_id)
-        : null);
-    const guestName =
-      current.guestDisplayName?.trim() ||
-      (await this.participants.resolveGuestDisplayName(booking.id));
-
-    const snapshot = this.timelineSeeder.buildSnapshot(booking, listing, {
-      hostDisplayName: hostName,
-      guestDisplayName: guestName,
-    });
+    const snapshot = this.timelineSeeder.buildSnapshot(booking, listing);
 
     conv.reservation_snapshot = snapshot as unknown as StaysConversation['reservation_snapshot'];
     conv.snapshot_version = (conv.snapshot_version ?? 1) + 1;
     await this.convRepo.save(conv);
 
-    this.logger.log(`Repaired snapshot for conversation ${conversationId}`);
+    this.logger.log(`Repaired booking snapshot for conversation ${conversationId}`);
     return true;
   }
 }

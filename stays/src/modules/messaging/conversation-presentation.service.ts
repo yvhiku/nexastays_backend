@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { MessagingMediaService } from './messaging-media.service';
 import { IdentityProfilePhotoClient } from '../../common/identity/identity-profile-photo.client';
+import { ParticipantPresentationService } from './participant-presentation.service';
+import { IdentityUserClient } from '../../common/identity/identity-user.client';
 import type {
   ConversationPresentation,
   ConversationSyncMeta,
@@ -31,6 +33,8 @@ export class ConversationPresentationService {
   constructor(
     private readonly media: MessagingMediaService,
     private readonly profilePhotos: IdentityProfilePhotoClient,
+    private readonly participants: ParticipantPresentationService,
+    private readonly identityUsers: IdentityUserClient,
   ) {}
 
   async buildPresentation(
@@ -41,9 +45,16 @@ export class ConversationPresentationService {
   ): Promise<ConversationPresentation> {
     const isGuest = conv.guest_user_id === viewerUserId;
     const counterpartId = isGuest ? conv.host_user_id : conv.guest_user_id;
-    const counterpartName = isGuest
-      ? snapshot.hostDisplayName?.trim() || 'Host'
-      : snapshot.guestDisplayName?.trim() || 'Guest';
+    const counterpart = await this.participants.resolveCounterpartIdentity(
+      conv.host_user_id ?? '',
+      conv.guest_user_id,
+      conv.booking_id,
+      isGuest,
+    );
+
+    const profileSummary = counterpartId
+      ? await this.identityUsers.getProfileSummary(counterpartId)
+      : null;
 
     const avatar = counterpartId
       ? await this.resolveCounterpartAvatar(counterpartId, conv.snapshot_version ?? 1)
@@ -53,14 +64,16 @@ export class ConversationPresentationService {
     const bookingChip = `${snapshot.listingTitle} • ${formatShortDate(snapshot.checkinDate)}–${formatShortDate(snapshot.checkoutDate)} • ${snapshot.guestCount} guests`;
 
     return {
-      title: counterpartName,
+      title: profileSummary?.fullName ?? counterpart.displayName,
       subtitle,
       avatar,
       bookingChip,
       statusChip: subtitle,
       counterpart: {
         id: counterpartId ?? '',
-        displayName: counterpartName,
+        displayName: profileSummary?.fullName ?? counterpart.displayName,
+        verified: profileSummary?.verified ?? false,
+        rating: null,
       },
       listing: {
         title: snapshot.listingTitle ?? 'Stay',

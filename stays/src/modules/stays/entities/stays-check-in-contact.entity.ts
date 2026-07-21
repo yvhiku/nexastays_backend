@@ -33,6 +33,12 @@ export class StaysCheckInContact {
   @Column({ type: 'text', name: 'access_instructions', nullable: true })
   access_instructions: string | null;
 
+  @Column({ type: 'varchar', length: 128, name: 'wifi_ssid', nullable: true })
+  wifi_ssid: string | null;
+
+  @Column({ type: 'varchar', length: 128, name: 'wifi_password', nullable: true })
+  wifi_password: string | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;
 

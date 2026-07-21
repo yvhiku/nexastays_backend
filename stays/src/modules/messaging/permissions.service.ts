@@ -26,7 +26,7 @@ export class MessagingPermissionsService {
 
     return {
       canSend: !isReadOnly && !blocked,
-      canUpload: false,
+      canUpload: !isReadOnly && !blocked,
       canCall: isGuest && !blocked && conversation.messaging_state === 'ACTIVE',
       canReport: !blocked,
       canBlock: !blocked,

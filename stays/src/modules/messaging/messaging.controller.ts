@@ -7,11 +7,18 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { multerLimits } from '../../common/security/multer-limits';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
+import { AttachmentService } from './attachment.service';
+import { MessageSearchService } from './message-search.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateVisibilityDto } from './dto/update-visibility.dto';
 import { ReportConversationDto } from './dto/report-conversation.dto';
@@ -23,6 +30,8 @@ export class MessagingController {
   constructor(
     private readonly conversations: ConversationsService,
     private readonly messages: MessagesService,
+    private readonly attachments: AttachmentService,
+    private readonly search: MessageSearchService,
   ) {}
 
   @Get('conversations')
@@ -91,14 +100,58 @@ export class MessagingController {
     );
   }
 
+  @Get('conversations/:id/search')
+  @ApiOperation({ summary: 'Search messages, files, photos, links, and cards' })
+  searchConversation(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('q') q?: string,
+    @Query('types') types?: string,
+  ) {
+    const parsedTypes = types
+      ? (types.split(',').filter(Boolean) as Array<'message' | 'file' | 'photo' | 'link' | 'card'>)
+      : undefined;
+    return this.search.search(id, user.userId, q ?? '', parsedTypes);
+  }
+
+  @Post('conversations/:id/attachments')
+  @ApiOperation({ summary: 'Upload attachment (first-class, before message)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: multerLimits(15 * 1024 * 1024),
+    }),
+  )
+  uploadAttachment(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.attachments.createFromUpload(id, user.userId, file);
+  }
+
+  @Get('conversations/:id/attachments/:attachmentId')
+  @ApiOperation({ summary: 'Get attachment status and signed URLs' })
+  getAttachment(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('attachmentId', ParseUUIDPipe) attachmentId: string,
+  ) {
+    return this.attachments.getAttachment(id, attachmentId, user.userId);
+  }
+
   @Post('conversations/:id/messages')
-  @ApiOperation({ summary: 'Send a text message' })
+  @ApiOperation({ summary: 'Send a message (text or with attachment references)' })
   send(
     @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SendMessageDto,
   ) {
-    return this.messages.sendText(id, user.userId, dto.body, dto.client_message_id);
+    if (dto.body && !dto.type && !dto.attachment_ids?.length) {
+      return this.messages.sendText(id, user.userId, dto.body, dto.client_message_id);
+    }
+    return this.messages.sendMessage(id, user.userId, dto);
   }
 
   @Post('conversations/:id/read')
