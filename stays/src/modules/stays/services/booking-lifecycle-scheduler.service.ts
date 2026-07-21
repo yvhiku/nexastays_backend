@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, In, Between } from 'typeorm';
+import { Repository, LessThan, In } from 'typeorm';
 import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysListingReview } from '../entities/stays-listing-review.entity';
@@ -12,6 +12,20 @@ import {
   BookingLifecycleService,
   PAYMENT_PENDING_TTL_MINUTES,
 } from './booking-lifecycle.service';
+
+function parseCheckoutDateTime(
+  checkoutDate: Date | string,
+  checkoutTime: string,
+): Date {
+  const dateStr =
+    checkoutDate instanceof Date
+      ? checkoutDate.toISOString().slice(0, 10)
+      : String(checkoutDate).slice(0, 10);
+  const [hourPart, minutePart] = checkoutTime.split(':');
+  const hours = Number(hourPart) || 11;
+  const minutes = Number(minutePart) || 0;
+  return new Date(dateStr + `T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`);
+}
 
 @Injectable()
 export class BookingLifecycleSchedulerService {
@@ -32,8 +46,103 @@ export class BookingLifecycleSchedulerService {
     await Promise.all([
       this.autoCompletePastStays(),
       this.expirePendingPayments(),
-      this.sendReviewReminders(),
     ]);
+  }
+
+  /** Checkout reminder ~1 hour before listing checkout time. */
+  @Cron('*/15 * * * *')
+  async runCheckoutWindowJobs(): Promise<void> {
+    await Promise.all([
+      this.sendCheckoutReminders(),
+      this.finalizeCheckoutDayStays(),
+    ]);
+  }
+
+  private async sendCheckoutReminders(): Promise<void> {
+    const now = Date.now();
+    const bookings = await this.bookingRepo.find({
+      where: { status: In(['CONFIRMED', 'CHECKED_IN']) },
+      relations: ['listing'],
+    });
+
+    for (const booking of bookings) {
+      try {
+        const listing = booking.listing as StaysListing | undefined;
+        const checkoutAt = parseCheckoutDateTime(
+          booking.checkout_date,
+          listing?.checkout_time ?? '11:00',
+        );
+        const msUntilCheckout = checkoutAt.getTime() - now;
+        // 15-minute cron window: fire once between 45–75 minutes before checkout
+        if (msUntilCheckout <= 45 * 60 * 1000 || msUntilCheckout > 75 * 60 * 1000) {
+          continue;
+        }
+
+        void this.domainEvents.publish(EVENTS.CHECKOUT_REMINDER, 'stays', {
+          bookingId: booking.id,
+          listingId: booking.listing_id,
+          guestUserId: booking.guest_user_id,
+          listingTitle: listing?.title,
+          checkoutAt: checkoutAt.toISOString(),
+        });
+        this.logger.log(`Checkout reminder queued for booking ${booking.id}`);
+      } catch (err) {
+        this.logger.warn(
+          `Failed checkout reminder for booking ${booking.id}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+  }
+
+  /** Mark stays completed once checkout time passes on checkout day, then nudge review. */
+  private async finalizeCheckoutDayStays(): Promise<void> {
+    const now = Date.now();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const bookings = await this.bookingRepo.find({
+      where: { status: In(['CONFIRMED', 'CHECKED_IN']) },
+      relations: ['listing'],
+    });
+
+    for (const booking of bookings) {
+      const checkoutStr =
+        booking.checkout_date instanceof Date
+          ? booking.checkout_date.toISOString().slice(0, 10)
+          : String(booking.checkout_date).slice(0, 10);
+      if (checkoutStr !== todayStr) continue;
+
+      try {
+        const listing = booking.listing as StaysListing | undefined;
+        const checkoutAt = parseCheckoutDateTime(
+          booking.checkout_date,
+          listing?.checkout_time ?? '11:00',
+        );
+        if (checkoutAt.getTime() > now) continue;
+
+        await this.bookingRepo.update(
+          { id: booking.id },
+          { status: 'COMPLETED', completed_at: new Date() },
+        );
+
+        if (listing?.host_user_id) {
+          void this.domainEvents.publish(EVENTS.BOOKING_COMPLETED, 'stays', {
+            bookingId: booking.id,
+            listingId: booking.listing_id,
+            hostUserId: listing.host_user_id,
+            guestUserId: booking.guest_user_id,
+            checkoutDate: checkoutStr,
+            listingTitle: listing.title,
+          });
+        }
+
+        await this.queueReviewReminderIfEligible(booking, listing);
+        void this.messagingState.syncFromBooking(booking.id);
+        this.logger.log(`Checkout-day completed booking ${booking.id}`);
+      } catch (err) {
+        this.logger.warn(
+          `Failed checkout-day finalize for booking ${booking.id}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
   }
 
   /** Also invoked on module init in dev for faster feedback. */
@@ -75,8 +184,11 @@ export class BookingLifecycleSchedulerService {
               booking.checkout_date instanceof Date
                 ? booking.checkout_date.toISOString().slice(0, 10)
                 : String(booking.checkout_date),
+            listingTitle: listing?.title,
           });
         }
+
+        await this.queueReviewReminderIfEligible(booking, listing);
 
         void this.messagingState.syncFromBooking(booking.id);
 
@@ -87,6 +199,29 @@ export class BookingLifecycleSchedulerService {
         );
       }
     }
+  }
+
+  private async queueReviewReminderIfEligible(
+    booking: StaysBooking,
+    listing?: StaysListing,
+  ): Promise<void> {
+    const completedBooking = { ...booking, status: 'COMPLETED' as const };
+    if (!this.lifecycleService.canReview(completedBooking)) {
+      return;
+    }
+    const existing = await this.reviewRepo.findOne({
+      where: { booking_id: booking.id },
+    });
+    if (existing) {
+      return;
+    }
+    void this.domainEvents.publish(EVENTS.REVIEW_REMINDER, 'stays', {
+      bookingId: booking.id,
+      listingId: booking.listing_id,
+      guestUserId: booking.guest_user_id,
+      listingTitle: listing?.title,
+    });
+    this.logger.log(`Review reminder queued for booking ${booking.id}`);
   }
 
   private async expirePendingPayments(): Promise<void> {
@@ -117,46 +252,6 @@ export class BookingLifecycleSchedulerService {
       } catch (err) {
         this.logger.warn(
           `Failed to expire booking ${booking.id}: ${err instanceof Error ? err.message : err}`,
-        );
-      }
-    }
-  }
-
-  /** Remind guests ~24h after checkout to leave a review. */
-  private async sendReviewReminders(): Promise<void> {
-    const now = new Date();
-    const windowEnd = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const windowStart = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-    const startStr = windowStart.toISOString().slice(0, 10);
-    const endStr = windowEnd.toISOString().slice(0, 10);
-
-    const completed = await this.bookingRepo.find({
-      where: {
-        status: 'COMPLETED',
-        checkout_date: Between(startStr as unknown as Date, endStr as unknown as Date),
-      },
-    });
-
-    for (const booking of completed) {
-      try {
-        if (!this.lifecycleService.canReview(booking)) {
-          continue;
-        }
-        const existing = await this.reviewRepo.findOne({
-          where: { booking_id: booking.id },
-        });
-        if (existing) {
-          continue;
-        }
-        void this.domainEvents.publish(EVENTS.REVIEW_REMINDER, 'stays', {
-          bookingId: booking.id,
-          listingId: booking.listing_id,
-          guestUserId: booking.guest_user_id,
-        });
-        this.logger.log(`Review reminder queued for booking ${booking.id}`);
-      } catch (err) {
-        this.logger.warn(
-          `Failed review reminder for booking ${booking.id}: ${err instanceof Error ? err.message : err}`,
         );
       }
     }
