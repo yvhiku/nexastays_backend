@@ -13,6 +13,7 @@ import { ConversationPresentationService } from './conversation-presentation.ser
 import { SnapshotRepairService } from './snapshot-repair.service';
 import { MessagingOutboxService } from './outbox.service';
 import { MESSAGING_INTERNAL_EVENTS } from './messaging-internal.events';
+import { ConversationRepairService } from './conversation-repair.service';
 import type {
   ConversationDetailResponse,
   ConversationDomain,
@@ -36,6 +37,7 @@ export class ConversationsService {
     private readonly presentation: ConversationPresentationService,
     private readonly snapshotRepair: SnapshotRepairService,
     private readonly outbox: MessagingOutboxService,
+    private readonly repair: ConversationRepairService,
   ) {}
 
   async listConversations(
@@ -43,6 +45,8 @@ export class ConversationsService {
     filter: string = 'all',
     q?: string,
   ): Promise<ConversationListResponse[]> {
+    await this.repair.repairForUser(userId);
+
     const qb = this.convRepo
       .createQueryBuilder('c')
       .where(

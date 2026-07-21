@@ -21,6 +21,7 @@ import { MessagingPermissionsService } from './permissions.service';
 import { MessagingRateLimitService } from './rate-limit.service';
 import { TimelineSeederService } from './timeline-seeder.service';
 import { ConversationProvisionService } from './conversation-provision.service';
+import { ConversationRepairService } from './conversation-repair.service';
 import { MessagingStateService } from './messaging-state.service';
 import { MessagingAuditService } from './audit.service';
 import { MessagingOutboxService } from './outbox.service';
@@ -64,6 +65,7 @@ import { StaysModule } from '../stays/stays.module';
     MessagingRateLimitService,
     TimelineSeederService,
     ConversationProvisionService,
+    ConversationRepairService,
     MessagingStateService,
     MessagingAuditService,
     MessagingOutboxService,
