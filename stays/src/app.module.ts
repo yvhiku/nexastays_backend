@@ -18,6 +18,7 @@ import { MediaStorageModule } from './common/media/media-storage.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { PlatformSettingsModule } from './modules/platform-settings/platform-settings.module';
+import { SeoModule } from './modules/seo/seo.module';
 import {
   THROTTLE_DEFAULT,
   THROTTLE_SHORT,
@@ -38,6 +39,7 @@ import {
     StaysPaymentsModule,
     MessagingModule,
     AdminModule,
+    SeoModule,
   ],
   controllers: [AppController],
   providers: [
