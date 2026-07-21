@@ -20,6 +20,11 @@ export class SendMessageDto {
   @IsUUID('4', { each: true })
   attachment_ids?: string[];
 
+  /** When set, attachment_ids are resolved from a completed upload session */
+  @IsOptional()
+  @IsUUID()
+  session_id?: string;
+
   @IsOptional()
   @IsUUID()
   client_message_id?: string;

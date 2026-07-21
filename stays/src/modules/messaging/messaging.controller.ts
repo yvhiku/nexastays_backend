@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -18,10 +19,13 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
 import { AttachmentService } from './attachment.service';
+import { AttachmentSessionService } from './attachment-session.service';
 import { MessageSearchService } from './message-search.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateVisibilityDto } from './dto/update-visibility.dto';
 import { ReportConversationDto } from './dto/report-conversation.dto';
+
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 @ApiTags('messaging')
 @ApiBearerAuth()
@@ -31,6 +35,7 @@ export class MessagingController {
     private readonly conversations: ConversationsService,
     private readonly messages: MessagesService,
     private readonly attachments: AttachmentService,
+    private readonly attachmentSessions: AttachmentSessionService,
     private readonly search: MessageSearchService,
   ) {}
 
@@ -114,13 +119,78 @@ export class MessagingController {
     return this.search.search(id, user.userId, q ?? '', parsedTypes);
   }
 
-  @Post('conversations/:id/attachments')
-  @ApiOperation({ summary: 'Upload attachment (first-class, before message)' })
+  @Post('conversations/:id/attachment-sessions')
+  @ApiOperation({ summary: 'Create attachment upload session' })
+  createAttachmentSession(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.attachmentSessions.createSession(id, user.userId);
+  }
+
+  @Get('attachment-sessions/:sessionId')
+  @ApiOperation({ summary: 'Get attachment session with uploads' })
+  getAttachmentSession(
+    @CurrentUser() user: { userId: string },
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+  ) {
+    return this.attachmentSessions.getSession(sessionId, user.userId);
+  }
+
+  @Post('attachment-sessions/:sessionId/attachments')
+  @ApiOperation({ summary: 'Upload file into attachment session' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: multerLimits(15 * 1024 * 1024),
+      limits: multerLimits(MAX_ATTACHMENT_BYTES),
+    }),
+  )
+  uploadToAttachmentSession(
+    @CurrentUser() user: { userId: string },
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.attachmentSessions.uploadToSession(sessionId, user.userId, file);
+  }
+
+  @Post('attachment-sessions/:sessionId/complete')
+  @ApiOperation({ summary: 'Mark session ready after all uploads succeed' })
+  completeAttachmentSession(
+    @CurrentUser() user: { userId: string },
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+  ) {
+    return this.attachmentSessions.completeSession(sessionId, user.userId);
+  }
+
+  @Delete('attachment-sessions/:sessionId/attachments/:attachmentId')
+  @ApiOperation({ summary: 'Remove attachment from session before send' })
+  deleteSessionAttachment(
+    @CurrentUser() user: { userId: string },
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Param('attachmentId', ParseUUIDPipe) attachmentId: string,
+  ) {
+    return this.attachmentSessions
+      .deleteAttachmentFromSession(sessionId, attachmentId, user.userId)
+      .then(() => ({ ok: true }));
+  }
+
+  @Delete('attachment-sessions/:sessionId')
+  @ApiOperation({ summary: 'Abandon attachment session and delete staged uploads' })
+  abandonAttachmentSession(
+    @CurrentUser() user: { userId: string },
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+  ) {
+    return this.attachmentSessions.abandonSession(sessionId, user.userId).then(() => ({ ok: true }));
+  }
+
+  @Post('conversations/:id/attachments')
+  @ApiOperation({ summary: 'Upload attachment (legacy — prefer attachment sessions)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: multerLimits(MAX_ATTACHMENT_BYTES),
     }),
   )
   uploadAttachment(

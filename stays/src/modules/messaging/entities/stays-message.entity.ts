@@ -21,7 +21,13 @@ export type MessageType =
   | 'REVIEW_CARD'
   | 'PAYMENT_CARD'
   | 'IMAGE'
-  | 'FILE';
+  | 'FILE'
+  | 'VIDEO'
+  | 'VOICE'
+  | 'LOCATION'
+  | 'SYSTEM'
+  | 'CARD'
+  | 'CUSTOM';
 
 export type MessageStatus = 'PENDING' | 'PERSISTED' | 'DELIVERED' | 'READ' | 'FAILED';
 

@@ -73,6 +73,7 @@ export interface ConversationPresentation {
 export interface ConversationSyncMeta {
   conversationVersion: number;
   snapshotVersion: number;
+  attachmentVersion: number;
   lastMessageId: string | null;
   unreadCount: number;
   lastReadPointer: {
@@ -162,17 +163,39 @@ export interface TimelineCardMetadata {
 
 export type DeliveryState = 'PENDING' | 'PERSISTED' | 'SENT' | 'DELIVERED' | 'READ';
 
+export type ProcessingStatus = 'UPLOADING' | 'PROCESSING' | 'READY' | 'FAILED';
+export type VirusScanStatus = 'PENDING' | 'SAFE' | 'FAILED';
+
 export interface AttachmentDto {
   id: string;
-  status: 'PROCESSING' | 'READY' | 'FAILED';
+  sessionId: string | null;
+  mediaAssetId: string | null;
+  /** Processing pipeline status */
+  processingStatus: ProcessingStatus;
+  /** @deprecated use processingStatus */
+  status: ProcessingStatus;
+  virusScanStatus: VirusScanStatus;
   mime: string | null;
   sizeBytes: number | null;
   width: number | null;
   height: number | null;
+  orientation: number | null;
+  durationMs: number | null;
+  checksum: string | null;
   blurhash: string | null;
   originalFilename: string | null;
   thumbnail: SignedMedia | null;
   full: SignedMedia | null;
+  /** Alias for full — structured signed URL contract */
+  original: SignedMedia | null;
+}
+
+export interface AttachmentSessionDto {
+  id: string;
+  conversationId: string;
+  status: 'CREATED' | 'UPLOADING' | 'READY' | 'COMPLETED' | 'ABANDONED';
+  expiresAt: string;
+  attachments: AttachmentDto[];
 }
 
 export interface TextPayload {

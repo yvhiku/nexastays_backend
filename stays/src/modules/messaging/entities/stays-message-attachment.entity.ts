@@ -8,8 +8,14 @@ import {
 } from 'typeorm';
 import { StaysMessage } from './stays-message.entity';
 import { StaysConversation } from './stays-conversation.entity';
+import { StaysAttachmentSession } from './stays-attachment-session.entity';
+import { StaysMediaAsset } from './stays-media-asset.entity';
 
-export type AttachmentStatus = 'PROCESSING' | 'READY' | 'FAILED';
+export type ProcessingStatus = 'UPLOADING' | 'PROCESSING' | 'READY' | 'FAILED';
+/** @deprecated use ProcessingStatus — DB column remains `status` */
+export type AttachmentStatus = ProcessingStatus;
+
+export type VirusScanStatus = 'PENDING' | 'SAFE' | 'FAILED';
 
 @Entity('stays_message_attachments')
 export class StaysMessageAttachment {
@@ -33,8 +39,35 @@ export class StaysMessageAttachment {
   @Column({ type: 'uuid', name: 'uploader_user_id', nullable: true })
   uploader_user_id: string | null;
 
+  @Column({ type: 'uuid', name: 'session_id', nullable: true })
+  session_id: string | null;
+
+  @ManyToOne(() => StaysAttachmentSession, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'session_id' })
+  session: StaysAttachmentSession | null;
+
+  @Column({ type: 'uuid', name: 'media_asset_id', nullable: true })
+  media_asset_id: string | null;
+
+  @ManyToOne(() => StaysMediaAsset, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'media_asset_id' })
+  media_asset: StaysMediaAsset | null;
+
+  @Column({ type: 'int', name: 'media_version', default: 1 })
+  media_version: number;
+
+  /** Processing pipeline status (upload → process → ready) */
   @Column({ type: 'varchar', length: 20, default: 'PROCESSING' })
-  status: AttachmentStatus;
+  status: ProcessingStatus;
+
+  @Column({ type: 'int', nullable: true })
+  orientation: number | null;
+
+  @Column({ type: 'int', name: 'duration_ms', nullable: true })
+  duration_ms: number | null;
+
+  @Column({ type: 'varchar', length: 64, name: 'checksum_sha256', nullable: true })
+  checksum_sha256: string | null;
 
   @Column({ type: 'text', name: 'storage_url' })
   storage_url: string;
@@ -58,7 +91,7 @@ export class StaysMessageAttachment {
   blurhash: string | null;
 
   @Column({ type: 'varchar', length: 20, name: 'virus_scan_status', default: 'PENDING' })
-  virus_scan_status: string;
+  virus_scan_status: VirusScanStatus;
 
   @Column({ type: 'bigint', name: 'size_bytes', nullable: true })
   size_bytes: string | null;

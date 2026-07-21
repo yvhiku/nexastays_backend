@@ -5,6 +5,8 @@ import {
   StaysConversation,
   StaysMessage,
   StaysMessageAttachment,
+  StaysMediaAsset,
+  StaysAttachmentSession,
   StaysMessagingOutbox,
   StaysMessagingAuditLog,
 } from './entities';
@@ -30,6 +32,9 @@ import { MessagingMediaService } from './messaging-media.service';
 import { ConversationPresentationService } from './conversation-presentation.service';
 import { SnapshotRepairService } from './snapshot-repair.service';
 import { AttachmentService } from './attachment.service';
+import { AttachmentSessionService } from './attachment-session.service';
+import { MediaAssetService } from './media-asset.service';
+import { AttachmentCleanupScheduler } from './attachment-cleanup.scheduler';
 import { MessageSearchService } from './message-search.service';
 import { DomainEventsModule } from '../../common/events/domain-events.module';
 import { StaysModule } from '../stays/stays.module';
@@ -43,6 +48,8 @@ import { StaysModule } from '../stays/stays.module';
       StaysConversation,
       StaysMessage,
       StaysMessageAttachment,
+      StaysMediaAsset,
+      StaysAttachmentSession,
       StaysMessagingOutbox,
       StaysMessagingAuditLog,
       StaysBooking,
@@ -69,6 +76,9 @@ import { StaysModule } from '../stays/stays.module';
     ConversationPresentationService,
     SnapshotRepairService,
     AttachmentService,
+    AttachmentSessionService,
+    MediaAssetService,
+    AttachmentCleanupScheduler,
     MessageSearchService,
   ],
   exports: [ConversationProvisionService, MessagingStateService],

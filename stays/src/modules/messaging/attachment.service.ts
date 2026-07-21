@@ -5,77 +5,59 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { mkdir, writeFile } from 'fs/promises';
-import { join, extname } from 'path';
-import { randomUUID } from 'crypto';
+import { unlink } from 'fs/promises';
 import { Repository, In, IsNull } from 'typeorm';
 import { StaysMessageAttachment } from './entities/stays-message-attachment.entity';
 import { StaysConversation } from './entities/stays-conversation.entity';
+import { StaysMediaAsset } from './entities/stays-media-asset.entity';
 import { MessagingPermissionsService } from './permissions.service';
 import { MessagingMediaService } from './messaging-media.service';
+import { MediaAssetService } from './media-asset.service';
+import { isImageMime } from '../../common/utils/attachment-mime.util';
 import type { AttachmentDto } from './messaging.types';
 
-const MAX_BYTES = 15 * 1024 * 1024;
-const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const FILE_MIMES = new Set([...IMAGE_MIMES, 'application/pdf']);
+const MAX_BYTES = 20 * 1024 * 1024;
+const ALLOWED_DECLARED_MIMES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+]);
 
 @Injectable()
 export class AttachmentService {
-  private readonly uploadRoot =
-    process.env.MEDIA_STORAGE_ROOT?.trim() || 'uploads';
-
   constructor(
     @InjectRepository(StaysMessageAttachment)
     private readonly attachmentRepo: Repository<StaysMessageAttachment>,
     @InjectRepository(StaysConversation)
     private readonly convRepo: Repository<StaysConversation>,
+    @InjectRepository(StaysMediaAsset)
+    private readonly mediaAssetRepo: Repository<StaysMediaAsset>,
     private readonly permissions: MessagingPermissionsService,
     private readonly media: MessagingMediaService,
+    private readonly mediaAssets: MediaAssetService,
   ) {}
 
+  /** @deprecated Prefer attachment session upload flow */
   async createFromUpload(
     conversationId: string,
     userId: string,
     file: Express.Multer.File,
   ): Promise<AttachmentDto> {
     const conv = await this.getWritableConversation(conversationId, userId);
-    if (!file?.buffer?.length) throw new BadRequestException('No file uploaded');
-    if (file.size > MAX_BYTES) throw new BadRequestException('File too large');
+    return this.ingestFile(conv.id, null, userId, file);
+  }
 
-    const mime = file.mimetype || 'application/octet-stream';
-    if (!FILE_MIMES.has(mime)) {
-      throw new BadRequestException('Unsupported file type');
-    }
-
-    const ext = extname(file.originalname || '') || (IMAGE_MIMES.has(mime) ? '.jpg' : '.bin');
-    const assetId = randomUUID();
-    const relDir = join('messaging', conversationId);
-    const absDir = join(this.uploadRoot, relDir);
-    await mkdir(absDir, { recursive: true });
-
-    const filename = `${assetId}${ext}`;
-    const absPath = join(absDir, filename);
-    await writeFile(absPath, file.buffer);
-
-    const storageUrl = join(relDir, filename).replace(/\\/g, '/');
-    const isImage = IMAGE_MIMES.has(mime);
-
-    const row = this.attachmentRepo.create({
-      conversation_id: conv.id,
-      uploader_user_id: userId,
-      message_id: null,
-      status: 'PROCESSING',
-      storage_url: storageUrl,
-      thumbnail_url: isImage ? storageUrl : null,
-      original_filename: file.originalname || filename,
-      mime,
-      size_bytes: String(file.size),
-      virus_scan_status: 'CLEAN',
-    });
-
-    row.status = 'READY';
-    const saved = await this.attachmentRepo.save(row);
-    return this.toDto(saved);
+  async createFromUploadInSession(
+    conversationId: string,
+    sessionId: string,
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<AttachmentDto> {
+    await this.getWritableConversation(conversationId, userId);
+    return this.ingestFile(conversationId, sessionId, userId, file);
   }
 
   async getAttachment(
@@ -91,12 +73,19 @@ export class AttachmentService {
     return this.toDto(row);
   }
 
-  async linkToMessage(messageId: string, attachmentIds: string[]): Promise<void> {
+  async linkToMessage(
+    messageId: string,
+    attachmentIds: string[],
+    conversationId?: string,
+  ): Promise<void> {
     if (!attachmentIds.length) return;
     await this.attachmentRepo.update(
       { id: In(attachmentIds), message_id: IsNull() },
       { message_id: messageId },
     );
+    if (conversationId) {
+      await this.bumpAttachmentVersion(conversationId);
+    }
   }
 
   async loadForMessages(
@@ -150,12 +139,36 @@ export class AttachmentService {
     return rows;
   }
 
-  resolveStoragePath(storageUrl: string): string {
-    return join(this.uploadRoot, storageUrl);
+  async deleteUnlinkedAttachment(row: StaysMessageAttachment): Promise<void> {
+    if (row.message_id) return;
+
+    if (row.media_asset_id) {
+      const asset = await this.mediaAssetRepo.findOne({
+        where: { id: row.media_asset_id },
+      });
+      if (asset) {
+        await this.safeUnlink(asset.storage_key);
+        if (asset.thumbnail_storage_key) {
+          await this.safeUnlink(asset.thumbnail_storage_key);
+        }
+        await this.mediaAssetRepo.delete(asset.id);
+      }
+    } else {
+      await this.safeUnlink(row.storage_url);
+      if (row.thumbnail_url && row.thumbnail_url !== row.storage_url) {
+        await this.safeUnlink(row.thumbnail_url);
+      }
+    }
+
+    await this.attachmentRepo.delete(row.id);
   }
 
-  private toDto(row: StaysMessageAttachment): AttachmentDto {
-    const version = 1;
+  resolveStoragePath(storageUrl: string): string {
+    return this.mediaAssets.resolveStoragePath(storageUrl);
+  }
+
+  toDto(row: StaysMessageAttachment): AttachmentDto {
+    const version = row.media_version ?? 1;
     const thumb = row.thumbnail_url
       ? this.media.resolveAttachment(row.id, 'thumb', version)
       : null;
@@ -165,16 +178,106 @@ export class AttachmentService {
         : null;
     return {
       id: row.id,
+      sessionId: row.session_id,
+      mediaAssetId: row.media_asset_id,
+      processingStatus: row.status,
       status: row.status,
+      virusScanStatus: row.virus_scan_status,
       mime: row.mime,
       sizeBytes: row.size_bytes ? Number(row.size_bytes) : null,
       width: row.width,
       height: row.height,
+      orientation: row.orientation,
+      durationMs: row.duration_ms,
+      checksum: row.checksum_sha256,
       blurhash: row.blurhash,
       originalFilename: row.original_filename,
       thumbnail: thumb,
       full,
+      original: full,
     };
+  }
+
+  async bumpAttachmentVersion(conversationId: string): Promise<number> {
+    const conv = await this.convRepo.findOne({ where: { id: conversationId } });
+    if (!conv) return 1;
+    const next = (conv.attachment_version ?? 1) + 1;
+    await this.convRepo.update(conversationId, { attachment_version: next });
+    return next;
+  }
+
+  private async ingestFile(
+    conversationId: string,
+    sessionId: string | null,
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<AttachmentDto> {
+    if (!file?.buffer?.length) throw new BadRequestException('No file uploaded');
+    if (file.size > MAX_BYTES) throw new BadRequestException('File too large');
+
+    const declaredMime = (file.mimetype || '').toLowerCase();
+    if (declaredMime && !ALLOWED_DECLARED_MIMES.has(declaredMime)) {
+      throw new BadRequestException('Unsupported file type');
+    }
+
+    const row = this.attachmentRepo.create({
+      conversation_id: conversationId,
+      session_id: sessionId,
+      uploader_user_id: userId,
+      message_id: null,
+      status: 'UPLOADING',
+      storage_url: '',
+      thumbnail_url: null,
+      original_filename: file.originalname || 'upload',
+      mime: declaredMime || null,
+      virus_scan_status: 'PENDING',
+    });
+    const pending = await this.attachmentRepo.save(row);
+
+    try {
+      await this.attachmentRepo.update(pending.id, { status: 'PROCESSING' });
+
+      const processed = await this.mediaAssets.processAndStore({
+        buffer: file.buffer,
+        declaredMime,
+        conversationId,
+      });
+
+      const isImage = isImageMime(processed.mime);
+      const virusStatus = isImage ? 'SAFE' : 'PENDING';
+
+      await this.attachmentRepo.update(pending.id, {
+        media_asset_id: processed.asset.id,
+        storage_url: processed.storageKey,
+        thumbnail_url: processed.thumbnailKey ?? (isImage ? processed.storageKey : null),
+        mime: processed.mime,
+        width: processed.width,
+        height: processed.height,
+        checksum_sha256: processed.checksum,
+        size_bytes: String(file.size),
+        status: 'READY',
+        virus_scan_status: virusStatus,
+        media_version: 1,
+      });
+
+      const saved = await this.attachmentRepo.findOneOrFail({
+        where: { id: pending.id },
+      });
+      return this.toDto(saved);
+    } catch (err) {
+      await this.attachmentRepo.update(pending.id, { status: 'FAILED' });
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      throw new BadRequestException(message);
+    }
+  }
+
+  private async safeUnlink(storageKey: string): Promise<void> {
+    try {
+      const path = this.resolveStoragePath(storageKey);
+      await unlink(path);
+    } catch {
+      // ignore missing files
+    }
   }
 
   private async getWritableConversation(

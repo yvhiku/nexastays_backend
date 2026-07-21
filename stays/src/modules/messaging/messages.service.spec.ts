@@ -8,6 +8,9 @@ import { MessagingPermissionsService } from './permissions.service';
 import { MessagingRateLimitService } from './rate-limit.service';
 import { TimelineSeederService } from './timeline-seeder.service';
 import { MessagingOutboxService } from './outbox.service';
+import { AttachmentService } from './attachment.service';
+import { AttachmentSessionService } from './attachment-session.service';
+import { ParticipantPresentationService } from './participant-presentation.service';
 import { EVENTS } from '@nexa/event-bus';
 
 describe('MessagesService', () => {
@@ -154,6 +157,27 @@ describe('MessagesService', () => {
           provide: DataSource,
           useValue: {
             transaction: jest.fn((fn) => fn(transactionManager)),
+          },
+        },
+        {
+          provide: AttachmentService,
+          useValue: {
+            loadForMessages: jest.fn().mockResolvedValue(new Map()),
+            linkToMessage: jest.fn(),
+          },
+        },
+        {
+          provide: AttachmentSessionService,
+          useValue: {
+            assertSessionReadyForSend: jest.fn(),
+            finalizeSession: jest.fn(),
+          },
+        },
+        {
+          provide: ParticipantPresentationService,
+          useValue: {
+            resolveGuestDisplayName: jest.fn().mockResolvedValue('Guest Name'),
+            resolveHostDisplayName: jest.fn().mockResolvedValue('Host Name'),
           },
         },
       ],

@@ -39,6 +39,9 @@ export class StaysConversation {
   @Column({ type: 'int', name: 'snapshot_version', default: 1 })
   snapshot_version: number;
 
+  @Column({ type: 'int', name: 'attachment_version', default: 1 })
+  attachment_version: number;
+
   @Column({ type: 'jsonb', name: 'reservation_snapshot', default: {} })
   reservation_snapshot: Record<string, unknown>;
 

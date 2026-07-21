@@ -13,6 +13,7 @@ import { MessagingRateLimitService } from './rate-limit.service';
 import { TimelineSeederService } from './timeline-seeder.service';
 import { MessagingOutboxService } from './outbox.service';
 import { AttachmentService } from './attachment.service';
+import { AttachmentSessionService } from './attachment-session.service';
 import { ParticipantPresentationService } from './participant-presentation.service';
 import type { MessageDto } from './messaging.types';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -35,6 +36,7 @@ export class MessagesService {
     private readonly timelineSeeder: TimelineSeederService,
     private readonly outbox: MessagingOutboxService,
     private readonly attachments: AttachmentService,
+    private readonly attachmentSessions: AttachmentSessionService,
     private readonly participants: ParticipantPresentationService,
   ) {}
 
@@ -102,8 +104,18 @@ export class MessagesService {
     }
 
     if (type === 'IMAGE' || type === 'FILE') {
+      if (dto.session_id) {
+        return this.sendWithSession(
+          conversationId,
+          userId,
+          type,
+          dto.session_id,
+          dto.caption ?? dto.body,
+          dto.client_message_id,
+        );
+      }
       if (!attachmentIds.length) {
-        throw new BadRequestException('attachment_ids required');
+        throw new BadRequestException('attachment_ids or session_id required');
       }
       return this.sendWithAttachments(
         conversationId,
@@ -202,7 +214,71 @@ export class MessagesService {
         clientMessageId: clientMessageId ?? null,
       });
 
-      await this.attachments.linkToMessage(message.id, attachmentIds);
+      await this.attachments.linkToMessage(message.id, attachmentIds, conv.id);
+      await this.enqueueDeliveryEvents(manager, conv, message, userId, preview);
+      return message;
+    });
+
+    const atts = await this.attachments.loadForMessages([
+      { id: saved.id, metadata: saved.metadata ?? {} },
+    ]);
+    return this.toDto(saved, userId, atts.get(saved.id) ?? []);
+  }
+
+  private async sendWithSession(
+    conversationId: string,
+    userId: string,
+    type: 'IMAGE' | 'FILE',
+    sessionId: string,
+    caption?: string,
+    clientMessageId?: string,
+  ): Promise<MessageDto> {
+    const conv = await this.getParticipantConversation(conversationId, userId);
+    const perms = this.permissions.resolve(conv, userId);
+    if (!perms.canSend) throw new ForbiddenException('Cannot send messages');
+
+    if (clientMessageId) {
+      const existing = await this.messageRepo.findOne({
+        where: { conversation_id: conv.id, client_message_id: clientMessageId },
+      });
+      if (existing) {
+        const atts = await this.attachments.loadForMessages([
+          { id: existing.id, metadata: existing.metadata ?? {} },
+        ]);
+        return this.toDto(existing, userId, atts.get(existing.id) ?? []);
+      }
+    }
+
+    const { session, attachments: sessionAttachments } =
+      await this.attachmentSessions.assertSessionReadyForSend(
+        conv.id,
+        userId,
+        sessionId,
+      );
+    const attachmentIds = sessionAttachments.map((a) => a.id);
+
+    const preview = caption?.trim() || (type === 'IMAGE' ? 'Photo' : 'File');
+    await this.rateLimit.assertCanSend(userId, conv.id, preview);
+
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const message = await this.timelineSeeder.insertMessage(manager, conv, {
+        type,
+        body: caption?.trim() ?? null,
+        metadata: {
+          source: 'USER',
+          schemaVersion: 1,
+          cardVersion: 1,
+          presentationVersion: 1,
+          attachment_ids: attachmentIds,
+          session_id: session.id,
+          caption: caption?.trim(),
+        },
+        senderId: userId,
+        clientMessageId: clientMessageId ?? null,
+      });
+
+      await this.attachments.linkToMessage(message.id, attachmentIds, conv.id);
+      await this.attachmentSessions.finalizeSession(session.id);
       await this.enqueueDeliveryEvents(manager, conv, message, userId, preview);
       return message;
     });

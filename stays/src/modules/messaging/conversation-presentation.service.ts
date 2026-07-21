@@ -94,6 +94,7 @@ export class ConversationPresentationService {
     return {
       conversationVersion: conv.conversation_version,
       snapshotVersion: conv.snapshot_version ?? 1,
+      attachmentVersion: conv.attachment_version ?? 1,
       lastMessageId: conv.last_message_id ?? null,
       unreadCount,
       lastReadPointer: {
