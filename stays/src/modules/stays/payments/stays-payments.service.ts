@@ -93,6 +93,18 @@ export class StaysPaymentsService {
       }
     }
 
+    const pendingIntent = await this.intentRepo.findOne({
+      where: { booking_id: bookingId, status: 'PENDING' },
+    });
+    if (pendingIntent) {
+      if (!idempotencyKey || pendingIntent.idempotency_key === idempotencyKey) {
+        return this.toIntentResult(pendingIntent);
+      }
+      throw new ConflictException(
+        'A payment is already in progress for this booking.',
+      );
+    }
+
     let totalPaid: number;
     try {
       totalPaid = lockIntentAmount(Number(booking.total_paid ?? 0));
@@ -150,7 +162,7 @@ export class StaysPaymentsService {
       relations: ['booking'],
     });
 
-    if (!intent || intent.status === 'SUCCEEDED') {
+    if (!intent) {
       return;
     }
 
@@ -160,8 +172,33 @@ export class StaysPaymentsService {
       const bookingRepo = manager.getRepository(StaysBooking);
       const listingRepo = manager.getRepository(StaysListing);
 
+      const lockedIntent = await intentRepo
+        .createQueryBuilder('i')
+        .setLock('pessimistic_write')
+        .where('i.id = :id', { id: intent.id })
+        .getOne();
+
+      if (!lockedIntent || lockedIntent.status === 'SUCCEEDED') {
+        return;
+      }
+
+      const existingLedger = await ledgerRepo.findOne({
+        where: {
+          booking_id: lockedIntent.booking_id,
+          type: 'GUEST_PAYMENT',
+          status: 'SETTLED',
+        },
+      });
+      if (existingLedger) {
+        await intentRepo.update(
+          { id: lockedIntent.id },
+          { status: 'SUCCEEDED', updated_at: new Date() },
+        );
+        return;
+      }
+
       const booking = await bookingRepo.findOne({
-        where: { id: intent.booking_id },
+        where: { id: lockedIntent.booking_id },
         relations: ['listing'],
       });
 
@@ -188,7 +225,7 @@ export class StaysPaymentsService {
           `PAYMENT_REFUND_REQUIRED: payment succeeded but dates unavailable for booking ${booking.id}; expiring hold and creating refund ledger entry`,
         );
         await intentRepo.update(
-          { id: intent.id },
+          { id: lockedIntent.id },
           { status: 'FAILED', updated_at: new Date() },
         );
         await bookingRepo.update(
@@ -199,7 +236,7 @@ export class StaysPaymentsService {
           ledgerRepo.create({
             booking_id: booking.id,
             type: 'REFUND',
-            amount: Number(intent.amount),
+            amount: Number(lockedIntent.amount),
             currency: booking.currency,
             status: 'PENDING',
             metadata: {
@@ -218,7 +255,7 @@ export class StaysPaymentsService {
           metadata: {
             provider,
             provider_intent_id: providerIntentId,
-            refund_amount: Number(intent.amount),
+            refund_amount: Number(lockedIntent.amount),
             alert_key: 'PAYMENT_REFUND_REQUIRED',
           },
         });
@@ -226,13 +263,13 @@ export class StaysPaymentsService {
         return;
       }
 
-      const amount = Number(intent.amount);
+      const amount = Number(lockedIntent.amount);
       const guestFee = Number(booking.guest_fee ?? 0);
       const hostFee = Number(booking.host_fee ?? 0);
       const payoutAmount = Number(booking.payout_amount ?? 0);
 
       await intentRepo.update(
-        { id: intent.id },
+        { id: lockedIntent.id },
         { status: 'SUCCEEDED', updated_at: new Date() },
       );
 

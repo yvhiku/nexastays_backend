@@ -27,3 +27,16 @@ export function getInternalServiceKey(): string {
     devFallback: 'dev-internal-key',
   });
 }
+
+/** Public base URL (no trailing slash). Required in production. */
+export function requirePublicBaseUrl(
+  name: 'STAYS_PUBLIC_URL' | 'STAYS_WEB_URL' | 'STAYS_API_PUBLIC_URL',
+  devFallback: string,
+): string {
+  const value = (process.env[name] ?? '').trim().replace(/\/$/, '');
+  if (value) return value;
+  if (isProductionRuntime()) {
+    throw new Error(`${name} is required in production and must be set via environment variables.`);
+  }
+  return devFallback.replace(/\/$/, '');
+}

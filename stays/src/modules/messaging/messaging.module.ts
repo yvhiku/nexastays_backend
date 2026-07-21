@@ -1,5 +1,4 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   StaysConversation,
@@ -41,7 +40,6 @@ import { StaysModule } from '../stays/stays.module';
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
     DomainEventsModule,
     forwardRef(() => StaysModule),
     TypeOrmModule.forFeature([

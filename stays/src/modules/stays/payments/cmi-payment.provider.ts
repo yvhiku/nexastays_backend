@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createHmac, randomBytes } from 'crypto';
-import { isProductionRuntime } from '../../../common/security/secrets';
+import { isProductionRuntime, requirePublicBaseUrl } from '../../../common/security/secrets';
 
 export interface CmiOrderResult {
   provider: 'cmi';
@@ -47,13 +47,13 @@ export class CmiPaymentProvider {
       'https://testpayment.cmi.co.ma/fim/est3Dgate';
     const callbackUrl =
       process.env.CMI_CALLBACK_URL ||
-      `${process.env.STAYS_PUBLIC_URL || 'http://127.0.0.1:3002'}/api/v1/stays/webhooks/payments/cmi`;
+      `${requirePublicBaseUrl('STAYS_PUBLIC_URL', 'http://127.0.0.1:3002')}/api/v1/stays/webhooks/payments/cmi`;
     const okUrl =
       process.env.CMI_OK_URL ||
-      `${process.env.STAYS_WEB_URL || 'http://127.0.0.1:3000'}/bookings`;
+      `${requirePublicBaseUrl('STAYS_WEB_URL', 'http://127.0.0.1:3000')}/bookings`;
     const failUrl =
       process.env.CMI_FAIL_URL ||
-      `${process.env.STAYS_WEB_URL || 'http://127.0.0.1:3000'}/bookings`;
+      `${requirePublicBaseUrl('STAYS_WEB_URL', 'http://127.0.0.1:3000')}/bookings`;
 
     const orderId = `STAYS-${input.bookingId}-${Date.now()}`;
     const amount = input.amount.toFixed(2);

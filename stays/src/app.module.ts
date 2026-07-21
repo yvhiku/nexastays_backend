@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -26,6 +27,7 @@ import {
   imports: [
     DatabaseModule,
     MetricsModule,
+    ScheduleModule.forRoot(),
     IdentityAuthModule,
     IdentityModule,
     DomainEventsModule,

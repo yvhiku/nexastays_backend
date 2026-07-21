@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { SignedMedia } from './messaging.types';
+import { isProductionRuntime, requirePublicBaseUrl } from '../../common/security/secrets';
 
 const DEFAULT_TTL_MS = 60 * 60 * 1000;
 
@@ -13,19 +14,22 @@ export interface ListingCoverVariant {
 @Injectable()
 export class MessagingMediaService {
   private signingSecret(): string {
-    return (
+    const fromEnv =
       process.env.MESSAGING_MEDIA_SECRET?.trim() ||
-      process.env.JWT_SECRET?.trim() ||
-      'nexa-messaging-media-dev'
-    );
+      process.env.JWT_SECRET?.trim();
+    if (fromEnv) return fromEnv;
+    if (isProductionRuntime()) {
+      throw new Error(
+        'MESSAGING_MEDIA_SECRET or JWT_SECRET is required in production for signed media URLs.',
+      );
+    }
+    return 'nexa-messaging-media-dev';
   }
 
   private publicBaseUrl(): string {
-    const base =
-      process.env.STAYS_PUBLIC_URL?.replace(/\/$/, '') ||
-      process.env.STAYS_API_PUBLIC_URL?.replace(/\/$/, '') ||
-      'http://127.0.0.1:3002/api/v1';
-    return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
+    const base = requirePublicBaseUrl('STAYS_PUBLIC_URL', 'http://127.0.0.1:3002');
+    const withApi = base.endsWith('/api/v1') ? base : `${base}/api/v1`;
+    return withApi;
   }
 
   signPayload(payload: Record<string, string | number>): string {
