@@ -46,7 +46,7 @@ export class MessagingController {
     @Query('filter') filter?: string,
     @Query('q') q?: string,
   ) {
-    return this.conversations.listConversations(user.userId, filter ?? 'all', q);
+    return this.conversations.listConversations(user.userId, filter ?? 'active', q);
   }
 
   @Get('conversations/unread-count')

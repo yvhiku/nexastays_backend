@@ -9,6 +9,7 @@ import { MessagesService } from './messages.service';
 import { MessagingAuditService } from './audit.service';
 import { ConversationProvisionService } from './conversation-provision.service';
 import { ConversationPresentationService } from './conversation-presentation.service';
+import { ConversationRepairService } from './conversation-repair.service';
 import { SnapshotRepairService } from './snapshot-repair.service';
 import { MessagingOutboxService } from './outbox.service';
 
@@ -113,6 +114,10 @@ describe('ConversationsService', () => {
           useValue: { isSnapshotIncomplete: jest.fn().mockReturnValue(false) },
         },
         { provide: MessagingOutboxService, useValue: { enqueueDirect: jest.fn() } },
+        {
+          provide: ConversationRepairService,
+          useValue: { repairForUser: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 

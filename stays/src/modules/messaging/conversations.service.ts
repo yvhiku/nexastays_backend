@@ -42,7 +42,7 @@ export class ConversationsService {
 
   async listConversations(
     userId: string,
-    filter: string = 'all',
+    filter: string = 'active',
     q?: string,
   ): Promise<ConversationListResponse[]> {
     await this.repair.repairForUser(userId);
@@ -66,6 +66,13 @@ export class ConversationsService {
           ).orWhere('(c.host_user_id = :uid AND c.unread_host > 0)');
         }),
       );
+    } else if (filter === 'active') {
+      qb.andWhere('c.type = :t', { t: 'BOOKING' });
+      qb.innerJoin(StaysBooking, 'b', 'b.id = c.booking_id');
+      qb.andWhere('b.status IN (:...activeStatuses)', {
+        activeStatuses: ['CONFIRMED', 'CHECKED_IN'],
+      });
+      qb.andWhere('b.checkout_date >= CURRENT_DATE');
     } else if (filter === 'hosts') {
       qb.andWhere('c.type = :t', { t: 'BOOKING' });
     } else if (filter === 'support') {
@@ -108,11 +115,13 @@ export class ConversationsService {
     );
 
     const rows = await qb.getMany();
-    const filtered = rows
+    const deduped = this.dedupeByBookingId(rows);
+    const filtered = deduped
       .filter((c) => this.permissions.visibilityFor(c, userId) !== 'DELETED')
       .filter((c) => {
         const vis = this.permissions.visibilityFor(c, userId);
         if (filter === 'all') return vis !== 'ARCHIVED' || this.hasUnread(c, userId);
+        if (filter === 'active') return vis !== 'ARCHIVED';
         return true;
       });
 
@@ -276,6 +285,25 @@ export class ConversationsService {
     }
     await this.audit.log('safety_issue', conv.id, userId, {});
     return { supportUrl: '/contact?safety=1' };
+  }
+
+  /** Keep a single inbox row per booking when duplicate threads exist. */
+  private dedupeByBookingId(rows: StaysConversation[]): StaysConversation[] {
+    const winnerByBooking = new Map<string, StaysConversation>();
+    for (const row of rows) {
+      if (!row.booking_id) continue;
+      const existing = winnerByBooking.get(row.booking_id);
+      const rowTs = row.last_message_at?.getTime() ?? 0;
+      const existingTs = existing?.last_message_at?.getTime() ?? 0;
+      if (!existing || rowTs > existingTs) {
+        winnerByBooking.set(row.booking_id, row);
+      }
+    }
+
+    return rows.filter((row) => {
+      if (!row.booking_id) return true;
+      return winnerByBooking.get(row.booking_id)?.id === row.id;
+    });
   }
 
   private hasUnread(c: StaysConversation, userId: string): boolean {

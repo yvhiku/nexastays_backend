@@ -27,6 +27,7 @@ export class ConversationRepairService {
   /** Restore missing inbox threads for the current user (orphaned messages + missing booking threads). */
   async repairForUser(userId: string): Promise<void> {
     await this.repairOrphanedThreads(userId);
+    await this.dedupeDuplicateBookingThreads(userId);
     await this.ensureMissingBookingThreads(userId);
   }
 
@@ -86,7 +87,15 @@ export class ConversationRepairService {
     const existing = await this.dataSource
       .getRepository(StaysConversation)
       .findOne({ where: { booking_id: bookingId } });
-    if (existing) return;
+    if (existing) {
+      if (existing.id !== conversationId) {
+        await this.mergeMessagesIntoConversation(conversationId, existing.id);
+        this.logger.log(
+          `Merged orphan thread ${conversationId} into booking conversation ${existing.id}`,
+        );
+      }
+      return;
+    }
 
     const hostName = await this.participants.resolveHostDisplayName(listing.host_user_id);
     const guestName = await this.participants.resolveGuestDisplayName(booking.id);
@@ -204,6 +213,92 @@ export class ConversationRepairService {
     }
 
     return null;
+  }
+
+  private async mergeMessagesIntoConversation(
+    fromConversationId: string,
+    toConversationId: string,
+  ): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const messageRepo = manager.getRepository(StaysMessage);
+      const convRepo = manager.getRepository(StaysConversation);
+
+      const orphanMessages = await messageRepo.find({
+        where: { conversation_id: fromConversationId },
+        order: { conversation_sequence: 'ASC' },
+      });
+      if (orphanMessages.length === 0) {
+        await convRepo.delete({ id: fromConversationId });
+        return;
+      }
+
+      const maxSeqRow = await messageRepo
+        .createQueryBuilder('m')
+        .select('COALESCE(MAX(m.conversation_sequence), 0)', 'maxSeq')
+        .where('m.conversation_id = :cid', { cid: toConversationId })
+        .getRawOne<{ maxSeq: string }>();
+      let nextSeq = Number(maxSeqRow?.maxSeq ?? 0);
+
+      for (const message of orphanMessages) {
+        nextSeq += 1;
+        await messageRepo.update(message.id, {
+          conversation_id: toConversationId,
+          conversation_sequence: nextSeq,
+        });
+      }
+
+      const lastMessage = await messageRepo.findOne({
+        where: { conversation_id: toConversationId },
+        order: { conversation_sequence: 'DESC' },
+      });
+      if (lastMessage) {
+        const preview = formatInboxPreview({
+          type: lastMessage.type,
+          body: lastMessage.body,
+          metadata: lastMessage.metadata,
+        });
+        await convRepo.update(toConversationId, {
+          last_message_id: lastMessage.id,
+          last_message_sequence: String(lastMessage.conversation_sequence),
+          last_message_preview: preview,
+          last_message_at: lastMessage.created_at,
+        });
+      }
+
+      await convRepo.delete({ id: fromConversationId });
+    });
+  }
+
+  private async dedupeDuplicateBookingThreads(userId: string): Promise<void> {
+    const duplicates = await this.dataSource.query<
+      { booking_id: string; conv_ids: string[] }[]
+    >(
+      `
+      SELECT booking_id, array_agg(id ORDER BY created_at ASC) AS conv_ids
+      FROM stays_conversations
+      WHERE booking_id IS NOT NULL
+        AND (guest_user_id = $1 OR host_user_id = $1)
+      GROUP BY booking_id
+      HAVING COUNT(*) > 1
+      `,
+      [userId],
+    );
+
+    for (const row of duplicates) {
+      const [keepId, ...dropIds] = row.conv_ids;
+      for (const dropId of dropIds) {
+        try {
+          await this.mergeMessagesIntoConversation(dropId, keepId);
+          this.logger.log(
+            `Deduped conversation ${dropId} into ${keepId} for booking ${row.booking_id}`,
+          );
+        } catch (err) {
+          this.logger.warn(
+            `Failed to dedupe conversation ${dropId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+    }
   }
 
   private async ensureMissingBookingThreads(userId: string): Promise<void> {
