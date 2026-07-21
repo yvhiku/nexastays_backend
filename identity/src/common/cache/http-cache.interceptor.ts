@@ -22,6 +22,13 @@ export function getBalanceCacheKey(userId: string): string {
   return `cache:${BALANCE_CACHE_PATH}:user:${userId}`;
 }
 
+const HEADER_CACHE_PATH = 'v1/users/me/header';
+
+/** Cache key for header badge state. Invalidate after notification read changes. */
+export function getHeaderCacheKey(userId: string): string {
+  return `cache:${HEADER_CACHE_PATH}:user:${userId}`;
+}
+
 /**
  * Builds a cache key for read-only GET endpoints.
  * - User-scoped: path + userId (e.g. users/me, wallets/balance)

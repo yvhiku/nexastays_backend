@@ -1,6 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { Repository } from 'typeorm';
+import { getHeaderCacheKey } from '../../common/cache/http-cache.interceptor';
 import { UserNotification } from './entities/user-notification.entity';
 
 export interface UserNotificationDto {
@@ -19,7 +22,16 @@ export class UserNotificationsService {
   constructor(
     @InjectRepository(UserNotification)
     private readonly repo: Repository<UserNotification>,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
+
+  private async invalidateHeaderCache(userId: string): Promise<void> {
+    try {
+      await this.cacheManager.del(getHeaderCacheKey(userId));
+    } catch {
+      /* ignore cache errors */
+    }
+  }
 
   private toDto(row: UserNotification): UserNotificationDto {
     return {
@@ -59,6 +71,7 @@ export class UserNotificationsService {
       row.is_read = true;
       row.read_at = new Date();
       await this.repo.save(row);
+      await this.invalidateHeaderCache(userId);
     }
     return this.toDto(row);
   }
@@ -68,6 +81,9 @@ export class UserNotificationsService {
       { user_id: userId, is_read: false },
       { is_read: true, read_at: new Date() },
     );
+    if ((result.affected ?? 0) > 0) {
+      await this.invalidateHeaderCache(userId);
+    }
     return { updated: result.affected ?? 0 };
   }
 }
