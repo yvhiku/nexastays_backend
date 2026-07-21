@@ -81,6 +81,6 @@ import { StaysModule } from '../stays/stays.module';
     AttachmentCleanupScheduler,
     MessageSearchService,
   ],
-  exports: [ConversationProvisionService, MessagingStateService],
+  exports: [ConversationProvisionService, MessagingStateService, TimelineSeederService],
 })
 export class MessagingModule {}

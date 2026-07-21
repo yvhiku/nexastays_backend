@@ -12,6 +12,7 @@ import { ConversationPresentationService } from './conversation-presentation.ser
 import { ConversationRepairService } from './conversation-repair.service';
 import { SnapshotRepairService } from './snapshot-repair.service';
 import { MessagingOutboxService } from './outbox.service';
+import { MessagingStateService } from './messaging-state.service';
 
 describe('ConversationsService', () => {
   let service: ConversationsService;
@@ -118,6 +119,14 @@ describe('ConversationsService', () => {
           provide: ConversationRepairService,
           useValue: { repairForUser: jest.fn().mockResolvedValue(undefined) },
         },
+        {
+          provide: MessagingStateService,
+          useValue: {
+            reopenConversation: jest.fn(),
+            enterPostStay: jest.fn(),
+            archiveConversation: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -137,16 +146,22 @@ describe('ConversationsService', () => {
     expect(list[0].conversation.id).toBe('conv-2');
   });
 
-  it('hides ARCHIVED unless unread resurfacing badge applies', async () => {
+  it('includes ARCHIVED conversations in all filter', async () => {
     await service.listConversations(guestId, 'all');
     const qb = convRepo.createQueryBuilder.mock.results[0].value;
     qb.getMany.mockResolvedValue([
       makeConv({ guest_visibility: 'ARCHIVED', unread_guest: 0 }),
-      makeConv({ id: 'conv-unread', guest_visibility: 'ARCHIVED', unread_guest: 2 }),
+      makeConv({ id: 'conv-active', guest_visibility: 'ACTIVE' }),
     ]);
 
     const list = await service.listConversations(guestId, 'all');
-    expect(list.map((c) => c.conversation.id)).toEqual(['conv-unread']);
+    expect(list).toHaveLength(2);
+  });
+
+  it('applies archived filter query', async () => {
+    await service.listConversations(guestId, 'archived');
+    const qb = convRepo.createQueryBuilder.mock.results[0].value;
+    expect(qb.andWhere).toHaveBeenCalled();
   });
 
   it('increments conversation_version on visibility archive', async () => {

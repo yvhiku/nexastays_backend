@@ -89,6 +89,9 @@ export interface ConversationDomain {
   listingId: string | null;
   messagingState: string;
   visibility: string;
+  postStayEndsAt?: string | null;
+  autoArchiveDisabled?: boolean;
+  archiveReason?: string | null;
 }
 
 export interface ConversationListResponse {

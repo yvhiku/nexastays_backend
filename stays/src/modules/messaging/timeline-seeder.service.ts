@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EntityManager } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysConversation } from './entities/stays-conversation.entity';
@@ -14,6 +14,8 @@ export interface BuildSnapshotOptions {
 
 @Injectable()
 export class TimelineSeederService {
+  constructor(private readonly dataSource: DataSource) {}
+
   buildSnapshot(
     booking: StaysBooking,
     listing: StaysListing,
@@ -164,6 +166,76 @@ export class TimelineSeederService {
       saved.push(await this.insertMessage(manager, conversation, seed));
     }
     return saved;
+  }
+
+  /** Read-only archive notice with support escape hatch. */
+  async seedConversationArchived(
+    manager: EntityManager,
+    conversation: StaysConversation,
+    bookingId: string | null,
+  ): Promise<StaysMessage> {
+    return this.insertMessage(manager, conversation, {
+      type: 'SYSTEM_NOTICE',
+      body: 'This conversation has been archived.',
+      metadata: {
+        schemaVersion: 1,
+        cardVersion: 1,
+        presentationVersion: 1,
+        kind: 'archive',
+        title: 'Stay completed',
+        body: 'This conversation has been archived. Need help with this reservation?',
+        source: 'SYSTEM',
+        bookingId: bookingId ?? undefined,
+        actions: [
+          {
+            id: 'contact_support',
+            label: 'Contact Support',
+            type: 'deep_link',
+            url: '/contact?safety=1',
+          },
+          ...(bookingId
+            ? [
+                {
+                  id: 'view_booking',
+                  label: 'View reservation',
+                  type: 'deep_link',
+                  url: `/bookings/${bookingId}`,
+                },
+              ]
+            : []),
+        ],
+      },
+    });
+  }
+
+  /** Update review card to thank-you state after guest submits a review. */
+  async markReviewCardSubmitted(bookingId: string): Promise<void> {
+    const convRepo = this.dataSource.getRepository(StaysConversation);
+    const messageRepo = this.dataSource.getRepository(StaysMessage);
+    const conv = await convRepo.findOne({ where: { booking_id: bookingId } });
+    if (!conv) return;
+
+    const reviewCard = await messageRepo.findOne({
+      where: { conversation_id: conv.id, type: 'REVIEW_CARD' },
+      order: { conversation_sequence: 'DESC' },
+    });
+    if (!reviewCard) return;
+
+    const meta = (reviewCard.metadata ?? {}) as Record<string, unknown>;
+    if (meta.reviewed === true) return;
+
+    await messageRepo.update(reviewCard.id, {
+      metadata: {
+        ...meta,
+        reviewed: true,
+        title: 'Thanks for reviewing!',
+        body: 'Your feedback helps future travelers.',
+        actions: [],
+      },
+    });
+    await convRepo.update(conv.id, {
+      conversation_version: conv.conversation_version + 1,
+    });
   }
 
   private bookingCard(

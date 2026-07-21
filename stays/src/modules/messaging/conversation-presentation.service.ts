@@ -16,10 +16,14 @@ function formatShortDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function bookingLifecycleSubtitle(status: string | null | undefined): string {
+function bookingLifecycleSubtitle(
+  status: string | null | undefined,
+  messagingState?: string,
+): string {
   const s = (status ?? '').toUpperCase();
+  if (messagingState === 'ARCHIVED') return 'Archived';
+  if (s === 'COMPLETED') return 'Stay completed';
   if (s === 'CHECKED_IN') return 'Current Stay';
-  if (s === 'COMPLETED') return 'Completed';
   if (s === 'CONFIRMED') return 'Upcoming Stay';
   if (s === 'CANCELLED' || s === 'CANCELLED_BY_GUEST' || s === 'CANCELLED_BY_HOST') {
     return 'Cancelled';
@@ -60,7 +64,7 @@ export class ConversationPresentationService {
       ? await this.resolveCounterpartAvatar(counterpartId, conv.snapshot_version ?? 1)
       : null;
     const reservation = this.buildReservationPresentation(conv, snapshot);
-    const subtitle = bookingLifecycleSubtitle(bookingStatus);
+    const subtitle = bookingLifecycleSubtitle(bookingStatus, conv.messaging_state);
     const bookingChip = `${snapshot.listingTitle} • ${formatShortDate(snapshot.checkinDate)}–${formatShortDate(snapshot.checkoutDate)} • ${snapshot.guestCount} guests`;
 
     return {

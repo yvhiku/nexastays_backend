@@ -12,6 +12,13 @@ export type ConversationType = 'BOOKING' | 'SUPPORT' | 'SYSTEM';
 export type MessagingState = 'ACTIVE' | 'LOCKED' | 'READ_ONLY' | 'ARCHIVED';
 export type ParticipantVisibility = 'ACTIVE' | 'ARCHIVED' | 'DELETED';
 export type NotificationLevel = 'ALL' | 'IMPORTANT' | 'MUTED';
+export type ArchiveReason =
+  | 'AUTO'
+  | 'MANUAL'
+  | 'DISPUTE'
+  | 'SUPPORT'
+  | 'SPAM'
+  | 'MERGED';
 
 @Entity('stays_conversations')
 export class StaysConversation {
@@ -104,6 +111,18 @@ export class StaysConversation {
 
   @Column({ type: 'timestamptz', name: 'archived_at', nullable: true })
   archived_at: Date | null;
+
+  @Column({ type: 'timestamptz', name: 'post_stay_ends_at', nullable: true })
+  post_stay_ends_at: Date | null;
+
+  @Column({ type: 'boolean', name: 'auto_archive_disabled', default: false })
+  auto_archive_disabled: boolean;
+
+  @Column({ type: 'varchar', length: 32, name: 'auto_archive_disabled_reason', nullable: true })
+  auto_archive_disabled_reason: string | null;
+
+  @Column({ type: 'varchar', length: 20, name: 'archive_reason', nullable: true })
+  archive_reason: ArchiveReason | string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;

@@ -15,6 +15,15 @@ export class MessagingLifecycleScheduler {
     private readonly messagingState: MessagingStateService,
   ) {}
 
+  /** Auto-archive post-stay conversations past grace deadline. */
+  @Cron(CronExpression.EVERY_HOUR)
+  async archiveDuePostStayConversations(): Promise<void> {
+    const count = await this.messagingState.archiveDueConversations();
+    if (count > 0) {
+      this.logger.log(`Auto-archived ${count} post-stay conversation(s)`);
+    }
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async syncMessagingStates(): Promise<void> {
     const bookingConversations = await this.convRepo.find({

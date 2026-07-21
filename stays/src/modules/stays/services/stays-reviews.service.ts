@@ -19,6 +19,7 @@ import {
 import { StaysReviewMedia } from '../entities/stays-review-media.entity';
 import { BookingLifecycleService } from './booking-lifecycle.service';
 import { ReviewAggregateService } from '../reviews/review-aggregate.service';
+import { TimelineSeederService } from '../../messaging/timeline-seeder.service';
 
 const ALLOWED_RATINGS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -39,6 +40,7 @@ export class StaysReviewsService {
     private readonly lifecycleService: BookingLifecycleService,
     private readonly aggregateService: ReviewAggregateService,
     private readonly domainEvents: DomainEventsService,
+    private readonly timelineSeeder: TimelineSeederService,
   ) {}
 
   validateRating(rating: number): number {
@@ -207,6 +209,8 @@ export class StaysReviewsService {
         guestUserId,
         rating: String(rating),
       });
+
+      void this.timelineSeeder.markReviewCardSubmitted(booking.id);
 
       return this.toReviewResponse(saved!);
     });

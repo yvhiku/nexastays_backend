@@ -24,6 +24,7 @@ import { MessageSearchService } from './message-search.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateVisibilityDto } from './dto/update-visibility.dto';
 import { ReportConversationDto } from './dto/report-conversation.dto';
+import { ReopenConversationDto } from './dto/reopen-conversation.dto';
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
@@ -241,6 +242,19 @@ export class MessagingController {
     @Body() dto: UpdateVisibilityDto,
   ) {
     return this.conversations.updateVisibility(id, user.userId, dto.action);
+  }
+
+  @Post('conversations/:id/reopen')
+  @ApiOperation({ summary: 'Reopen an archived conversation' })
+  reopen(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReopenConversationDto,
+  ) {
+    return this.conversations.reopenConversation(id, user.userId, {
+      reason: dto.reason,
+      disableAutoArchive: dto.disableAutoArchive,
+    });
   }
 
   @Post('conversations/:id/report')

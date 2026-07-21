@@ -46,6 +46,7 @@ export class BookingLifecycleSchedulerService {
     await Promise.all([
       this.autoCompletePastStays(),
       this.expirePendingPayments(),
+      this.sendReviewReminderFollowUps(),
     ]);
   }
 
@@ -134,8 +135,7 @@ export class BookingLifecycleSchedulerService {
           });
         }
 
-        await this.queueReviewReminderIfEligible(booking, listing);
-        void this.messagingState.syncFromBooking(booking.id);
+        await this.messagingState.enterPostStay(booking.id);
         this.logger.log(`Checkout-day completed booking ${booking.id}`);
       } catch (err) {
         this.logger.warn(
@@ -188,9 +188,7 @@ export class BookingLifecycleSchedulerService {
           });
         }
 
-        await this.queueReviewReminderIfEligible(booking, listing);
-
-        void this.messagingState.syncFromBooking(booking.id);
+        await this.messagingState.enterPostStay(booking.id);
 
         this.logger.log(`Auto-completed booking ${booking.id}`);
       } catch (err) {
@@ -201,27 +199,47 @@ export class BookingLifecycleSchedulerService {
     }
   }
 
-  private async queueReviewReminderIfEligible(
-    booking: StaysBooking,
-    listing?: StaysListing,
-  ): Promise<void> {
-    const completedBooking = { ...booking, status: 'COMPLETED' as const };
-    if (!this.lifecycleService.canReview(completedBooking)) {
-      return;
-    }
-    const existing = await this.reviewRepo.findOne({
-      where: { booking_id: booking.id },
+  private readonly reviewReminderStages = [
+    { stage: '1h' as const, ms: 60 * 60 * 1000 },
+    { stage: '24h' as const, ms: 24 * 60 * 60 * 1000 },
+    { stage: '3d' as const, ms: 3 * 24 * 60 * 60 * 1000 },
+    { stage: '7d' as const, ms: 7 * 24 * 60 * 60 * 1000 },
+  ];
+
+  /** Staged review nudges after checkout (1h, 24h, 3d, 7d). */
+  private async sendReviewReminderFollowUps(): Promise<void> {
+    const now = Date.now();
+    const windowMs = 60 * 60 * 1000;
+    const bookings = await this.bookingRepo.find({
+      where: { status: 'COMPLETED' },
+      relations: ['listing'],
     });
-    if (existing) {
-      return;
+
+    for (const booking of bookings) {
+      if (!booking.completed_at) continue;
+      const completedBooking = { ...booking, status: 'COMPLETED' as const };
+      if (!this.lifecycleService.canReview(completedBooking)) continue;
+
+      const existing = await this.reviewRepo.findOne({
+        where: { booking_id: booking.id },
+      });
+      if (existing) continue;
+
+      const elapsed = now - booking.completed_at.getTime();
+      const listing = booking.listing as StaysListing | undefined;
+
+      for (const { stage, ms } of this.reviewReminderStages) {
+        if (elapsed < ms || elapsed >= ms + windowMs) continue;
+        void this.domainEvents.publish(EVENTS.REVIEW_REMINDER, 'stays', {
+          bookingId: booking.id,
+          listingId: booking.listing_id,
+          guestUserId: booking.guest_user_id,
+          listingTitle: listing?.title,
+          reminderStage: stage,
+        });
+        this.logger.log(`Review reminder (${stage}) queued for booking ${booking.id}`);
+      }
     }
-    void this.domainEvents.publish(EVENTS.REVIEW_REMINDER, 'stays', {
-      bookingId: booking.id,
-      listingId: booking.listing_id,
-      guestUserId: booking.guest_user_id,
-      listingTitle: listing?.title,
-    });
-    this.logger.log(`Review reminder queued for booking ${booking.id}`);
   }
 
   private async expirePendingPayments(): Promise<void> {

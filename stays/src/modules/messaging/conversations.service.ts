@@ -14,6 +14,7 @@ import { SnapshotRepairService } from './snapshot-repair.service';
 import { MessagingOutboxService } from './outbox.service';
 import { MESSAGING_INTERNAL_EVENTS } from './messaging-internal.events';
 import { ConversationRepairService } from './conversation-repair.service';
+import { MessagingStateService } from './messaging-state.service';
 import type {
   ConversationDetailResponse,
   ConversationDomain,
@@ -38,6 +39,7 @@ export class ConversationsService {
     private readonly snapshotRepair: SnapshotRepairService,
     private readonly outbox: MessagingOutboxService,
     private readonly repair: ConversationRepairService,
+    private readonly messagingState: MessagingStateService,
   ) {}
 
   async listConversations(
@@ -69,10 +71,23 @@ export class ConversationsService {
     } else if (filter === 'active') {
       qb.andWhere('c.type = :t', { t: 'BOOKING' });
       qb.innerJoin(StaysBooking, 'b', 'b.id = c.booking_id');
-      qb.andWhere('b.status IN (:...activeStatuses)', {
-        activeStatuses: ['CONFIRMED', 'CHECKED_IN'],
-      });
-      qb.andWhere('b.checkout_date >= CURRENT_DATE');
+      qb.andWhere(
+        new Brackets((w) => {
+          w.where(
+            "(b.status IN ('CONFIRMED', 'CHECKED_IN') AND b.checkout_date >= CURRENT_DATE)",
+          ).orWhere(
+            "(b.status = 'COMPLETED' AND c.post_stay_ends_at IS NOT NULL AND c.post_stay_ends_at > NOW())",
+          );
+        }),
+      );
+    } else if (filter === 'archived') {
+      qb.andWhere(
+        new Brackets((w) => {
+          w.where("c.messaging_state = 'ARCHIVED'")
+            .orWhere("(c.guest_user_id = :uid AND c.guest_visibility = 'ARCHIVED')")
+            .orWhere("(c.host_user_id = :uid AND c.host_visibility = 'ARCHIVED')");
+        }),
+      );
     } else if (filter === 'hosts') {
       qb.andWhere('c.type = :t', { t: 'BOOKING' });
     } else if (filter === 'support') {
@@ -120,8 +135,8 @@ export class ConversationsService {
       .filter((c) => this.permissions.visibilityFor(c, userId) !== 'DELETED')
       .filter((c) => {
         const vis = this.permissions.visibilityFor(c, userId);
-        if (filter === 'all') return vis !== 'ARCHIVED' || this.hasUnread(c, userId);
         if (filter === 'active') return vis !== 'ARCHIVED';
+        if (filter === 'archived') return vis !== 'DELETED';
         return true;
       });
 
@@ -287,6 +302,20 @@ export class ConversationsService {
     return { supportUrl: '/contact?safety=1' };
   }
 
+  async reopenConversation(
+    conversationId: string,
+    userId: string,
+    options: { reason?: string; disableAutoArchive?: boolean } = {},
+  ): Promise<ConversationListResponse> {
+    const conv = await this.convRepo.findOne({ where: { id: conversationId } });
+    if (!conv || !this.permissions.isParticipant(conv, userId)) {
+      throw new NotFoundException('Conversation not found');
+    }
+    const updated = await this.messagingState.reopenConversation(conversationId, options);
+    await this.audit.log('conversation_reopened', updated.id, userId, options);
+    return this.toListResponse(updated, userId, await this.loadLastMessage(updated.last_message_id));
+  }
+
   /** Keep a single inbox row per booking when duplicate threads exist. */
   private dedupeByBookingId(rows: StaysConversation[]): StaysConversation[] {
     const winnerByBooking = new Map<string, StaysConversation>();
@@ -327,6 +356,9 @@ export class ConversationsService {
       listingId: conv.listing_id,
       messagingState: conv.messaging_state,
       visibility: this.permissions.visibilityFor(conv, userId),
+      postStayEndsAt: conv.post_stay_ends_at?.toISOString() ?? null,
+      autoArchiveDisabled: conv.auto_archive_disabled ?? false,
+      archiveReason: conv.archive_reason ?? null,
     };
   }
 
