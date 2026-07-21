@@ -202,7 +202,7 @@ export class ConversationsService {
       bookingStatus = booking?.status ?? null;
     }
 
-    const list = await this.toListResponse(conv, userId, bookingStatus);
+    const list = await this.toListResponse(conv, userId, await this.loadLastMessage(conv.last_message_id));
     return {
       conversation: list.conversation,
       presentation: list.presentation,

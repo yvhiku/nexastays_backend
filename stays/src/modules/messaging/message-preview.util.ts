@@ -10,7 +10,7 @@ type PreviewInput = {
 type SenderContext = {
   senderId?: string | null;
   viewerUserId: string;
-  guestUserId: string;
+  guestUserId: string | null;
   hostUserId: string | null;
   hostDisplayName?: string | null;
   guestDisplayName?: string | null;
