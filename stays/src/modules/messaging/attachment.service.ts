@@ -24,6 +24,12 @@ const ALLOWED_DECLARED_MIMES = new Set([
   'image/webp',
   'image/gif',
   'application/pdf',
+  'audio/webm',
+  'audio/ogg',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/x-m4a',
 ]);
 
 @Injectable()
@@ -225,7 +231,7 @@ export class AttachmentService {
     if (!file?.buffer?.length) throw new BadRequestException('No file uploaded');
     if (file.size > MAX_BYTES) throw new BadRequestException('File too large');
 
-    const declaredMime = (file.mimetype || '').toLowerCase();
+    const declaredMime = (file.mimetype || '').toLowerCase().split(';')[0].trim();
     if (declaredMime && !ALLOWED_DECLARED_MIMES.has(declaredMime)) {
       throw new BadRequestException('Unsupported file type');
     }
