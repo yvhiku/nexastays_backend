@@ -58,6 +58,8 @@ export interface DestinationIntelligence {
   topNeighborhood: string | null;
   bestMonth: string | null;
   topAmenities: string[];
+  topPropertyType: string | null;
+  verifiedPercent: number | null;
   currency: string;
 }
 
@@ -140,6 +142,9 @@ export interface SeoPagePayload {
   amenityLinks: { slug: string; label: string; href: string }[];
   neighborhoodLinks: { slug: string; label: string; href: string }[];
   breadcrumbs: { name: string; path: string }[];
+  contentBlocks?: SeoLandingContentBlocks;
+  cityGuideLink?: { slug: string; href: string; label: string } | null;
+  relatedGuides?: SeoGuideSummaryDto[];
   indexable: boolean;
   seoScore: number;
   lastmod: string;
@@ -221,6 +226,8 @@ export interface SeoContentVersionDto {
   createdAt: string;
   publishedAt: string | null;
 }
+
+import type { SeoLandingContentBlocks } from './seo-landing-content.types';
 
 export interface SeoGeoOverview {
   periodDays: number;

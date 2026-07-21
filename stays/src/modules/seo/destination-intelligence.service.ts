@@ -81,6 +81,21 @@ export class DestinationIntelligenceService {
       .slice(0, 5)
       .map(([name]) => this.formatAmenity(name));
 
+    let topPropertyType: string | null = null;
+    const typeRow = await this.baseQuery(filters)
+      .select('l.listing_type', 'listingType')
+      .addSelect('COUNT(*)', 'cnt')
+      .groupBy('l.listing_type')
+      .orderBy('cnt', 'DESC')
+      .limit(1)
+      .getRawOne<{ listingType: string }>();
+    if (typeRow?.listingType) {
+      topPropertyType = this.formatPropertyType(typeRow.listingType);
+    }
+
+    const verifiedPercent =
+      listingCount > 0 ? Math.round((verifiedCount / listingCount) * 100) : null;
+
     return {
       listingCount,
       verifiedCount,
@@ -94,6 +109,8 @@ export class DestinationIntelligenceService {
       topNeighborhood,
       bestMonth: null,
       topAmenities,
+      topPropertyType,
+      verifiedPercent,
       currency: 'MAD',
     };
   }
@@ -172,29 +189,19 @@ export class DestinationIntelligenceService {
   }
 
   private async countVerified(filters: SeoExploreFilters): Promise<number> {
-    const qb = this.listingRepo
-      .createQueryBuilder('l')
+    const qb = this.baseQuery(filters)
       .innerJoin(
         StaysListingMedia,
         'm',
         "m.listing_id = l.id AND m.kind = 'WALKTHROUGH'",
       )
-      .where('l.status = :status', { status: 'LIVE' });
-
-    if (filters.city?.trim()) {
-      qb.andWhere('LOWER(l.city) LIKE LOWER(:city)', {
-        city: `${filters.city.trim()}%`,
-      });
-    }
-    if (filters.listing_type) {
-      qb.leftJoin(StaysListingRules, 'rules', 'rules.listing_id = l.id');
-      qb.andWhere('UPPER(l.listing_type) = UPPER(:listingType)', {
-        listingType: filters.listing_type,
-      });
-    }
-
-    const row = await qb.select('COUNT(DISTINCT l.id)', 'cnt').getRawOne<{ cnt: string }>();
+      .select('COUNT(DISTINCT l.id)', 'cnt');
+    const row = await qb.getRawOne<{ cnt: string }>();
     return Number(row?.cnt ?? 0);
+  }
+
+  private formatPropertyType(raw: string): string {
+    return raw.charAt(0) + raw.slice(1).toLowerCase();
   }
 
   private formatAmenity(raw: string): string {

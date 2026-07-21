@@ -21,6 +21,9 @@ import {
 } from './seo-catalog';
 import { computeSeoQualityScore, isPageIndexable } from './seo-quality-scoring.service';
 import { SeoKnowledgeGraphService } from './seo-knowledge-graph.service';
+import { SeoLandingContentService } from './seo-landing-content.service';
+import { SeoGuideService } from './seo-guide.service';
+import type { SeoLandingContentBlocks } from './seo-landing-content.types';
 import type {
   AiContextPayload,
   AiSnippet,
@@ -31,6 +34,7 @@ import type {
   SeoLandmarkDto,
   SeoLocale,
   SeoNeighborhoodDto,
+  SeoGuideSummaryDto,
   SeoPagePayload,
   SeoPageType,
 } from './seo.types';
@@ -46,6 +50,8 @@ export class SeoEngineService {
     private readonly registryRepo: Repository<SeoPageRegistry>,
     private readonly intelligence: DestinationIntelligenceService,
     private readonly knowledgeGraph: SeoKnowledgeGraphService,
+    private readonly landingContent: SeoLandingContentService,
+    private readonly guideService: SeoGuideService,
   ) {}
 
   async listDestinations(): Promise<SeoDestinationDto[]> {
@@ -342,6 +348,21 @@ export class SeoEngineService {
       name: nb.name,
       searchTerm: nb.searchTerm,
     };
+    const nbRow = await this.landingContent.findNeighborhoodId(citySlug, neighborhoodSlug);
+    let contentBlocks: SeoLandingContentBlocks | null = null;
+    if (nbRow) {
+      contentBlocks = await this.landingContent.loadPublishedBlocks(
+        'neighborhood',
+        nbRow.id,
+        locale,
+      );
+    }
+    const relatedGuides = await this.guideService.listGuides(locale);
+    const cityGuideLink = {
+      slug: `${dest.slug}-travel-guide`,
+      href: `/${locale}/guides/${dest.slug}-travel-guide`,
+      label: `${dest.name} travel guide`,
+    };
     return this.assemblePage({
       pageType: 'city_neighborhood',
       locale,
@@ -352,12 +373,15 @@ export class SeoEngineService {
       landmark: null,
       filterLabel: nb.name,
       exploreFilters,
+      contentBlocks,
+      cityGuideLink,
+      relatedGuides: relatedGuides.filter((g) => g.destinationSlug === dest.slug).slice(0, 6),
       title: `Stays in ${nb.name}, ${dest.name} | Nexa Stays`,
       description: `Browse verified stays in ${nb.name}, ${dest.name}. Compare prices and book securely on Nexa Stays.`,
       h1: `Stays in ${nb.name}, ${dest.name}`,
       breadcrumbs: (p) => [
         { name: 'Home', path: `/${locale}` },
-        { name: 'Stays', path: `/${locale}/stays` },
+        { name: 'Morocco Stays', path: `/${locale}/stays` },
         { name: dest.name, path: `/${locale}/stays/${dest.slug}` },
         { name: nb.name, path: p },
       ],
@@ -420,6 +444,9 @@ export class SeoEngineService {
     landmark: SeoLandmarkDto | null;
     filterLabel: string | null;
     exploreFilters: SeoExploreFilters;
+    contentBlocks?: SeoLandingContentBlocks | null;
+    cityGuideLink?: { slug: string; href: string; label: string } | null;
+    relatedGuides?: SeoGuideSummaryDto[];
     title: string;
     description: string;
     h1: string;
@@ -454,8 +481,13 @@ export class SeoEngineService {
         )
       : [];
 
-    const geoBlocks = this.buildGeoBlocks(args.h1, args.dest, intel, args.landmark);
-    const aiSnippets = this.buildAiSnippets(args.h1, intel);
+    const dynamicGeoBlocks = this.buildGeoBlocks(args.h1, args.dest, intel, args.landmark);
+    const editorialFaq = (args.contentBlocks?.faq ?? []).map((item) => ({
+      question: item.question,
+      answer: item.answer,
+    }));
+    const faq = [...editorialFaq, ...dynamicGeoBlocks];
+    const aiSnippets = this.buildAiSnippets(args.h1, intel, args.contentBlocks);
 
     const priceSuffix =
       intel.avgNightlyPrice != null
@@ -481,11 +513,14 @@ export class SeoEngineService {
       filterLabel: args.filterLabel,
       exploreFilters: args.exploreFilters as SeoExploreFiltersDto,
       intelligence: intel,
-      geoBlocks,
-      faq: geoBlocks,
+      geoBlocks: dynamicGeoBlocks,
+      faq,
       aiSnippets,
       nearbyDestinations: nearby,
       relatedDestinations,
+      contentBlocks: args.contentBlocks ?? undefined,
+      cityGuideLink: args.cityGuideLink ?? null,
+      relatedGuides: args.relatedGuides ?? [],
       propertyTypeLinks: destDto
         ? SEO_PROPERTY_TYPES.map((pt) => ({
             slug: pt.slug,
@@ -557,14 +592,34 @@ export class SeoEngineService {
     return blocks;
   }
 
-  private buildAiSnippets(label: string, intel: SeoPagePayload['intelligence']): AiSnippet[] {
+  private buildAiSnippets(
+    label: string,
+    intel: SeoPagePayload['intelligence'],
+    contentBlocks?: SeoLandingContentBlocks | null,
+  ): AiSnippet[] {
     const snippets: AiSnippet[] = [];
-    if (intel.listingCount > 0) {
+    const intro = contentBlocks?.hero_intro ?? contentBlocks?.why_stay_here;
+    if (intro) {
+      snippets.push({
+        type: 'summary',
+        content: intro.slice(0, 320),
+        confidence: 0.95,
+        source: 'editorial',
+      });
+    } else if (intel.listingCount > 0) {
       snippets.push({
         type: 'summary',
         content: `${label}: ${intel.listingCount} verified stays on Nexa Stays.`,
         confidence: 1,
         source: 'marketplace',
+      });
+    }
+    if (contentBlocks?.quick_facts?.atmosphere) {
+      snippets.push({
+        type: 'summary',
+        content: `Atmosphere: ${contentBlocks.quick_facts.atmosphere}. Budget: ${contentBlocks.quick_facts.budget ?? 'Varies'}.`,
+        confidence: 0.9,
+        source: 'editorial',
       });
     }
     if (intel.avgNightlyPrice != null) {
@@ -612,12 +667,17 @@ export class SeoEngineService {
       latitude: d.latitude != null ? Number(d.latitude) : null,
       longitude: d.longitude != null ? Number(d.longitude) : null,
       heroImageUrl: d.hero_image_url,
-      bestTimeToVisit: d.best_time_to_visit,
+      bestTimeToVisit: this.normalizeBestTime(d.best_time_to_visit),
       nearbyCitySlugs: d.nearby_city_slugs ?? [],
       searchCity: d.search_city,
       indexable: d.indexable,
       seoScore: d.seo_score,
       listingCountCache: d.listing_count_cache,
     };
+  }
+
+  private normalizeBestTime(value: string | null | undefined): string | null {
+    if (!value) return null;
+    return value.replace(/\?/g, '–').replace(/;/g, ' · ');
   }
 }

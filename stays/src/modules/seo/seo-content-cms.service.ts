@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SeoContentVersion } from './entities/seo-content-version.entity';
 import { SeoGuide } from './entities/seo-guide.entity';
+import { SeoLandingContent } from './entities/seo-landing-content.entity';
 import { SeoPageRegistryService } from './seo-page-registry.service';
 import type { SeoContentVersionDto } from './seo.types';
 
@@ -13,6 +14,8 @@ export class SeoContentCmsService {
     private readonly versionRepo: Repository<SeoContentVersion>,
     @InjectRepository(SeoGuide)
     private readonly guideRepo: Repository<SeoGuide>,
+    @InjectRepository(SeoLandingContent)
+    private readonly landingContentRepo: Repository<SeoLandingContent>,
     private readonly registry: SeoPageRegistryService,
   ) {}
 
@@ -65,6 +68,38 @@ export class SeoContentCmsService {
           seoScore: guide.seo_score,
           lastmod: now,
         });
+      }
+    }
+
+    if (row.entity_type === 'neighborhood' && row.field_name === 'content_blocks_json') {
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = JSON.parse(row.content_html ?? '{}') as Record<string, unknown>;
+      } catch {
+        throw new BadRequestException('Invalid content_blocks_json payload');
+      }
+      const existing = await this.landingContentRepo.findOne({
+        where: {
+          entity_type: 'neighborhood',
+          entity_id: row.entity_id,
+          locale: row.locale,
+        },
+      });
+      if (existing) {
+        existing.content_blocks_json = parsed;
+        existing.content_status = 'published';
+        existing.updated_at = now;
+        await this.landingContentRepo.save(existing);
+      } else {
+        await this.landingContentRepo.save(
+          this.landingContentRepo.create({
+            entity_type: 'neighborhood',
+            entity_id: row.entity_id,
+            locale: row.locale,
+            content_blocks_json: parsed,
+            content_status: 'published',
+          }),
+        );
       }
     }
 

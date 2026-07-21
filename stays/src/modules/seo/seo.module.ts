@@ -19,6 +19,9 @@ import { SeoGuideService } from './seo-guide.service';
 import { SeoContentCmsService } from './seo-content-cms.service';
 import { SeoContentPipelineService } from './seo-content-pipeline.service';
 import { SeoGeoMonitoringService } from './seo-geo-monitoring.service';
+import { SeoLandingContent } from './entities/seo-landing-content.entity';
+import { SeoLandingContentService } from './seo-landing-content.service';
+import { SeoLandingContentSeedService } from './seo-landing-content-seed.service';
 import { SeoListingService } from './seo-listing.service';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 
@@ -33,6 +36,7 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
       SeoGuide,
       SeoContentVersion,
       SeoGeoRequestLog,
+      SeoLandingContent,
       StaysListing,
     ]),
   ],
@@ -49,6 +53,8 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
     SeoContentPipelineService,
     SeoGeoMonitoringService,
     SeoListingService,
+    SeoLandingContentService,
+    SeoLandingContentSeedService,
   ],
   exports: [
     SeoEngineService,
@@ -61,6 +67,7 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
     SeoContentPipelineService,
     SeoGeoMonitoringService,
     SeoListingService,
+    SeoLandingContentService,
   ],
 })
 export class SeoModule implements OnModuleInit {
