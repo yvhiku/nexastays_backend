@@ -4,6 +4,17 @@ type PreviewInput = {
   type: MessageType | string;
   body?: string | null;
   metadata?: Record<string, unknown> | null;
+  senderLabel?: string | null;
+};
+
+type SenderContext = {
+  senderId?: string | null;
+  viewerUserId: string;
+  guestUserId: string;
+  hostUserId: string | null;
+  hostDisplayName?: string | null;
+  guestDisplayName?: string | null;
+  counterpartDisplayName?: string | null;
 };
 
 function pickText(value: unknown): string | null {
@@ -12,31 +23,59 @@ function pickText(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function sentMediaPreview(
+  mediaLabel: string,
+  senderLabel?: string | null,
+  fallback?: string,
+): string {
+  if (senderLabel) return `${senderLabel} sent a ${mediaLabel}`;
+  return fallback ?? mediaLabel.charAt(0).toUpperCase() + mediaLabel.slice(1);
+}
+
+/** Resolve "You" vs counterpart/sender name for inbox preview copy. */
+export function resolveInboxSenderLabel(ctx: SenderContext): string | null {
+  const { senderId, viewerUserId, guestUserId, hostUserId } = ctx;
+  if (!senderId) return null;
+  if (senderId === viewerUserId) return 'You';
+
+  if (senderId === hostUserId) {
+    return ctx.hostDisplayName ?? ctx.counterpartDisplayName ?? 'Host';
+  }
+  if (senderId === guestUserId) {
+    return ctx.guestDisplayName ?? ctx.counterpartDisplayName ?? 'Guest';
+  }
+  return ctx.counterpartDisplayName ?? null;
+}
+
 /** Human-readable inbox preview for the chronologically latest message. */
 export function formatInboxPreview(input: PreviewInput): string {
   const meta = input.metadata ?? {};
   const body = pickText(input.body);
-  if (body) return body;
-
   const caption = pickText(meta.caption);
-  if (caption) return caption;
-
   const title = pickText(meta.title);
   const cardBody = pickText(meta.body);
+  const senderLabel = input.senderLabel ?? null;
 
   switch (input.type) {
     case 'TEXT':
       return body ?? '';
     case 'IMAGE':
-      return caption ?? 'Photo';
+      if (caption) return caption;
+      return sentMediaPreview('photo', senderLabel, 'Photo');
     case 'FILE':
-      return caption ?? 'File';
+      if (caption && caption !== 'Voice message') return caption;
+      if (caption === 'Voice message') {
+        return sentMediaPreview('voice message', senderLabel, 'Voice message');
+      }
+      return sentMediaPreview('file', senderLabel, 'File');
     case 'VIDEO':
-      return caption ?? 'Video';
+      if (caption) return caption;
+      return sentMediaPreview('video', senderLabel, 'Video');
     case 'VOICE':
-      return caption ?? 'Voice message';
+      return sentMediaPreview('voice message', senderLabel, 'Voice message');
     case 'LOCATION':
-      return caption ?? 'Location';
+      if (caption) return caption;
+      return sentMediaPreview('location', senderLabel, 'Location');
     case 'SYSTEM_EVENT':
       return body ?? title ?? 'Booking update';
     case 'SYSTEM_NOTICE':
@@ -56,6 +95,6 @@ export function formatInboxPreview(input: PreviewInput): string {
     case 'PAYMENT_CARD':
       return title ?? cardBody ?? 'Payment update';
     default:
-      return title ?? cardBody ?? 'Message';
+      return title ?? cardBody ?? body ?? 'Message';
   }
 }

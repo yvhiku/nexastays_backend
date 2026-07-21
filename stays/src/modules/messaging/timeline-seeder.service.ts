@@ -221,6 +221,7 @@ export class TimelineSeederService {
       metadata: Record<string, unknown>;
       senderId?: string | null;
       clientMessageId?: string | null;
+      senderDisplayName?: string | null;
     },
   ): Promise<StaysMessage> {
     const convRepo = manager.getRepository(StaysConversation);
@@ -255,6 +256,7 @@ export class TimelineSeederService {
       type: input.type,
       body: input.body,
       metadata: input.metadata,
+      senderLabel: input.senderDisplayName ?? null,
     });
     await convRepo.update(locked.id, {
       last_message_id: saved.id,

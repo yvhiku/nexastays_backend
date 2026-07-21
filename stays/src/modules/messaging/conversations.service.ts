@@ -4,7 +4,7 @@ import { Repository, Brackets, In } from 'typeorm';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { StaysMessage } from './entities/stays-message.entity';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
-import { formatInboxPreview } from './message-preview.util';
+import { formatInboxPreview, resolveInboxSenderLabel } from './message-preview.util';
 import { MessagingPermissionsService } from './permissions.service';
 import { MessagesService } from './messages.service';
 import { MessagingAuditService } from './audit.service';
@@ -310,17 +310,32 @@ export class ConversationsService {
       status = booking?.status ?? null;
     }
 
+    const presentation = await this.presentation.buildPresentation(conv, userId, snapshot, status);
+
+    const senderLabel = lastMessage
+      ? resolveInboxSenderLabel({
+          senderId: lastMessage.sender_id,
+          viewerUserId: userId,
+          guestUserId: conv.guest_user_id,
+          hostUserId: conv.host_user_id,
+          hostDisplayName: snapshot.hostDisplayName,
+          guestDisplayName: snapshot.guestDisplayName,
+          counterpartDisplayName: presentation.counterpart.displayName,
+        })
+      : null;
+
     const preview = lastMessage
       ? formatInboxPreview({
           type: lastMessage.type,
           body: lastMessage.body,
           metadata: lastMessage.metadata,
+          senderLabel,
         })
       : conv.last_message_preview;
 
     return {
       conversation: this.toDomain(conv, userId),
-      presentation: await this.presentation.buildPresentation(conv, userId, snapshot, status),
+      presentation,
       sync: this.presentation.buildSyncMeta(conv, userId),
       lastMessage: {
         preview,

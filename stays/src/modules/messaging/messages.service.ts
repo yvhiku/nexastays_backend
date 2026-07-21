@@ -154,12 +154,14 @@ export class MessagesService {
     await this.rateLimit.assertCanSend(userId, conv.id, trimmed);
 
     const saved = await this.dataSource.transaction(async (manager) => {
+      const senderDisplayName = await this.resolveSenderDisplayName(conv, userId);
       const message = await this.timelineSeeder.insertMessage(manager, conv, {
         type: 'TEXT',
         body: trimmed,
         metadata: { source: 'USER', schemaVersion: 1, cardVersion: 1, presentationVersion: 1 },
         senderId: userId,
         clientMessageId: clientMessageId ?? null,
+        senderDisplayName,
       });
 
       await this.enqueueDeliveryEvents(manager, conv, message, userId, trimmed);
@@ -195,7 +197,10 @@ export class MessagesService {
 
     await this.attachments.assertReadyForSend(conv.id, userId, attachmentIds);
 
-    const preview = caption?.trim() || (type === 'IMAGE' ? 'Photo' : 'File');
+    const senderDisplayName = await this.resolveSenderDisplayName(conv, userId);
+    const preview =
+      caption?.trim() ||
+      (type === 'IMAGE' ? `${senderDisplayName} sent a photo` : 'File');
     await this.rateLimit.assertCanSend(userId, conv.id, preview);
 
     const saved = await this.dataSource.transaction(async (manager) => {
@@ -212,6 +217,7 @@ export class MessagesService {
         },
         senderId: userId,
         clientMessageId: clientMessageId ?? null,
+        senderDisplayName,
       });
 
       await this.attachments.linkToMessage(message.id, attachmentIds, conv.id, manager);
@@ -257,7 +263,10 @@ export class MessagesService {
       );
     const attachmentIds = sessionAttachments.map((a) => a.id);
 
-    const preview = caption?.trim() || (type === 'IMAGE' ? 'Photo' : 'File');
+    const senderDisplayName = await this.resolveSenderDisplayName(conv, userId);
+    const preview =
+      caption?.trim() ||
+      (type === 'IMAGE' ? `${senderDisplayName} sent a photo` : 'File');
     await this.rateLimit.assertCanSend(userId, conv.id, preview);
 
     const saved = await this.dataSource.transaction(async (manager) => {
@@ -275,6 +284,7 @@ export class MessagesService {
         },
         senderId: userId,
         clientMessageId: clientMessageId ?? null,
+        senderDisplayName,
       });
 
       await this.attachments.linkToMessage(message.id, attachmentIds, conv.id, manager);
@@ -439,5 +449,23 @@ export class MessagesService {
       presentationVersion: meta.presentationVersion ?? 1,
       attachments,
     };
+  }
+
+  private async resolveSenderDisplayName(
+    conv: StaysConversation,
+    userId: string,
+  ): Promise<string> {
+    if (conv.guest_user_id === userId) {
+      return (
+        (await this.participants.resolveGuestDisplayName(conv.booking_id ?? '', userId)) ??
+        'Guest'
+      );
+    }
+    if (conv.host_user_id) {
+      return (
+        (await this.participants.resolveHostDisplayName(conv.host_user_id)) ?? 'Host'
+      );
+    }
+    return 'Host';
   }
 }

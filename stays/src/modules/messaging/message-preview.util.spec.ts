@@ -1,4 +1,4 @@
-import { formatInboxPreview } from './message-preview.util';
+import { formatInboxPreview, resolveInboxSenderLabel } from './message-preview.util';
 
 describe('formatInboxPreview', () => {
   it('prefers message body for text messages', () => {
@@ -17,7 +17,18 @@ describe('formatInboxPreview', () => {
     ).toBe('Sunset view');
   });
 
-  it('falls back to Photo for image messages', () => {
+  it('shows sender sent a photo for image messages', () => {
+    expect(
+      formatInboxPreview({
+        type: 'IMAGE',
+        body: null,
+        metadata: {},
+        senderLabel: 'Mohamed Fikri',
+      }),
+    ).toBe('Mohamed Fikri sent a photo');
+  });
+
+  it('falls back to Photo for image messages without sender', () => {
     expect(formatInboxPreview({ type: 'IMAGE', body: null, metadata: {} })).toBe(
       'Photo',
     );
@@ -41,5 +52,31 @@ describe('formatInboxPreview', () => {
         metadata: {},
       }),
     ).toBe('Booking confirmed');
+  });
+});
+
+describe('resolveInboxSenderLabel', () => {
+  it('returns You when viewer sent the message', () => {
+    expect(
+      resolveInboxSenderLabel({
+        senderId: 'guest-1',
+        viewerUserId: 'guest-1',
+        guestUserId: 'guest-1',
+        hostUserId: 'host-1',
+        hostDisplayName: 'Mohamed Fikri',
+      }),
+    ).toBe('You');
+  });
+
+  it('returns host name when host sent the message', () => {
+    expect(
+      resolveInboxSenderLabel({
+        senderId: 'host-1',
+        viewerUserId: 'guest-1',
+        guestUserId: 'guest-1',
+        hostUserId: 'host-1',
+        hostDisplayName: 'Mohamed Fikri',
+      }),
+    ).toBe('Mohamed Fikri');
   });
 });
