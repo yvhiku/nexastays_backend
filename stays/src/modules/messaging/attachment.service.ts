@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { unlink } from 'fs/promises';
-import { Repository, In, IsNull } from 'typeorm';
+import { Repository, In, IsNull, EntityManager } from 'typeorm';
 import { StaysMessageAttachment } from './entities/stays-message-attachment.entity';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { StaysMediaAsset } from './entities/stays-media-asset.entity';
@@ -77,14 +77,18 @@ export class AttachmentService {
     messageId: string,
     attachmentIds: string[],
     conversationId?: string,
+    manager?: EntityManager,
   ): Promise<void> {
     if (!attachmentIds.length) return;
-    await this.attachmentRepo.update(
+    const repo = manager
+      ? manager.getRepository(StaysMessageAttachment)
+      : this.attachmentRepo;
+    await repo.update(
       { id: In(attachmentIds), message_id: IsNull() },
       { message_id: messageId },
     );
     if (conversationId) {
-      await this.bumpAttachmentVersion(conversationId);
+      await this.bumpAttachmentVersion(conversationId, manager);
     }
   }
 
@@ -198,11 +202,17 @@ export class AttachmentService {
     };
   }
 
-  async bumpAttachmentVersion(conversationId: string): Promise<number> {
-    const conv = await this.convRepo.findOne({ where: { id: conversationId } });
+  async bumpAttachmentVersion(
+    conversationId: string,
+    manager?: EntityManager,
+  ): Promise<number> {
+    const convRepo = manager
+      ? manager.getRepository(StaysConversation)
+      : this.convRepo;
+    const conv = await convRepo.findOne({ where: { id: conversationId } });
     if (!conv) return 1;
     const next = (conv.attachment_version ?? 1) + 1;
-    await this.convRepo.update(conversationId, { attachment_version: next });
+    await convRepo.update(conversationId, { attachment_version: next });
     return next;
   }
 

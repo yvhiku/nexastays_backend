@@ -214,7 +214,7 @@ export class MessagesService {
         clientMessageId: clientMessageId ?? null,
       });
 
-      await this.attachments.linkToMessage(message.id, attachmentIds, conv.id);
+      await this.attachments.linkToMessage(message.id, attachmentIds, conv.id, manager);
       await this.enqueueDeliveryEvents(manager, conv, message, userId, preview);
       return message;
     });
@@ -277,7 +277,7 @@ export class MessagesService {
         clientMessageId: clientMessageId ?? null,
       });
 
-      await this.attachments.linkToMessage(message.id, attachmentIds, conv.id);
+      await this.attachments.linkToMessage(message.id, attachmentIds, conv.id, manager);
       await this.attachmentSessions.finalizeSession(session.id);
       await this.enqueueDeliveryEvents(manager, conv, message, userId, preview);
       return message;
