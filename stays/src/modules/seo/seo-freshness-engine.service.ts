@@ -8,8 +8,12 @@ import { DestinationIntelligenceService } from './destination-intelligence.servi
 import { SeoPageRegistryService } from './seo-page-registry.service';
 import {
   SEO_AMENITIES,
+  SEO_LANDMARKS,
+  SEO_NEIGHBORHOODS_BY_CITY,
   SEO_PROPERTY_TYPES,
   amenityToExploreFilters,
+  landmarkToExploreFilters,
+  neighborhoodToExploreFilters,
 } from './seo-catalog';
 import { computeSeoQualityScore, isPageIndexable } from './seo-quality-scoring.service';
 
@@ -110,8 +114,28 @@ export class SeoFreshnessEngineService {
       }
     }
 
+    for (const lm of SEO_LANDMARKS) {
+      try {
+        const intel = await this.intelligence.compute(landmarkToExploreFilters(lm));
+        const score = computeSeoQualityScore({ intelligence: intel });
+        const indexable = isPageIndexable({
+          seoScore: score,
+          listingCount: intel.listingCount,
+        });
+        await this.registry.syncPageAllLocales({
+          pageType: 'landmark',
+          slug: lm.urlSlug,
+          indexable,
+          seoScore: score,
+          lastmod: now,
+        });
+      } catch (err) {
+        this.logger.warn(`SEO freshness landmark ${lm.urlSlug}: ${err}`);
+      }
+    }
+
     this.logger.log(
-      `SEO freshness refreshed ${destinations.length} destinations + combos`,
+      `SEO freshness refreshed ${destinations.length} destinations + combos + landmarks`,
     );
   }
 
@@ -183,6 +207,28 @@ export class SeoFreshnessEngineService {
       await this.registry.syncPageAllLocales({
         pageType: 'city_amenity',
         slug: `${dest.slug}/${am.slug}`,
+        indexable,
+        seoScore: score,
+        lastmod: now,
+      });
+    }
+
+    const neighborhoods = SEO_NEIGHBORHOODS_BY_CITY[dest.slug] ?? [];
+    for (const nb of neighborhoods) {
+      const intel = await this.intelligence.compute(
+        neighborhoodToExploreFilters(dest.search_city, nb),
+      );
+      const score = computeSeoQualityScore({
+        intelligence: intel,
+        destination: dest,
+      });
+      const indexable = isPageIndexable({
+        seoScore: score,
+        listingCount: intel.listingCount,
+      });
+      await this.registry.syncPageAllLocales({
+        pageType: 'city_neighborhood',
+        slug: `${dest.slug}/${nb.slug}`,
         indexable,
         seoScore: score,
         lastmod: now,

@@ -6,22 +6,31 @@ import { SeoPageRegistry } from './entities/seo-page-registry.entity';
 import { DestinationIntelligenceService } from './destination-intelligence.service';
 import {
   SEO_AMENITIES,
+  SEO_NEIGHBORHOODS_BY_CITY,
   SEO_PROPERTY_TYPES,
   amenityBySlug,
   amenityToExploreFilters,
+  landmarkByUrlSlug,
+  landmarkToExploreFilters,
+  neighborhoodBySlugs,
+  neighborhoodToExploreFilters,
   propertyTypeBySlug,
   resolveSeoSegments,
   type ResolvedSeoPage,
   type SeoExploreFilters,
 } from './seo-catalog';
 import { computeSeoQualityScore, isPageIndexable } from './seo-quality-scoring.service';
+import { SeoKnowledgeGraphService } from './seo-knowledge-graph.service';
 import type {
   AiContextPayload,
   AiSnippet,
   GeoBlockDto,
+  RelatedDestinationDto,
   SeoDestinationDto,
   SeoExploreFiltersDto,
+  SeoLandmarkDto,
   SeoLocale,
+  SeoNeighborhoodDto,
   SeoPagePayload,
   SeoPageType,
 } from './seo.types';
@@ -36,6 +45,7 @@ export class SeoEngineService {
     @InjectRepository(SeoPageRegistry)
     private readonly registryRepo: Repository<SeoPageRegistry>,
     private readonly intelligence: DestinationIntelligenceService,
+    private readonly knowledgeGraph: SeoKnowledgeGraphService,
   ) {}
 
   async listDestinations(): Promise<SeoDestinationDto[]> {
@@ -52,6 +62,10 @@ export class SeoEngineService {
       throw new NotFoundException('Destination not found');
     }
     return dest;
+  }
+
+  async getRelatedDestinations(citySlug: string) {
+    return this.knowledgeGraph.getRelatedBySlug(citySlug);
   }
 
   async generateCityPage(slug: string, locale: SeoLocale): Promise<SeoPagePayload> {
@@ -90,6 +104,14 @@ export class SeoEngineService {
           resolved.amenitySlug,
           locale,
         );
+      case 'city_neighborhood':
+        return this.buildCityNeighborhood(
+          resolved.citySlug,
+          resolved.neighborhoodSlug,
+          locale,
+        );
+      case 'landmark':
+        return this.buildLandmark(resolved.landmarkUrlSlug, locale);
       default:
         throw new NotFoundException('Page not found');
     }
@@ -165,6 +187,8 @@ export class SeoEngineService {
       registrySlug: dest.slug,
       pathSuffix: dest.slug,
       dest,
+      neighborhood: null,
+      landmark: null,
       filterLabel: null,
       exploreFilters,
       title: `Stays in ${dest.name} | Hotels, Riads & Apartments | Nexa Stays`,
@@ -193,6 +217,8 @@ export class SeoEngineService {
       registrySlug: pt.slug,
       pathSuffix: pt.slug,
       dest: null,
+      neighborhood: null,
+      landmark: null,
       filterLabel: pt.pluralLabel,
       exploreFilters,
       title: `${pt.pluralLabel} in Morocco | Nexa Stays`,
@@ -219,6 +245,8 @@ export class SeoEngineService {
       registrySlug: am.slug,
       pathSuffix: am.slug,
       dest: null,
+      neighborhood: null,
+      landmark: null,
       filterLabel: am.label,
       exploreFilters,
       title: `${am.label} Stays in Morocco | Nexa Stays`,
@@ -250,6 +278,8 @@ export class SeoEngineService {
       registrySlug: `${dest.slug}/${pt.slug}`,
       pathSuffix: `${dest.slug}/${pt.slug}`,
       dest,
+      neighborhood: null,
+      landmark: null,
       filterLabel: pt.pluralLabel,
       exploreFilters,
       title: `${pt.pluralLabel} in ${dest.name} | Nexa Stays`,
@@ -282,6 +312,8 @@ export class SeoEngineService {
       registrySlug: `${dest.slug}/${am.slug}`,
       pathSuffix: `${dest.slug}/${am.slug}`,
       dest,
+      neighborhood: null,
+      landmark: null,
       filterLabel: am.label,
       exploreFilters,
       title: `${am.label} Stays in ${dest.name} | Nexa Stays`,
@@ -296,12 +328,96 @@ export class SeoEngineService {
     });
   }
 
+  private async buildCityNeighborhood(
+    citySlug: string,
+    neighborhoodSlug: string,
+    locale: SeoLocale,
+  ): Promise<SeoPagePayload> {
+    const dest = await this.getDestinationBySlug(citySlug);
+    const nb = neighborhoodBySlugs(citySlug, neighborhoodSlug);
+    if (!nb) throw new NotFoundException('Neighborhood not found');
+    const exploreFilters = neighborhoodToExploreFilters(dest.search_city, nb);
+    const neighborhoodDto: SeoNeighborhoodDto = {
+      slug: nb.slug,
+      name: nb.name,
+      searchTerm: nb.searchTerm,
+    };
+    return this.assemblePage({
+      pageType: 'city_neighborhood',
+      locale,
+      registrySlug: `${dest.slug}/${nb.slug}`,
+      pathSuffix: `${dest.slug}/${nb.slug}`,
+      dest,
+      neighborhood: neighborhoodDto,
+      landmark: null,
+      filterLabel: nb.name,
+      exploreFilters,
+      title: `Stays in ${nb.name}, ${dest.name} | Nexa Stays`,
+      description: `Browse verified stays in ${nb.name}, ${dest.name}. Compare prices and book securely on Nexa Stays.`,
+      h1: `Stays in ${nb.name}, ${dest.name}`,
+      breadcrumbs: (p) => [
+        { name: 'Home', path: `/${locale}` },
+        { name: 'Stays', path: `/${locale}/stays` },
+        { name: dest.name, path: `/${locale}/stays/${dest.slug}` },
+        { name: nb.name, path: p },
+      ],
+    });
+  }
+
+  private async buildLandmark(
+    landmarkUrlSlug: string,
+    locale: SeoLocale,
+  ): Promise<SeoPagePayload> {
+    const lm = landmarkByUrlSlug(landmarkUrlSlug);
+    if (!lm) throw new NotFoundException('Landmark not found');
+    const dest = lm.citySlug
+      ? await this.destinationRepo.findOne({
+          where: { slug: lm.citySlug, content_status: 'published' },
+        })
+      : null;
+    const exploreFilters = landmarkToExploreFilters(lm);
+    const landmarkDto: SeoLandmarkDto = {
+      slug: lm.slug,
+      urlSlug: lm.urlSlug,
+      name: lm.name,
+      citySlug: lm.citySlug,
+      searchCity: lm.searchCity,
+      latitude: lm.latitude,
+      longitude: lm.longitude,
+      radiusKm: lm.radiusKm,
+    };
+    return this.assemblePage({
+      pageType: 'landmark',
+      locale,
+      registrySlug: lm.urlSlug,
+      pathSuffix: lm.urlSlug,
+      dest,
+      neighborhood: null,
+      landmark: landmarkDto,
+      filterLabel: lm.name,
+      exploreFilters,
+      title: `Stays near ${lm.name} | Nexa Stays`,
+      description: `Find verified stays near ${lm.name} in ${lm.searchCity}. Book with transparent pricing on Nexa Stays.`,
+      h1: `Stays near ${lm.name}`,
+      breadcrumbs: (p) => [
+        { name: 'Home', path: `/${locale}` },
+        { name: 'Stays', path: `/${locale}/stays` },
+        ...(dest
+          ? [{ name: dest.name, path: `/${locale}/stays/${dest.slug}` }]
+          : []),
+        { name: lm.name, path: p },
+      ],
+    });
+  }
+
   private async assemblePage(args: {
     pageType: SeoPageType;
     locale: SeoLocale;
     registrySlug: string;
     pathSuffix: string;
     dest: SeoDestination | null;
+    neighborhood: SeoNeighborhoodDto | null;
+    landmark: SeoLandmarkDto | null;
     filterLabel: string | null;
     exploreFilters: SeoExploreFilters;
     title: string;
@@ -328,10 +444,17 @@ export class SeoEngineService {
 
     const destDto = args.dest ? this.toDestinationDto(args.dest) : null;
     const nearby = args.dest
-      ? await this.loadNearby(args.dest.nearby_city_slugs ?? [])
+      ? await this.knowledgeGraph.getRelatedWithFallback(args.dest, (d) =>
+          this.toDestinationDto(d),
+        )
+      : [];
+    const relatedDestinations: RelatedDestinationDto[] = args.dest
+      ? (await this.knowledgeGraph.getRelatedDestinations(args.dest.id, 6)).map(
+          (r) => ({ ...r, href: `/${args.locale}${r.href}` }),
+        )
       : [];
 
-    const geoBlocks = this.buildGeoBlocks(args.h1, args.dest, intel);
+    const geoBlocks = this.buildGeoBlocks(args.h1, args.dest, intel, args.landmark);
     const aiSnippets = this.buildAiSnippets(args.h1, intel);
 
     const priceSuffix =
@@ -353,6 +476,8 @@ export class SeoEngineService {
       ),
       robots: indexable ? 'index,follow' : 'noindex,follow',
       destination: destDto,
+      neighborhood: args.neighborhood,
+      landmark: args.landmark,
       filterLabel: args.filterLabel,
       exploreFilters: args.exploreFilters as SeoExploreFiltersDto,
       intelligence: intel,
@@ -360,6 +485,7 @@ export class SeoEngineService {
       faq: geoBlocks,
       aiSnippets,
       nearbyDestinations: nearby,
+      relatedDestinations,
       propertyTypeLinks: destDto
         ? SEO_PROPERTY_TYPES.map((pt) => ({
             slug: pt.slug,
@@ -374,6 +500,13 @@ export class SeoEngineService {
             href: `/${args.locale}/stays/${destDto.slug}/${am.slug}`,
           }))
         : [],
+      neighborhoodLinks: destDto
+        ? (SEO_NEIGHBORHOODS_BY_CITY[destDto.slug] ?? []).map((nb) => ({
+            slug: nb.slug,
+            label: `${nb.name}, ${destDto.name}`,
+            href: `/${args.locale}/stays/${destDto.slug}/${nb.slug}`,
+          }))
+        : [],
       breadcrumbs: args.breadcrumbs(path),
       indexable,
       seoScore: registryRow?.seo_score ?? seoScore,
@@ -386,6 +519,7 @@ export class SeoEngineService {
     h1: string,
     dest: SeoDestination | null,
     intel: SeoPagePayload['intelligence'],
+    landmark: SeoLandmarkDto | null = null,
   ): GeoBlockDto[] {
     const blocks: GeoBlockDto[] = [];
     if (intel.avgNightlyPrice != null) {
@@ -413,6 +547,12 @@ export class SeoEngineService {
           answer: dest.best_time_to_visit,
         });
       }
+    }
+    if (landmark) {
+      blocks.push({
+        question: `How close are stays to ${landmark.name}?`,
+        answer: `Listings shown are within about ${landmark.radiusKm} km of ${landmark.name} in ${landmark.searchCity}.`,
+      });
     }
     return blocks;
   }

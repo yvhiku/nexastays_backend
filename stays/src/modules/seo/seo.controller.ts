@@ -36,6 +36,13 @@ export class SeoController {
   }
 
   @Public()
+  @Get('destinations/:slug/related')
+  @ApiOperation({ summary: 'Knowledge graph related destinations' })
+  async getRelatedDestinations(@Param('slug') slug: string) {
+    return this.engine.getRelatedDestinations(slug);
+  }
+
+  @Public()
   @Get('destinations/:slug')
   @ApiOperation({ summary: 'Get destination record by slug' })
   async getDestination(@Param('slug') slug: string) {

@@ -137,7 +137,38 @@ export class DestinationIntelligenceService {
       );
     }
 
+    if (filters.neighborhood?.trim()) {
+      qb.andWhere('LOWER(l.neighborhood) LIKE LOWER(:neighborhood)', {
+        neighborhood: `%${filters.neighborhood.trim()}%`,
+      });
+    }
+
+    this.applyGeoRadiusFilter(qb, filters);
+
     return qb;
+  }
+
+  private applyGeoRadiusFilter(
+    qb: SelectQueryBuilder<StaysListing>,
+    filters: SeoExploreFilters,
+  ): void {
+    if (
+      filters.near_lat == null ||
+      filters.near_lng == null ||
+      filters.near_radius_km == null
+    ) {
+      return;
+    }
+    const delta = filters.near_radius_km / 111;
+    qb.andWhere('l.geo_lat IS NOT NULL AND l.geo_lng IS NOT NULL');
+    qb.andWhere('l.geo_lat BETWEEN :minLat AND :maxLat', {
+      minLat: filters.near_lat - delta,
+      maxLat: filters.near_lat + delta,
+    });
+    qb.andWhere('l.geo_lng BETWEEN :minLng AND :maxLng', {
+      minLng: filters.near_lng - delta,
+      maxLng: filters.near_lng + delta,
+    });
   }
 
   private async countVerified(filters: SeoExploreFilters): Promise<number> {

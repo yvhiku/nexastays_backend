@@ -81,6 +81,33 @@ export class ExploreListingsDto {
   family_friendly?: boolean;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  @Matches(/^[\p{L}\p{N}\s\-'.]*$/u)
+  neighborhood?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  near_lat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  near_lng?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.1)
+  @Max(50)
+  near_radius_km?: number;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

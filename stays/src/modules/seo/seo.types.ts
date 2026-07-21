@@ -5,7 +5,17 @@ export type SeoPageType =
   | 'property_type'
   | 'amenity'
   | 'city_property_type'
-  | 'city_amenity';
+  | 'city_amenity'
+  | 'city_neighborhood'
+  | 'landmark';
+
+export type SeoRelationType =
+  | 'near'
+  | 'similar'
+  | 'beach_alternative'
+  | 'luxury_alternative'
+  | 'day_trip'
+  | 'surf_alternative';
 
 export type AiSnippetType =
   | 'summary'
@@ -51,9 +61,37 @@ export interface SeoExploreFiltersDto {
   city?: string;
   listing_type?: string;
   amenity?: string;
+  neighborhood?: string;
   pets_allowed?: boolean;
   luxury_only?: boolean;
   family_friendly?: boolean;
+  near_lat?: number;
+  near_lng?: number;
+  near_radius_km?: number;
+}
+
+export interface SeoNeighborhoodDto {
+  slug: string;
+  name: string;
+  searchTerm: string;
+}
+
+export interface SeoLandmarkDto {
+  slug: string;
+  urlSlug: string;
+  name: string;
+  citySlug: string | null;
+  searchCity: string;
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
+}
+
+export interface RelatedDestinationDto {
+  slug: string;
+  name: string;
+  relationType: SeoRelationType;
+  href: string;
 }
 
 export interface SeoDestinationDto {
@@ -84,6 +122,8 @@ export interface SeoPagePayload {
   hreflang: Record<string, string>;
   robots: string;
   destination: SeoDestinationDto | null;
+  neighborhood: SeoNeighborhoodDto | null;
+  landmark: SeoLandmarkDto | null;
   filterLabel: string | null;
   exploreFilters: SeoExploreFiltersDto;
   intelligence: DestinationIntelligence;
@@ -91,8 +131,10 @@ export interface SeoPagePayload {
   faq: GeoBlockDto[];
   aiSnippets: AiSnippet[];
   nearbyDestinations: SeoDestinationDto[];
+  relatedDestinations: RelatedDestinationDto[];
   propertyTypeLinks: { slug: string; label: string; href: string }[];
   amenityLinks: { slug: string; label: string; href: string }[];
+  neighborhoodLinks: { slug: string; label: string; href: string }[];
   breadcrumbs: { name: string; path: string }[];
   indexable: boolean;
   seoScore: number;

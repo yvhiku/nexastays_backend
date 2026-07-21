@@ -103,6 +103,10 @@ export type ExploreQueryParams = {
   pets_allowed?: boolean;
   luxury_only?: boolean;
   family_friendly?: boolean;
+  neighborhood?: string;
+  near_lat?: number;
+  near_lng?: number;
+  near_radius_km?: number;
   limit?: number;
   cursor?: string;
   sort?: ExploreSort;
@@ -359,6 +363,10 @@ export class ExploreService {
     pets_allowed?: boolean;
     luxury_only?: boolean;
     family_friendly?: boolean;
+    neighborhood?: string;
+    near_lat?: number;
+    near_lng?: number;
+    near_radius_km?: number;
     north?: number;
     south?: number;
     east?: number;
@@ -409,6 +417,29 @@ export class ExploreService {
       qb.andWhere(
         `(l.listing_type IN ('VILLA','RIAD') OR rp.base_price >= 1500)`,
       );
+    }
+
+    if (opts.neighborhood?.trim()) {
+      qb.andWhere('LOWER(l.neighborhood) LIKE LOWER(:neighborhood)', {
+        neighborhood: `%${opts.neighborhood.trim()}%`,
+      });
+    }
+
+    if (
+      opts.near_lat != null &&
+      opts.near_lng != null &&
+      opts.near_radius_km != null
+    ) {
+      const delta = opts.near_radius_km / 111;
+      qb.andWhere('l.geo_lat IS NOT NULL AND l.geo_lng IS NOT NULL');
+      qb.andWhere('l.geo_lat BETWEEN :minLat AND :maxLat', {
+        minLat: opts.near_lat - delta,
+        maxLat: opts.near_lat + delta,
+      });
+      qb.andWhere('l.geo_lng BETWEEN :minLng AND :maxLng', {
+        minLng: opts.near_lng - delta,
+        maxLng: opts.near_lng + delta,
+      });
     }
 
     if (opts.instant_booking_only) {
@@ -754,6 +785,10 @@ export class ExploreService {
     put('pets_allowed', params.pets_allowed);
     put('luxury_only', params.luxury_only);
     put('family_friendly', params.family_friendly);
+    put('neighborhood', params.neighborhood);
+    put('near_lat', params.near_lat);
+    put('near_lng', params.near_lng);
+    put('near_radius_km', params.near_radius_km);
     put('limit', params.limit);
     put('cursor', params.cursor);
     put('sort', params.sort);
