@@ -7,18 +7,14 @@ import {
   Patch,
   Post,
   Query,
-  Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateVisibilityDto } from './dto/update-visibility.dto';
 import { ReportConversationDto } from './dto/report-conversation.dto';
-
-interface AuthRequest {
-  user: { sub: string };
-}
 
 @ApiTags('messaging')
 @ApiBearerAuth()
@@ -32,26 +28,26 @@ export class MessagingController {
   @Get('conversations')
   @ApiOperation({ summary: 'List conversations for current user' })
   list(
-    @Req() req: AuthRequest,
+    @CurrentUser() user: { userId: string },
     @Query('filter') filter?: string,
     @Query('q') q?: string,
   ) {
-    return this.conversations.listConversations(req.user.sub, filter ?? 'all', q);
+    return this.conversations.listConversations(user.userId, filter ?? 'all', q);
   }
 
   @Get('conversations/unread-count')
   @ApiOperation({ summary: 'Unread conversation count' })
-  unreadCount(@Req() req: AuthRequest) {
-    return this.conversations.getUnreadCount(req.user.sub).then((count) => ({ count }));
+  unreadCount(@CurrentUser() user: { userId: string }) {
+    return this.conversations.getUnreadCount(user.userId).then((count) => ({ count }));
   }
 
   @Get('conversations/by-booking/:bookingId')
   @ApiOperation({ summary: 'Find conversation for a booking' })
   byBooking(
-    @Req() req: AuthRequest,
+    @CurrentUser() user: { userId: string },
     @Param('bookingId', ParseUUIDPipe) bookingId: string,
   ) {
-    return this.conversations.getConversationByBooking(bookingId, req.user.sub);
+    return this.conversations.getConversationByBooking(bookingId, user.userId);
   }
 
   @Post('conversations/ensure-for-booking/:bookingId')
@@ -59,37 +55,37 @@ export class MessagingController {
     summary: 'Ensure inbox thread exists for a confirmed booking (backfill)',
   })
   ensureForBooking(
-    @Req() req: AuthRequest,
+    @CurrentUser() user: { userId: string },
     @Param('bookingId', ParseUUIDPipe) bookingId: string,
   ) {
     return this.conversations.ensureConversationForBooking(
       bookingId,
-      req.user.sub,
+      user.userId,
     );
   }
 
   @Get('conversations/:id')
   @ApiOperation({ summary: 'Get conversation with messages' })
   getOne(
-    @Req() req: AuthRequest,
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Query('before_sequence') beforeSequence?: string,
   ) {
     const seq = beforeSequence ? Number(beforeSequence) : undefined;
-    return this.conversations.getConversation(id, req.user.sub, seq);
+    return this.conversations.getConversation(id, user.userId, seq);
   }
 
   @Get('conversations/:id/messages')
   @ApiOperation({ summary: 'List messages (cursor pagination)' })
   listMessages(
-    @Req() req: AuthRequest,
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Query('limit') limit?: string,
     @Query('before_sequence') beforeSequence?: string,
   ) {
     return this.messages.listMessages(
       id,
-      req.user.sub,
+      user.userId,
       limit ? Number(limit) : 30,
       beforeSequence ? Number(beforeSequence) : undefined,
     );
@@ -98,45 +94,54 @@ export class MessagingController {
   @Post('conversations/:id/messages')
   @ApiOperation({ summary: 'Send a text message' })
   send(
-    @Req() req: AuthRequest,
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SendMessageDto,
   ) {
-    return this.messages.sendText(id, req.user.sub, dto.body, dto.client_message_id);
+    return this.messages.sendText(id, user.userId, dto.body, dto.client_message_id);
   }
 
   @Post('conversations/:id/read')
   @ApiOperation({ summary: 'Mark conversation as read' })
-  markRead(@Req() req: AuthRequest, @Param('id', ParseUUIDPipe) id: string) {
-    return this.messages.markRead(id, req.user.sub);
+  markRead(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.messages.markRead(id, user.userId);
   }
 
   @Patch('conversations/:id/visibility')
   @ApiOperation({ summary: 'Archive, delete, or restore conversation for caller' })
   visibility(
-    @Req() req: AuthRequest,
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateVisibilityDto,
   ) {
-    return this.conversations.updateVisibility(id, req.user.sub, dto.action);
+    return this.conversations.updateVisibility(id, user.userId, dto.action);
   }
 
   @Post('conversations/:id/report')
   report(
-    @Req() req: AuthRequest,
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReportConversationDto,
   ) {
-    return this.conversations.report(id, req.user.sub, dto.reason).then(() => ({ ok: true }));
+    return this.conversations.report(id, user.userId, dto.reason).then(() => ({ ok: true }));
   }
 
   @Post('conversations/:id/block')
-  block(@Req() req: AuthRequest, @Param('id', ParseUUIDPipe) id: string) {
-    return this.conversations.block(id, req.user.sub).then(() => ({ ok: true }));
+  block(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.conversations.block(id, user.userId).then(() => ({ ok: true }));
   }
 
   @Post('conversations/:id/safety')
-  safety(@Req() req: AuthRequest, @Param('id', ParseUUIDPipe) id: string) {
-    return this.conversations.safety(id, req.user.sub);
+  safety(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.conversations.safety(id, user.userId);
   }
 }
