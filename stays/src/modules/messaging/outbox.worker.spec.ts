@@ -4,6 +4,7 @@ import { MessagingOutboxWorker } from './outbox.worker';
 import { StaysMessagingOutbox } from './entities/stays-messaging-outbox.entity';
 import { DomainEventsService } from '../../common/events/domain-events.service';
 import { SnapshotRepairService } from './snapshot-repair.service';
+import { EventValidationError } from '@nexa/event-bus';
 
 describe('MessagingOutboxWorker', () => {
   let worker: MessagingOutboxWorker;
@@ -50,8 +51,12 @@ describe('MessagingOutboxWorker', () => {
     worker = module.get(MessagingOutboxWorker);
   });
 
-  it('claims rows with SKIP LOCKED and publishes after commit path', async () => {
+  it('claims only PENDING rows with SKIP LOCKED', async () => {
     const rows = await worker.claimPendingRows(20);
+    expect(outboxRepo.manager.query).toHaveBeenCalledWith(
+      expect.stringContaining("WHERE status = 'PENDING'"),
+      [20],
+    );
     expect(outboxRepo.manager.query).toHaveBeenCalledWith(
       expect.stringContaining('FOR UPDATE SKIP LOCKED'),
       [20],
@@ -100,6 +105,47 @@ describe('MessagingOutboxWorker', () => {
     expect(outboxRepo.update).toHaveBeenCalledWith(
       'outbox-1',
       expect.objectContaining({ status: 'PENDING', attempts: 1 }),
+    );
+  });
+
+  it('dead-letters validation failures without retrying', async () => {
+    domainEvents.publish.mockRejectedValueOnce(
+      new EventValidationError('payment.succeeded.v1', ['providerIntentId: required']),
+    );
+    await worker.processOutbox();
+    expect(outboxRepo.update).toHaveBeenCalledWith(
+      'outbox-1',
+      expect.objectContaining({ status: 'FAILED', attempts: 1 }),
+    );
+  });
+
+  it('repairs empty providerIntentId on legacy payment.succeeded rows', async () => {
+    outboxRepo.manager.query
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce([
+        {
+          id: 'outbox-pay',
+          event_type: 'payment.succeeded.v1',
+          payload: {
+            bookingId: 'booking-1',
+            guestUserId: 'guest-1',
+            provider: 'backfill',
+            providerIntentId: '',
+            amount: '100',
+            currency: 'MAD',
+          },
+          status: 'PROCESSING',
+          attempts: 0,
+          next_retry_at: new Date(),
+          created_at: new Date(),
+          processed_at: null,
+        },
+      ]);
+    await worker.processOutbox();
+    expect(domainEvents.publish).toHaveBeenCalledWith(
+      'payment.succeeded.v1',
+      'stays',
+      expect.objectContaining({ providerIntentId: 'booking-booking-1' }),
     );
   });
 });

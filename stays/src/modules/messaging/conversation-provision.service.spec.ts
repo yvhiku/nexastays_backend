@@ -132,7 +132,35 @@ describe('ConversationProvisionService', () => {
     expect(outbox.enqueue).toHaveBeenCalledWith(
       expect.anything(),
       EVENTS.PAYMENT_SUCCEEDED,
-      expect.objectContaining({ bookingId: booking.id }),
+      expect.objectContaining({ bookingId: booking.id, providerIntentId: 'pi_1' }),
+    );
+  });
+
+  it('falls back providerIntentId to booking id when payment intent is missing', async () => {
+    outbox.enqueue.mockClear();
+    convRepo.findOne.mockResolvedValue(null);
+    convRepo.save.mockResolvedValue({ id: 'conv-backfill' });
+
+    const manager = {
+      getRepository: jest.fn((entity) => {
+        if (entity === StaysConversation) return convRepo;
+        if (entity === StaysListing) return listingRepo;
+        return {};
+      }),
+    };
+
+    const bookingWithoutIntent = { ...booking, payment_intent_id: null };
+    await service.provisionWithinTransaction(
+      manager as never,
+      bookingWithoutIntent as never,
+      listing.id,
+      'backfill',
+    );
+
+    expect(outbox.enqueue).toHaveBeenCalledWith(
+      expect.anything(),
+      EVENTS.PAYMENT_SUCCEEDED,
+      expect.objectContaining({ providerIntentId: `booking-${booking.id}` }),
     );
   });
 

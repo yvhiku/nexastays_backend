@@ -21,6 +21,15 @@ const MESSAGEABLE_BOOKING_STATUSES = new Set([
   'COMPLETED',
 ]);
 
+function resolvePaymentProviderIntentId(
+  bookingId: string,
+  providerIntentId?: string | null,
+  paymentIntentId?: string | null,
+): string {
+  const candidate = (providerIntentId ?? paymentIntentId ?? '').trim();
+  return candidate || `booking-${bookingId}`;
+}
+
 @Injectable()
 export class ConversationProvisionService {
   private readonly logger = new Logger(ConversationProvisionService.name);
@@ -99,7 +108,11 @@ export class ConversationProvisionService {
       bookingId: booking.id,
       guestUserId: booking.guest_user_id,
       provider: provider ?? 'payment',
-      providerIntentId: providerIntentId ?? booking.payment_intent_id ?? '',
+      providerIntentId: resolvePaymentProviderIntentId(
+        booking.id,
+        providerIntentId,
+        booking.payment_intent_id,
+      ),
       amount: String(total),
       currency,
     });
