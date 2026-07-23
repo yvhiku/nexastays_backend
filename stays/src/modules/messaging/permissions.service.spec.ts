@@ -36,4 +36,10 @@ describe('MessagingPermissionsService', () => {
     expect(service.visibilityFor(conv, 'guest-1')).toBe('ARCHIVED');
     expect(service.visibilityFor(conv, 'host-1')).toBe('ACTIVE');
   });
+
+  it('sets viewerRole per participant', () => {
+    const conv = baseConversation();
+    expect(service.resolve(conv, 'guest-1').viewerRole).toBe('guest');
+    expect(service.resolve(conv, 'host-1').viewerRole).toBe('host');
+  });
 });

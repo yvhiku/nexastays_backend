@@ -149,6 +149,7 @@ export class TimelineSeederService {
           body: reviewBody,
           source: 'SYSTEM',
           bookingId: booking.id,
+          listingId: snapshot.listingId ?? conversation.listing_id ?? undefined,
           actions: [
             {
               id: 'leave_review',
@@ -157,6 +158,23 @@ export class TimelineSeederService {
               url: `/bookings/${booking.id}/review`,
             },
           ],
+          guestView: {
+            title: 'Review your stay',
+            body: reviewBody,
+            actions: [
+              {
+                id: 'leave_review',
+                label: 'Leave a review',
+                type: 'deep_link',
+                url: `/bookings/${booking.id}/review`,
+              },
+            ],
+          },
+          hostView: {
+            title: 'Review request sent',
+            body: 'Your guest can leave a review for this stay.',
+            actions: [],
+          },
         },
       },
     ];
@@ -224,6 +242,18 @@ export class TimelineSeederService {
     const meta = (reviewCard.metadata ?? {}) as Record<string, unknown>;
     if (meta.reviewed === true) return;
 
+    const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot | null;
+    const listingId =
+      (meta.listingId as string | undefined) ??
+      snapshot?.listingId ??
+      conv.listing_id ??
+      undefined;
+    const viewReviewUrl = listingId
+      ? `/listings/${listingId}#reviews`
+      : conv.booking_id
+        ? `/bookings/${conv.booking_id}`
+        : undefined;
+
     await messageRepo.update(reviewCard.id, {
       metadata: {
         ...meta,
@@ -231,6 +261,25 @@ export class TimelineSeederService {
         title: 'Thanks for reviewing!',
         body: 'Your feedback helps future travelers.',
         actions: [],
+        guestView: {
+          title: 'Thanks for reviewing!',
+          body: 'Your feedback helps future travelers.',
+          actions: [],
+        },
+        hostView: {
+          title: 'Guest reviewed successfully',
+          body: 'Your guest shared feedback about their stay.',
+          actions: viewReviewUrl
+            ? [
+                {
+                  id: 'view_review',
+                  label: 'View review',
+                  type: 'deep_link',
+                  url: viewReviewUrl,
+                },
+              ]
+            : [],
+        },
       },
     });
     await convRepo.update(conv.id, {

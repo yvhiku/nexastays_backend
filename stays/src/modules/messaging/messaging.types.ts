@@ -1,5 +1,7 @@
 export type NotificationLevel = 'ALL' | 'IMPORTANT' | 'MUTED';
 
+export type ConversationViewerRole = 'guest' | 'host';
+
 export interface ConversationPermissions {
   canSend: boolean;
   canUpload: boolean;
@@ -7,6 +9,7 @@ export interface ConversationPermissions {
   canReport: boolean;
   canBlock: boolean;
   canReview: boolean;
+  viewerRole: ConversationViewerRole;
   isReadOnly: boolean;
   canArchive: boolean;
   canDelete: boolean;
