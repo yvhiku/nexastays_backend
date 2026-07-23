@@ -53,6 +53,45 @@ describe('formatInboxPreview', () => {
       }),
     ).toBe('Booking confirmed');
   });
+
+  it('uses guest review card title by default', () => {
+    expect(
+      formatInboxPreview({
+        type: 'REVIEW_CARD',
+        body: null,
+        metadata: { title: 'Review your stay' },
+      }),
+    ).toBe('Review your stay');
+  });
+
+  it('uses host-specific review preview when viewer is host', () => {
+    expect(
+      formatInboxPreview({
+        type: 'REVIEW_CARD',
+        body: null,
+        metadata: {
+          title: 'Review your stay',
+          hostView: { title: 'Review request sent' },
+        },
+        viewerRole: 'host',
+      }),
+    ).toBe('Review request sent');
+  });
+
+  it('uses host reviewed preview after guest submits review', () => {
+    expect(
+      formatInboxPreview({
+        type: 'REVIEW_CARD',
+        body: null,
+        metadata: {
+          reviewed: true,
+          title: 'Thanks for reviewing!',
+          hostView: { title: 'Guest reviewed successfully' },
+        },
+        viewerRole: 'host',
+      }),
+    ).toBe('Guest reviewed successfully');
+  });
 });
 
 describe('resolveInboxSenderLabel', () => {

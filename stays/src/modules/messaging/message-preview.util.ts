@@ -1,10 +1,12 @@
 import type { MessageType } from './entities/stays-message.entity';
+import type { ConversationViewerRole } from './messaging.types';
 
 type PreviewInput = {
   type: MessageType | string;
   body?: string | null;
   metadata?: Record<string, unknown> | null;
   senderLabel?: string | null;
+  viewerRole?: ConversationViewerRole;
 };
 
 type SenderContext = {
@@ -45,6 +47,25 @@ export function resolveInboxSenderLabel(ctx: SenderContext): string | null {
     return ctx.guestDisplayName ?? ctx.counterpartDisplayName ?? 'Guest';
   }
   return ctx.counterpartDisplayName ?? null;
+}
+
+function readRoleViewTitle(
+  meta: Record<string, unknown>,
+  viewerRole?: ConversationViewerRole,
+): string | null {
+  const reviewed = meta.reviewed === true;
+  const viewKey = viewerRole === 'host' ? 'hostView' : 'guestView';
+  const view = meta[viewKey];
+  if (view && typeof view === 'object' && view !== null) {
+    const title = pickText((view as Record<string, unknown>).title);
+    if (title) return title;
+  }
+
+  if (viewerRole === 'host') {
+    return reviewed ? 'Guest reviewed successfully' : 'Review request sent';
+  }
+  if (reviewed) return 'Thanks for reviewing!';
+  return pickText(meta.title) ?? 'Review your stay';
 }
 
 /** Human-readable inbox preview for the chronologically latest message. */
@@ -91,7 +112,7 @@ export function formatInboxPreview(input: PreviewInput): string {
     case 'LOCATION_CARD':
       return title ?? cardBody ?? 'Location';
     case 'REVIEW_CARD':
-      return title ?? 'Review your stay';
+      return readRoleViewTitle(meta, input.viewerRole) ?? 'Review your stay';
     case 'PAYMENT_CARD':
       return title ?? cardBody ?? 'Payment update';
     default:

@@ -388,12 +388,15 @@ export class ConversationsService {
         })
       : null;
 
+    const perms = this.permissions.resolve(conv, userId);
+
     const preview = lastMessage
       ? formatInboxPreview({
           type: lastMessage.type,
           body: lastMessage.body,
           metadata: lastMessage.metadata,
           senderLabel,
+          viewerRole: perms.viewerRole,
         })
       : conv.last_message_preview;
 
@@ -405,7 +408,7 @@ export class ConversationsService {
         preview,
         at: conv.last_message_at?.toISOString() ?? null,
       },
-      permissions: this.permissions.resolve(conv, userId),
+      permissions: perms,
     };
   }
 }
