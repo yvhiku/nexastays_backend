@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  Sse,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -39,6 +40,12 @@ export class MessagingController {
     private readonly attachmentSessions: AttachmentSessionService,
     private readonly search: MessageSearchService,
   ) {}
+
+  @Sse('realtime')
+  @ApiOperation({ summary: 'Authenticated live messaging event stream' })
+  realtime(@CurrentUser() user: { userId: string }) {
+    return this.messages.realtimeStream(user.userId);
+  }
 
   @Get('conversations')
   @ApiOperation({ summary: 'List conversations for current user' })

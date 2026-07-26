@@ -36,6 +36,7 @@ import { AttachmentSessionService } from './attachment-session.service';
 import { MediaAssetService } from './media-asset.service';
 import { AttachmentCleanupScheduler } from './attachment-cleanup.scheduler';
 import { MessageSearchService } from './message-search.service';
+import { MessagingRealtimeService } from './messaging-realtime.service';
 import { DomainEventsModule } from '../../common/events/domain-events.module';
 import { StaysModule } from '../stays/stays.module';
 
@@ -80,6 +81,7 @@ import { StaysModule } from '../stays/stays.module';
     MediaAssetService,
     AttachmentCleanupScheduler,
     MessageSearchService,
+    MessagingRealtimeService,
   ],
   exports: [ConversationProvisionService, MessagingStateService, TimelineSeederService],
 })

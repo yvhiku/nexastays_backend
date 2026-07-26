@@ -22,6 +22,7 @@ import {
   resolveDeliveryState,
 } from './message-payload.mapper';
 import { EVENTS } from '@nexa/event-bus';
+import { MessagingRealtimeService } from './messaging-realtime.service';
 
 @Injectable()
 export class MessagesService {
@@ -38,7 +39,12 @@ export class MessagesService {
     private readonly attachments: AttachmentService,
     private readonly attachmentSessions: AttachmentSessionService,
     private readonly participants: ParticipantPresentationService,
+    private readonly realtime: MessagingRealtimeService,
   ) {}
+
+  realtimeStream(userId: string) {
+    return this.realtime.stream(userId);
+  }
 
   async listMessages(
     conversationId: string,
@@ -70,13 +76,21 @@ export class MessagesService {
       (m) => m.sender_id && m.sender_id !== userId && m.status !== 'READ',
     );
     if (unreadFromOther.length > 0) {
-      await this.messageRepo
+      const delivered = await this.messageRepo
         .createQueryBuilder()
         .update(StaysMessage)
         .set({ status: 'DELIVERED', delivered_at: new Date() })
         .where('id IN (:...ids)', { ids: unreadFromOther.map((m) => m.id) })
         .andWhere("status = 'PERSISTED'")
         .execute();
+      if ((delivered.affected ?? 0) > 0) {
+        for (const senderId of new Set(unreadFromOther.map((message) => message.sender_id))) {
+          this.realtime.publish(senderId, {
+            conversationId: conv.id,
+            reason: 'MESSAGE_DELIVERED',
+          });
+        }
+      }
     }
 
     const attachmentMap = await this.attachments.loadForMessages(
@@ -168,6 +182,8 @@ export class MessagesService {
       return message;
     });
 
+    this.publishMessageCreated(conv, userId, saved.id);
+
     return this.toDto(saved, userId, []);
   }
 
@@ -224,6 +240,8 @@ export class MessagesService {
       await this.enqueueDeliveryEvents(manager, conv, message, userId, preview);
       return message;
     });
+
+    this.publishMessageCreated(conv, userId, saved.id);
 
     const atts = await this.attachments.loadForMessages([
       { id: saved.id, metadata: saved.metadata ?? {} },
@@ -293,6 +311,8 @@ export class MessagesService {
       return message;
     });
 
+    this.publishMessageCreated(conv, userId, saved.id);
+
     const atts = await this.attachments.loadForMessages([
       { id: saved.id, metadata: saved.metadata ?? {} },
     ]);
@@ -345,7 +365,31 @@ export class MessagesService {
       });
     });
 
+    const senderUserId =
+      userId === conv.guest_user_id ? conv.host_user_id : conv.guest_user_id;
+    this.realtime.publish(senderUserId, {
+      conversationId: conv.id,
+      reason: 'MESSAGE_READ',
+      messageId: lastMsg?.id,
+    });
+
     return { conversationVersion: nextVersion };
+  }
+
+  private publishMessageCreated(
+    conv: StaysConversation,
+    senderUserId: string,
+    messageId: string,
+  ): void {
+    const recipientUserId =
+      senderUserId === conv.guest_user_id
+        ? conv.host_user_id
+        : conv.guest_user_id;
+    this.realtime.publish(recipientUserId, {
+      conversationId: conv.id,
+      reason: 'MESSAGE_CREATED',
+      messageId,
+    });
   }
 
   private async enqueueDeliveryEvents(

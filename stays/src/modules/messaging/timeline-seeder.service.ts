@@ -410,7 +410,22 @@ export class TimelineSeederService {
       .getOne();
     if (!locked) throw new Error('Conversation not found');
 
-    const nextSeq = BigInt(locked.last_message_sequence || 0) + 1n;
+    // The conversation counter is the fast path, but older/partially repaired
+    // threads can contain a newer message than the denormalized pointer. Read
+    // the actual maximum while holding the conversation write lock so a stale
+    // counter self-heals instead of repeatedly violating the sequence unique
+    // constraint.
+    const maxSequenceRow = await messageRepo
+      .createQueryBuilder('m')
+      .select('COALESCE(MAX(m.conversation_sequence), 0)', 'maxSequence')
+      .where('m.conversation_id = :conversationId', {
+        conversationId: locked.id,
+      })
+      .getRawOne<{ maxSequence: string }>();
+    const storedSequence = BigInt(locked.last_message_sequence || 0);
+    const actualSequence = BigInt(maxSequenceRow?.maxSequence || 0);
+    const nextSeq =
+      (storedSequence > actualSequence ? storedSequence : actualSequence) + 1n;
     const now = new Date();
     const isSystem = !input.senderId;
 

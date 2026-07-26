@@ -11,6 +11,7 @@ import { MessagingOutboxService } from './outbox.service';
 import { AttachmentService } from './attachment.service';
 import { AttachmentSessionService } from './attachment-session.service';
 import { ParticipantPresentationService } from './participant-presentation.service';
+import { MessagingRealtimeService } from './messaging-realtime.service';
 import { EVENTS } from '@nexa/event-bus';
 
 describe('MessagesService', () => {
@@ -22,6 +23,7 @@ describe('MessagesService', () => {
   let convRepo: { findOne: jest.Mock };
   let outbox: { enqueue: jest.Mock };
   let timelineSeeder: { insertMessage: jest.Mock };
+  let realtime: { stream: jest.Mock; publish: jest.Mock };
   let transactionManager: {
     getRepository: jest.Mock;
   };
@@ -93,7 +95,7 @@ describe('MessagesService', () => {
       ]),
       update: jest.fn().mockReturnThis(),
       set: jest.fn().mockReturnThis(),
-      execute: jest.fn().mockResolvedValue(undefined),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
     };
 
     messageRepo = {
@@ -124,6 +126,10 @@ describe('MessagesService', () => {
         client_message_id: 'client-1',
         created_at: new Date(),
       }),
+    };
+    realtime = {
+      stream: jest.fn(),
+      publish: jest.fn(),
     };
 
     transactionManager = {
@@ -180,6 +186,7 @@ describe('MessagesService', () => {
             resolveHostDisplayName: jest.fn().mockResolvedValue('Host Name'),
           },
         },
+        { provide: MessagingRealtimeService, useValue: realtime },
       ],
     }).compile();
 
@@ -210,6 +217,11 @@ describe('MessagesService', () => {
         listingTitle: 'Riad Test',
       }),
     );
+    expect(realtime.publish).toHaveBeenCalledWith(hostId, {
+      conversationId: convId,
+      reason: 'MESSAGE_CREATED',
+      messageId: 'new-msg',
+    });
   });
 
   it('bumps conversation_version on markRead', async () => {
@@ -236,5 +248,10 @@ describe('MessagesService', () => {
       convId,
       expect.objectContaining({ conversation_version: 4, unread_guest: 0 }),
     );
+    expect(realtime.publish).toHaveBeenCalledWith(hostId, {
+      conversationId: convId,
+      reason: 'MESSAGE_READ',
+      messageId: 'msg-last',
+    });
   });
 });
