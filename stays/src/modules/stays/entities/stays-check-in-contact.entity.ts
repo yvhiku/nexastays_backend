@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { StaysListing } from './stays-listing.entity';
+import { piiTransformer } from '../../../common/security/pii-encryption';
 
 @Entity('stays_check_in_contacts')
 export class StaysCheckInContact {
@@ -24,7 +25,7 @@ export class StaysCheckInContact {
   @Column({ type: 'varchar', length: 100, name: 'full_name' })
   full_name: string;
 
-  @Column({ type: 'text', name: 'phone_encrypted' })
+  @Column({ type: 'text', name: 'phone_encrypted', transformer: piiTransformer })
   phone_encrypted: string;
 
   @Column({ type: 'varchar', length: 20 })

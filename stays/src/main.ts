@@ -16,6 +16,7 @@ import {
   applySecureHttp,
   resolveCorsOrigin,
 } from './common/security/secure-http';
+import { enforceCookieRequestOrigin } from './common/security/cookie-csrf';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-stays');
@@ -26,6 +27,15 @@ async function bootstrap() {
     }
     if (!process.env.INTERNAL_SERVICE_KEY?.trim()) {
       throw new Error('INTERNAL_SERVICE_KEY is required in production.');
+    }
+    const piiKey = Buffer.from(
+      process.env.PII_ENCRYPTION_KEY?.trim() ?? '',
+      'base64',
+    );
+    if (piiKey.length !== 32) {
+      throw new Error(
+        'PII_ENCRYPTION_KEY must be a base64-encoded 32-byte key in production.',
+      );
     }
     if (!process.env.IDENTITY_JWKS_URL?.trim()) {
       throw new Error('IDENTITY_JWKS_URL is required in production.');
@@ -103,9 +113,15 @@ async function bootstrap() {
     SwaggerModule.setup(`${appConfig.apiPrefix}/docs`, app, document);
   }
 
+  const corsOrigin = resolveCorsOrigin();
+  const cookieOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  app.use(enforceCookieRequestOrigin(cookieOrigins));
   app.enableCors({
-    origin: resolveCorsOrigin(),
-    credentials: false,
+    origin: corsOrigin,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
@@ -114,6 +130,7 @@ async function bootstrap() {
       'X-Request-Id',
       'X-Device-Id',
       'X-Internal-Key',
+      'X-Auth-Transport',
     ],
     exposedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
   });

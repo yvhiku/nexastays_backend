@@ -8,6 +8,7 @@ import {
   ManyToOne,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { piiTransformer } from '../../../common/security/pii-encryption';
 
 @Entity('kyc_profiles')
 export class KycProfile {
@@ -115,19 +116,19 @@ export class KycProfile {
   national_id_number_hash: string | null;
 
   @Column({
-    type: 'varchar',
-    length: 64,
+    type: 'text',
     name: 'national_id_number',
     nullable: true,
+    transformer: piiTransformer,
   })
   national_id_number: string | null;
 
   /** ID number extracted from document via OCR (to compare with manual form entry) */
   @Column({
-    type: 'varchar',
-    length: 64,
+    type: 'text',
     name: 'national_id_number_extracted',
     nullable: true,
+    transformer: piiTransformer,
   })
   national_id_number_extracted: string | null;
 

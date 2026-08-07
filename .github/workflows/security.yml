@@ -1,15 +1,12 @@
-name: Security hygiene
+name: Production security
 
 on:
   pull_request:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master]
 
 jobs:
   gitleaks:
-    name: gitleaks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,36 +15,36 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_CONFIG: gitleaks.toml
 
-  stays-audit:
-    name: stays npm audit
+  backend:
+    name: ${{ matrix.service }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [identity, stays]
     defaults:
       run:
-        working-directory: stays
+        working-directory: ${{ matrix.service }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: stays/package-lock.json
+          cache-dependency-path: ${{ matrix.service }}/package-lock.json
       - run: npm ci
-      - run: npm run audit
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run build
+      - run: npm test -- --runInBand --testPathPatterns="security|pii-encryption"
 
-  identity-audit:
-    name: identity npm audit
+  codeql:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: identity
+    permissions:
+      security-events: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: github/codeql-action/init@v3
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: identity/package-lock.json
-      - run: npm ci
-      - run: npm run audit
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3

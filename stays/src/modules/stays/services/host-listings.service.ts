@@ -182,9 +182,6 @@ export class HostListingsService {
       if (dto.rate_plan.weekend_price !== undefined) {
         listing.rate_plan.weekend_price = dto.rate_plan.weekend_price ?? null;
       }
-      if (dto.rate_plan.cleaning_fee != null) {
-        listing.rate_plan.cleaning_fee = dto.rate_plan.cleaning_fee;
-      }
       await this.ratePlanRepo.save(listing.rate_plan);
 
       // Keep the default entire-place unit in sync so inventory price matches rate plan.

@@ -9,6 +9,8 @@ import {
   NotFoundException,
   UnauthorizedException,
   HttpException,
+  UseInterceptors,
+  Get,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -44,6 +46,15 @@ import { AUTH_THROTTLE } from '../../common/abuse/throttle-presets';
 import { SecurityEventsService } from '../security-events/security-events.service';
 import { noteAuthFailure } from '../../common/security/security-traffic';
 import { safeLogger } from '../../common/logging/safe-logger';
+import { BrowserAuthInterceptor } from './security/browser-auth.interceptor';
+import {
+  clearBrowserAuthCookies,
+  isBrowserCookieRequest,
+  readCookie,
+  REFRESH_COOKIE,
+} from './security/browser-auth-cookies';
+import type { Response } from 'express';
+import { Res } from '@nestjs/common';
 
 function getClientIp(req: express.Request): string {
   return (
@@ -58,6 +69,7 @@ function getClientIp(req: express.Request): string {
 
 @ApiTags('Pay Auth')
 @Controller(['auth', 'pay/auth'])
+@UseInterceptors(BrowserAuthInterceptor)
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -65,6 +77,16 @@ export class AuthController {
     private readonly metricsService: MetricsService,
     private readonly securityEvents: SecurityEventsService,
   ) {}
+
+  @Get('session')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  session(
+    @CurrentUser()
+    user: { userId: string; role?: string; roles?: string[] },
+  ) {
+    return { authenticated: true, user };
+  }
 
   @Post('login')
   @Public()
@@ -413,7 +435,13 @@ export class AuthController {
       user_agent: req.headers['user-agent'] || undefined,
       ip: getClientIp(req),
     };
-    const result = await this.authService.refresh(body.refresh_token, ctx);
+    const refreshToken =
+      body.refresh_token ??
+      (isBrowserCookieRequest(req)
+        ? readCookie(req, REFRESH_COOKIE)
+        : undefined);
+    if (!refreshToken) throw new UnauthorizedException('Invalid refresh token');
+    const result = await this.authService.refresh(refreshToken, ctx);
     await this.auditService
       .audit({
         action: 'REFRESH_TOKEN_USE',
@@ -437,6 +465,7 @@ export class AuthController {
     @CurrentUser() user: { userId: string },
     @Body() body?: LogoutDto,
     @Req() req?: express.Request,
+    @Res({ passthrough: true }) res?: Response,
   ) {
     await this.authService.revokeRefreshTokens(
       user.userId,
@@ -451,6 +480,7 @@ export class AuthController {
         req: req ?? undefined,
       })
       .catch(() => {});
+    if (res) clearBrowserAuthCookies(res);
     return { success: true };
   }
 

@@ -598,8 +598,7 @@ export class StaysService {
         }
 
         const basePrice = Number(ratePlan.base_price);
-        const subtotal =
-          basePrice * nights + Number(ratePlan.cleaning_fee || 0);
+        const subtotal = basePrice * nights;
         const { guestFee, hostFee, totalPaid, payoutAmount } =
           this.platformSettings.calculateFees(subtotal);
 

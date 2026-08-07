@@ -1,7 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as admin from 'firebase-admin';
+import {
+  cert,
+  getApps,
+  initializeApp,
+  type App,
+  type ServiceAccount,
+} from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 import { PushDeviceToken } from './entities/push-device-token.entity';
 import { safeLogger } from '../../common/logging/safe-logger';
 
@@ -16,6 +23,8 @@ interface PushPayload {
 
 @Injectable()
 export class NotificationsService {
+  private firebaseApp: App | null = null;
+
   constructor(
     @InjectRepository(PushDeviceToken)
     private readonly pushTokenRepository: Repository<PushDeviceToken>,
@@ -24,7 +33,11 @@ export class NotificationsService {
   }
 
   private initializeFirebaseAdmin(): void {
-    if (admin.apps.length > 0) return;
+    const existingApp = getApps()[0];
+    if (existingApp) {
+      this.firebaseApp = existingApp;
+      return;
+    }
     try {
       const serviceAccountJson = process.env.FCM_SERVICE_ACCOUNT_JSON;
       const serviceAccountPath = process.env.FCM_SERVICE_ACCOUNT_PATH;
@@ -32,14 +45,13 @@ export class NotificationsService {
         safeLogger.info('FCM disabled: missing service account env');
         return;
       }
-      let credential: admin.credential.Credential;
+      let serviceAccount: ServiceAccount;
       if (serviceAccountJson) {
-        credential = admin.credential.cert(JSON.parse(serviceAccountJson));
+        serviceAccount = JSON.parse(serviceAccountJson) as ServiceAccount;
       } else {
-        const loaded = require(serviceAccountPath!);
-        credential = admin.credential.cert(loaded);
+        serviceAccount = require(serviceAccountPath!) as ServiceAccount;
       }
-      admin.initializeApp({ credential });
+      this.firebaseApp = initializeApp({ credential: cert(serviceAccount) });
       safeLogger.info('FCM initialized');
     } catch (error) {
       safeLogger.error('FCM initialization failed', error);
@@ -116,14 +128,16 @@ export class NotificationsService {
   }
 
   async sendToUser(userId: string, payload: PushPayload): Promise<void> {
-    if (admin.apps.length === 0) return;
+    if (!this.firebaseApp) return;
     const rows = await this.pushTokenRepository.find({
       where: { user_id: userId, active: true, notifications_enabled: true },
     });
     const tokens = rows.map((r) => r.token).filter(Boolean);
     if (!tokens.length) return;
     try {
-      const response = await admin.messaging().sendEachForMulticast({
+      const response = await getMessaging(
+        this.firebaseApp,
+      ).sendEachForMulticast({
         tokens,
         notification: {
           title: payload.title,

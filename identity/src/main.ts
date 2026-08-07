@@ -13,6 +13,7 @@ import { TransformInterceptor } from './common/interceptors';
 import { safeLogger } from './common/logging/safe-logger';
 import { createHttpTelemetryMiddleware, initOpenTelemetry } from '@nexa/telemetry';
 import { applySecureHttp } from './common/security/secure-http';
+import { enforceCookieRequestOrigin } from './common/security/cookie-csrf';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-identity');
@@ -42,6 +43,15 @@ async function bootstrap() {
     }
     if (!process.env.INTERNAL_SERVICE_KEY?.trim()) {
       throw new Error('INTERNAL_SERVICE_KEY is required in production.');
+    }
+    const piiKey = Buffer.from(
+      process.env.PII_ENCRYPTION_KEY?.trim() ?? '',
+      'base64',
+    );
+    if (piiKey.length !== 32) {
+      throw new Error(
+        'PII_ENCRYPTION_KEY must be a base64-encoded 32-byte key in production.',
+      );
     }
     if (!process.env.CORS_ORIGINS?.trim()) {
       throw new Error(
@@ -159,9 +169,10 @@ async function bootstrap() {
           throw new Error('CORS_ORIGINS must be set in production.');
         })()
     : true;
+  app.use(enforceCookieRequestOrigin(origins));
   app.enableCors({
     origin: allowOrigins,
-    credentials: false,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
@@ -172,6 +183,7 @@ async function bootstrap() {
       'X-Device-Integrity',
       'X-Nexa-Product',
       'X-Internal-Key',
+      'X-Auth-Transport',
     ],
     exposedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
   });

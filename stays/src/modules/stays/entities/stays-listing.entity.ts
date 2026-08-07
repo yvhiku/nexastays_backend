@@ -13,6 +13,7 @@ import { StaysRatePlan } from './stays-rate-plan.entity';
 import { StaysCheckInContact } from './stays-check-in-contact.entity';
 import { StaysBooking } from './stays-booking.entity';
 import { StaysListingUnitType } from './stays-listing-unit-type.entity';
+import { piiTransformer } from '../../../common/security/pii-encryption';
 
 export type ListingBookingModel =
   | 'ENTIRE_PROPERTY'
@@ -68,7 +69,12 @@ export class StaysListing {
   @Column({ type: 'varchar', length: 200, nullable: true })
   landmark: string | null;
 
-  @Column({ type: 'text', name: 'address_encrypted', nullable: true })
+  @Column({
+    type: 'text',
+    name: 'address_encrypted',
+    nullable: true,
+    transformer: piiTransformer,
+  })
   address_encrypted: string | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 7, name: 'geo_lat', nullable: true })
