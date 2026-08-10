@@ -17,6 +17,7 @@ import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysBooking } from '../entities/stays-booking.entity';
 import { BOOKED_STATUSES } from './stays-availability.service';
 import { validateOutboundHttpsUrl } from '../../../common/security/outbound-url';
+import { fetchOutboundHttps } from '../../../common/security/outbound-https-fetch';
 
 const MAX_CALENDARS_PER_LISTING = 10;
 const SYNC_COOLDOWN_MS = 30_000;
@@ -584,6 +585,8 @@ export class CalendarSyncService {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
+      // Re-validate stored URL on every fetch (defense in depth).
+      const icsUrl = validateOutboundHttpsUrl(cal.ics_url);
       const headers: Record<string, string> = {
         Accept: 'text/calendar, text/plain, */*',
         'User-Agent': 'NexaStaysCalendarSync/1.0',
@@ -591,30 +594,43 @@ export class CalendarSyncService {
       if (cal.etag) headers['If-None-Match'] = cal.etag;
       if (cal.last_modified) headers['If-Modified-Since'] = cal.last_modified;
 
-      const res = await fetch(cal.ics_url, {
-        method: 'GET',
+      // SSRF-safe: HTTPS-only, DNS public-only, IP pin, manual redirect revalidation.
+      const res = await fetchOutboundHttps(icsUrl, {
         headers,
         signal: controller.signal,
-        redirect: 'follow',
+        timeoutMs: FETCH_TIMEOUT_MS,
       });
 
-      if (res.status === 304) {
+      if (res.statusCode === 304) {
         return { body: '', notModified: true };
       }
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status} fetching calendar`);
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw new Error(`HTTP ${res.statusCode} fetching calendar`);
       }
 
-      const buf = Buffer.from(await res.arrayBuffer());
-      if (buf.byteLength > MAX_ICS_BYTES) {
+      if (res.body.byteLength > MAX_ICS_BYTES) {
         throw new Error('Calendar file too large');
       }
-      return {
-        body: buf.toString('utf8'),
-        notModified: false,
-        etag: res.headers.get('etag') ?? undefined,
-        lastModified: res.headers.get('last-modified') ?? undefined,
+      const header = (name: string): string | undefined => {
+        const v = res.headers[name];
+        if (Array.isArray(v)) return v[0];
+        return v;
       };
+      return {
+        body: res.body.toString('utf8'),
+        notModified: false,
+        etag: header('etag'),
+        lastModified: header('last-modified'),
+      };
+    } catch (err) {
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
+      // Do not leak DNS/network internals to clients via sync summaries upstream.
+      this.logger.warn(
+        `ICS fetch failed for calendar ${cal.id}: ${err instanceof Error ? err.message : 'error'}`,
+      );
+      throw err;
     } finally {
       clearTimeout(timer);
     }

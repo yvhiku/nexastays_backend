@@ -14,6 +14,7 @@ import { safeLogger } from './common/logging/safe-logger';
 import { createHttpTelemetryMiddleware, initOpenTelemetry } from '@nexa/telemetry';
 import { applySecureHttp } from './common/security/secure-http';
 import { enforceCookieRequestOrigin } from './common/security/cookie-csrf';
+import { assertProductionSmsConfigured } from './modules/sms/sms-config';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-identity');
@@ -66,6 +67,8 @@ async function bootstrap() {
         'SUMSUB_SECRET_KEY is required when SUMSUB_APP_TOKEN is set.',
       );
     }
+    // SEC-002: production must never fall open to mock OTP SMS logging.
+    assertProductionSmsConfigured();
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
