@@ -39,7 +39,6 @@ type ListingRow = {
   city: string;
   max_guests: number | null;
   base_price: string;
-  cleaning_fee: string;
   currency: string;
 };
 
@@ -132,7 +131,6 @@ async function main() {
         l.city,
         r.max_guests,
         rp.base_price::text AS base_price,
-        COALESCE(rp.cleaning_fee, 0)::text AS cleaning_fee,
         COALESCE(rp.currency, 'MAD') AS currency
       FROM stays_listings l
       JOIN stays_rate_plans rp ON rp.listing_id = l.id
@@ -211,8 +209,7 @@ async function main() {
       const maxGuests = Math.max(1, listing.max_guests ?? 4);
       const guestCount = 1 + Math.floor(Math.random() * Math.min(4, maxGuests));
       const basePrice = Number(listing.base_price);
-      const cleaningFee = Number(listing.cleaning_fee) || 0;
-      const subtotal = round2(basePrice * nights + cleaningFee);
+      const subtotal = round2(basePrice * nights);
       const { guestFee, hostFee, totalPaid, payoutAmount } = fees(subtotal);
 
       let guestUserId = randomUUID();

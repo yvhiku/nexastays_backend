@@ -196,7 +196,6 @@ export class StaysService {
             weekend_price: listing.rate_plan.weekend_price
               ? Number(listing.rate_plan.weekend_price)
               : null,
-            cleaning_fee: Number(listing.rate_plan.cleaning_fee),
             currency: listing.rate_plan.currency,
           }
         : null,
@@ -312,8 +311,7 @@ export class StaysService {
         }
 
         const basePrice = Number(ratePlan.base_price);
-        const subtotal =
-          basePrice * nights + Number(ratePlan.cleaning_fee || 0);
+        const subtotal = basePrice * nights;
         const guestFee = Math.round(subtotal * GUEST_FEE_PCT * 100) / 100;
         const hostFee = Math.round(subtotal * HOST_FEE_PCT * 100) / 100;
         const totalPaid = subtotal + guestFee;

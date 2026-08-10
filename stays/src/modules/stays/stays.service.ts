@@ -460,7 +460,6 @@ export class StaysService {
             weekend_price: listing.rate_plan.weekend_price
               ? Number(listing.rate_plan.weekend_price)
               : null,
-            cleaning_fee: Number(listing.rate_plan.cleaning_fee),
             currency: listing.rate_plan.currency,
           }
         : null,

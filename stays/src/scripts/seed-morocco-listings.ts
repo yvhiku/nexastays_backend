@@ -202,7 +202,6 @@ async function main() {
         cancellation_policy: string;
         base_price: number;
         weekend_price: number;
-        cleaning_fee: number;
         unit_kind: string;
         created_at: string;
       }> = [];
@@ -240,7 +239,6 @@ async function main() {
           base_price: price,
           weekend_price:
             Math.round(price * (1.05 + Math.random() * 0.2) * 100) / 100,
-          cleaning_fee: Math.round(Math.random() * 150 * 100) / 100,
           unit_kind: unitKind(listingType),
           // Stagger timestamps so keyset pagination never collapses a whole batch.
           created_at: new Date(batchBaseMs - i * 1000).toISOString(),
@@ -304,7 +302,6 @@ async function main() {
           cancellation_policy: src.cancellation_policy,
           base_price: src.base_price,
           weekend_price: src.weekend_price,
-          cleaning_fee: src.cleaning_fee,
           unit_kind: src.unit_kind,
           title: src.title,
         };
@@ -338,19 +335,17 @@ async function main() {
 
       await client.query(
         `INSERT INTO stays_rate_plans (
-           listing_id, currency, base_price, weekend_price, cleaning_fee
+           listing_id, currency, base_price, weekend_price
          )
          SELECT
            x.listing_id::uuid,
            'MAD',
            x.base_price,
-           x.weekend_price,
-           x.cleaning_fee
+           x.weekend_price
          FROM jsonb_to_recordset($1::jsonb) AS x(
            listing_id text,
            base_price numeric,
-           weekend_price numeric,
-           cleaning_fee numeric
+           weekend_price numeric
          )`,
         [JSON.stringify(rulesPayload)],
       );

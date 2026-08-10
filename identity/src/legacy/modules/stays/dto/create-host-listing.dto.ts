@@ -57,11 +57,6 @@ class RatePlanDto {
   weekend_price?: number;
 
   @IsOptional()
-  @Type(() => Number)
-  @Min(0)
-  cleaning_fee?: number;
-
-  @IsOptional()
   @IsString()
   deposit_policy_text?: string;
 }

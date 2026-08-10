@@ -359,7 +359,6 @@ export class HostListingsService {
             weekend_price: listing.rate_plan.weekend_price
               ? Number(listing.rate_plan.weekend_price)
               : null,
-            cleaning_fee: Number(listing.rate_plan.cleaning_fee || 0),
             currency: listing.rate_plan.currency,
           }
         : null,
@@ -509,7 +508,6 @@ export class HostListingsService {
           currency: 'MAD',
           base_price: 0,
           weekend_price: null,
-          cleaning_fee: 0,
           deposit_policy_text: null,
         }),
       );

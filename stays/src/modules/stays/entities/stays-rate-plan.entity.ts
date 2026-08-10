@@ -30,9 +30,6 @@ export class StaysRatePlan {
   @Column({ type: 'decimal', precision: 18, scale: 2, name: 'weekend_price', nullable: true })
   weekend_price: number | null;
 
-  @Column({ type: 'decimal', precision: 18, scale: 2, name: 'cleaning_fee', default: 0 })
-  cleaning_fee: number;
-
   @Column({ type: 'text', name: 'deposit_policy_text', nullable: true })
   deposit_policy_text: string | null;
 

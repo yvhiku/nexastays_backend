@@ -58,7 +58,6 @@ export class HostListingsService {
             weekend_price: l.rate_plan.weekend_price
               ? Number(l.rate_plan.weekend_price)
               : null,
-            cleaning_fee: Number(l.rate_plan.cleaning_fee || 0),
             currency: l.rate_plan.currency,
           }
         : null,
@@ -139,7 +138,6 @@ export class HostListingsService {
         currency: dto.rate_plan.currency ?? 'MAD',
         base_price: dto.rate_plan.base_price,
         weekend_price: dto.rate_plan.weekend_price ?? null,
-        cleaning_fee: dto.rate_plan.cleaning_fee ?? 0,
         deposit_policy_text: dto.rate_plan.deposit_policy_text ?? null,
       });
       await ratePlanRepo.save(ratePlan);
