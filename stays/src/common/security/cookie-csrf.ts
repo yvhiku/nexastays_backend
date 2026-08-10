@@ -2,6 +2,11 @@ import type { NextFunction, Request, Response } from 'express';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+/**
+ * Origin gate for cookie-bearing mutations (PROD-SEC-001).
+ * Stays protected APIs use Bearer — not ambient access cookies.
+ * This still guards refresh leftovers / legacy nexa_access if present.
+ */
 export function enforceCookieRequestOrigin(
   allowedOrigins: string[],
 ): (req: Request, res: Response, next: NextFunction) => void {

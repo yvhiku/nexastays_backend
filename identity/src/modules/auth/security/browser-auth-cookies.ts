@@ -1,10 +1,17 @@
 import type { Request, Response } from 'express';
 import { appConfig } from '../../../common/config/app.config';
 
+/**
+ * PROD-SEC-001 / ADR-005:
+ * - Access JWT is NOT stored in a cookie for browser clients (memory + Bearer only).
+ * - Refresh may use HttpOnly `nexa_refresh`.
+ * - `nexa_access` is only cleared for legacy sessions; it is never set for new logins.
+ */
 export const ACCESS_COOKIE = 'nexa_access';
 export const REFRESH_COOKIE = 'nexa_refresh';
 export const BROWSER_AUTH_HEADER = 'x-auth-transport';
 
+/** Clients use this when the refresh credential should be HttpOnly-set (web/dashboard). */
 export function isBrowserCookieRequest(req: Request): boolean {
   return req.headers[BROWSER_AUTH_HEADER] === 'cookie';
 }
@@ -38,15 +45,18 @@ function cookieOptions(maxAge: number) {
   };
 }
 
+/**
+ * Sets the refresh cookie only. Never issues ambient `nexa_access`.
+ * Clears any legacy access cookie so it cannot remain ambient.
+ */
 export function setBrowserAuthCookies(
   res: Response,
   tokens: { access_token: string; refresh_token?: string },
 ): void {
-  res.cookie(
-    ACCESS_COOKIE,
-    tokens.access_token,
-    cookieOptions(15 * 60 * 1000),
-  );
+  // Drop legacy ambient access cookie on every successful cookie-transport auth.
+  res.clearCookie(ACCESS_COOKIE, cookieOptions(0));
+  void tokens.access_token; // access stays in JSON body for in-memory Bearer use
+
   if (tokens.refresh_token) {
     res.cookie(
       REFRESH_COOKIE,
@@ -60,4 +70,15 @@ export function clearBrowserAuthCookies(res: Response): void {
   const options = cookieOptions(0);
   res.clearCookie(ACCESS_COOKIE, options);
   res.clearCookie(REFRESH_COOKIE, options);
+}
+
+/** Production cookie flag contract used by tests/docs (PROD-SEC-001). */
+export function getBrowserRefreshCookieSecurityFlags(
+  env: NodeJS.ProcessEnv = process.env,
+): { httpOnly: true; secure: boolean; sameSite: 'lax' } {
+  return {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  };
 }

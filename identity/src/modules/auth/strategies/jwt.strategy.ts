@@ -3,10 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { JwtKeysService } from '../../jwks/jwt-keys.service';
 import type { Request } from 'express';
-import {
-  ACCESS_COOKIE,
-  readCookie,
-} from '../security/browser-auth-cookies';
+import { extractBearerAccessToken } from '../security/bearer-access-token';
 import { getJwtAudience, getJwtIssuer } from '../../../common/security/jwt-claims';
 
 export interface JwtPayload {
@@ -33,8 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly jwtKeys: JwtKeysService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-        (request: Request) => readCookie(request, ACCESS_COOKIE) ?? null,
+        (request: Request) => extractBearerAccessToken(request),
       ]),
       ignoreExpiration: false,
       secretOrKey: jwtKeys.publicKey,

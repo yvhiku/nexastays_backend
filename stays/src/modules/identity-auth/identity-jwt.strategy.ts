@@ -4,19 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import jwksRsa from 'jwks-rsa';
 import type { Request } from 'express';
 import { getJwtAudience, getJwtIssuer } from '../../common/security/jwt-claims';
-
-function accessTokenFromCookie(request: Request): string | null {
-  const raw = request.headers.cookie;
-  if (!raw) return null;
-  for (const part of raw.split(';')) {
-    const separator = part.indexOf('=');
-    if (separator < 0) continue;
-    if (part.slice(0, separator).trim() === 'nexa_access') {
-      return decodeURIComponent(part.slice(separator + 1).trim());
-    }
-  }
-  return null;
-}
+import { extractBearerAccessToken } from './bearer-access-token';
 
 function jwksUri(): string {
   const base =
@@ -43,8 +31,7 @@ export class IdentityJwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor() {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-        accessTokenFromCookie,
+        (request: Request) => extractBearerAccessToken(request),
       ]),
       ignoreExpiration: false,
       algorithms: ['RS256'],

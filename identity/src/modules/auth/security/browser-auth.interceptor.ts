@@ -17,6 +17,13 @@ type TokenResponse = {
   [key: string]: unknown;
 };
 
+/**
+ * Cookie transport (X-Auth-Transport: cookie):
+ * - Set HttpOnly refresh cookie
+ * - Never set ambient access cookie (ADR-005 / PROD-SEC-001)
+ * - Strip refresh_token from JSON body (JS must not read it)
+ * - Leave access_token in JSON for in-memory Bearer use
+ */
 @Injectable()
 export class BrowserAuthInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
@@ -36,8 +43,6 @@ export class BrowserAuthInterceptor implements NestInterceptor {
               ? result.refresh_token
               : undefined,
         });
-        // The browser keeps the access token only in memory. The rotating
-        // refresh credential is never exposed to JavaScript.
         const { refresh_token: _refreshToken, ...safeResult } = result;
         return safeResult;
       }),

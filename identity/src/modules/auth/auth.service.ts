@@ -38,10 +38,6 @@ import {
 import { SmsService } from '../sms/sms.service';
 import { normalizePhoneOrThrow, tryNormalizePhoneNumber, phoneLookupCandidates } from '../../common/phone/phone-normalizer';
 import { KycProfile } from '../compliance/entities/kyc-profile.entity';
-import {
-  ACCESS_COOKIE,
-  readCookie,
-} from './security/browser-auth-cookies';
 
 export interface RefreshTokenContext {
   device_id?: string | null;
@@ -324,8 +320,8 @@ export class AuthService {
   }
 
   /**
-   * Optionally resolve the caller from Bearer or access cookie.
-   * Returns null when missing/invalid — never throws (for logout/idempotent paths).
+   * Optionally resolve the caller from Authorization Bearer only (PROD-SEC-001).
+   * Ambient access cookies are never accepted. Returns null when missing/invalid.
    */
   async resolveAccessPrincipal(
     req?: { headers?: Record<string, unknown> },
@@ -335,11 +331,6 @@ export class AuthService {
     let token: string | undefined;
     if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
       token = authHeader.slice('Bearer '.length).trim();
-    } else {
-      token = readCookie(
-        req as import('express').Request,
-        ACCESS_COOKIE,
-      );
     }
     if (!token) return null;
     try {
