@@ -133,6 +133,7 @@ sudo bash /opt/nexa/database/scripts/install-systemd-backup.sh --stage dogfood
 - GitHub Actions end-to-end deploy
 - Off-site object storage for production backups
 
-## STOP
+## Commits
 
-Remediation limited to B1–B8. No PROD-OPS-002/003 reopen, no CMI, no object-storage production work, no VPS connection.
+- backend: `fe87eb0` — Close VPS bootstrap safety blockers B1-B8 in deploy tooling.
+- database: `893165c` — Harden VPS backup install and database bootstrap for B2-B6.
