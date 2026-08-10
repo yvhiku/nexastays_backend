@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { AuthzModule } from '../authz/authz.module';
 import { User } from '../users/entities/user.entity';
 import { KycProfile } from '../compliance/entities/kyc-profile.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
@@ -33,6 +34,7 @@ import { IdentitySnapshotModule } from '../identity-snapshot/identity-snapshot.m
 @Module({
   imports: [
     AuthModule,
+    AuthzModule,
     AuditModule,
     DatabaseModule,
     UsersModule,

@@ -9,6 +9,7 @@ import { TrustedDevice } from '../../auth/entities/trusted-device.entity';
 import { RiskAlert } from '../entities/risk-alert.entity';
 import { AdminUsersQueryDto } from '../dto/admin-users.query.dto';
 import { AdminAuditService } from './admin-audit.service';
+import { AuthzVersionService } from '../../auth/authz-version.service';
 
 interface RequestUser {
   userId?: string;
@@ -31,6 +32,7 @@ export class AdminUsersService {
     @InjectRepository(RiskAlert)
     private readonly riskAlertRepository: Repository<RiskAlert>,
     private readonly auditService: AdminAuditService,
+    private readonly authzVersions: AuthzVersionService,
   ) {}
 
   private applyUsersListFilters(
@@ -318,6 +320,9 @@ export class AdminUsersService {
 
     user.status = status;
     await this.usersRepository.save(user);
+    if (status === 'FROZEN' || status === 'SUSPENDED' || status === 'BANNED') {
+      await this.authzVersions.bump(id);
+    }
 
     await this.auditService.logAction({
       action: 'USER_STATUS_UPDATED',
@@ -339,6 +344,8 @@ export class AdminUsersService {
 
     user.status = 'FROZEN';
     await this.usersRepository.save(user);
+    // SEC-003: invalidate outstanding ADMIN access JWTs via authz_version bump.
+    await this.authzVersions.bump(userId);
 
     const wallet = await this.walletsRepository.findOne({
       where: { user_id: userId },
@@ -417,8 +424,39 @@ export class AdminUsersService {
       .where('user_id = :userId', { userId })
       .andWhere('revoked_at IS NULL')
       .execute();
+    // SEC-003: bump authz_version so outstanding ADMIN access JWTs fail RolesGuard.
+    await this.authzVersions.bump(userId);
     await this.auditService.logAction({
       action: 'USER_FORCE_LOGOUT',
+      entityType: 'user',
+      entityId: userId,
+      userId,
+      adminUser,
+    });
+    return { success: true };
+  }
+
+  /** Demote ADMIN → CONSUMER and invalidate JWT privilege immediately (SEC-003). */
+  async demoteAdmin(userId: string, adminUser?: RequestUser) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.account_type !== 'ADMIN') {
+      throw new BadRequestException('User is not an administrator');
+    }
+    user.account_type = 'CONSUMER';
+    await this.usersRepository.save(user);
+    await this.authzVersions.bump(userId);
+    await this.refreshTokenRepository
+      .createQueryBuilder()
+      .update()
+      .set({ revoked_at: new Date() })
+      .where('user_id = :userId', { userId })
+      .andWhere('revoked_at IS NULL')
+      .execute();
+    await this.auditService.logAction({
+      action: 'ADMIN_DEMOTED',
       entityType: 'user',
       entityId: userId,
       userId,

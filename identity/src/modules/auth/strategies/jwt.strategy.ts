@@ -7,6 +7,7 @@ import {
   ACCESS_COOKIE,
   readCookie,
 } from '../security/browser-auth-cookies';
+import { getJwtAudience, getJwtIssuer } from '../../../common/security/jwt-claims';
 
 export interface JwtPayload {
   sub: string;
@@ -21,6 +22,10 @@ export interface JwtPayload {
   auth_method?: string;
   kyc_verified?: boolean;
   kyc_tier?: string;
+  /** SEC-003 admin authz version */
+  av?: number;
+  iss?: string;
+  aud?: string | string[];
 }
 
 @Injectable()
@@ -34,6 +39,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
       secretOrKey: jwtKeys.publicKey,
       algorithms: ['RS256'],
+      issuer: getJwtIssuer(),
+      audience: getJwtAudience(),
     });
   }
 
@@ -58,6 +65,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       phone_number: payload.phone_number,
       kyc_verified: payload.kyc_verified === true,
       kyc_tier: payload.kyc_tier,
+      authz_version: payload.av,
+      av: payload.av,
     };
   }
 }

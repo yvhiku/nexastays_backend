@@ -14,6 +14,7 @@ import { AuditModule } from '../audit/audit.module';
 import { DatabaseModule } from '../../common/database/database.module';
 import { CommonCacheModule } from '../../common/cache/cache.module';
 import { FraudEvent } from '../fraud/entities/fraud-event.entity';
+import { AuthzModule } from '../authz/authz.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { FraudEvent } from '../fraud/entities/fraud-event.entity';
       User,
     ]),
     AuditModule,
+    AuthzModule,
   ],
   controllers: [ComplianceController, ComplianceSarController],
   providers: [ComplianceService, SarService, OtpSessionResolverGuard],

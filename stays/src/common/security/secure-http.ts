@@ -1,6 +1,7 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
+import { resolveCorsAllowlist } from './cors-origins';
 
 /**
  * Production-safe HTTP surface: trust proxy, HSTS, optional HTTPS redirect.
@@ -49,26 +50,8 @@ export function applySecureHttp(app: NestExpressApplication): void {
   }
 }
 
-export function resolveCorsOrigin():
-  | boolean
-  | string[]
-  | ((
-      origin: string | undefined,
-      cb: (err: Error | null, allow?: boolean) => void,
-    ) => void) {
-  const isProd = process.env.NODE_ENV === 'production';
-  const raw = (process.env.CORS_ORIGINS || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  if (!isProd) {
-    return true;
-  }
-  if (raw.length === 0) {
-    throw new Error(
-      'CORS_ORIGINS must be set in production (comma-separated https origins).',
-    );
-  }
-  return raw;
+export function resolveCorsOrigin(): string[] {
+  // SEC-005: never reflect arbitrary Origin (no `origin: true` / `*`).
+  return resolveCorsAllowlist();
 }
+

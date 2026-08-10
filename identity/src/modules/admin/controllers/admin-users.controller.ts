@@ -84,6 +84,11 @@ export class AdminUsersController {
     return this.adminUsersService.forceLogoutUser(userId, req.user);
   }
 
+  @Post(':userId/demote-admin')
+  demoteAdmin(@Param('userId') userId: string, @Req() req: AdminRequest) {
+    return this.adminUsersService.demoteAdmin(userId, req.user);
+  }
+
   @Post(':userId/devices/:deviceId/untrust')
   untrustDevice(
     @Param('userId') userId: string,

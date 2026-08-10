@@ -15,6 +15,8 @@ import { createHttpTelemetryMiddleware, initOpenTelemetry } from '@nexa/telemetr
 import { applySecureHttp } from './common/security/secure-http';
 import { enforceCookieRequestOrigin } from './common/security/cookie-csrf';
 import { assertProductionSmsConfigured } from './modules/sms/sms-config';
+import { resolveCorsAllowlist } from './common/security/cors-origins';
+import { getJwtAudience, getJwtIssuer } from './common/security/jwt-claims';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-identity');
@@ -69,6 +71,9 @@ async function bootstrap() {
     }
     // SEC-002: production must never fall open to mock OTP SMS logging.
     assertProductionSmsConfigured();
+    // SEC-006: issuer/audience required in production.
+    void getJwtIssuer();
+    void getJwtAudience();
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -164,17 +169,10 @@ async function bootstrap() {
     SwaggerModule.setup(`${appConfig.apiPrefix}/docs`, app, document);
   }
 
-  const origins = appConfig.corsOrigins;
-  const allowOrigins = isProd
-    ? origins.length > 0
-      ? origins
-      : (() => {
-          throw new Error('CORS_ORIGINS must be set in production.');
-        })()
-    : true;
+  const origins = resolveCorsAllowlist();
   app.use(enforceCookieRequestOrigin(origins));
   app.enableCors({
-    origin: allowOrigins,
+    origin: origins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [

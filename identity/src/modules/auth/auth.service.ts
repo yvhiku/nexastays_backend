@@ -11,6 +11,12 @@ import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { appConfig } from '../../common/config/app.config';
+import {
+  getJwtAccessExpiresIn,
+  getJwtAdminExpiresIn,
+  getJwtAudience,
+  getJwtIssuer,
+} from '../../common/security/jwt-claims';
 import { User } from '../users/entities/user.entity';
 import { OtpCode } from './entities/otp-code.entity';
 import { OtpSession } from './entities/otp-session.entity';
@@ -150,6 +156,7 @@ export class AuthService {
   /**
    * Issue stateless identity JWT — auth/authorization only.
    * KYC/compliance data is served via GET /snapshots/me (cached), not embedded in tokens.
+   * SEC-006: iss/aud required. SEC-003: ADMIN tokens carry `av` + shorter TTL.
    */
   issueAccountScopedToken(
     accountId: string,
@@ -160,8 +167,11 @@ export class AuthService {
     profile?: {
       role?: string;
       roles?: string[];
+      authz_version?: number;
     },
   ): string {
+    const isAdmin = accountType === 'ADMIN' || profile?.role === 'ADMIN';
+    const authzVersion = Number(profile?.authz_version ?? 1);
     return this.jwtService.sign(
       {
         sub: accountId,
@@ -171,8 +181,13 @@ export class AuthService {
         auth_method: authMethod,
         role: profile?.role,
         roles: profile?.roles,
+        ...(isAdmin ? { av: authzVersion } : {}),
       },
-      { expiresIn: appConfig.jwtExpiresIn } as any,
+      {
+        expiresIn: isAdmin ? getJwtAdminExpiresIn() : getJwtAccessExpiresIn(),
+        issuer: getJwtIssuer(),
+        audience: getJwtAudience(),
+      } as any,
     );
   }
 
@@ -193,6 +208,7 @@ export class AuthService {
       kyc_updated_at: kyc?.reviewed_at ?? kyc?.last_webhook_received_at ?? null,
       role: user.account_type === 'ADMIN' ? 'ADMIN' : undefined,
       roles: user.account_type === 'ADMIN' ? ['ADMIN'] : undefined,
+      authz_version: Number(user.authz_version ?? 1),
     };
   }
 
@@ -428,6 +444,15 @@ export class AuthService {
     });
   }
 
+  /**
+   * SEC-004: constant-cost work shared by known/unknown login probes so
+   * response timing is not a reliable existence oracle.
+   */
+  async padLoginEnumerationWork(phoneNormalized: string): Promise<void> {
+    hmacSha256Hex(appConfig.otpPepper, `login_probe:${phoneNormalized}`);
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  }
+
   async findConsumerByPhone(phoneNumber: string): Promise<User | null> {
     const candidates = phoneLookupCandidates(phoneNumber);
     if (candidates.length === 0) return null;
@@ -612,7 +637,11 @@ export class AuthService {
         type: 'identity_session',
         unified_identity_id: identity.id,
       },
-      { expiresIn: `${otpSessionMinutes}m` },
+      {
+        expiresIn: `${otpSessionMinutes}m`,
+        issuer: getJwtIssuer(),
+        audience: getJwtAudience(),
+      },
     );
 
     const targetAccountId = (options as { account_id?: string })?.account_id;
@@ -1181,6 +1210,7 @@ export class AuthService {
       {
         role: 'ADMIN',
         roles: ['ADMIN'],
+        authz_version: Number(user.authz_version ?? 1),
       },
     );
 

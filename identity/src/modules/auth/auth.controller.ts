@@ -94,8 +94,11 @@ export class AuthController {
   @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: LoginDto, @Req() req: express.Request) {
+    // SEC-004: existence-neutral continue signal — never reveal whether the phone is registered.
     const phone = normalizePhoneOrThrow(body.phone_number);
     const user = await this.authService.findUserByPhone(phone);
+    // Same constant-cost pad for known and unknown phones (timing + public body).
+    await this.authService.padLoginEnumerationWork(phone);
     if (!user) {
       noteAuthFailure(req, { reason: 'USER_NOT_FOUND' });
       void this.securityEvents
@@ -105,15 +108,9 @@ export class AuthController {
           ip_address: getClientIp(req),
         })
         .catch(() => {});
-      throw new NotFoundException('User not found');
     }
-    // Never return pin_hash or other secrets — existence check only
-    return {
-      exists: true,
-      account_type: user.account_type,
-      kyc_status: user.kyc_status,
-      status: user.status,
-    };
+    // Same public shape for known and unknown phones. Clients proceed to OTP.
+    return { ok: true };
   }
 
   @Post('send-otp')

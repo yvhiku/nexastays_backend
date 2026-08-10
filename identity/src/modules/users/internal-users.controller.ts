@@ -20,6 +20,26 @@ import { UsersService } from './users.service';
 export class InternalUsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get(':userId/authz')
+  @ApiOperation({ summary: 'S2S: authz version for ADMIN role revocation checks' })
+  async authzState(
+    @Param('userId') userId: string,
+  ): Promise<{
+    authz_version: number;
+    status: string;
+    account_type: string;
+  }> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return {
+      authz_version: Number(user.authz_version ?? 1),
+      status: user.status,
+      account_type: user.account_type,
+    };
+  }
+
   @Get(':userId/profile-photo/exists')
   @ApiOperation({ summary: 'S2S: whether user has an uploaded profile photo' })
   async profilePhotoExists(@Param('userId') userId: string): Promise<{ hasPhoto: boolean }> {

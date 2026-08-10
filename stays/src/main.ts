@@ -17,6 +17,8 @@ import {
   resolveCorsOrigin,
 } from './common/security/secure-http';
 import { enforceCookieRequestOrigin } from './common/security/cookie-csrf';
+import { getJwtAudience, getJwtIssuer } from './common/security/jwt-claims';
+import { resolveNexaStage } from './common/security/cors-origins';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-stays');
@@ -55,6 +57,14 @@ async function bootstrap() {
         );
       }
     }
+    // SEC-006: issuer/audience required in production.
+    void getJwtIssuer();
+    void getJwtAudience();
+  }
+
+  // SEC-005: staging (and production) require explicit CORS allowlists.
+  if (resolveNexaStage() === 'staging' || resolveNexaStage() === 'production') {
+    void resolveCorsOrigin();
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -114,11 +124,7 @@ async function bootstrap() {
   }
 
   const corsOrigin = resolveCorsOrigin();
-  const cookieOrigins = (process.env.CORS_ORIGINS || '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-  app.use(enforceCookieRequestOrigin(cookieOrigins));
+  app.use(enforceCookieRequestOrigin(corsOrigin));
   app.enableCors({
     origin: corsOrigin,
     credentials: true,

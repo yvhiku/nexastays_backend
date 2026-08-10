@@ -20,6 +20,12 @@ import { OtpVerifyRateLimitGuard } from './guards/otp-verify-rate-limit.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtKeysService } from '../jwks/jwt-keys.service';
 import { appConfig } from '../../common/config/app.config';
+import {
+  getJwtAccessExpiresIn,
+  getJwtAdminExpiresIn,
+  getJwtAudience,
+  getJwtIssuer,
+} from '../../common/security/jwt-claims';
 import { UsersModule } from '../users/users.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuditLog } from '../audit/entities/audit-log.entity';
@@ -27,6 +33,7 @@ import { RiskAlert } from '../admin/entities/risk-alert.entity';
 import { KycProfile } from '../compliance/entities/kyc-profile.entity';
 import { RiskAuthMiddleware } from '../../common/middleware/risk_auth.middleware';
 import { SecurityEventsModule } from '../security-events/security-events.module';
+import { AuthzModule } from '../authz/authz.module';
 
 @Module({
   imports: [
@@ -50,14 +57,17 @@ import { SecurityEventsModule } from '../security-events/security-events.module'
         publicKey: keys.publicKey,
         signOptions: {
           algorithm: 'RS256',
-          expiresIn: appConfig.jwtExpiresIn,
+          expiresIn: getJwtAccessExpiresIn(),
           keyid: keys.kid,
+          issuer: getJwtIssuer(),
+          audience: getJwtAudience(),
         } as any,
       }),
     }),
     UsersModule,
     AuditModule,
     SecurityEventsModule,
+    AuthzModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -70,7 +80,7 @@ import { SecurityEventsModule } from '../security-events/security-events.module'
     OtpSendRateLimitGuard,
     OtpVerifyRateLimitGuard,
   ],
-  exports: [AuthService],
+  exports: [AuthService, AuthzModule],
 })
 export class AuthModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

@@ -99,6 +99,13 @@ export class User {
   @Column({ type: 'varchar', length: 20, default: 'ACTIVE' })
   status: string;
 
+  /**
+   * SEC-003: bumped on admin privilege revocation, freeze, or force-logout.
+   * Access JWTs for ADMIN include claim `av` matching this value.
+   */
+  @Column({ type: 'int', name: 'authz_version', default: 1 })
+  authz_version: number;
+
   @Column({ type: 'int', default: 0 })
   risk_score: number;
 
