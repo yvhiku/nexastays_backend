@@ -11,6 +11,13 @@ export type FeeRates = {
   total_commission_percent: number;
 };
 
+export type FeeBreakdown = {
+  guestFee: number;
+  hostFee: number;
+  totalPaid: number;
+  payoutAmount: number;
+};
+
 function envPct(name: string, fallback: number): number {
   const raw = process.env[name];
   if (raw == null || raw === '') return fallback;
@@ -18,12 +25,22 @@ function envPct(name: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function envTtlMs(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw == null || raw === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
 const DEFAULT_GUEST = envPct('STAYS_GUEST_FEE_PCT', 0.05);
 const DEFAULT_HOST = envPct('STAYS_HOST_FEE_PCT', 0.05);
+/** Display/API cache TTL. Booking money snapshots always read the DB. */
+const FEE_CACHE_TTL_MS = envTtlMs('STAYS_FEE_CACHE_TTL_MS', 30_000);
 
 @Injectable()
 export class PlatformSettingsService implements OnModuleInit {
   private cached: FeeRates | null = null;
+  private cachedAtMs = 0;
 
   constructor(
     @InjectRepository(StaysPlatformSettings)
@@ -48,6 +65,27 @@ export class PlatformSettingsService implements OnModuleInit {
     };
   }
 
+  private feesFromRates(
+    subtotal: number,
+    guest_fee_pct: number,
+    host_fee_pct: number,
+  ): FeeBreakdown {
+    const guestFee = Math.round(subtotal * guest_fee_pct * 100) / 100;
+    const hostFee = Math.round(subtotal * host_fee_pct * 100) / 100;
+    return {
+      guestFee,
+      hostFee,
+      totalPaid: subtotal + guestFee,
+      payoutAmount: subtotal - hostFee,
+    };
+  }
+
+  private isCacheFresh(): boolean {
+    return (
+      this.cached != null && Date.now() - this.cachedAtMs < FEE_CACHE_TTL_MS
+    );
+  }
+
   private async ensureRow(): Promise<void> {
     const existing = await this.settingsRepo.findOne({ where: { id: 1 } });
     if (existing) return;
@@ -64,34 +102,44 @@ export class PlatformSettingsService implements OnModuleInit {
     await this.ensureRow();
     const row = await this.settingsRepo.findOneOrFail({ where: { id: 1 } });
     this.cached = this.toRates(row.guest_fee_pct, row.host_fee_pct);
+    this.cachedAtMs = Date.now();
     return this.cached;
   }
 
+  /**
+   * Sync convenience for display / unit math.
+   * May return briefly stale rates across pods until TTL elapses; never use for
+   * booking money snapshots (use calculateFeesAuthoritative).
+   */
   getFeeRates(): FeeRates {
+    if (this.isCacheFresh()) return this.cached!;
     if (this.cached) return this.cached;
     return this.toRates(DEFAULT_GUEST, DEFAULT_HOST);
   }
 
+  /** Display endpoints: refresh from DB when TTL expired. */
   async getFeeRatesAsync(): Promise<FeeRates> {
-    if (this.cached) return this.cached;
+    if (this.isCacheFresh()) return this.cached!;
     return this.refreshCache();
   }
 
-  calculateFees(subtotal: number): {
-    guestFee: number;
-    hostFee: number;
-    totalPaid: number;
-    payoutAmount: number;
-  } {
+  /**
+   * Authoritative rates for booking creation — always load from DB so every
+   * pod/instance sees admin updates immediately. Snapshot freezes on the booking.
+   */
+  async getAuthoritativeFeeRates(): Promise<FeeRates> {
+    return this.refreshCache();
+  }
+
+  calculateFees(subtotal: number): FeeBreakdown {
     const { guest_fee_pct, host_fee_pct } = this.getFeeRates();
-    const guestFee = Math.round(subtotal * guest_fee_pct * 100) / 100;
-    const hostFee = Math.round(subtotal * host_fee_pct * 100) / 100;
-    return {
-      guestFee,
-      hostFee,
-      totalPaid: subtotal + guestFee,
-      payoutAmount: subtotal - hostFee,
-    };
+    return this.feesFromRates(subtotal, guest_fee_pct, host_fee_pct);
+  }
+
+  async calculateFeesAuthoritative(subtotal: number): Promise<FeeBreakdown> {
+    const { guest_fee_pct, host_fee_pct } =
+      await this.getAuthoritativeFeeRates();
+    return this.feesFromRates(subtotal, guest_fee_pct, host_fee_pct);
   }
 
   async updateFeeRates(

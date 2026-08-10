@@ -9,6 +9,7 @@ import { DataSource, Repository } from 'typeorm';
 import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysLedgerEntry } from '../entities/stays-ledger-entry.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
+import { StaysPaymentIntent } from '../entities/stays-payment-intent.entity';
 import { StaysAuditService } from './stays-audit.service';
 import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
@@ -148,6 +149,13 @@ export class StaysCancellationService {
           }),
         );
       }
+
+      // Stale PENDING intents must not remain payable after cancel.
+      const intentRepo = manager.getRepository(StaysPaymentIntent);
+      await intentRepo.update(
+        { booking_id: bookingId, status: 'PENDING' },
+        { status: 'CANCELLED', updated_at: new Date() },
+      );
 
       await this.auditService.log({
         actorUserId: userId,

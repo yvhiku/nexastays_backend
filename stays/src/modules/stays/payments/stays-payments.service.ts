@@ -98,6 +98,10 @@ export class StaysPaymentsService {
         { id: booking.id, status: In(PRE_CONFIRMATION_BOOKING_STATUSES) },
         { status: 'EXPIRED', updated_at: new Date() },
       );
+      await this.intentRepo.update(
+        { booking_id: booking.id, status: 'PENDING' },
+        { status: 'CANCELLED', updated_at: new Date() },
+      );
       throw new ConflictException(
         'Selected dates are no longer available. Please try different dates.',
       );

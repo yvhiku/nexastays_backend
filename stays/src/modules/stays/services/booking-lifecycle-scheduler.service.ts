@@ -5,6 +5,7 @@ import { Repository, LessThan, In } from 'typeorm';
 import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysListingReview } from '../entities/stays-listing-review.entity';
+import { StaysPaymentIntent } from '../entities/stays-payment-intent.entity';
 import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import { MessagingStateService } from '../../messaging/messaging-state.service';
@@ -37,6 +38,8 @@ export class BookingLifecycleSchedulerService {
     private readonly bookingRepo: Repository<StaysBooking>,
     @InjectRepository(StaysListingReview)
     private readonly reviewRepo: Repository<StaysListingReview>,
+    @InjectRepository(StaysPaymentIntent)
+    private readonly intentRepo: Repository<StaysPaymentIntent>,
     private readonly lifecycleService: BookingLifecycleService,
     private readonly domainEvents: DomainEventsService,
     private readonly messagingState: MessagingStateService,
@@ -266,6 +269,11 @@ export class BookingLifecycleSchedulerService {
         if (!expireUpdate.affected) {
           continue;
         }
+
+        await this.intentRepo.update(
+          { booking_id: booking.id, status: 'PENDING' },
+          { status: 'CANCELLED', updated_at: new Date() },
+        );
 
         void this.domainEvents.publish(EVENTS.PAYMENT_EXPIRED, 'stays', {
           bookingId: booking.id,

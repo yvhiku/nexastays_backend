@@ -1,29 +1,47 @@
 import { BadRequestException } from '@nestjs/common';
 
-/** Parse YYYY-MM-DD as a local calendar date (avoids UTC midnight drift). */
-export function parseBookingDateOnly(value: string): Date {
+type Ymd = { year: number; month: number; day: number };
+
+/** Parse YYYY-MM-DD components (also accepts trailing time suffixes). */
+export function parseBookingYmd(value: string): Ymd {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
   if (!match) {
     throw new BadRequestException('Invalid date format. Use YYYY-MM-DD.');
   }
   const year = Number(match[1]);
-  const month = Number(match[2]) - 1;
+  const month = Number(match[2]);
   const day = Number(match[3]);
-  const d = new Date(year, month, day);
+  // Validate calendar date via UTC construction (DST-independent).
+  const probe = new Date(Date.UTC(year, month - 1, day));
   if (
-    d.getFullYear() !== year ||
-    d.getMonth() !== month ||
-    d.getDate() !== day
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
   ) {
     throw new BadRequestException('Invalid date.');
   }
-  return d;
+  return { year, month, day };
 }
 
+/** Parse YYYY-MM-DD as a local calendar date for DB date columns. */
+export function parseBookingDateOnly(value: string): Date {
+  const { year, month, day } = parseBookingYmd(value);
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Authoritative stay length: check-in inclusive, check-out exclusive.
+ * Uses UTC calendar midnights so DST cannot change night counts.
+ *
+ * Examples: 2026-08-10 → 2026-08-11 = 1; 2026-08-10 → 2026-08-12 = 2.
+ */
 export function bookingNightsBetween(checkin: string, checkout: string): number {
-  const a = parseBookingDateOnly(checkin).getTime();
-  const b = parseBookingDateOnly(checkout).getTime();
-  return Math.round((b - a) / (1000 * 60 * 60 * 24));
+  const a = parseBookingYmd(checkin);
+  const b = parseBookingYmd(checkout);
+  const ms =
+    Date.UTC(b.year, b.month - 1, b.day) -
+    Date.UTC(a.year, a.month - 1, a.day);
+  return Math.trunc(ms / 86_400_000);
 }
 
 export function assertMinOneNightStay(checkin: string, checkout: string): void {

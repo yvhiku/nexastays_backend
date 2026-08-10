@@ -17,6 +17,7 @@ import { StaysAvailabilityBlock } from './entities/stays-availability-block.enti
 import { CreateBookingDto } from './dto/create-booking.dto';
 import {
   assertMinOneNightStay,
+  bookingNightsBetween,
   parseBookingDateOnly,
 } from './utils/booking-date.util';
 import { allocateBookingReference } from './utils/booking-reference.util';
@@ -588,9 +589,8 @@ export class StaysService {
           );
         }
 
-        const nights = Math.ceil(
-          (checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24),
-        );
+        // Calendar nights only — see bookingNightsBetween (DST-safe, UTC YMD).
+        const nights = bookingNightsBetween(dto.checkin_date, dto.checkout_date);
         const ratePlan = listing.rate_plan;
         if (!ratePlan) {
           throw new BadRequestException('Listing has no pricing configured');
@@ -598,8 +598,9 @@ export class StaysService {
 
         const basePrice = Number(ratePlan.base_price);
         const subtotal = basePrice * nights;
+        // Authoritative DB fee rates — booking snapshot freezes afterwards.
         const { guestFee, hostFee, totalPaid, payoutAmount } =
-          this.platformSettings.calculateFees(subtotal);
+          await this.platformSettings.calculateFeesAuthoritative(subtotal);
 
         const bookingReference = await allocateBookingReference(
           manager,

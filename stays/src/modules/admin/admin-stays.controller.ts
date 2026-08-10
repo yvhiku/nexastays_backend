@@ -53,12 +53,12 @@ export class AdminStaysController {
   ) {}
 
   @Get('settings/fees')
-  getFeeSettings() {
-    return this.platformSettings.getFeeRates();
+  async getFeeSettings() {
+    return this.platformSettings.getFeeRatesAsync();
   }
 
   @Patch('settings/fees')
-  updateFeeSettings(
+  async updateFeeSettings(
     @Body() body: UpdateFeeSettingsDto,
     @CurrentUser() user: { userId: string },
   ) {

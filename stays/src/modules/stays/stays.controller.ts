@@ -118,8 +118,8 @@ export class StaysController {
   @Get('config/fees')
   @Public()
   @ApiOperation({ summary: 'Platform guest/host service fee rates' })
-  getFeeConfig() {
-    return this.platformSettings.getFeeRates();
+  async getFeeConfig() {
+    return this.platformSettings.getFeeRatesAsync();
   }
 
   /**

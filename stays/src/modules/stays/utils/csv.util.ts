@@ -1,3 +1,5 @@
+import { bookingNightsBetween } from './booking-date.util';
+
 export function escapeCsv(value: unknown): string {
   if (value == null) return '';
   const stringValue = String(value);
@@ -53,24 +55,23 @@ function formatUtcDate(d: Date): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/** Same rule as bookingNightsBetween; accepts Date values via UTC calendar day. */
 export function bookingNights(
   checkin: Date | string,
   checkout: Date | string,
 ): number {
-  const a = typeof checkin === 'string' ? parseDateOnly(checkin) : startOfUtcDay(checkin);
-  const b =
-    typeof checkout === 'string' ? parseDateOnly(checkout) : startOfUtcDay(checkout);
-  if (!a || !b) return 0;
-  const ms = b.getTime() - a.getTime();
-  return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
+  const a = typeof checkin === 'string' ? checkin : formatUtcYmd(checkin);
+  const b = typeof checkout === 'string' ? checkout : formatUtcYmd(checkout);
+  try {
+    return Math.max(0, bookingNightsBetween(a, b));
+  } catch {
+    return 0;
+  }
 }
 
-function parseDateOnly(value: string): Date | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  if (!m) return null;
-  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-}
-
-function startOfUtcDay(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+function formatUtcYmd(d: Date): string {
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }

@@ -5,6 +5,7 @@ import { StaysCancellationService } from './stays-cancellation.service';
 import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysLedgerEntry } from '../entities/stays-ledger-entry.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
+import { StaysPaymentIntent } from '../entities/stays-payment-intent.entity';
 import { StaysAuditService } from './stays-audit.service';
 import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { MessagingStateService } from '../../messaging/messaging-state.service';
@@ -12,6 +13,7 @@ import { MessagingStateService } from '../../messaging/messaging-state.service';
 describe('StaysCancellationService', () => {
   let service: StaysCancellationService;
   let ledgerRepo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock };
+  let intentRepo: { update: jest.Mock };
   let bookingRepo: {
     findOne: jest.Mock;
     update: jest.Mock;
@@ -82,6 +84,9 @@ describe('StaysCancellationService', () => {
       save: jest.fn(),
       findOne: jest.fn().mockResolvedValue(null),
     };
+    intentRepo = {
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
     bookingRepo = {
       findOne: jest.fn(),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
@@ -107,6 +112,9 @@ describe('StaysCancellationService', () => {
               };
               ledgerRepo.create.mockImplementation((d: object) => ({ ...d }));
               return repo;
+            }
+            if (entity === StaysPaymentIntent) {
+              return intentRepo;
             }
             return {};
           }),
@@ -327,6 +335,10 @@ describe('StaysCancellationService', () => {
     expect(result.status).toBe('CANCELLED_BY_GUEST');
     expect(result.refund_amount).toBe(0);
     expect(ledgerRepo.save).not.toHaveBeenCalled();
+    expect(intentRepo.update).toHaveBeenCalledWith(
+      { booking_id: 'booking-1', status: 'PENDING' },
+      expect.objectContaining({ status: 'CANCELLED' }),
+    );
   });
 
   it('Test 2 — INITIATED unpaid cancel creates no REFUND ledger', async () => {
