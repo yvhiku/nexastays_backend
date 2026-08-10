@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { StaysPaymentIntent } from '../entities/stays-payment-intent.entity';
 import { StaysLedgerEntry } from '../entities/stays-ledger-entry.entity';
 import { StaysBooking } from '../entities/stays-booking.entity';
@@ -21,6 +21,7 @@ import type {
 } from './payment-confirmation.types';
 import { lockIntentAmount, roundMoney } from '../security/financial-integrity';
 import { ConversationProvisionService } from '../../messaging/conversation-provision.service';
+import { PRE_CONFIRMATION_BOOKING_STATUSES } from '../services/booking-lifecycle.service';
 
 const NON_PAYABLE_BOOKING_STATUSES = new Set([
   'EXPIRED',
@@ -94,7 +95,7 @@ export class StaysPaymentsService {
     );
     if (!available) {
       await this.bookingRepo.update(
-        { id: booking.id },
+        { id: booking.id, status: In(PRE_CONFIRMATION_BOOKING_STATUSES) },
         { status: 'EXPIRED', updated_at: new Date() },
       );
       throw new ConflictException(
@@ -348,14 +349,25 @@ export class StaysPaymentsService {
         return 'ALREADY_PROCESSED';
       }
 
-      const booking = await bookingRepo.findOne({
-        where: { id: lockedIntent.booking_id },
-        relations: ['listing'],
-      });
+      const lockedBooking = await bookingRepo
+        .createQueryBuilder('b')
+        .setLock('pessimistic_write')
+        .leftJoinAndSelect('b.listing', 'listing')
+        .where('b.id = :id', { id: lockedIntent.booking_id })
+        .getOne();
 
-      if (!booking || booking.status !== 'PAYMENT_PENDING') {
+      if (!lockedBooking) {
         return 'BOOKING_NOT_PAYABLE';
       }
+
+      if (lockedBooking.status !== 'PAYMENT_PENDING') {
+        if (CONFIRMED_BOOKING_STATUSES.has(lockedBooking.status)) {
+          return 'ALREADY_PROCESSED';
+        }
+        return 'BOOKING_NOT_PAYABLE';
+      }
+
+      const booking = lockedBooking;
 
       // Serialize confirms for the same listing, then re-check overlap
       await listingRepo
@@ -380,7 +392,7 @@ export class StaysPaymentsService {
           { status: 'FAILED', updated_at: new Date() },
         );
         await bookingRepo.update(
-          { id: booking.id },
+          { id: booking.id, status: 'PAYMENT_PENDING' },
           { status: 'EXPIRED', updated_at: new Date() },
         );
         await ledgerRepo.save(
@@ -423,14 +435,18 @@ export class StaysPaymentsService {
         { status: 'SUCCEEDED', updated_at: new Date() },
       );
 
-      await bookingRepo.update(
-        { id: booking.id },
+      const confirmUpdate = await bookingRepo.update(
+        { id: booking.id, status: 'PAYMENT_PENDING' },
         {
           status: 'CONFIRMED',
           confirmed_at: new Date(),
           paid_at: new Date(),
+          updated_at: new Date(),
         },
       );
+      if (!confirmUpdate.affected) {
+        return 'BOOKING_NOT_PAYABLE';
+      }
 
       await ledgerRepo.save([
         ledgerRepo.create({

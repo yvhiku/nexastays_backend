@@ -31,6 +31,12 @@ export const PAYMENT_PENDING_TTL_MINUTES = Number(
   process.env.STAYS_PAYMENT_PENDING_TTL_MINUTES ?? 60,
 );
 
+/** Statuses eligible for payment hold expiration (pre-confirmation only). */
+export const PRE_CONFIRMATION_BOOKING_STATUSES: StaysBooking['status'][] = [
+  'PAYMENT_PENDING',
+  'INITIATED',
+];
+
 /** Days after checkout when guests may still file a complaint. */
 export const COMPLAINT_WINDOW_DAYS = Number(
   process.env.STAYS_COMPLAINT_WINDOW_DAYS ?? 14,

@@ -7,11 +7,16 @@ import { StaysLedgerEntry } from '../entities/stays-ledger-entry.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysAuditService } from './stays-audit.service';
 import { DomainEventsService } from '../../../common/events/domain-events.service';
+import { MessagingStateService } from '../../messaging/messaging-state.service';
 
 describe('StaysCancellationService', () => {
   let service: StaysCancellationService;
   let ledgerRepo: { create: jest.Mock; save: jest.Mock };
-  let bookingRepo: { findOne: jest.Mock; update: jest.Mock };
+  let bookingRepo: {
+    findOne: jest.Mock;
+    update: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
 
   const mockBooking = (overrides?: Partial<{
     id: string;
@@ -41,15 +46,35 @@ describe('StaysCancellationService', () => {
     ...overrides,
   });
 
+  function mockLockedBooking(booking: ReturnType<typeof mockBooking>) {
+    bookingRepo.createQueryBuilder.mockReturnValue({
+      setLock: () => ({
+        where: () => ({
+          getOne: jest.fn().mockResolvedValue(booking),
+        }),
+      }),
+    });
+  }
+
   beforeEach(async () => {
     ledgerRepo = { create: jest.fn(), save: jest.fn() };
-    bookingRepo = { findOne: jest.fn(), update: jest.fn() };
+    bookingRepo = {
+      findOne: jest.fn(),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      createQueryBuilder: jest.fn(),
+    };
 
     const mockDataSource = {
       transaction: jest.fn((cb) => {
         const manager = {
           getRepository: jest.fn((entity: unknown) => {
-            if (entity === StaysBooking) return { ...bookingRepo, update: bookingRepo.update };
+            if (entity === StaysBooking) {
+              return {
+                ...bookingRepo,
+                update: bookingRepo.update,
+                createQueryBuilder: bookingRepo.createQueryBuilder,
+              };
+            }
             if (entity === StaysLedgerEntry) {
               const repo = { create: ledgerRepo.create, save: ledgerRepo.save };
               ledgerRepo.create.mockImplementation((d: object) => ({ ...d }));
@@ -77,6 +102,10 @@ describe('StaysCancellationService', () => {
           provide: DomainEventsService,
           useValue: { publish: jest.fn().mockResolvedValue(undefined) },
         },
+        {
+          provide: MessagingStateService,
+          useValue: { syncFromBooking: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 
@@ -89,6 +118,14 @@ describe('StaysCancellationService', () => {
     const checkinStr = fiveDaysLater.toISOString().split('T')[0];
 
     bookingRepo.findOne.mockResolvedValue(
+      mockBooking({
+        checkin_date: checkinStr,
+        total_subtotal: '1000',
+        guest_fee: '20',
+        listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'MODERATE' } },
+      }),
+    );
+    mockLockedBooking(
       mockBooking({
         checkin_date: checkinStr,
         total_subtotal: '1000',
@@ -111,6 +148,14 @@ describe('StaysCancellationService', () => {
     const checkinStr = twoDaysLater.toISOString().split('T')[0];
 
     bookingRepo.findOne.mockResolvedValue(
+      mockBooking({
+        checkin_date: checkinStr,
+        total_subtotal: '1000',
+        guest_fee: '20',
+        listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'MODERATE' } },
+      }),
+    );
+    mockLockedBooking(
       mockBooking({
         checkin_date: checkinStr,
         total_subtotal: '1000',
@@ -141,6 +186,14 @@ describe('StaysCancellationService', () => {
         listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'MODERATE' } },
       }),
     );
+    mockLockedBooking(
+      mockBooking({
+        checkin_date: checkinStr,
+        total_subtotal: '1000',
+        guest_fee: '20',
+        listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'MODERATE' } },
+      }),
+    );
 
     await service.cancel('booking-1', 'guest-1', 'guest', undefined, {});
 
@@ -153,6 +206,14 @@ describe('StaysCancellationService', () => {
     const checkinStr = threeDaysLater.toISOString().split('T')[0];
 
     bookingRepo.findOne.mockResolvedValue(
+      mockBooking({
+        checkin_date: checkinStr,
+        total_subtotal: '500',
+        guest_fee: '10',
+        listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'FLEXIBLE' } },
+      }),
+    );
+    mockLockedBooking(
       mockBooking({
         checkin_date: checkinStr,
         total_subtotal: '500',
@@ -175,6 +236,14 @@ describe('StaysCancellationService', () => {
     const checkinStr = tenDaysLater.toISOString().split('T')[0];
 
     bookingRepo.findOne.mockResolvedValue(
+      mockBooking({
+        checkin_date: checkinStr,
+        total_subtotal: '1000',
+        guest_fee: '20',
+        listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'STRICT' } },
+      }),
+    );
+    mockLockedBooking(
       mockBooking({
         checkin_date: checkinStr,
         total_subtotal: '1000',
@@ -209,5 +278,48 @@ describe('StaysCancellationService', () => {
     await expect(
       service.cancel('booking-1', 'host-1', 'guest', undefined, {}),
     ).rejects.toThrow(/Only the guest can cancel as guest/);
+  });
+
+  it('Test 5 — CONFIRMED booking cancellation remains allowed with refund rules', async () => {
+    const booking = mockBooking({ status: 'CONFIRMED' });
+    bookingRepo.findOne
+      .mockResolvedValueOnce(booking)
+      .mockResolvedValueOnce({ ...booking, status: 'CANCELLED_BY_GUEST' });
+    mockLockedBooking(booking);
+
+    const result = await service.cancel('booking-1', 'guest-1', 'guest', undefined, {});
+
+    expect(bookingRepo.update).toHaveBeenCalledWith(
+      { id: 'booking-1', status: 'CONFIRMED' },
+      expect.objectContaining({ status: 'CANCELLED_BY_GUEST' }),
+    );
+    expect(result.status).toBe('CANCELLED_BY_GUEST');
+  });
+
+  it('Test 8 — guarded cancel update uses locked status and fails when row no longer matches', async () => {
+    const booking = mockBooking({ status: 'CONFIRMED' });
+    bookingRepo.findOne.mockResolvedValue(booking);
+    mockLockedBooking(booking);
+    bookingRepo.update.mockResolvedValueOnce({ affected: 0 });
+
+    await expect(
+      service.cancel('booking-1', 'guest-1', 'guest', undefined, {}),
+    ).rejects.toThrow(/status changed concurrently/i);
+  });
+
+  it('PAYMENT_PENDING booking can still be cancelled before payment', async () => {
+    const booking = mockBooking({ status: 'PAYMENT_PENDING', total_subtotal: '500', guest_fee: '10' });
+    bookingRepo.findOne
+      .mockResolvedValueOnce(booking)
+      .mockResolvedValueOnce({ ...booking, status: 'CANCELLED_BY_GUEST' });
+    mockLockedBooking(booking);
+
+    const result = await service.cancel('booking-1', 'guest-1', 'guest', undefined, {});
+
+    expect(bookingRepo.update).toHaveBeenCalledWith(
+      { id: 'booking-1', status: 'PAYMENT_PENDING' },
+      expect.objectContaining({ status: 'CANCELLED_BY_GUEST' }),
+    );
+    expect(result.status).toBe('CANCELLED_BY_GUEST');
   });
 });

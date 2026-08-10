@@ -11,6 +11,7 @@ import { MessagingStateService } from '../../messaging/messaging-state.service';
 import {
   BookingLifecycleService,
   PAYMENT_PENDING_TTL_MINUTES,
+  PRE_CONFIRMATION_BOOKING_STATUSES,
 } from './booking-lifecycle.service';
 
 function parseCheckoutDateTime(
@@ -258,7 +259,13 @@ export class BookingLifecycleSchedulerService {
 
     for (const booking of expired) {
       try {
-        await this.bookingRepo.update({ id: booking.id }, { status: 'EXPIRED' });
+        const expireUpdate = await this.bookingRepo.update(
+          { id: booking.id, status: In(PRE_CONFIRMATION_BOOKING_STATUSES) },
+          { status: 'EXPIRED', updated_at: new Date() },
+        );
+        if (!expireUpdate.affected) {
+          continue;
+        }
 
         void this.domainEvents.publish(EVENTS.PAYMENT_EXPIRED, 'stays', {
           bookingId: booking.id,

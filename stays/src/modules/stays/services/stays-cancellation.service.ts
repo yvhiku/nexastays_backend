@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -84,7 +85,29 @@ export class StaysCancellationService {
       const bookingRepo = manager.getRepository(StaysBooking);
       const ledgerRepo = manager.getRepository(StaysLedgerEntry);
 
-      await bookingRepo.update({ id: bookingId }, { status });
+      const lockedBooking = await bookingRepo
+        .createQueryBuilder('b')
+        .setLock('pessimistic_write')
+        .where('b.id = :id', { id: bookingId })
+        .getOne();
+
+      if (!lockedBooking) {
+        throw new NotFoundException('Booking not found');
+      }
+
+      if (nonCancellable.includes(lockedBooking.status)) {
+        throw new BadRequestException(
+          `Cannot cancel booking in status ${lockedBooking.status}`,
+        );
+      }
+
+      const cancelUpdate = await bookingRepo.update(
+        { id: bookingId, status: lockedBooking.status },
+        { status, updated_at: new Date() },
+      );
+      if (!cancelUpdate.affected) {
+        throw new ConflictException('Booking status changed concurrently');
+      }
 
       if (refundAmount > 0) {
         await ledgerRepo.save(

@@ -69,6 +69,7 @@ function buildTransactionMock(state: {
   intentUpdate: jest.Mock;
   bookingUpdate: jest.Mock;
 }) {
+  state.bookingUpdate.mockResolvedValue({ affected: 1 });
   return jest.fn(async (cb: (manager: unknown) => Promise<unknown>) => {
     const manager = {
       getRepository: (entity: unknown) => {
@@ -93,7 +94,17 @@ function buildTransactionMock(state: {
         }
         if (entity === StaysBooking) {
           return {
-            findOne: jest.fn().mockResolvedValue({ ...state.booking, listing: { id: LISTING_ID } }),
+            createQueryBuilder: () => ({
+              setLock: () => ({
+                leftJoinAndSelect: () => ({
+                  where: () => ({
+                    getOne: jest
+                      .fn()
+                      .mockResolvedValue({ ...state.booking, listing: { id: LISTING_ID } }),
+                  }),
+                }),
+              }),
+            }),
             update: state.bookingUpdate,
           };
         }
@@ -181,7 +192,7 @@ describe('Mock payment confirm (authenticated)', () => {
       expect.objectContaining({ status: 'SUCCEEDED' }),
     );
     expect(bookingUpdate).toHaveBeenCalledWith(
-      { id: BOOKING_ID },
+      { id: BOOKING_ID, status: 'PAYMENT_PENDING' },
       expect.objectContaining({ status: 'CONFIRMED' }),
     );
     expect(ledgerSave).toHaveBeenCalledTimes(1);
