@@ -216,7 +216,7 @@ SEC-008 is **defense-in-depth** (registration `identity_session` JWT in `session
 | ID | Finding | Severity | Status | Launch impact |
 |----|---------|----------|--------|---------------|
 | SEC-008 | Registration binder JWT in `sessionStorage` | Low (Med under XSS) | OPEN | Dogfood OK; public P3 |
-| SEC-009 | Full phone in registration query URL | Medium | OPEN | Fix before wide public |
+| SEC-009 | Full phone in registration query URL | Medium | **CLOSED** (repo; live NOT VERIFIED) | Code fix landed |
 | SEC-010 | Dashboard missing CSP entirely | Medium–High | **CLOSED** (repo; live headers NOT VERIFIED) | Admin prod hardening addressed in code |
 | SEC-011 | Mobile OTP/phone residue after logout | Medium | OPEN | Fix for shared-device prod |
 | SEC-012 | AccountTypes duplication / dead Stays guard | Low | OPEN | Correctness cleanup |
