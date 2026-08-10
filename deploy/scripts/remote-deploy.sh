@@ -24,6 +24,7 @@ get_val() {
 cd "$DEPLOY_DIR"
 
 bash "$SCRIPT_DIR/check-env.sh" "$ENV_FILE"
+bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_STARTED P3 '{}'
 
 export IMAGE_TAG
 export IMAGE_REGISTRY="$(get_val IMAGE_REGISTRY)"
@@ -46,16 +47,24 @@ fi
 
 if [[ "$SKIP_MIGRATE" != "1" ]]; then
   echo "=== Migrations (failure stops deploy) ==="
-  # URLs read from host environment (set by operator/systemd/ssh wrapper) — not echoed
+  bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_MIGRATION_STARTED P3 '{}'
+  bash "$SCRIPT_DIR/emit-obs-event.sh" MIGRATION_STARTED P3 '{}'
   if [[ -z "${IDENTITY_DATABASE_URL:-}" || -z "${STAYS_DATABASE_URL:-}" ]]; then
     echo "IDENTITY_DATABASE_URL and STAYS_DATABASE_URL must be exported in the deploy shell (not printed)." >&2
     exit 1
   fi
-  bash "$DATABASE_REPO_PATH/scripts/migrate-remote.sh"
+  if bash "$DATABASE_REPO_PATH/scripts/migrate-remote.sh"; then
+    bash "$SCRIPT_DIR/emit-obs-event.sh" MIGRATION_SUCCEEDED P3 '{}'
+    bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_MIGRATION_SUCCEEDED P3 '{}'
+  else
+    bash "$SCRIPT_DIR/emit-obs-event.sh" MIGRATION_FAILED P1 '{}' || true
+    exit 1
+  fi
 else
   echo "SKIP_MIGRATE=1 — migrations skipped (emergency only)"
 fi
 
+bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_STARTED_APPLICATION P3 '{}'
 echo "=== Pull + start (${IMAGE_REGISTRY}/*:${IMAGE_TAG}) ==="
 docker compose -f docker-compose.release.yml --env-file "$ENV_FILE" pull
 docker compose -f docker-compose.release.yml --env-file "$ENV_FILE" up -d
@@ -72,6 +81,7 @@ for _ in $(seq 1 60); do
   fi
   if [[ "$id_ok" == "1" && "$st_ok" == "1" ]]; then
     echo "Ready."
+    bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_SUCCEEDED P3 '{}'
     bash "$SCRIPT_DIR/record-deployment.sh" "$ENV_FILE" "success"
     exit 0
   fi
@@ -79,5 +89,6 @@ for _ in $(seq 1 60); do
 done
 
 echo "Readiness timeout — recording failure" >&2
+bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_HEALTHCHECK_FAILED P1 '{}' || true
 bash "$SCRIPT_DIR/record-deployment.sh" "$ENV_FILE" "health_failed" || true
 exit 1

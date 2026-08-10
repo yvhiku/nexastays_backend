@@ -8,10 +8,18 @@ import type { Request, Response } from 'express';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { appConfig } from './common/config';
-import { HttpExceptionFilter } from './common/filters';
 import { TransformInterceptor } from './common/interceptors';
 import { safeLogger } from './common/logging/safe-logger';
-import { createHttpTelemetryMiddleware, initOpenTelemetry } from '@nexa/telemetry';
+import {
+  assertProductionAlertingConfigured,
+  assertProductionMonitoringConfigured,
+  createErrorMonitoring,
+  createHttpTelemetryMiddleware,
+  initOpenTelemetry,
+  installFatalHandlers,
+  resolveRequestId,
+  runWithRequestContext,
+} from '@nexa/telemetry';
 import {
   applySecureHttp,
   resolveCorsOrigin,
@@ -23,6 +31,10 @@ import { assertPaymentProviderPolicy } from './modules/stays/payments/payment-pr
 
 async function bootstrap() {
   initOpenTelemetry('nexa-stays');
+  const monitoring = createErrorMonitoring({ service: 'nexa-stays' });
+  installFatalHandlers({ service: 'nexa-stays', monitoring });
+  assertProductionMonitoringConfigured();
+  assertProductionAlertingConfigured();
 
   // PROD-OPS-002: payment provider policy (dogfood/staging/production).
   assertPaymentProviderPolicy();
@@ -81,27 +93,31 @@ async function bootstrap() {
   app.use(json({ limit: appConfig.bodyLimit }));
   app.use(urlencoded({ extended: true, limit: appConfig.bodyLimit }));
   app.use((req: Request & { requestId?: string }, res: Response, next: () => void) => {
-    const requestId = (req.headers['x-request-id'] as string) || randomUUID();
+    const requestId = resolveRequestId(
+      req.headers as Record<string, string | string[] | undefined>,
+      () => randomUUID(),
+    );
     req.requestId = requestId;
     res.setHeader('X-Request-Id', requestId);
     const start = Date.now();
-    if (process.env.NODE_ENV !== 'test') {
-      safeLogger.info('req', {
-        requestId,
-        method: req.method,
-        path: req.path,
-      });
-    }
-    res.on('finish', () => {
+    runWithRequestContext({ requestId }, () => {
       if (process.env.NODE_ENV !== 'test') {
-        safeLogger.info('res', {
-          requestId,
-          statusCode: res.statusCode,
-          latencyMs: Date.now() - start,
+        safeLogger.info('http.request.start', {
+          method: req.method,
+          path: req.path,
         });
       }
+      res.on('finish', () => {
+        if (process.env.NODE_ENV !== 'test') {
+          safeLogger.info('http.request.end', {
+            request_id: requestId,
+            statusCode: res.statusCode,
+            latencyMs: Date.now() - start,
+          });
+        }
+      });
+      next();
     });
-    next();
   });
   app.use(createHttpTelemetryMiddleware({ service: 'nexa-stays' }));
 
@@ -114,7 +130,6 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: false },
     }),
   );
-  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
 
   const isProd = process.env.NODE_ENV === 'production';

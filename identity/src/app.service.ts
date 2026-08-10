@@ -1,10 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
+import type { AlertingService } from '@nexa/telemetry';
+import { ObsEvents } from '@nexa/telemetry';
 import { DbHealthService } from './common/database/db-health.service';
 import { getReleaseMetadata } from './common/security/release-metadata';
+import { ALERTING } from './common/observability/observability.tokens';
 
 @Injectable()
 export class AppService {
-  constructor(private readonly dbHealth: DbHealthService) {}
+  constructor(
+    private readonly dbHealth: DbHealthService,
+    @Optional() @Inject(ALERTING) private readonly alerting?: AlertingService,
+  ) {}
 
   getHello(): string {
     return 'Hello World!';
@@ -20,10 +26,6 @@ export class AppService {
     };
   }
 
-  /**
-   * Readiness: able to serve traffic (DB reachable).
-   * Returns { ok: true } or { ok: false } — controller maps to HTTP status.
-   */
   async getReadiness(): Promise<{
     ok: boolean;
     status: 'ok' | 'unavailable';
@@ -31,8 +33,18 @@ export class AppService {
     timestamp: string;
     uptime: number;
     db: 'connected' | 'error';
+    service: string;
   }> {
     const ok = await this.dbHealth.check();
+    if (!ok) {
+      void this.alerting?.alert({
+        key: ObsEvents.READINESS_FAILURE,
+        severity: 'P1',
+        message: 'Identity readiness check failed (database)',
+        fingerprint: 'identity:readiness:db',
+        context: { service: 'nexa-identity', dependency: 'postgresql' },
+      });
+    }
     return {
       ok,
       status: ok ? 'ok' : 'unavailable',
@@ -40,6 +52,7 @@ export class AppService {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       db: ok ? 'connected' : 'error',
+      service: 'nexa-identity',
     };
   }
 

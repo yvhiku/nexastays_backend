@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
@@ -23,9 +23,12 @@ import {
   THROTTLE_DEFAULT,
   THROTTLE_SHORT,
 } from './common/abuse/throttle-presets';
+import { ObservabilityModule } from './common/observability/observability.module';
+import { HttpExceptionFilter } from './common/filters';
 
 @Module({
   imports: [
+    ObservabilityModule,
     DatabaseModule,
     MetricsModule,
     ScheduleModule.forRoot(),
@@ -44,6 +47,7 @@ import {
   controllers: [AppController],
   providers: [
     AppService,
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_GUARD, useClass: ThrottlerKeyGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },

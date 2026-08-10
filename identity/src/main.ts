@@ -8,10 +8,18 @@ import type { Request, Response } from 'express';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { appConfig } from './common/config';
-import { HttpExceptionFilter } from './common/filters';
 import { TransformInterceptor } from './common/interceptors';
 import { safeLogger } from './common/logging/safe-logger';
-import { createHttpTelemetryMiddleware, initOpenTelemetry } from '@nexa/telemetry';
+import {
+  assertProductionAlertingConfigured,
+  assertProductionMonitoringConfigured,
+  createErrorMonitoring,
+  createHttpTelemetryMiddleware,
+  initOpenTelemetry,
+  installFatalHandlers,
+  resolveRequestId,
+  runWithRequestContext,
+} from '@nexa/telemetry';
 import { applySecureHttp } from './common/security/secure-http';
 import { enforceCookieRequestOrigin } from './common/security/cookie-csrf';
 import { assertProductionSmsConfigured } from './modules/sms/sms-config';
@@ -20,6 +28,11 @@ import { getJwtAudience, getJwtIssuer } from './common/security/jwt-claims';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-identity');
+  const monitoring = createErrorMonitoring({ service: 'nexa-identity' });
+  installFatalHandlers({ service: 'nexa-identity', monitoring });
+  assertProductionMonitoringConfigured();
+  assertProductionAlertingConfigured();
+
   // Production: require secrets so auth material is never ephemeral / defaulted
   if (process.env.NODE_ENV === 'production') {
     void appConfig.kycHashPepper;
@@ -95,42 +108,47 @@ async function bootstrap() {
   );
   app.use(urlencoded({ extended: true, limit: appConfig.bodyLimit }));
 
-  // Request ID and logging (no secrets: never log authorization, refresh_token, otp, pin, national_id_number)
+  // Request correlation (PROD-OPS-003): validate X-Request-ID; never trust arbitrary input.
   app.use(
     (
       req: Request & { requestId?: string },
       res: Response,
       next: () => void,
     ) => {
-      const requestId = (req.headers['x-request-id'] as string) || randomUUID();
+      const requestId = resolveRequestId(
+        req.headers as Record<string, string | string[] | undefined>,
+        () => randomUUID(),
+      );
       req.requestId = requestId;
       res.setHeader('X-Request-Id', requestId);
       const start = Date.now();
-      if (process.env.NODE_ENV !== 'test') {
-        const integrityHeader = req.headers['x-device-integrity'];
-        const deviceIdHeader = req.headers['x-device-id'];
-        safeLogger.info('req', {
-          requestId,
-          method: req.method,
-          path: req.path,
-          deviceIntegrity:
-            typeof integrityHeader === 'string'
-              ? integrityHeader.slice(0, 120)
-              : undefined,
-          deviceId:
-            typeof deviceIdHeader === 'string'
-              ? deviceIdHeader.slice(0, 64)
-              : undefined,
-        });
-      }
-      res.on('finish', () => {
+      runWithRequestContext({ requestId }, () => {
         if (process.env.NODE_ENV !== 'test') {
-          const latency = Date.now() - start;
-          const statusCode = res.statusCode;
-          safeLogger.info('res', { requestId, statusCode, latencyMs: latency });
+          const integrityHeader = req.headers['x-device-integrity'];
+          const deviceIdHeader = req.headers['x-device-id'];
+          safeLogger.info('http.request.start', {
+            method: req.method,
+            path: req.path,
+            deviceIntegrity:
+              typeof integrityHeader === 'string'
+                ? integrityHeader.slice(0, 120)
+                : undefined,
+            deviceId:
+              typeof deviceIdHeader === 'string'
+                ? deviceIdHeader.slice(0, 64)
+                : undefined,
+          });
         }
+        res.on('finish', () => {
+          if (process.env.NODE_ENV !== 'test') {
+            safeLogger.info('http.request.end', {
+              statusCode: res.statusCode,
+              latencyMs: Date.now() - start,
+            });
+          }
+        });
+        next();
       });
-      next();
     },
   );
   app.use(createHttpTelemetryMiddleware({ service: 'nexa-identity' }));
@@ -146,7 +164,6 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
 
   const isProd = process.env.NODE_ENV === 'production';

@@ -4,9 +4,13 @@ import {
   BadRequestException,
   ConflictException,
   Logger,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
+import type { AlertingService, ErrorMonitoringService } from '@nexa/telemetry';
+import { ObsEvents } from '@nexa/telemetry';
 import { StaysPaymentIntent } from '../entities/stays-payment-intent.entity';
 import { StaysLedgerEntry } from '../entities/stays-ledger-entry.entity';
 import { StaysBooking } from '../entities/stays-booking.entity';
@@ -22,6 +26,14 @@ import type {
 import { lockIntentAmount, roundMoney } from '../security/financial-integrity';
 import { ConversationProvisionService } from '../../messaging/conversation-provision.service';
 import { PRE_CONFIRMATION_BOOKING_STATUSES } from '../services/booking-lifecycle.service';
+import {
+  ALERTING,
+  ERROR_MONITORING,
+} from '../../../common/observability/observability.tokens';
+import {
+  checkConfirmationLedgerInvariant,
+  reportFinancialInvariantViolation,
+} from '../../../common/observability/financial-observability';
 
 const NON_PAYABLE_BOOKING_STATUSES = new Set([
   'EXPIRED',
@@ -65,6 +77,12 @@ export class StaysPaymentsService {
     private readonly availabilityService: StaysAvailabilityService,
     private readonly conversationProvision: ConversationProvisionService,
     private readonly cmiProvider: CmiPaymentProvider,
+    @Optional()
+    @Inject(ALERTING)
+    private readonly alerting?: AlertingService,
+    @Optional()
+    @Inject(ERROR_MONITORING)
+    private readonly monitoring?: ErrorMonitoringService,
   ) {}
 
   async createOrGetIntent(
@@ -414,6 +432,22 @@ export class StaysPaymentsService {
             reason: 'NO_SETTLED_GUEST_PAYMENT',
           },
         });
+        await this.alerting?.alert({
+          key: ObsEvents.PAYMENT_REFUND_REQUIRED,
+          severity: 'P1',
+          message:
+            'Payment confirmation rejected — dates unavailable (refund-required ops signal; no REFUND ledger without GUEST_PAYMENT)',
+          fingerprint: `payment-refund-required:${booking.id}`,
+          force: true,
+          context: {
+            booking_id: booking.id,
+            payment_intent_id: lockedIntent.id,
+            provider_intent_id: providerIntentId,
+            currency: lockedIntent.currency,
+            amount: Number(lockedIntent.amount),
+            payment_mode: isMockPaymentProvider() ? 'mock' : 'live',
+          },
+        });
         return 'DATES_UNAVAILABLE';
       }
 
@@ -421,6 +455,34 @@ export class StaysPaymentsService {
       const guestFee = Number(booking.guest_fee ?? 0);
       const hostFee = Number(booking.host_fee ?? 0);
       const payoutAmount = Number(booking.payout_amount ?? 0);
+      const platformFee = guestFee + hostFee;
+
+      const invariant = checkConfirmationLedgerInvariant({
+        guestPayment: amount,
+        platformFee,
+        hostPayout: payoutAmount,
+        guestFee,
+        hostFee,
+      });
+      if (!invariant.ok) {
+        await reportFinancialInvariantViolation(
+          { alerting: this.alerting, monitoring: this.monitoring },
+          {
+            booking_id: booking.id,
+            payment_intent_id: lockedIntent.id,
+            currency: booking.currency,
+            reason: invariant.reason,
+            amounts: {
+              guest_payment: amount,
+              platform_fee: platformFee,
+              host_payout: payoutAmount,
+              guest_fee: guestFee,
+              host_fee: hostFee,
+            },
+          },
+        );
+        throw new Error(`FINANCIAL_INVARIANT_VIOLATION:${invariant.reason}`);
+      }
 
       await intentRepo.update(
         { id: lockedIntent.id },
@@ -452,7 +514,7 @@ export class StaysPaymentsService {
         ledgerRepo.create({
           booking_id: booking.id,
           type: 'PLATFORM_FEE',
-          amount: guestFee + hostFee,
+          amount: platformFee,
           currency: booking.currency,
           status: 'SETTLED',
           metadata: {},

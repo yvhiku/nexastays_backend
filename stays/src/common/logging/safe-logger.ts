@@ -1,56 +1,50 @@
-const SENSITIVE_KEY =
-  /(token|authorization|password|pin|otp|phone|email|national_?id|secret|session)/i;
+/**
+ * Structured JSON logger with redaction (PROD-OPS-003).
+ */
+import {
+  resolveObsStage,
+  sanitizeForTelemetry,
+  getRequestContext,
+} from '@nexa/telemetry';
 
-function redactString(input: string): string {
-  return input
-    .replace(
-      /\b[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g,
-      '[REDACTED]',
-    )
-    .replace(/\b[A-Za-z0-9_-]{24,}\b/g, '[REDACTED]')
-    .replace(/\+?\d{8,15}/g, '[REDACTED]');
+const SERVICE = process.env.NEXA_SERVICE_NAME || 'nexa-stays';
+
+function emit(
+  level: 'debug' | 'info' | 'warn' | 'error',
+  event: string,
+  data?: unknown,
+  error?: unknown,
+): void {
+  if (level === 'debug' && process.env.NODE_ENV === 'production') return;
+  const ctx = getRequestContext();
+  const line = JSON.stringify(
+    sanitizeForTelemetry({
+      ts: new Date().toISOString(),
+      level,
+      service: SERVICE,
+      environment: resolveObsStage(),
+      event,
+      request_id: ctx.requestId,
+      ...(error !== undefined ? { error } : {}),
+      ...(data !== undefined ? { data } : {}),
+    }),
+  );
+  if (level === 'error') console.error(line);
+  else if (level === 'warn') console.warn(line);
+  else console.log(line);
 }
-
-function sanitize(value: unknown, key?: string): unknown {
-  if (value == null) return value;
-  if (key && SENSITIVE_KEY.test(key)) return '[REDACTED]';
-  if (typeof value === 'string') return redactString(value);
-  if (Array.isArray(value)) return value.map((item) => sanitize(item));
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>).map(
-      ([k, v]) => [k, sanitize(v, k)],
-    );
-    return Object.fromEntries(entries);
-  }
-  return value;
-}
-
-const isProduction = process.env.NODE_ENV === 'production';
 
 export const safeLogger = {
   debug(message: string, data?: unknown): void {
-    if (isProduction) return;
-    if (data === undefined) {
-      console.log(message);
-      return;
-    }
-
-    console.log(message, sanitize(data));
+    emit('debug', message, data);
   },
   info(message: string, data?: unknown): void {
-    if (data === undefined) {
-      console.log(message);
-      return;
-    }
-
-    console.log(message, sanitize(data));
+    emit('info', message, data);
+  },
+  warn(message: string, data?: unknown): void {
+    emit('warn', message, data);
   },
   error(message: string, error?: unknown, data?: unknown): void {
-    const payload = {
-      error: sanitize(error),
-      data: sanitize(data),
-    };
-
-    console.error(message, payload);
+    emit('error', message, data, error);
   },
 };

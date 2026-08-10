@@ -1,10 +1,13 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Inject, Optional } from '@nestjs/common';
 import { Twilio } from 'twilio';
+import type { AlertingService } from '@nexa/telemetry';
+import { ObsEvents } from '@nexa/telemetry';
 import {
   assertProductionSmsConfigured,
   isProductionRuntime,
   isTwilioConfigured,
 } from './sms-config';
+import { ALERTING } from '../../common/observability/observability.tokens';
 
 function maskPhone(phoneNumber: string): string {
   const digits = phoneNumber.replace(/\D/g, '');
@@ -18,6 +21,10 @@ export class SmsService implements OnModuleInit {
   private client: Twilio | null = null;
   private fromNumber: string;
   private isConfigured = false;
+
+  constructor(
+    @Optional() @Inject(ALERTING) private readonly alerting?: AlertingService,
+  ) {}
 
   onModuleInit() {
     // Belt-and-suspenders: production must never start without SMS provider.
@@ -71,6 +78,13 @@ export class SmsService implements OnModuleInit {
     } catch {
       // Never log provider error bodies — they may echo message content/OTP.
       this.logger.error(`Failed to send SMS to ${masked}`);
+      void this.alerting?.alert({
+        key: ObsEvents.AUTH_OTP_PROVIDER_FAILURE,
+        severity: 'P1',
+        message: 'OTP SMS provider failure',
+        fingerprint: 'auth:otp:provider',
+        context: { phone_masked: masked },
+      });
       return false;
     }
   }
