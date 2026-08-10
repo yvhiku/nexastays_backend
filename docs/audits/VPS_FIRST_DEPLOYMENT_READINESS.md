@@ -258,7 +258,9 @@ No automatic schema rollback.
 
 ## Commits
 
-(filled after push)
+- backend: `c3f932e` — Prepare VPS dogfood deployment package without claiming live verify.
+- database: `38aa0c2` — Document dogfood VPS backup remote policy defaults.
+
 
 ## Tests / builds
 
