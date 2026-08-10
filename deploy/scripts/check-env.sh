@@ -1,65 +1,92 @@
 #!/usr/bin/env bash
-# Fail-closed env preflight. Never prints secret values.
-# Does not `source` the file (PEM keys may be multiline).
+# Fail-closed env preflight for VPS / SSH deploy hosts.
+# Never prints secret values. Does not source PEM multiline keys as shell.
 set -euo pipefail
 
-ENV_FILE="${1:-.env}"
-if [[ ! -f "$ENV_FILE" ]]; then
-  echo "Missing env file: $ENV_FILE" >&2
-  exit 1
-fi
+DEPLOY_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SHARED_ENV="${1:-$DEPLOY_DIR/.env}"
+IDENTITY_ENV="${2:-$DEPLOY_DIR/.env.identity}"
+STAYS_ENV="${3:-$DEPLOY_DIR/.env.stays}"
 
 get_val() {
-  local key="$1"
-  # First non-comment line KEY=... (does not support multiline PEM via this helper)
+  local file="$1"
+  local key="$2"
   awk -F= -v k="$key" '
     $0 ~ /^[[:space:]]*#/ { next }
     index($0, k "=") == 1 {
       print substr($0, length(k) + 2)
       exit
     }
-  ' "$ENV_FILE"
+  ' "$file"
 }
 
 has_key() {
-  local key="$1"
-  grep -qE "^[[:space:]]*${key}=" "$ENV_FILE"
+  local file="$1"
+  local key="$2"
+  grep -qE "^[[:space:]]*${key}=" "$file"
+}
+
+req_file() {
+  local file="$1"
+  if [[ ! -f "$file" ]]; then
+    echo "FAIL: missing env file: $file" >&2
+    exit 1
+  fi
 }
 
 req() {
-  local name="$1"
-  if ! has_key "$name"; then
-    echo "FAIL: required variable missing: $name" >&2
+  local file="$1"
+  local name="$2"
+  if ! has_key "$file" "$name"; then
+    echo "FAIL: required variable missing: $name (in $(basename "$file"))" >&2
     exit 1
   fi
   local v
-  v="$(get_val "$name")"
+  v="$(get_val "$file" "$name")"
   if [[ -z "$v" ]]; then
-    echo "FAIL: required variable empty: $name" >&2
+    echo "FAIL: required variable empty: $name (in $(basename "$file"))" >&2
     exit 1
   fi
-  echo "OK: $name is set"
+  echo "OK: $name is set ($(basename "$file"))"
 }
 
 echo "=== Preflight (names only; values redacted) ==="
-req NEXA_ENV
-req NODE_ENV
-req IMAGE_TAG
-req IMAGE_REGISTRY
-req DB_PASSWORD
-req PII_ENCRYPTION_KEY
-req JWT_PRIVATE_KEY
-req JWT_PUBLIC_KEY
-req JWT_ISSUER
-req JWT_AUDIENCE
-req CORS_ORIGINS
-req INTERNAL_SERVICE_KEY
-req ADMIN_PASSWORD_HASH
+req_file "$SHARED_ENV"
+req_file "$IDENTITY_ENV"
+req_file "$STAYS_ENV"
 
-NEXA_ENV="$(get_val NEXA_ENV)"
-NODE_ENV="$(get_val NODE_ENV)"
-IMAGE_TAG="$(get_val IMAGE_TAG)"
-STAYS_PAYMENT_PROVIDER="$(get_val STAYS_PAYMENT_PROVIDER || true)"
+req "$SHARED_ENV" NEXA_ENV
+req "$SHARED_ENV" NODE_ENV
+req "$SHARED_ENV" IMAGE_TAG
+req "$SHARED_ENV" IMAGE_REGISTRY
+req "$SHARED_ENV" IDENTITY_DATABASE_URL
+req "$SHARED_ENV" STAYS_DATABASE_URL
+req "$SHARED_ENV" PII_ENCRYPTION_KEY
+req "$SHARED_ENV" JWT_PRIVATE_KEY
+req "$SHARED_ENV" JWT_PUBLIC_KEY
+req "$SHARED_ENV" JWT_ISSUER
+req "$SHARED_ENV" JWT_AUDIENCE
+req "$SHARED_ENV" CORS_ORIGINS
+req "$SHARED_ENV" INTERNAL_SERVICE_KEY
+req "$SHARED_ENV" ADMIN_PASSWORD_HASH
+req "$SHARED_ENV" STAYS_PAYMENT_PROVIDER
+
+for f in "$IDENTITY_ENV" "$STAYS_ENV"; do
+  req "$f" DB_HOST
+  req "$f" DB_PORT
+  req "$f" DB_USERNAME
+  req "$f" DB_PASSWORD
+  req "$f" DB_NAME
+done
+
+NEXA_ENV="$(get_val "$SHARED_ENV" NEXA_ENV)"
+NODE_ENV="$(get_val "$SHARED_ENV" NODE_ENV)"
+IMAGE_TAG="$(get_val "$SHARED_ENV" IMAGE_TAG)"
+STAYS_PAYMENT_PROVIDER="$(get_val "$SHARED_ENV" STAYS_PAYMENT_PROVIDER)"
+ID_DB="$(get_val "$IDENTITY_ENV" DB_NAME)"
+ST_DB="$(get_val "$STAYS_ENV" DB_NAME)"
+ID_PORT="$(get_val "$IDENTITY_ENV" DB_PORT)"
+ST_PORT="$(get_val "$STAYS_ENV" DB_PORT)"
 
 if [[ "${NODE_ENV}" != "production" ]]; then
   echo "WARN: NODE_ENV=${NODE_ENV} (expected production on deploy hosts)" >&2
@@ -78,6 +105,11 @@ case "${NEXA_ENV}" in
     ;;
 esac
 
+if [[ "${ID_DB}" == "${ST_DB}" && "${ID_PORT}" == "${ST_PORT}" ]]; then
+  echo "FAIL: Identity and Stays DB_NAME/DB_PORT must not be identical (shared DB collision)" >&2
+  exit 1
+fi
+
 if [[ "${NEXA_ENV}" == "production" ]]; then
   if [[ "${STAYS_PAYMENT_PROVIDER}" == "mock" ]]; then
     echo "FAIL: mock payments forbidden when NEXA_ENV=production (use dogfood)" >&2
@@ -85,9 +117,9 @@ if [[ "${NEXA_ENV}" == "production" ]]; then
   fi
 fi
 
-if [[ "${NEXA_ENV}" == "staging" ]]; then
+if [[ "${NEXA_ENV}" == "staging" || "${NEXA_ENV}" == "dogfood" ]]; then
   if [[ "${STAYS_PAYMENT_PROVIDER}" != "mock" ]]; then
-    echo "FAIL: staging soft-launch requires STAYS_PAYMENT_PROVIDER=mock explicitly (got '${STAYS_PAYMENT_PROVIDER:-<empty>}')" >&2
+    echo "FAIL: ${NEXA_ENV} requires STAYS_PAYMENT_PROVIDER=mock explicitly (got '${STAYS_PAYMENT_PROVIDER:-<empty>}')" >&2
     exit 1
   fi
 fi

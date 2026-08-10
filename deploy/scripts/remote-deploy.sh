@@ -1,37 +1,46 @@
 #!/usr/bin/env bash
-# Host-side deploy sequence: preflight → migrate → compose up → wait healthy.
+# Host-side deploy: preflight → migrate → compose up → wait healthy.
 # Does not print secret env values.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEPLOY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$DEPLOY_DIR/.env}"
+IDENTITY_ENV="${IDENTITY_ENV:-$DEPLOY_DIR/.env.identity}"
+STAYS_ENV="${STAYS_ENV:-$DEPLOY_DIR/.env.stays}"
 DATABASE_REPO_PATH="${DATABASE_REPO_PATH:?DATABASE_REPO_PATH required}"
 IMAGE_TAG="${IMAGE_TAG:?IMAGE_TAG required}"
 SKIP_MIGRATE="${SKIP_MIGRATE:-0}"
 
 get_val() {
-  local key="$1"
+  local file="$1"
+  local key="$2"
   awk -F= -v k="$key" '
     $0 ~ /^[[:space:]]*#/ { next }
     index($0, k "=") == 1 {
       print substr($0, length(k) + 2)
       exit
     }
-  ' "$ENV_FILE"
+  ' "$file"
 }
 
 cd "$DEPLOY_DIR"
 
-bash "$SCRIPT_DIR/check-env.sh" "$ENV_FILE"
+bash "$SCRIPT_DIR/check-env.sh" "$ENV_FILE" "$IDENTITY_ENV" "$STAYS_ENV"
 bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_STARTED P3 '{}'
 
 export IMAGE_TAG
-export IMAGE_REGISTRY="$(get_val IMAGE_REGISTRY)"
-export BUILD_VERSION="$(get_val BUILD_VERSION)"
-export BUILD_TIME="$(get_val BUILD_TIME)"
-IDENTITY_HOST_PORT="$(get_val IDENTITY_HOST_PORT)"
-STAYS_HOST_PORT="$(get_val STAYS_HOST_PORT)"
+export IMAGE_REGISTRY
+IMAGE_REGISTRY="$(get_val "$ENV_FILE" IMAGE_REGISTRY)"
+export IMAGE_REGISTRY
+export BUILD_VERSION
+BUILD_VERSION="$(get_val "$ENV_FILE" BUILD_VERSION)"
+export BUILD_VERSION
+export BUILD_TIME
+BUILD_TIME="$(get_val "$ENV_FILE" BUILD_TIME)"
+export BUILD_TIME
+IDENTITY_HOST_PORT="$(get_val "$ENV_FILE" IDENTITY_HOST_PORT)"
+STAYS_HOST_PORT="$(get_val "$ENV_FILE" STAYS_HOST_PORT)"
 IDENTITY_HOST_PORT="${IDENTITY_HOST_PORT:-3001}"
 STAYS_HOST_PORT="${STAYS_HOST_PORT:-3002}"
 
@@ -45,12 +54,27 @@ if [[ "$IMAGE_TAG" == "latest" ]]; then
   exit 1
 fi
 
+# Prefer IMAGE_TAG from CLI env; keep compose substitution consistent
+if grep -qE '^[[:space:]]*IMAGE_TAG=' "$ENV_FILE"; then
+  # shellcheck disable=SC2016
+  sed -i.bak "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" "$ENV_FILE"
+fi
+
 if [[ "$SKIP_MIGRATE" != "1" ]]; then
   echo "=== Migrations (failure stops deploy) ==="
   bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_MIGRATION_STARTED P3 '{}'
   bash "$SCRIPT_DIR/emit-obs-event.sh" MIGRATION_STARTED P3 '{}'
-  if [[ -z "${IDENTITY_DATABASE_URL:-}" || -z "${STAYS_DATABASE_URL:-}" ]]; then
-    echo "IDENTITY_DATABASE_URL and STAYS_DATABASE_URL must be exported in the deploy shell (not printed)." >&2
+
+  IDENTITY_DATABASE_URL="$(get_val "$ENV_FILE" IDENTITY_DATABASE_URL)"
+  STAYS_DATABASE_URL="$(get_val "$ENV_FILE" STAYS_DATABASE_URL)"
+  export IDENTITY_DATABASE_URL
+  export STAYS_DATABASE_URL
+  export NEXA_ENV
+  NEXA_ENV="$(get_val "$ENV_FILE" NEXA_ENV)"
+  export NEXA_ENV
+
+  if [[ -z "${IDENTITY_DATABASE_URL}" || -z "${STAYS_DATABASE_URL}" ]]; then
+    echo "IDENTITY_DATABASE_URL and STAYS_DATABASE_URL must be set in $ENV_FILE (values not printed)." >&2
     exit 1
   fi
   if bash "$DATABASE_REPO_PATH/scripts/migrate-remote.sh"; then

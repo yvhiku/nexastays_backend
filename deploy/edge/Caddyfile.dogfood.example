@@ -1,0 +1,39 @@
+# Example Caddy edge for dogfood (NOT VERIFIED until DNS points at the VPS).
+#
+# Install on the VPS under /opt/nexa/deploy/Caddyfile (or /etc/caddy/Caddyfile).
+# Replace *.dogfood.example with real hostnames after DNS is ready.
+#
+# Public: 80/443 only.
+# Upstream apps: 127.0.0.1:3001 (Identity), 127.0.0.1:3002 (Stays).
+# Do NOT reverse-proxy Postgres (5433/5434), Redis (6379), media internal APIs,
+# metrics, or restore-drill ports.
+
+{
+	email REPLACE_LETSENCRYPT_EMAIL
+}
+
+identity.dogfood.example {
+	encode gzip
+	reverse_proxy 127.0.0.1:3001
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+stays.dogfood.example {
+	encode gzip
+	reverse_proxy 127.0.0.1:3002
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+# Web (Next.js) — only after a dogfood web process/container exists on :3005.
+# web.dogfood.example {
+# 	encode gzip
+# 	reverse_proxy 127.0.0.1:3005
+# }

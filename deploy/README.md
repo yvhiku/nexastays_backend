@@ -1,10 +1,11 @@
-# Nexa Stays — Deploy package (PROD-OPS-002)
+# Nexa Stays — Deploy package (PROD-OPS-002 + VPS dogfood prep)
 
 SSH + Docker Compose release control for Identity and Stays.
 
-**Status:** IMPLEMENTED — NOT VERIFIED until a real staging (then production) host completes migrate → health → smoke.
+**Status:** IMPLEMENTED — NOT VERIFIED until a real dogfood/staging host completes migrate → health → smoke.
 
-Do not treat presence of these files as production verification.
+Canonical first-deploy runbook: [`VPS_DOGFOOD.md`](./VPS_DOGFOOD.md)  
+Readiness report: [`../docs/audits/VPS_FIRST_DEPLOYMENT_READINESS.md`](../docs/audits/VPS_FIRST_DEPLOYMENT_READINESS.md)
 
 ## Architecture
 
@@ -13,7 +14,7 @@ PR → CI (lint/build/security tests)
  ↓
 main → build immutable GHCR images (:$GITHUB_SHA, not :latest)
  ↓
-workflow_dispatch staging → migrate → up → health → smoke
+manual dogfood OR workflow_dispatch staging → migrate → up → health → smoke
  ↓
 workflow_dispatch production (GitHub Environment approval)
   → migrate → up → health → smoke → record release metadata
@@ -23,14 +24,31 @@ workflow_dispatch production (GitHub Environment approval)
 
 | Path | Purpose |
 |------|---------|
-| `docker-compose.release.yml` | Identity + Stays runtime (immutable image tags) |
-| `env/*.env.example` | Environment contracts (placeholders only) |
-| `scripts/check-env.sh` | Fail-closed env preflight (no secret echo) |
-| `scripts/remote-deploy.sh` | Host-side pull/migrate/up sequence |
+| `docker-compose.release.yml` | Identity + Stays (127.0.0.1 binds, dual env files) |
+| `env/*.env.example` | Shared + per-service DB contracts |
+| `edge/Caddyfile.dogfood.example` | TLS reverse-proxy example (operator-owned) |
+| `scripts/check-env.sh` | Fail-closed env preflight |
+| `scripts/vps-bootstrap.sh` | `/opt/nexa` directory bootstrap |
+| `scripts/vps-preflight.sh` | Host readiness checks |
+| `scripts/remote-deploy.sh` | Migrate → pull → up → ready |
 | `scripts/smoke.sh` | Post-deploy smoke suite |
-| `scripts/record-deployment.sh` | Append local deployment log (no secrets) |
+| `scripts/smoke-dogfood-checklist.md` | Extended dogfood checklist |
+| `scripts/record-deployment.sh` | Local deployment log (no secrets) |
+| `VPS_DOGFOOD.md` | First VPS deployment runbook |
 
-Companion DB migrations: `database/scripts/migrate-remote.sh` (separate repo).
+Companion DB migrations / backups: `database` repo (`migrate-remote.sh`, systemd backup timer).
+
+## Host paths
+
+| Role | Path |
+|------|------|
+| Deploy package (`DEPLOY_PATH`) | `/opt/nexa/backend/deploy` |
+| Database repo (`DATABASE_REPO_PATH`) | `/opt/nexa/database` |
+| Operator edge notes | `/opt/nexa/deploy` |
+| Backups staging | `/opt/nexa/backups` (+ `/var/backups/nexa`) |
+| Backup env | `/etc/nexa/backup.env` |
+
+Host files (never committed): `.env`, `.env.identity`, `.env.stays`.
 
 ## Required GitHub configuration
 
@@ -47,50 +65,38 @@ Production **must** require reviewers (Settings → Environments → production 
 | `DEPLOY_HOST` | SSH hostname |
 | `DEPLOY_USER` | SSH user |
 | `DEPLOY_SSH_KEY` | Private key (PEM) |
-| `DEPLOY_PATH` | Absolute path on host containing this `deploy/` tree |
-| `DATABASE_REPO_PATH` | Absolute path on host to cloned `database` repo (for migrate-remote) |
+| `DEPLOY_PATH` | Absolute path to `deploy/` on host (`/opt/nexa/backend/deploy`) |
+| `DATABASE_REPO_PATH` | Absolute path to database repo (`/opt/nexa/database`) |
 | `SMOKE_IDENTITY_BASE_URL` | e.g. `https://identity.staging.example/api/v1` |
 | `SMOKE_STAYS_BASE_URL` | e.g. `https://stays.staging.example/api/v1` |
 | `SMOKE_CORS_ORIGIN_OK` | Allowed origin for CORS positive check |
 | `SMOKE_CORS_ORIGIN_BAD` | Disallowed origin (expect rejection) |
 
-Optional registry: workflows use `ghcr.io` + `GITHUB_TOKEN` (packages write permission).
-
-Host `.env` for Compose is **never** committed — operators place `deploy/.env` from `env/*.env.example`.
-
-## Image identity
-
-```
-ghcr.io/<owner>/nexa-identity:<git-sha>
-ghcr.io/<owner>/nexa-stays:<git-sha>
-```
-
-Never deploy `:latest` as the release identity.
-
-## Health probe contract
-
-| Probe | Endpoint | Dependency | Expected failure |
-|-------|----------|------------|------------------|
-| Liveness | `GET /api/v1/health/live` (or `/ping`) | none | non-2xx |
-| Readiness | `GET /api/v1/health/ready` | PostgreSQL | HTTP 503 |
-| Legacy alias | `GET /api/v1/health` | PostgreSQL | HTTP 503 when not ok |
-| Version | `GET /api/v1/version` | none | metadata only |
-
-Docker HEALTHCHECK and load balancers must use **readiness**. Kubernetes (future): liveness → `/health/live`, readiness → `/health/ready`.
+Host `.env*` for Compose is **never** committed — operators place files from `env/*.env.example`.
 
 ## Soft-launch payments
 
 | NEXA_ENV | Mock payments |
 |----------|---------------|
-| `development` | allowed |
-| `dogfood` | allowed (`NODE_ENV=production` OK) |
-| `staging` | allowed only if `STAYS_PAYMENT_PROVIDER=mock` is **explicit** |
+| `dogfood` | **required** (`STAYS_PAYMENT_PROVIDER=mock`) |
+| `staging` | **required** mock |
 | `production` | **rejected** |
 
 Real CMI is out of scope.
 
+## Health probe contract
+
+| Probe | Endpoint | Expected failure |
+|-------|----------|------------------|
+| Liveness | `GET /api/v1/health/live` | non-2xx |
+| Readiness | `GET /api/v1/health/ready` | HTTP 503 if DB down |
+| Alias | `GET /api/v1/health` | 503 when not ok |
+| Version | `GET /api/v1/version` | metadata |
+
+Compose HEALTHCHECK and reverse proxies must use **readiness**.
+
 ## Rollback (summary)
 
-Application: redeploy previous `$GIT_SHA` image tags.
+Application: redeploy previous `$GIT_SHA` image tags (`SKIP_MIGRATE=1` if schema unchanged).
 
 Database: **never** blindly downgrade schema. See rollback runbook.

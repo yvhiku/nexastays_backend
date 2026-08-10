@@ -1,12 +1,13 @@
-# PROD-OPS-002 release compose — Identity + Stays
-# Usage (on deploy host):
-#   export IMAGE_REGISTRY=ghcr.io/OWNER
+# PROD-OPS-002 / VPS dogfood — Identity + Stays release compose
+#
+# Usage (on deploy host under /opt/nexa/backend/deploy):
 #   export IMAGE_TAG=<git-sha>
-#   docker compose -f docker-compose.release.yml --env-file .env pull
-#   # migrate FIRST (database/scripts/migrate-remote.sh) — then:
-#   docker compose -f docker-compose.release.yml --env-file .env up -d
+#   bash scripts/check-env.sh
+#   bash scripts/remote-deploy.sh
 #
 # Never use IMAGE_TAG=latest as release identity.
+# App ports bind to 127.0.0.1 — terminate TLS at the host reverse proxy.
+# Postgres/Redis stay on the host (database/docker-compose.yml), not in this file.
 
 name: nexa-release
 
@@ -15,10 +16,14 @@ services:
     image: ${IMAGE_REGISTRY}/nexa-identity:${IMAGE_TAG:?IMAGE_TAG required}
     restart: unless-stopped
     ports:
-      - "${IDENTITY_HOST_PORT:-3001}:3001"
+      - "127.0.0.1:${IDENTITY_HOST_PORT:-3001}:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - path: .env
-        required: false
+        required: true
+      - path: .env.identity
+        required: true
     environment:
       NODE_ENV: production
       PORT: "3001"
@@ -45,10 +50,14 @@ services:
     image: ${IMAGE_REGISTRY}/nexa-stays:${IMAGE_TAG:?IMAGE_TAG required}
     restart: unless-stopped
     ports:
-      - "${STAYS_HOST_PORT:-3002}:3002"
+      - "127.0.0.1:${STAYS_HOST_PORT:-3002}:3002"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - path: .env
-        required: false
+        required: true
+      - path: .env.stays
+        required: true
     environment:
       NODE_ENV: production
       PORT: "3002"
