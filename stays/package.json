@@ -25,6 +25,7 @@
     "audit:trivy": "trivy fs --severity HIGH,CRITICAL --exit-code 1 .",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:pg-concurrency": "jest --runInBand --forceExit --testTimeout=60000 --testPathPatterns=booking-pg-concurrency.prod-inv-001",
     "security:encrypt-pii": "ts-node -r tsconfig-paths/register src/scripts/backfill-pii-encryption.ts",
     "seed:listings": "npx ts-node -r tsconfig-paths/register src/scripts/seed-morocco-listings.ts",
     "seed:bookings": "npx ts-node -r tsconfig-paths/register src/scripts/seed-random-bookings.ts",

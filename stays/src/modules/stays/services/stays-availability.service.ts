@@ -4,13 +4,14 @@ import { EntityManager, Repository } from 'typeorm';
 import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysAvailabilityBlock } from '../entities/stays-availability-block.entity';
 
-/** Statuses that occupy listing nights (hotel model: [checkin, checkout)). */
+/** Statuses that occupy listing nights (hotel model: [checkin, checkout)).
+ * Must match DB EXCLUDE predicate on ex_stays_bookings_active_overlap.
+ * COMPLETED does not occupy inventory (stay already ended). */
 export const BOOKED_STATUSES = [
   'INITIATED',
   'PAYMENT_PENDING',
   'CONFIRMED',
   'CHECKED_IN',
-  'COMPLETED',
 ] as const;
 
 export type BookedStatus = (typeof BOOKED_STATUSES)[number];

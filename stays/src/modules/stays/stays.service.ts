@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import { DataSource, EntityManager, Repository, In } from 'typeorm';
+import { DataSource, EntityManager, Repository, In, QueryFailedError } from 'typeorm';
 import { StaysListing } from './entities/stays-listing.entity';
 import { StaysBooking } from './entities/stays-booking.entity';
 import { StaysBookingOccupant } from './entities/stays-booking-occupant.entity';
@@ -607,7 +607,29 @@ export class StaysService {
           idempotency_key: dto.idempotency_key || null,
         });
 
-        await bookingRepo.save(newBooking);
+        try {
+          await bookingRepo.save(newBooking);
+        } catch (err) {
+          if (err instanceof QueryFailedError) {
+            const driver = err.driverError as {
+              code?: string;
+              constraint?: string;
+              message?: string;
+            };
+            const msg = `${driver?.message ?? ''} ${err.message}`;
+            if (
+              driver?.code === '23P01' ||
+              driver?.code === '40P01' ||
+              driver?.constraint === 'ex_stays_bookings_active_overlap' ||
+              msg.includes('ex_stays_bookings_active_overlap')
+            ) {
+              throw new ConflictException(
+                'Selected dates are no longer available. Please try different dates.',
+              );
+            }
+          }
+          throw err;
+        }
 
         if (dto.occupants?.length) {
           const occupantRepo = manager.getRepository(StaysBookingOccupant);
