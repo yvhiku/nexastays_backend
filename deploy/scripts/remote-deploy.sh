@@ -58,6 +58,8 @@ fi
 if grep -qE '^[[:space:]]*IMAGE_TAG=' "$ENV_FILE"; then
   # shellcheck disable=SC2016
   sed -i.bak "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" "$ENV_FILE"
+  bash "$SCRIPT_DIR/secure-env-perms.sh" "$ENV_FILE" "${ENV_FILE}.bak" 2>/dev/null || \
+    bash "$SCRIPT_DIR/secure-env-perms.sh" "$ENV_FILE"
 fi
 
 if [[ "$SKIP_MIGRATE" != "1" ]]; then

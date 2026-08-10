@@ -57,10 +57,11 @@ jobs:
           USER: ${{ secrets.DEPLOY_USER }}
           PATH_REMOTE: ${{ secrets.DEPLOY_PATH }}
         run: |
-          rsync -az --delete \
-            --exclude '.env' \
-            --exclude '.deploy-logs' \
-            deploy/ "${USER}@${HOST}:${PATH_REMOTE}/"
+          # Host-owned secrets (.env, .env.identity, .env.stays, …) are excluded —
+          # see deploy/scripts/ci-rsync-excludes.txt (B1).
+          bash deploy/scripts/sync-deploy-package.sh \
+            deploy/ \
+            "${USER}@${HOST}:${PATH_REMOTE}/"
 
       - name: Remote migrate + compose up
         env:

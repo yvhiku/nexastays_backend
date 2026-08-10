@@ -50,6 +50,8 @@ Companion DB migrations / backups: `database` repo (`migrate-remote.sh`, systemd
 
 Host files (never committed): `.env`, `.env.identity`, `.env.stays`.
 
+CI sync uses `scripts/sync-deploy-package.sh` + `scripts/ci-rsync-excludes.txt` so host-owned secrets survive `rsync --delete`.
+
 ## Required GitHub configuration
 
 ### Environments

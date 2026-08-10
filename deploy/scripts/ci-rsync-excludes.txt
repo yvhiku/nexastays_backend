@@ -1,0 +1,16 @@
+# Host-owned paths under DEPLOY_PATH that CI must never delete or overwrite.
+# Used by GitHub Actions rsync of backend/deploy/ (B1).
+#
+# CI owns: committed release files under deploy/ (compose, scripts, examples, docs).
+# Host owns: runtime secrets and local logs listed below.
+
+.env
+.env.*
+.env.backup
+.env.bak
+*.env.local
+.deploy-logs/
+Caddyfile
+*.pem
+*.key
+secrets/

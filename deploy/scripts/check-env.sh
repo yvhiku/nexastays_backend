@@ -14,7 +14,9 @@ get_val() {
   awk -F= -v k="$key" '
     $0 ~ /^[[:space:]]*#/ { next }
     index($0, k "=") == 1 {
-      print substr($0, length(k) + 2)
+      v = substr($0, length(k) + 2)
+      gsub(/\r/, "", v)
+      print v
       exit
     }
   ' "$file"
@@ -123,5 +125,52 @@ if [[ "${NEXA_ENV}" == "staging" || "${NEXA_ENV}" == "dogfood" ]]; then
     exit 1
   fi
 fi
+
+# B6 — reject known-dev / placeholder DB credentials outside development (never print values)
+is_weak_secret() {
+  local v="$1"
+  [[ -z "$v" ]] && return 0
+  echo "$v" | grep -qE 'nexa_identity_dev|nexa_stays_dev|CHANGE_ME|REPLACE_STRONG_PASSWORD|^REPLACE$|^dev$' && return 0
+  [[ "${#v}" -lt 12 ]] && return 0
+  return 1
+}
+
+ID_PW="$(get_val "$IDENTITY_ENV" DB_PASSWORD)"
+ST_PW="$(get_val "$STAYS_ENV" DB_PASSWORD)"
+ID_URL="$(get_val "$SHARED_ENV" IDENTITY_DATABASE_URL)"
+ST_URL="$(get_val "$SHARED_ENV" STAYS_DATABASE_URL)"
+
+if is_weak_secret "$ID_PW" || is_weak_secret "$ST_PW"; then
+  echo "FAIL: weak/default DB_PASSWORD rejected for NEXA_ENV=${NEXA_ENV} (value not printed)" >&2
+  exit 1
+fi
+if echo "$ID_URL$ST_URL" | grep -qE 'nexa_identity_dev|nexa_stays_dev|CHANGE_ME|REPLACE_STRONG_PASSWORD'; then
+  echo "FAIL: migrate DATABASE_URL contains placeholder or known-dev password (value not printed)" >&2
+  exit 1
+fi
+echo "OK: DB credentials reject known-dev defaults"
+
+# B8 — require restrictive permissions on secret env files
+assert_mode_600() {
+  local f="$1"
+  if ! command -v chmod >/dev/null 2>&1; then
+    echo "FAIL: chmod unavailable; deploy hosts must be Unix" >&2
+    exit 1
+  fi
+  local mode
+  mode="$(stat -c '%a' "$f" 2>/dev/null || stat -f '%OLp' "$f" 2>/dev/null || echo '')"
+  if [[ -z "$mode" ]]; then
+    echo "WARN: could not read mode for $(basename "$f")" >&2
+    return 0
+  fi
+  if [[ "$mode" != "600" && "$mode" != "400" && "$mode" != "0600" && "$mode" != "0400" ]]; then
+    echo "FAIL: $(basename "$f") mode is $mode (require 600 or 400). Run: bash scripts/secure-env-perms.sh ..." >&2
+    exit 1
+  fi
+  echo "OK: $(basename "$f") permissions restrictive ($mode)"
+}
+assert_mode_600 "$SHARED_ENV"
+assert_mode_600 "$IDENTITY_ENV"
+assert_mode_600 "$STAYS_ENV"
 
 echo "=== Preflight passed ==="
