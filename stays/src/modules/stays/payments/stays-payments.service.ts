@@ -385,7 +385,7 @@ export class StaysPaymentsService {
 
       if (!stillAvailable) {
         this.logger.error(
-          `PAYMENT_REFUND_REQUIRED: payment succeeded but dates unavailable for booking ${booking.id}; expiring hold and creating refund ledger entry`,
+          `PAYMENT_REFUND_REQUIRED: payment attempted but dates unavailable for booking ${booking.id}; expiring hold (no REFUND ledger without settled GUEST_PAYMENT)`,
         );
         await intentRepo.update(
           { id: lockedIntent.id },
@@ -395,22 +395,8 @@ export class StaysPaymentsService {
           { id: booking.id, status: 'PAYMENT_PENDING' },
           { status: 'EXPIRED', updated_at: new Date() },
         );
-        await ledgerRepo.save(
-          ledgerRepo.create({
-            booking_id: booking.id,
-            type: 'REFUND',
-            amount: Number(lockedIntent.amount),
-            currency: booking.currency,
-            status: 'PENDING',
-            metadata: {
-              reason: 'PAYMENT_REJECTED_DATES_UNAVAILABLE',
-              provider,
-              provider_intent_id: providerIntentId,
-              requires_manual_review: true,
-              alert_key: 'PAYMENT_REFUND_REQUIRED',
-            },
-          }),
-        );
+        // Financial invariant: do not create a REFUND without a settled GUEST_PAYMENT.
+        // Audit/ops alert retains the signal for future provider reconciliation.
         await this.auditService.log({
           entityType: 'BOOKING',
           entityId: booking.id,
@@ -420,6 +406,8 @@ export class StaysPaymentsService {
             provider_intent_id: providerIntentId,
             refund_amount: Number(lockedIntent.amount),
             alert_key: 'PAYMENT_REFUND_REQUIRED',
+            refund_ledger_created: false,
+            reason: 'NO_SETTLED_GUEST_PAYMENT',
           },
         });
         return 'DATES_UNAVAILABLE';

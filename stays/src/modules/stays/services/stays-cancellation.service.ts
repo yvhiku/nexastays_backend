@@ -72,7 +72,7 @@ export class StaysCancellationService {
     const now = new Date();
     const hoursToCheckin = (checkinDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-    const refundAmount = this.calculateRefund(
+    const theoreticalRefund = this.calculateRefund(
       policy,
       hoursToCheckin,
       Number(booking.total_subtotal),
@@ -80,6 +80,8 @@ export class StaysCancellationService {
     );
 
     const status = cancelledBy === 'guest' ? 'CANCELLED_BY_GUEST' : 'CANCELLED_BY_HOST';
+
+    let refundAmount = 0;
 
     await this.dataSource.transaction(async (manager) => {
       const bookingRepo = manager.getRepository(StaysBooking);
@@ -109,7 +111,28 @@ export class StaysCancellationService {
         throw new ConflictException('Booking status changed concurrently');
       }
 
-      if (refundAmount > 0) {
+      // Financial invariant: REFUND only when a settled GUEST_PAYMENT exists.
+      // Provider-agnostic — MOCK / future CMI both settle via confirmPaymentSuccess.
+      const settledGuestPayment = await ledgerRepo.findOne({
+        where: {
+          booking_id: bookingId,
+          type: 'GUEST_PAYMENT',
+          status: 'SETTLED',
+        },
+      });
+
+      const existingRefund = settledGuestPayment
+        ? await ledgerRepo.findOne({
+            where: { booking_id: bookingId, type: 'REFUND' },
+          })
+        : null;
+
+      if (
+        settledGuestPayment &&
+        !existingRefund &&
+        theoreticalRefund > 0
+      ) {
+        refundAmount = theoreticalRefund;
         await ledgerRepo.save(
           ledgerRepo.create({
             booking_id: bookingId,
@@ -136,6 +159,8 @@ export class StaysCancellationService {
           cancelled_by: cancelledBy,
           reason,
           refund_amount: refundAmount,
+          theoretical_refund_amount: theoreticalRefund,
+          had_settled_guest_payment: !!settledGuestPayment,
         },
         ip: auditContext?.ip,
         userAgent: auditContext?.userAgent,
