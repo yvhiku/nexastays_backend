@@ -14,8 +14,26 @@ import { StaysListing } from '../entities/stays-listing.entity';
 import { StaysAuditService } from '../services/stays-audit.service';
 import { StaysAvailabilityService } from '../services/stays-availability.service';
 import { CmiPaymentProvider } from './cmi-payment.provider';
-import { lockIntentAmount } from '../security/financial-integrity';
+import { isMockPaymentProvider } from './payment-provider.config';
+import type {
+  MockPaymentConfirmResult,
+  PaymentConfirmationOutcome,
+} from './payment-confirmation.types';
+import { lockIntentAmount, roundMoney } from '../security/financial-integrity';
 import { ConversationProvisionService } from '../../messaging/conversation-provision.service';
+
+const NON_PAYABLE_BOOKING_STATUSES = new Set([
+  'EXPIRED',
+  'CANCELLED_BY_GUEST',
+  'CANCELLED_BY_HOST',
+  'COMPLETED',
+]);
+
+const CONFIRMED_BOOKING_STATUSES = new Set([
+  'CONFIRMED',
+  'CHECKED_IN',
+  'COMPLETED',
+]);
 
 export interface CreateIntentResult {
   id: string;
@@ -112,9 +130,8 @@ export class StaysPaymentsService {
       throw new BadRequestException('Booking total must be greater than zero');
     }
     const currency = booking.currency ?? 'MAD';
-    const useMock = process.env.STAYS_PAYMENT_PROVIDER === 'mock';
 
-    if (useMock) {
+    if (isMockPaymentProvider()) {
       const intent = this.intentRepo.create({
         booking_id: bookingId,
         provider: 'mock',
@@ -152,21 +169,155 @@ export class StaysPaymentsService {
     };
   }
 
+  /**
+   * Authenticated mock payment simulation for the booking owner.
+   * Uses the same internal confirmation path as provider webhooks.
+   */
+  async confirmMockPayment(
+    bookingId: string,
+    guestUserId: string,
+  ): Promise<MockPaymentConfirmResult> {
+    if (!isMockPaymentProvider()) {
+      throw new BadRequestException('Mock payment provider is not enabled');
+    }
+
+    const booking = await this.bookingRepo.findOne({ where: { id: bookingId } });
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    if (booking.guest_user_id !== guestUserId) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    if (CONFIRMED_BOOKING_STATUSES.has(booking.status)) {
+      const succeededIntent = await this.findMockIntentForBooking(
+        bookingId,
+        'SUCCEEDED',
+      );
+      if (succeededIntent) {
+        return this.toMockConfirmResult(
+          'PAYMENT_ALREADY_PROCESSED',
+          booking,
+          succeededIntent,
+        );
+      }
+      throw new BadRequestException('Booking is not awaiting payment');
+    }
+
+    if (NON_PAYABLE_BOOKING_STATUSES.has(booking.status)) {
+      throw new BadRequestException(
+        `Cannot pay for booking in status ${booking.status}`,
+      );
+    }
+
+    if (booking.status !== 'PAYMENT_PENDING') {
+      throw new BadRequestException('Booking is not awaiting payment');
+    }
+
+    const pendingIntent = await this.findMockIntentForBooking(
+      bookingId,
+      'PENDING',
+    );
+    if (!pendingIntent) {
+      const succeededIntent = await this.findMockIntentForBooking(
+        bookingId,
+        'SUCCEEDED',
+      );
+      if (succeededIntent) {
+        return this.toMockConfirmResult(
+          'PAYMENT_ALREADY_PROCESSED',
+          booking,
+          succeededIntent,
+        );
+      }
+      throw new NotFoundException('Payment intent not found');
+    }
+
+    if (!pendingIntent.provider_intent_id) {
+      throw new BadRequestException('Payment intent is invalid');
+    }
+
+    let expectedTotal: number;
+    try {
+      expectedTotal = lockIntentAmount(Number(booking.total_paid ?? 0));
+    } catch {
+      throw new BadRequestException('Booking total must be greater than zero');
+    }
+    if (roundMoney(Number(pendingIntent.amount)) !== expectedTotal) {
+      throw new BadRequestException(
+        'Payment intent amount does not match booking total',
+      );
+    }
+
+    const outcome = await this.confirmPaymentSuccess(
+      'mock',
+      pendingIntent.provider_intent_id,
+      { source: 'mock_confirm' },
+    );
+
+    switch (outcome) {
+      case 'CONFIRMED': {
+        const refreshedIntent = await this.intentRepo.findOne({
+          where: { id: pendingIntent.id },
+        });
+        const refreshedBooking = await this.bookingRepo.findOne({
+          where: { id: bookingId },
+        });
+        return this.toMockConfirmResult(
+          'CONFIRMED',
+          refreshedBooking ?? booking,
+          refreshedIntent ?? pendingIntent,
+        );
+      }
+      case 'ALREADY_PROCESSED': {
+        const refreshedIntent = await this.intentRepo.findOne({
+          where: { id: pendingIntent.id },
+        });
+        return this.toMockConfirmResult(
+          'PAYMENT_ALREADY_PROCESSED',
+          booking,
+          refreshedIntent ?? pendingIntent,
+        );
+      }
+      case 'BOOKING_NOT_PAYABLE':
+        throw new BadRequestException('Booking is not awaiting payment');
+      case 'DATES_UNAVAILABLE':
+        throw new ConflictException(
+          'Selected dates are no longer available. Please try different dates.',
+        );
+      case 'INTENT_NOT_FOUND':
+        throw new NotFoundException('Payment intent not found');
+      default:
+        throw new BadRequestException('Payment could not be confirmed');
+    }
+  }
+
+  /** Provider webhook entry — lenient (no throw) for external retry semantics. */
   async handleWebhookSuccess(
     provider: string,
     providerIntentId: string,
     metadata?: Record<string, unknown>,
   ): Promise<void> {
+    await this.confirmPaymentSuccess(provider, providerIntentId, metadata);
+  }
+
+  /**
+   * Authoritative payment confirmation path shared by mock confirm and provider webhooks.
+   */
+  async confirmPaymentSuccess(
+    provider: string,
+    providerIntentId: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<PaymentConfirmationOutcome> {
     const intent = await this.intentRepo.findOne({
       where: { provider, provider_intent_id: providerIntentId },
-      relations: ['booking'],
     });
 
     if (!intent) {
-      return;
+      return 'INTENT_NOT_FOUND';
     }
 
-    await this.dataSource.transaction(async (manager) => {
+    return this.dataSource.transaction(async (manager) => {
       const intentRepo = manager.getRepository(StaysPaymentIntent);
       const ledgerRepo = manager.getRepository(StaysLedgerEntry);
       const bookingRepo = manager.getRepository(StaysBooking);
@@ -179,7 +330,7 @@ export class StaysPaymentsService {
         .getOne();
 
       if (!lockedIntent || lockedIntent.status === 'SUCCEEDED') {
-        return;
+        return 'ALREADY_PROCESSED';
       }
 
       const existingLedger = await ledgerRepo.findOne({
@@ -194,7 +345,7 @@ export class StaysPaymentsService {
           { id: lockedIntent.id },
           { status: 'SUCCEEDED', updated_at: new Date() },
         );
-        return;
+        return 'ALREADY_PROCESSED';
       }
 
       const booking = await bookingRepo.findOne({
@@ -203,7 +354,7 @@ export class StaysPaymentsService {
       });
 
       if (!booking || booking.status !== 'PAYMENT_PENDING') {
-        return;
+        return 'BOOKING_NOT_PAYABLE';
       }
 
       // Serialize confirms for the same listing, then re-check overlap
@@ -259,8 +410,7 @@ export class StaysPaymentsService {
             alert_key: 'PAYMENT_REFUND_REQUIRED',
           },
         });
-        // Do not throw: acknowledge webhook so the provider does not retry.
-        return;
+        return 'DATES_UNAVAILABLE';
       }
 
       const amount = Number(lockedIntent.amount);
@@ -327,6 +477,8 @@ export class StaysPaymentsService {
         provider,
         providerIntentId,
       );
+
+      return 'CONFIRMED';
     });
   }
 
@@ -338,6 +490,31 @@ export class StaysPaymentsService {
     if (result.success) {
       await this.handleWebhookSuccess('cmi', result.providerIntentId, body);
     }
+  }
+
+  private async findMockIntentForBooking(
+    bookingId: string,
+    status: StaysPaymentIntent['status'],
+  ): Promise<StaysPaymentIntent | null> {
+    return this.intentRepo.findOne({
+      where: { booking_id: bookingId, provider: 'mock', status },
+      order: { created_at: 'DESC' },
+    });
+  }
+
+  private toMockConfirmResult(
+    status: MockPaymentConfirmResult['status'],
+    booking: StaysBooking,
+    intent: StaysPaymentIntent,
+  ): MockPaymentConfirmResult {
+    return {
+      status,
+      booking_id: booking.id,
+      payment_intent_id: intent.id,
+      provider_intent_id: intent.provider_intent_id ?? '',
+      amount: Number(intent.amount),
+      currency: intent.currency,
+    };
   }
 
   private toIntentResult(intent: StaysPaymentIntent): CreateIntentResult {

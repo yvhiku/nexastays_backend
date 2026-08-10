@@ -111,12 +111,12 @@ describe('Nexa Stays (e2e)', () => {
     });
   });
 
-  describe('Payment webhook (public)', () => {
-    it('POST /stays/webhooks/payments/mock returns 200', () => {
+  describe('Legacy payment webhook (deprecated)', () => {
+    it('POST /stays/webhooks/payments/mock returns 403 when legacy gate is off', () => {
       return request(app.getHttpServer())
         .post(`/${prefix}/stays/webhooks/payments/mock`)
         .send({ provider_intent_id: 'test-intent-123' })
-        .expect(200);
+        .expect(403);
     });
   });
 });
