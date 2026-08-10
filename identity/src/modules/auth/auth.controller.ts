@@ -452,31 +452,52 @@ export class AuthController {
     return result;
   }
 
+  /**
+   * End the current auth session.
+   * Prefer revoking the specific refresh credential (body or HttpOnly cookie).
+   * Access JWT is optional — possession of the refresh token is enough to revoke it,
+   * so logout still works after the short-lived access token expires.
+   * Never revokes all sessions for the user from this endpoint.
+   */
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('bearer')
   @ApiOperation({
-    summary: 'Revoke refresh token(s) for this device or all devices',
+    summary:
+      'Revoke the current refresh session (cookie/body) or device-scoped tokens',
   })
-  @ApiResponse({ status: 200, description: 'Tokens revoked' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 200, description: 'Session revoked (idempotent)' })
   async logout(
-    @CurrentUser() user: { userId: string },
     @Body() body?: LogoutDto,
     @Req() req?: express.Request,
     @Res({ passthrough: true }) res?: Response,
   ) {
-    await this.authService.revokeRefreshTokens(
-      user.userId,
-      body?.device_id ?? undefined,
-    );
+    const refreshToken =
+      body?.refresh_token?.trim() ||
+      (req ? readCookie(req, REFRESH_COOKIE) : undefined);
+
+    let actorUserId: string | undefined;
+
+    if (refreshToken) {
+      await this.authService.revokeRefreshSessionByToken(refreshToken);
+    } else if (body?.device_id && req) {
+      const user = await this.authService.resolveAccessPrincipal(req);
+      if (user) {
+        actorUserId = user.userId;
+        await this.authService.revokeRefreshTokens(
+          user.userId,
+          body.device_id,
+        );
+      }
+    }
+
     await this.auditService
       .audit({
-        actorUserId: user.userId,
+        actorUserId,
         action: 'LOGOUT',
         targetType: 'USER',
-        targetId: user.userId,
+        targetId: actorUserId,
         req: req ?? undefined,
       })
       .catch(() => {});

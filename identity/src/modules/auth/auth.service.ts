@@ -32,6 +32,10 @@ import {
 import { SmsService } from '../sms/sms.service';
 import { normalizePhoneOrThrow, tryNormalizePhoneNumber, phoneLookupCandidates } from '../../common/phone/phone-normalizer';
 import { KycProfile } from '../compliance/entities/kyc-profile.entity';
+import {
+  ACCESS_COOKIE,
+  readCookie,
+} from './security/browser-auth-cookies';
 
 export interface RefreshTokenContext {
   device_id?: string | null;
@@ -301,6 +305,63 @@ export class AuthService {
       refresh_token: newRefresh,
       account_type: (user.account_type ?? 'CONSUMER') as string,
     };
+  }
+
+  /**
+   * Optionally resolve the caller from Bearer or access cookie.
+   * Returns null when missing/invalid — never throws (for logout/idempotent paths).
+   */
+  async resolveAccessPrincipal(
+    req?: { headers?: Record<string, unknown> },
+  ): Promise<{ userId: string } | null> {
+    if (!req?.headers) return null;
+    const authHeader = req.headers.authorization;
+    let token: string | undefined;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice('Bearer '.length).trim();
+    } else {
+      token = readCookie(
+        req as import('express').Request,
+        ACCESS_COOKIE,
+      );
+    }
+    if (!token) return null;
+    try {
+      const payload = this.jwtService.verify(token) as {
+        sub?: string;
+        type?: string;
+      };
+      if (
+        !payload?.sub ||
+        payload.type === 'otp_session' ||
+        payload.type === 'identity_session'
+      ) {
+        return null;
+      }
+      return { userId: payload.sub };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Revoke a single refresh session identified by its plaintext token.
+   * Idempotent: unknown / already-revoked tokens succeed without revealing state.
+   * Does not revoke sibling sessions for the same user.
+   */
+  async revokeRefreshSessionByToken(refreshTokenPlain: string): Promise<void> {
+    const plain = refreshTokenPlain?.trim();
+    if (!plain) return;
+
+    const hash = this.hashRefreshToken(plain);
+    const row = await this.refreshTokenRepository.findOne({
+      where: { token_hash: hash },
+    });
+    if (!row || row.revoked_at) {
+      return;
+    }
+    row.revoked_at = new Date();
+    await this.refreshTokenRepository.save(row);
   }
 
   /** Revoke refresh token(s): by device_id or all for user. */
