@@ -1,10 +1,23 @@
 /**
  * Detect image type from magic bytes (file signature).
+ * SVG is explicitly rejected (not in allowlist; XSS vector if served inline).
  */
 export function detectImageType(
   buffer: Buffer,
 ): 'jpeg' | 'png' | 'webp' | null {
-  if (!buffer || buffer.length < 12) return null;
+  if (!buffer || buffer.length < 5) return null;
+  const head = buffer
+    .subarray(0, Math.min(256, buffer.length))
+    .toString('utf8')
+    .trimStart()
+    .toLowerCase();
+  if (
+    head.startsWith('<svg') ||
+    (head.startsWith('<?xml') && head.includes('<svg'))
+  ) {
+    return null;
+  }
+  if (buffer.length < 12) return null;
   const b = buffer;
   if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpeg';
   if (

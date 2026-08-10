@@ -4,16 +4,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import { Repository } from 'typeorm';
 import { StaysHostProfile } from '../entities/stays-host-profile.entity';
 import { HostOnboardingService } from './host-onboarding.service';
 import type { SubmitHostOnboardingDto } from '../dto/submit-host-onboarding.dto';
 import type { StaysUserContext } from './host-onboarding.types';
 import { detectImageType } from '../../../common/utils/image-type.util';
+import { MediaStorageService } from '../../../common/media/media-storage.module';
 
-const HOST_VERIFY_UPLOAD_DIR = 'uploads/host';
 const MAX_DOC_SIZE = 5 * 1024 * 1024;
 
 @Injectable()
@@ -22,6 +20,7 @@ export class HostsService {
     @InjectRepository(StaysHostProfile)
     private readonly hostProfileRepo: Repository<StaysHostProfile>,
     private readonly hostOnboarding: HostOnboardingService,
+    private readonly mediaStorage: MediaStorageService,
   ) {}
 
   async getHostVerificationStatus(user: StaysUserContext) {
@@ -102,10 +101,19 @@ export class HostsService {
       throw new BadRequestException('Invalid image. Use JPEG, PNG, or WebP');
     }
     const ext = detected === 'png' ? '.png' : detected === 'webp' ? '.webp' : '.jpg';
+    const mime =
+      detected === 'png'
+        ? 'image/png'
+        : detected === 'webp'
+          ? 'image/webp'
+          : 'image/jpeg';
     const assetId = randomUUID();
-    const dir = path.join(HOST_VERIFY_UPLOAD_DIR, userId, 'verification');
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, `${prefix}_${assetId}${ext}`), file.buffer);
+    await this.mediaStorage.store({
+      buffer: file.buffer,
+      relativeKey: `host/${userId}/verification/${prefix}_${assetId}${ext}`,
+      mimeType: mime,
+      assetId,
+    });
     return { asset_id: assetId };
   }
 }

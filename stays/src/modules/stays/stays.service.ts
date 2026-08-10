@@ -6,8 +6,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import * as path from 'path';
-import * as fs from 'fs/promises';
 import { DataSource, EntityManager, Repository, In } from 'typeorm';
 import { StaysListing } from './entities/stays-listing.entity';
 import { StaysBooking } from './entities/stays-booking.entity';
@@ -32,6 +30,7 @@ import { StaysAvailabilityService } from './services/stays-availability.service'
 import { StaysAuditService } from './services/stays-audit.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { detectImageType } from '../../common/utils/image-type.util';
+import { MediaStorageService } from '../../common/media/media-storage.module';
 import { StaysKycPolicyService } from '../../common/identity/stays-kyc-policy.service';
 import type { IdentitySnapshot } from '../../common/identity/identity-snapshot.types';
 import { DomainEventsService } from '../../common/events/domain-events.service';
@@ -59,14 +58,13 @@ export class StaysService {
     private readonly domainEvents: DomainEventsService,
     private readonly lifecycleService: BookingLifecycleService,
     private readonly reviewsService: StaysReviewsService,
+    private readonly mediaStorage: MediaStorageService,
   ) {}
 
   isGuestVerifiedForBooking(snapshot?: IdentitySnapshot | null): boolean {
     return this.kycPolicy.meetsGuestBookingPolicy(snapshot);
   }
 
-  private static readonly LISTING_UPLOAD_DIR = 'uploads/host';
-  private static readonly GUEST_OCCUPANT_UPLOAD_DIR = 'uploads/guest';
   private static readonly PHOTO_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
   private static readonly MAX_OCCUPANT_DOC_SIZE = 5 * 1024 * 1024;
 
@@ -90,18 +88,20 @@ export class StaysService {
     }
     const ext =
       detected === 'png' ? '.png' : detected === 'webp' ? '.webp' : '.jpg';
+    const mime =
+      detected === 'png'
+        ? 'image/png'
+        : detected === 'webp'
+          ? 'image/webp'
+          : 'image/jpeg';
     const prefix = side === 'back' ? 'id_back' : 'id_front';
     const assetId = randomUUID();
-    const dir = path.join(
-      StaysService.GUEST_OCCUPANT_UPLOAD_DIR,
-      userId,
-      'occupant-id',
-    );
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(
-      path.join(dir, `${prefix}_${assetId}${ext}`),
-      file.buffer,
-    );
+    await this.mediaStorage.store({
+      buffer: file.buffer,
+      relativeKey: `guest/${userId}/occupant-id/${prefix}_${assetId}${ext}`,
+      mimeType: mime,
+      assetId,
+    });
     await this.auditService.log({
       actorUserId: userId,
       actorRole: 'GUEST',
@@ -136,22 +136,12 @@ export class StaysService {
     side: 'front' | 'back',
   ): Promise<string> {
     const prefix = side === 'back' ? 'id_back' : 'id_front';
-    const dir = path.resolve(
-      process.cwd(),
-      StaysService.GUEST_OCCUPANT_UPLOAD_DIR,
-      guestUserId,
-      'occupant-id',
+    const candidates = StaysService.PHOTO_EXTS.map(
+      (ext) => `guest/${guestUserId}/occupant-id/${prefix}_${assetId}${ext}`,
     );
-    for (const ext of StaysService.PHOTO_EXTS) {
-      const fullPath = path.join(dir, `${prefix}_${assetId}${ext}`);
-      try {
-        await fs.access(fullPath);
-        return fullPath;
-      } catch {
-        /* try next extension */
-      }
-    }
-    throw new NotFoundException('ID document not found');
+    const found = await this.mediaStorage.resolveFirstExisting(candidates);
+    if (!found) throw new NotFoundException('ID document not found');
+    return found.delivery;
   }
 
   async getListingMediaPath(listingId: string, assetId: string): Promise<string> {
@@ -163,34 +153,27 @@ export class StaysService {
     if (listing.status !== 'LIVE') throw new NotFoundException('Listing not found');
     const media = listing.media?.find((m) => m.asset_id === assetId);
     if (!media) throw new NotFoundException('Media not found');
-    const dir = path.resolve(
-      process.cwd(),
-      StaysService.LISTING_UPLOAD_DIR,
-      listing.host_user_id,
-      'listing',
-    );
-    if (media.kind === 'WALKTHROUGH') {
-      for (const ext of ['.mp4', '.webm']) {
-        const p = path.join(dir, `walkthrough_${assetId}${ext}`);
-        try {
-          await fs.access(p);
-          return p;
-        } catch {
-          /* try next */
-        }
-      }
-      throw new NotFoundException('Walkthrough file not found');
+
+    const candidates =
+      media.kind === 'WALKTHROUGH'
+        ? ['.mp4', '.webm'].map(
+            (ext) =>
+              `host/${listing.host_user_id}/listing/walkthrough_${assetId}${ext}`,
+          )
+        : StaysService.PHOTO_EXTS.map(
+            (ext) =>
+              `host/${listing.host_user_id}/listing/photo_${assetId}${ext}`,
+          );
+
+    const found = await this.mediaStorage.resolveFirstExisting(candidates);
+    if (!found) {
+      throw new NotFoundException(
+        media.kind === 'WALKTHROUGH'
+          ? 'Walkthrough file not found'
+          : 'Photo file not found',
+      );
     }
-    for (const ext of StaysService.PHOTO_EXTS) {
-      const p = path.join(dir, `photo_${assetId}${ext}`);
-      try {
-        await fs.access(p);
-        return p;
-      } catch {
-        /* try next ext */
-      }
-    }
-    throw new NotFoundException('Photo file not found');
+    return found.delivery;
   }
 
   async searchListings(params: {

@@ -5,8 +5,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, MoreThanOrEqual, Repository } from 'typeorm';
-import * as path from 'path';
-import * as fs from 'fs/promises';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysHostProfile } from '../stays/entities/stays-host-profile.entity';
@@ -20,10 +18,10 @@ import { DomainEventsService } from '../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import { SeoFreshnessEngineService } from '../seo/seo-freshness-engine.service';
 import { SeoAdminService } from '../seo/seo-admin.service';
+import { MediaStorageService } from '../../common/media/media-storage.module';
 
 @Injectable()
 export class AdminStaysService {
-  private static readonly LISTING_UPLOAD_DIR = 'uploads/host';
   private static readonly PHOTO_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
 
   constructor(
@@ -44,6 +42,7 @@ export class AdminStaysService {
     private readonly occupantRepo: Repository<StaysBookingOccupant>,
     private readonly domainEvents: DomainEventsService,
     private readonly seoFreshness: SeoFreshnessEngineService,
+    private readonly mediaStorage: MediaStorageService,
   ) {}
 
   /** UTC calendar helpers for ops-overview (month/day boundaries). */
@@ -717,31 +716,27 @@ export class AdminStaysService {
     if (!listing) throw new NotFoundException('Listing not found');
     const media = listing.media?.find((m) => m.asset_id === assetId);
     if (!media) throw new NotFoundException('Media not found');
-    const dir = path.resolve(
-      process.cwd(),
-      AdminStaysService.LISTING_UPLOAD_DIR,
-      listing.host_user_id,
-      'listing',
-    );
-    if (media.kind === 'WALKTHROUGH') {
-      const p = path.join(dir, `walkthrough_${assetId}.mp4`);
-      try {
-        await fs.access(p);
-        return p;
-      } catch {
-        throw new NotFoundException('Walkthrough file not found');
-      }
+
+    const candidates =
+      media.kind === 'WALKTHROUGH'
+        ? ['.mp4', '.webm'].map(
+            (ext) =>
+              `host/${listing.host_user_id}/listing/walkthrough_${assetId}${ext}`,
+          )
+        : AdminStaysService.PHOTO_EXTS.map(
+            (ext) =>
+              `host/${listing.host_user_id}/listing/photo_${assetId}${ext}`,
+          );
+
+    const found = await this.mediaStorage.resolveFirstExisting(candidates);
+    if (!found) {
+      throw new NotFoundException(
+        media.kind === 'WALKTHROUGH'
+          ? 'Walkthrough file not found'
+          : 'Photo file not found',
+      );
     }
-    for (const ext of AdminStaysService.PHOTO_EXTS) {
-      const p = path.join(dir, `photo_${assetId}${ext}`);
-      try {
-        await fs.access(p);
-        return p;
-      } catch {
-        // try next
-      }
-    }
-    throw new NotFoundException('Photo file not found');
+    return found.delivery;
   }
 
   async getHosts(params?: {

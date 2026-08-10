@@ -1,32 +1,58 @@
-import { randomUUID } from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { MediaStorageBackend, StoredMediaObject } from './media-storage.interface';
+import {
+  assertSafeRelativeStorageKey,
+  normalizeRelativeMediaKey,
+} from './media-storage-policy';
 
-/** Local disk — canonical impl also in platform/media-service for future extraction. */
+/** Local disk — development / explicitly allowed non-production only. */
 export class LocalMediaStorageBackend implements MediaStorageBackend {
   constructor(private readonly rootDir = process.env.MEDIA_STORAGE_ROOT ?? 'uploads') {}
 
   async store(params: {
     buffer: Buffer;
-    relativePath: string;
+    relativeKey: string;
     mimeType: string;
+    assetId: string;
   }): Promise<StoredMediaObject> {
-    const assetId = randomUUID();
-    const ext = path.extname(params.relativePath) || '';
-    const storageKey = path.join(params.relativePath, `${assetId}${ext}`).replace(/\\/g, '/');
-    const fullPath = path.join(this.rootDir, storageKey);
+    const storageKey = normalizeRelativeMediaKey(params.relativeKey);
+    const fullPath = assertSafeRelativeStorageKey(this.rootDir, storageKey);
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
     await fs.writeFile(fullPath, params.buffer);
     return {
-      assetId,
+      assetId: params.assetId,
       storageKey,
       mimeType: params.mimeType,
       sizeBytes: params.buffer.length,
     };
   }
 
-  resolvePath(storageKey: string): string {
-    return path.resolve(this.rootDir, storageKey);
+  async exists(relativeKey: string): Promise<boolean> {
+    try {
+      const fullPath = assertSafeRelativeStorageKey(
+        this.rootDir,
+        normalizeRelativeMediaKey(relativeKey),
+      );
+      await fs.access(fullPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async resolveDelivery(relativeKey: string): Promise<string> {
+    return assertSafeRelativeStorageKey(
+      this.rootDir,
+      normalizeRelativeMediaKey(relativeKey),
+    );
+  }
+
+  async delete(relativeKey: string): Promise<void> {
+    const fullPath = assertSafeRelativeStorageKey(
+      this.rootDir,
+      normalizeRelativeMediaKey(relativeKey),
+    );
+    await fs.rm(fullPath, { force: true });
   }
 }

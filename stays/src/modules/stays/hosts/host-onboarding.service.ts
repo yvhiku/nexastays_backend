@@ -7,8 +7,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import { StaysHostProfile } from '../entities/stays-host-profile.entity';
 import { StaysAuditLog } from '../entities/stays-audit-log.entity';
 import { normalizePhoneOrThrow } from '../../../common/phone/phone-normalizer';
@@ -20,8 +18,8 @@ import type {
   StaysUserContext,
 } from './host-onboarding.types';
 import { StaysKycPolicyService } from '../../../common/identity/stays-kyc-policy.service';
+import { MediaStorageService } from '../../../common/media/media-storage.module';
 
-const HOST_VERIFY_UPLOAD_DIR = 'uploads/host';
 const VERIFY_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
 
 export type SubmitHostOnboardingContext = {
@@ -39,6 +37,7 @@ export class HostOnboardingService {
     private readonly auditRepo: Repository<StaysAuditLog>,
     private readonly dataSource: DataSource,
     private readonly kycPolicy: StaysKycPolicyService,
+    private readonly mediaStorage: MediaStorageService,
   ) {}
 
   private isIdentityVerified(user: StaysUserContext): boolean {
@@ -421,20 +420,13 @@ export class HostOnboardingService {
       { assetId: dto.document_back_asset_id, prefix: 'id_back' },
       { assetId: dto.selfie_asset_id, prefix: 'selfie' },
     ];
-    const dir = path.join(HOST_VERIFY_UPLOAD_DIR, userId, 'verification');
     for (const { assetId, prefix } of checks) {
       const id = assetId?.trim();
       if (!id) continue;
-      let found = false;
-      for (const ext of VERIFY_EXTS) {
-        try {
-          await fs.access(path.join(dir, `${prefix}_${id}${ext}`));
-          found = true;
-          break;
-        } catch {
-          /* try next */
-        }
-      }
+      const candidates = VERIFY_EXTS.map(
+        (ext) => `host/${userId}/verification/${prefix}_${id}${ext}`,
+      );
+      const found = await this.mediaStorage.resolveFirstExisting(candidates);
       if (!found) {
         throw new BadRequestException(
           `Invalid ${prefix} asset_id — upload the document first as this user`,

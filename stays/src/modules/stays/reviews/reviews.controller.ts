@@ -196,29 +196,20 @@ export class ReviewsController {
         : detected === 'webp'
           ? 'image/webp'
           : 'image/jpeg';
-
-    if (process.env.MEDIA_SERVICE_URL) {
-      const stored = await this.mediaStorage.store({
-        buffer: file.buffer,
-        relativePath: `reviews/${user.userId}/review`,
-        mimeType: mime,
-      });
-      const claimDir = path.join(
-        REVIEW_UPLOAD_ROOT,
-        'reviews',
-        user.userId,
-        'claims',
-      );
-      await fs.mkdir(claimDir, { recursive: true });
-      await fs.writeFile(path.join(claimDir, stored.assetId), '');
-      return { asset_id: stored.assetId };
-    }
-
     const assetId = randomUUID();
-    const dir = path.join(REVIEW_UPLOAD_ROOT, 'reviews', user.userId);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, `review_${assetId}${ext}`), file.buffer);
-    const claimDir = path.join(dir, 'claims');
+    await this.mediaStorage.store({
+      buffer: file.buffer,
+      relativeKey: `reviews/${user.userId}/review_${assetId}${ext}`,
+      mimeType: mime,
+      assetId,
+    });
+    // Local ownership claim (works for local + remote claim backends).
+    const claimDir = path.join(
+      REVIEW_UPLOAD_ROOT,
+      'reviews',
+      user.userId,
+      'claims',
+    );
     await fs.mkdir(claimDir, { recursive: true });
     await fs.writeFile(path.join(claimDir, assetId), '');
     return { asset_id: assetId };

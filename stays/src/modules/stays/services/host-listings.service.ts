@@ -7,8 +7,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import {
   StaysListing,
   StaysListingRules,
@@ -20,6 +18,7 @@ import {
 import { HostsService } from '../hosts/hosts.service';
 import { detectImageType } from '../../../common/utils/image-type.util';
 import { detectVideoType } from '../../../common/utils/video-type.util';
+import { MediaStorageService } from '../../../common/media/media-storage.module';
 import type { CreateDraftListingDto } from '../dto/create-draft-listing.dto';
 import type { CreateHostListingDto } from '../dto/create-host-listing.dto';
 import type { UpdateHostListingDto } from '../dto/update-host-listing.dto';
@@ -42,7 +41,6 @@ const EDITABLE_STATUSES: StaysListing['status'][] = [
   'PAUSED',
 ];
 
-const LISTING_UPLOAD_DIR = 'uploads/host';
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
 
@@ -51,6 +49,7 @@ export class HostListingsService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly hostsService: HostsService,
+    private readonly mediaStorage: MediaStorageService,
     @InjectRepository(StaysListing)
     private readonly listingRepo: Repository<StaysListing>,
     @InjectRepository(StaysListingRules)
@@ -734,13 +733,12 @@ export class HostListingsService {
     };
   }
 
-  // --- media uploads (unchanged below) ---
-  private async assertOwnedListingAsset(
+  // --- media uploads (MediaStorageService) ---
+  private listingMediaCandidates(
     userId: string,
     assetId: string,
     kind: string,
-  ): Promise<void> {
-    const dir = path.join(LISTING_UPLOAD_DIR, userId, 'listing');
+  ): string[] {
     const prefixes =
       kind === 'WALKTHROUGH'
         ? [`walkthrough_${assetId}`]
@@ -749,19 +747,28 @@ export class HostListingsService {
       kind === 'WALKTHROUGH'
         ? ['.mp4', '.webm']
         : ['.jpg', '.jpeg', '.png', '.webp'];
+    const keys: string[] = [];
     for (const prefix of prefixes) {
       for (const ext of exts) {
-        try {
-          await fs.access(path.join(dir, `${prefix}${ext}`));
-          return;
-        } catch {
-          /* try next */
-        }
+        keys.push(`host/${userId}/listing/${prefix}${ext}`);
       }
     }
-    throw new BadRequestException(
-      'Invalid media asset_id — upload the file first as this host',
+    return keys;
+  }
+
+  private async assertOwnedListingAsset(
+    userId: string,
+    assetId: string,
+    kind: string,
+  ): Promise<void> {
+    const found = await this.mediaStorage.resolveFirstExisting(
+      this.listingMediaCandidates(userId, assetId, kind),
     );
+    if (!found) {
+      throw new BadRequestException(
+        'Invalid media asset_id — upload the file first as this host',
+      );
+    }
   }
 
   async uploadListingPhoto(
@@ -779,13 +786,19 @@ export class HostListingsService {
       throw new BadRequestException('Invalid image. Use JPEG, PNG, or WebP');
     }
     const ext = detected === 'png' ? '.png' : detected === 'webp' ? '.webp' : '.jpg';
+    const mime =
+      detected === 'png'
+        ? 'image/png'
+        : detected === 'webp'
+          ? 'image/webp'
+          : 'image/jpeg';
     const assetId = randomUUID();
-    const dir = path.join(LISTING_UPLOAD_DIR, userId, 'listing');
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(
-      path.join(dir, `photo_${assetId}${ext}`),
-      file.buffer,
-    );
+    await this.mediaStorage.store({
+      buffer: file.buffer,
+      relativeKey: `host/${userId}/listing/photo_${assetId}${ext}`,
+      mimeType: mime,
+      assetId,
+    });
     return { asset_id: assetId };
   }
 
@@ -807,12 +820,13 @@ export class HostListingsService {
     }
     const assetId = randomUUID();
     const ext = detected === 'webm' ? '.webm' : '.mp4';
-    const dir = path.join(LISTING_UPLOAD_DIR, userId, 'listing');
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(
-      path.join(dir, `walkthrough_${assetId}${ext}`),
-      file.buffer,
-    );
+    const mime = detected === 'webm' ? 'video/webm' : 'video/mp4';
+    await this.mediaStorage.store({
+      buffer: file.buffer,
+      relativeKey: `host/${userId}/listing/walkthrough_${assetId}${ext}`,
+      mimeType: mime,
+      assetId,
+    });
     return { asset_id: assetId };
   }
 }

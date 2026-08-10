@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { unlink } from 'fs/promises';
 import { Repository, In, IsNull, EntityManager } from 'typeorm';
 import { StaysMessageAttachment } from './entities/stays-message-attachment.entity';
 import { StaysConversation } from './entities/stays-conversation.entity';
@@ -177,6 +176,10 @@ export class AttachmentService {
     return this.mediaAssets.resolveStoragePath(storageUrl);
   }
 
+  resolveDelivery(storageUrl: string): Promise<string> {
+    return this.mediaAssets.resolveDelivery(storageUrl);
+  }
+
   toDto(row: StaysMessageAttachment): AttachmentDto {
     const version = row.media_version ?? 1;
     const thumb = row.thumbnail_url
@@ -289,8 +292,7 @@ export class AttachmentService {
 
   private async safeUnlink(storageKey: string): Promise<void> {
     try {
-      const path = this.resolveStoragePath(storageKey);
-      await unlink(path);
+      await this.mediaAssets.deleteObject(storageKey);
     } catch {
       // ignore missing files
     }

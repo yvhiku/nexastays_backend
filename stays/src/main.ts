@@ -28,6 +28,7 @@ import { enforceCookieRequestOrigin } from './common/security/cookie-csrf';
 import { getJwtAudience, getJwtIssuer } from './common/security/jwt-claims';
 import { resolveNexaStage } from './common/security/cors-origins';
 import { assertPaymentProviderPolicy } from './modules/stays/payments/payment-provider.config';
+import { assertProductionMediaStorageConfigured } from './common/media/media-storage-policy';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-stays');
@@ -38,6 +39,9 @@ async function bootstrap() {
 
   // PROD-OPS-002: payment provider policy (dogfood/staging/production).
   assertPaymentProviderPolicy();
+
+  // PROD-SEC-002: production object storage fail-closed (MEDIA_SERVICE_URL).
+  assertProductionMediaStorageConfigured();
 
   if (process.env.NODE_ENV === 'production') {
     if (!process.env.DB_PASSWORD?.trim()) {

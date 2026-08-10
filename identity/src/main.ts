@@ -25,6 +25,7 @@ import { enforceCookieRequestOrigin } from './common/security/cookie-csrf';
 import { assertProductionSmsConfigured } from './modules/sms/sms-config';
 import { resolveCorsAllowlist } from './common/security/cors-origins';
 import { getJwtAudience, getJwtIssuer } from './common/security/jwt-claims';
+import { assertProductionIdentityUploadConfigured } from './common/security/upload-storage-policy';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-identity');
@@ -32,6 +33,9 @@ async function bootstrap() {
   installFatalHandlers({ service: 'nexa-identity', monitoring });
   assertProductionMonitoringConfigured();
   assertProductionAlertingConfigured();
+
+  // PROD-SEC-002: production must disable local KYC/profile disk uploads.
+  assertProductionIdentityUploadConfigured();
 
   // Production: require secrets so auth material is never ephemeral / defaulted
   if (process.env.NODE_ENV === 'production') {

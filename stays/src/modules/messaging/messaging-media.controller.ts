@@ -98,6 +98,10 @@ export class MessagingMediaController {
     if (!valid) throw new NotFoundException();
 
     const fullPath = await this.staysService.getListingMediaPath(listingId, mediaId);
+    if (/^https?:\/\//i.test(fullPath)) {
+      res.redirect(fullPath);
+      return;
+    }
     const ext = fullPath.includes('.') ? fullPath.split('.').pop()?.toLowerCase() : '';
     const contentType =
       ext === 'png'
@@ -148,7 +152,11 @@ export class MessagingMediaController {
       variantNorm === 'thumb' && row.thumbnail_url
         ? row.thumbnail_url
         : row.storage_url;
-    const fullPath = this.attachmentService.resolveStoragePath(rel);
+    const fullPath = await this.attachmentService.resolveDelivery(rel);
+    if (/^https?:\/\//i.test(fullPath)) {
+      res.redirect(fullPath);
+      return;
+    }
     const ext = fullPath.includes('.') ? fullPath.split('.').pop()?.toLowerCase() : '';
     const contentType =
       row.mime ??

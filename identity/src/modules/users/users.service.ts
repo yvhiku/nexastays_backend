@@ -39,6 +39,7 @@ import PDFDocument from 'pdfkit';
 import { detectImageType } from '../compliance/image-type.util';
 import { UserNotificationsService } from '../notifications/user-notifications.service';
 import { appConfig } from '../../common/config/app.config';
+import { isIdentityLocalUploadDisabled } from '../../common/security/upload-storage-policy';
 
 const PROFILE_PHOTO_DIR = 'uploads/profile';
 const PROFILE_PHOTO_MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -990,6 +991,11 @@ export class UsersService {
   private validateProfilePhotoFile(
     file: Express.Multer.File | undefined,
   ): 'jpeg' | 'png' {
+    if (isIdentityLocalUploadDisabled()) {
+      throw new BadRequestException(
+        'Local Identity uploads are disabled. Profile photo upload is unavailable in this environment.',
+      );
+    }
     if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('No file uploaded');
     }

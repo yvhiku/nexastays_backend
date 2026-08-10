@@ -27,6 +27,7 @@ import {
 } from './image-type.util';
 import { safeLogger } from '../../common/logging/safe-logger';
 import { normalizePhoneOrThrow, tryNormalizePhoneNumber } from '../../common/phone/phone-normalizer';
+import { isIdentityLocalUploadDisabled } from '../../common/security/upload-storage-policy';
 
 export type DocumentUploadOptions = {
   side?: 'front' | 'back';
@@ -60,6 +61,11 @@ export class ComplianceService {
   }
 
   private validateImageFile(file: Express.Multer.File | undefined): void {
+    if (isIdentityLocalUploadDisabled()) {
+      throw new BadRequestException(
+        'Local Identity uploads are disabled. Use Sumsub for KYC verification.',
+      );
+    }
     if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('No file uploaded');
     }

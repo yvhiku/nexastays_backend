@@ -1,14 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import { StaysHostProfile } from '../entities/stays-host-profile.entity';
 import { HostOnboardingService } from './host-onboarding.service';
 import type { SubmitHostOnboardingDto } from '../dto/submit-host-onboarding.dto';
 import type { StaysUserContext } from './host-onboarding.types';
+import { MediaStorageService } from '../../../common/media/media-storage.module';
 
-const HOST_VERIFY_UPLOAD_DIR = 'uploads/host';
 const VERIFY_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
 export type HostVerificationDocKind = 'front' | 'back' | 'selfie';
 
@@ -21,6 +19,7 @@ export class HostApplicationsService {
     private readonly hostOnboarding: HostOnboardingService,
     @InjectRepository(StaysHostProfile)
     private readonly hostProfileRepo: Repository<StaysHostProfile>,
+    private readonly mediaStorage: MediaStorageService,
   ) {}
 
   async submit(
@@ -105,21 +104,14 @@ export class HostApplicationsService {
     if (!assetId?.trim()) {
       throw new NotFoundException(`${kind} document not uploaded`);
     }
-    const dir = path.resolve(
-      process.cwd(),
-      HOST_VERIFY_UPLOAD_DIR,
-      profile.user_id,
-      'verification',
+    const candidates = VERIFY_EXTS.map(
+      (ext) =>
+        `host/${profile.user_id}/verification/${prefix}_${assetId}${ext}`,
     );
-    for (const ext of VERIFY_EXTS) {
-      const fullPath = path.join(dir, `${prefix}_${assetId}${ext}`);
-      try {
-        await fs.access(fullPath);
-        return fullPath;
-      } catch {
-        /* try next */
-      }
+    const found = await this.mediaStorage.resolveFirstExisting(candidates);
+    if (!found) {
+      throw new NotFoundException(`${kind} document file not found`);
     }
-    throw new NotFoundException(`${kind} document file not found`);
+    return found.delivery;
   }
 }

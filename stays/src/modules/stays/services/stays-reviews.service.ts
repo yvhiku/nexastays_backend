@@ -20,6 +20,7 @@ import { StaysReviewMedia } from '../entities/stays-review-media.entity';
 import { BookingLifecycleService } from './booking-lifecycle.service';
 import { ReviewAggregateService } from '../reviews/review-aggregate.service';
 import { TimelineSeederService } from '../../messaging/timeline-seeder.service';
+import { MediaStorageService } from '../../../common/media/media-storage.module';
 
 const ALLOWED_RATINGS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
 const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -41,6 +42,7 @@ export class StaysReviewsService {
     private readonly aggregateService: ReviewAggregateService,
     private readonly domainEvents: DomainEventsService,
     private readonly timelineSeeder: TimelineSeederService,
+    private readonly mediaStorage: MediaStorageService,
   ) {}
 
   validateRating(rating: number): number {
@@ -430,34 +432,16 @@ export class StaysReviewsService {
       throw new NotFoundException('Media not found');
     }
 
-    const root = process.env.MEDIA_STORAGE_ROOT ?? 'uploads';
     const extensions = ['.jpg', '.jpeg', '.png', '.webp'];
-    const fs = await import('fs/promises');
-    const path = await import('path');
-
-    const ownerDirs = [
-      path.join(root, 'reviews', review.guest_user_id),
-      path.join(root, 'reviews'), // legacy flat path
+    const candidates = [
+      ...extensions.map(
+        (ext) => `reviews/${review.guest_user_id}/review_${assetId}${ext}`,
+      ),
+      ...extensions.map((ext) => `reviews/review_${assetId}${ext}`),
     ];
-
-    for (const base of ownerDirs) {
-      for (const ext of extensions) {
-        const candidate = path.join(base, `review_${assetId}${ext}`);
-        try {
-          await fs.access(candidate);
-          return path.resolve(candidate);
-        } catch {
-          // try next
-        }
-      }
-    }
-
-    const remoteUrl = process.env.MEDIA_SERVICE_URL;
-    if (remoteUrl) {
-      return `${remoteUrl.replace(/\/$/, '')}/api/v1/media/file?key=${encodeURIComponent(`stays/reviews/${review.guest_user_id}/review_${assetId}`)}`;
-    }
-
-    throw new NotFoundException('Media file not found');
+    const found = await this.mediaStorage.resolveFirstExisting(candidates);
+    if (!found) throw new NotFoundException('Media file not found');
+    return found.delivery;
   }
 
   private async assertCanReview(
@@ -533,12 +517,11 @@ export class StaysReviewsService {
     assetIds: string[],
     ownerUserId: string,
   ) {
-    const root = process.env.MEDIA_STORAGE_ROOT ?? 'uploads';
     const path = await import('path');
     const fs = await import('fs/promises');
+    const root = process.env.MEDIA_STORAGE_ROOT ?? 'uploads';
     const extensions = ['.jpg', '.jpeg', '.png', '.webp'];
-    const ownerDir = path.join(root, 'reviews', ownerUserId);
-    const claimDir = path.join(ownerDir, 'claims');
+    const claimDir = path.join(root, 'reviews', ownerUserId, 'claims');
 
     for (let i = 0; i < assetIds.length; i++) {
       const assetId = assetIds[i];
@@ -547,15 +530,10 @@ export class StaysReviewsService {
         await fs.access(path.join(claimDir, assetId));
         owned = true;
       } catch {
-        for (const ext of extensions) {
-          try {
-            await fs.access(path.join(ownerDir, `review_${assetId}${ext}`));
-            owned = true;
-            break;
-          } catch {
-            // try next
-          }
-        }
+        const candidates = extensions.map(
+          (ext) => `reviews/${ownerUserId}/review_${assetId}${ext}`,
+        );
+        owned = !!(await this.mediaStorage.resolveFirstExisting(candidates));
       }
       if (!owned) {
         throw new BadRequestException(

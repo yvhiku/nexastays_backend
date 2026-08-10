@@ -214,6 +214,11 @@ export class StaysController {
     @Res() res: Response,
   ) {
     const fullPath = await this.staysService.getListingMediaPath(id, assetId);
+    if (/^https?:\/\//i.test(fullPath)) {
+      // Remote / signed delivery (media-service). Public LIVE listing media.
+      res.redirect(fullPath);
+      return;
+    }
     const ext = fullPath.includes('.') ? fullPath.split('.').pop()?.toLowerCase() : '';
     const contentType =
       ext === 'mp4'

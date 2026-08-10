@@ -114,6 +114,10 @@ export class AdminStaysController {
       id,
       assetId,
     );
+    if (/^https?:\/\//i.test(fullPath)) {
+      res.redirect(fullPath);
+      return;
+    }
     const ext = fullPath.includes('.')
       ? fullPath.split('.').pop()?.toLowerCase()
       : '';
@@ -158,6 +162,10 @@ export class AdminStaysController {
         id,
         normalized,
       );
+    if (/^https?:\/\//i.test(fullPath)) {
+      res.redirect(fullPath);
+      return;
+    }
     const ext = fullPath.includes('.')
       ? fullPath.split('.').pop()?.toLowerCase()
       : '';
@@ -239,6 +247,10 @@ export class AdminStaysController {
       occupantId,
       normalizedSide,
     );
+    if (/^https?:\/\//i.test(fullPath)) {
+      res.redirect(fullPath);
+      return;
+    }
     const ext = fullPath.includes('.')
       ? fullPath.split('.').pop()?.toLowerCase()
       : '';
