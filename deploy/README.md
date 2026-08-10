@@ -5,7 +5,8 @@ SSH + Docker Compose release control for Identity and Stays.
 **Status:** IMPLEMENTED — NOT VERIFIED until a real dogfood/staging host completes migrate → health → smoke.
 
 Canonical first-deploy runbook: [`VPS_DOGFOOD.md`](./VPS_DOGFOOD.md)  
-Readiness report: [`../docs/audits/VPS_FIRST_DEPLOYMENT_READINESS.md`](../docs/audits/VPS_FIRST_DEPLOYMENT_READINESS.md)
+Readiness report: [`../docs/audits/VPS_FIRST_DEPLOYMENT_READINESS.md`](../docs/audits/VPS_FIRST_DEPLOYMENT_READINESS.md)  
+Full VPS topology (Cloudflare → Nginx → Web/Dashboard/API + **Platform** → Postgres): [`../docs/deploy/VPS_ARCHITECTURE.md`](../docs/deploy/VPS_ARCHITECTURE.md)
 
 ## Architecture
 
@@ -19,6 +20,17 @@ manual dogfood OR workflow_dispatch staging → migrate → up → health → sm
 workflow_dispatch production (GitHub Environment approval)
   → migrate → up → health → smoke → record release metadata
 ```
+
+### Runtime topology (VPS)
+
+```
+Cloudflare → Nginx (80/443)
+  → Web :3005 · Dashboard :3006 · Identity :3001 · Stays :3002
+  → Platform (notifications :3003 · media :3004 · consumers)
+  → Postgres (identity :5433 · stays :5434) + Redis :6379
+```
+
+Release Compose in this folder covers **Identity + Stays** images. Data plane, Platform, Web, Dashboard, and Nginx are documented in `docs/deploy/VPS_ARCHITECTURE.md`.
 
 ## Layout
 

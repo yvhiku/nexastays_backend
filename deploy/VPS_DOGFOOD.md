@@ -2,6 +2,8 @@
 
 **Status:** Repository preparation **IMPLEMENTED**. Live VPS execution **NOT VERIFIED**.
 
+Architecture map (what we deploy, including Platform): [`../docs/deploy/VPS_ARCHITECTURE.md`](../docs/deploy/VPS_ARCHITECTURE.md).
+
 Do not treat this document as proof of a completed deployment.
 
 ## Blank VPS → first boot (B7 — exact order)
