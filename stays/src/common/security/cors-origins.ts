@@ -1,15 +1,24 @@
 /**
- * Stage-aware CORS allowlisting (SEC-005) — Stays copy matching Identity.
+ * Nexa deployment stage contract (PROD-OPS-002).
  * Keep in sync with identity/src/common/security/cors-origins.ts.
  */
 
-export type NexaStage = 'production' | 'staging' | 'development';
+export type NexaStage =
+  | 'development'
+  | 'dogfood'
+  | 'staging'
+  | 'production';
 
 export function resolveNexaStage(
   env: NodeJS.ProcessEnv = process.env,
 ): NexaStage {
   const explicit = (env.NEXA_ENV || env.APP_ENV || '').trim().toLowerCase();
-  if (explicit === 'production' || explicit === 'staging' || explicit === 'development') {
+  if (
+    explicit === 'production' ||
+    explicit === 'staging' ||
+    explicit === 'dogfood' ||
+    explicit === 'development'
+  ) {
     return explicit;
   }
   if (env.NODE_ENV === 'production') return 'production';
@@ -40,7 +49,7 @@ export function resolveCorsAllowlist(
   const stage = resolveNexaStage(env);
   const configured = parseCorsOriginsList(env);
 
-  if (stage === 'production' || stage === 'staging') {
+  if (stage === 'production' || stage === 'staging' || stage === 'dogfood') {
     if (configured.length === 0) {
       throw new Error(
         `CORS_ORIGINS must be set for ${stage} (comma-separated trusted origins). Arbitrary Origin reflection is disabled.`,

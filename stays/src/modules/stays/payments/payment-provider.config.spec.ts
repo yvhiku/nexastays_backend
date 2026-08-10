@@ -1,19 +1,30 @@
 import { ForbiddenException } from '@nestjs/common';
 import {
+  assertPaymentProviderPolicy,
   isLegacyMockWebhookEnabled,
   isMockPaymentProvider,
 } from './payment-provider.config';
 import { StaysPaymentsController } from './stays-payments.controller';
 
-describe('payment-provider.config', () => {
-  const originalProvider = process.env.STAYS_PAYMENT_PROVIDER;
-  const originalNodeEnv = process.env.NODE_ENV;
-  const originalLegacy = process.env.ALLOW_LEGACY_MOCK_WEBHOOK;
+describe('payment-provider.config PROD-OPS-002', () => {
+  const keys = [
+    'STAYS_PAYMENT_PROVIDER',
+    'NODE_ENV',
+    'NEXA_ENV',
+    'APP_ENV',
+    'ALLOW_LEGACY_MOCK_WEBHOOK',
+  ] as const;
+  const saved: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    for (const k of keys) saved[k] = process.env[k];
+  });
 
   afterEach(() => {
-    process.env.STAYS_PAYMENT_PROVIDER = originalProvider;
-    process.env.NODE_ENV = originalNodeEnv;
-    process.env.ALLOW_LEGACY_MOCK_WEBHOOK = originalLegacy;
+    for (const k of keys) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
   });
 
   it('isMockPaymentProvider is true when STAYS_PAYMENT_PROVIDER=mock', () => {
@@ -21,11 +32,36 @@ describe('payment-provider.config', () => {
     expect(isMockPaymentProvider()).toBe(true);
   });
 
-  it('legacy webhook requires explicit opt-in and non-production', async () => {
+  it('dogfood allows mock', () => {
+    process.env.NEXA_ENV = 'dogfood';
+    process.env.NODE_ENV = 'production';
+    process.env.STAYS_PAYMENT_PROVIDER = 'mock';
+    expect(() => assertPaymentProviderPolicy()).not.toThrow();
+  });
+
+  it('staging requires explicit mock provider env', () => {
+    process.env.NEXA_ENV = 'staging';
+    process.env.NODE_ENV = 'production';
+    delete process.env.STAYS_PAYMENT_PROVIDER;
+    expect(() => assertPaymentProviderPolicy()).toThrow(/explicitly/);
+    process.env.STAYS_PAYMENT_PROVIDER = 'mock';
+    expect(() => assertPaymentProviderPolicy()).not.toThrow();
+  });
+
+  it('real production rejects mock', () => {
+    process.env.NEXA_ENV = 'production';
+    process.env.NODE_ENV = 'production';
+    process.env.STAYS_PAYMENT_PROVIDER = 'mock';
+    expect(() => assertPaymentProviderPolicy()).toThrow(/not allowed/);
+  });
+
+  it('legacy webhook requires explicit opt-in and non-production', () => {
     process.env.NODE_ENV = 'development';
     process.env.STAYS_PAYMENT_PROVIDER = 'mock';
     process.env.ALLOW_LEGACY_MOCK_WEBHOOK = 'true';
     expect(isLegacyMockWebhookEnabled()).toBe(true);
+    process.env.NODE_ENV = 'production';
+    expect(isLegacyMockWebhookEnabled()).toBe(false);
   });
 });
 

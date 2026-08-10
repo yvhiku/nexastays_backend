@@ -303,8 +303,11 @@ describe('Mock payment confirm (authenticated)', () => {
     ).rejects.toThrow(/does not match booking total/i);
   });
 
-  it('Test 10 — mock confirm works when NODE_ENV=production and provider=mock', async () => {
+  it('Test 10 — mock confirm endpoint works when provider=mock (dogfood soft-launch runtime)', async () => {
+    // Boot policy separately requires NEXA_ENV=dogfood for NODE_ENV=production+mock.
     process.env.NODE_ENV = 'production';
+    process.env.NEXA_ENV = 'dogfood';
+    process.env.STAYS_PAYMENT_PROVIDER = 'mock';
     const booking = baseBooking();
     const intent = pendingIntent();
 

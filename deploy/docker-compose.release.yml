@@ -1,0 +1,75 @@
+# PROD-OPS-002 release compose — Identity + Stays
+# Usage (on deploy host):
+#   export IMAGE_REGISTRY=ghcr.io/OWNER
+#   export IMAGE_TAG=<git-sha>
+#   docker compose -f docker-compose.release.yml --env-file .env pull
+#   # migrate FIRST (database/scripts/migrate-remote.sh) — then:
+#   docker compose -f docker-compose.release.yml --env-file .env up -d
+#
+# Never use IMAGE_TAG=latest as release identity.
+
+name: nexa-release
+
+services:
+  identity:
+    image: ${IMAGE_REGISTRY}/nexa-identity:${IMAGE_TAG:?IMAGE_TAG required}
+    restart: unless-stopped
+    ports:
+      - "${IDENTITY_HOST_PORT:-3001}:3001"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      NEXA_SERVICE_NAME: nexa-identity
+      GIT_SHA: ${IMAGE_TAG}
+      IMAGE_TAG: ${IMAGE_TAG}
+      BUILD_VERSION: ${BUILD_VERSION:-}
+      BUILD_TIME: ${BUILD_TIME:-}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3001/api/v1/health/ready',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    stop_grace_period: 30s
+
+  stays:
+    image: ${IMAGE_REGISTRY}/nexa-stays:${IMAGE_TAG:?IMAGE_TAG required}
+    restart: unless-stopped
+    ports:
+      - "${STAYS_HOST_PORT:-3002}:3002"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      NEXA_SERVICE_NAME: nexa-stays
+      GIT_SHA: ${IMAGE_TAG}
+      IMAGE_TAG: ${IMAGE_TAG}
+      BUILD_VERSION: ${BUILD_VERSION:-}
+      BUILD_TIME: ${BUILD_TIME:-}
+    depends_on:
+      identity:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3002/api/v1/health/ready',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    stop_grace_period: 30s

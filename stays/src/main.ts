@@ -19,9 +19,13 @@ import {
 import { enforceCookieRequestOrigin } from './common/security/cookie-csrf';
 import { getJwtAudience, getJwtIssuer } from './common/security/jwt-claims';
 import { resolveNexaStage } from './common/security/cors-origins';
+import { assertPaymentProviderPolicy } from './modules/stays/payments/payment-provider.config';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-stays');
+
+  // PROD-OPS-002: payment provider policy (dogfood/staging/production).
+  assertPaymentProviderPolicy();
 
   if (process.env.NODE_ENV === 'production') {
     if (!process.env.DB_PASSWORD?.trim()) {
@@ -62,14 +66,16 @@ async function bootstrap() {
     void getJwtAudience();
   }
 
-  // SEC-005: staging (and production) require explicit CORS allowlists.
-  if (resolveNexaStage() === 'staging' || resolveNexaStage() === 'production') {
+  // SEC-005 / PROD-OPS-002: dogfood/staging/production require explicit CORS allowlists.
+  const stage = resolveNexaStage();
+  if (stage === 'staging' || stage === 'production' || stage === 'dogfood') {
     void resolveCorsOrigin();
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
   });
+  app.enableShutdownHooks();
 
   applySecureHttp(app);
   app.use(json({ limit: appConfig.bodyLimit }));

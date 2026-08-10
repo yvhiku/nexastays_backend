@@ -5,10 +5,15 @@ import {
 } from './cors-origins';
 
 describe('Stays CORS allowlist SEC-005', () => {
-  it('rejects missing staging allowlist', () => {
+  it('rejects missing staging or dogfood allowlist', () => {
     expect(() =>
       resolveCorsAllowlist({
         NEXA_ENV: 'staging',
+      } as NodeJS.ProcessEnv),
+    ).toThrow(/CORS_ORIGINS/);
+    expect(() =>
+      resolveCorsAllowlist({
+        NEXA_ENV: 'dogfood',
       } as NodeJS.ProcessEnv),
     ).toThrow(/CORS_ORIGINS/);
   });

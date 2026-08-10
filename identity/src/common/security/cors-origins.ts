@@ -1,17 +1,27 @@
 /**
- * Stage-aware CORS allowlisting (SEC-005).
- * Never use origin:true with credentials for shared staging.
+ * Nexa deployment stage contract (PROD-OPS-002).
+ * Keep Identity + Stays copies aligned.
  */
 
-export type NexaStage = 'production' | 'staging' | 'development';
+export type NexaStage =
+  | 'development'
+  | 'dogfood'
+  | 'staging'
+  | 'production';
 
 export function resolveNexaStage(
   env: NodeJS.ProcessEnv = process.env,
 ): NexaStage {
   const explicit = (env.NEXA_ENV || env.APP_ENV || '').trim().toLowerCase();
-  if (explicit === 'production' || explicit === 'staging' || explicit === 'development') {
+  if (
+    explicit === 'production' ||
+    explicit === 'staging' ||
+    explicit === 'dogfood' ||
+    explicit === 'development'
+  ) {
     return explicit;
   }
+  // Legacy: NODE_ENV=production without NEXA_ENV ⇒ treat as real production (fail-closed policies apply).
   if (env.NODE_ENV === 'production') return 'production';
   return 'development';
 }
@@ -25,7 +35,6 @@ export function parseCorsOriginsList(
     .filter(Boolean);
 }
 
-/** Default browser origins for isolated local development only. */
 export const DEV_DEFAULT_CORS_ORIGINS = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
@@ -36,7 +45,8 @@ export const DEV_DEFAULT_CORS_ORIGINS = [
 ];
 
 /**
- * Returns explicit origin allowlist. Never returns `true` (reflect-any).
+ * Explicit origin allowlist. Never returns `true` (reflect-any).
+ * dogfood/staging/production require CORS_ORIGINS.
  */
 export function resolveCorsAllowlist(
   env: NodeJS.ProcessEnv = process.env,
@@ -44,7 +54,7 @@ export function resolveCorsAllowlist(
   const stage = resolveNexaStage(env);
   const configured = parseCorsOriginsList(env);
 
-  if (stage === 'production' || stage === 'staging') {
+  if (stage === 'production' || stage === 'staging' || stage === 'dogfood') {
     if (configured.length === 0) {
       throw new Error(
         `CORS_ORIGINS must be set for ${stage} (comma-separated trusted origins). Arbitrary Origin reflection is disabled.`,
@@ -53,6 +63,5 @@ export function resolveCorsAllowlist(
     return configured;
   }
 
-  // development: prefer explicit list; otherwise localhost defaults only
   return configured.length > 0 ? configured : [...DEV_DEFAULT_CORS_ORIGINS];
 }

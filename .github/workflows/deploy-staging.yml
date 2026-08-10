@@ -1,0 +1,93 @@
+name: Deploy staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Immutable Git SHA image tag (from build-images)"
+        required: true
+        type: string
+      skip_migrate:
+        description: "Emergency only — skip DB migrate (1=yes)"
+        required: false
+        default: "0"
+        type: string
+
+# Never auto-deploy from arbitrary branches.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate image tag
+        run: |
+          TAG="${{ inputs.image_tag }}"
+          if [[ -z "$TAG" || "$TAG" == "latest" ]]; then
+            echo "Invalid IMAGE_TAG" >&2
+            exit 1
+          fi
+          echo "Deploying tag=$TAG"
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [[ -z "${DEPLOY_SSH_KEY}" ]]; then
+            echo "DEPLOY_SSH_KEY secret is not configured — IMPLEMENTED workflow, host not connected." >&2
+            echo "::error::Set GitHub Environment secrets for staging (see deploy/README.md)."
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Sync deploy package
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PATH_REMOTE: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          rsync -az --delete \
+            --exclude '.env' \
+            --exclude '.deploy-logs' \
+            deploy/ "${USER}@${HOST}:${PATH_REMOTE}/"
+
+      - name: Remote migrate + compose up
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PATH_REMOTE: ${{ secrets.DEPLOY_PATH }}
+          DB_REPO: ${{ secrets.DATABASE_REPO_PATH }}
+        run: |
+          ssh -o BatchMode=yes "${USER}@${HOST}" \
+            "cd '${PATH_REMOTE}' && \
+             export IMAGE_TAG='${{ inputs.image_tag }}' \
+                    DATABASE_REPO_PATH='${DB_REPO}' \
+                    SKIP_MIGRATE='${{ inputs.skip_migrate }}' && \
+             # Host .env must already define IMAGE_REGISTRY, DB URLs, secrets (not echoed).
+             sed -i.bak 's/^IMAGE_TAG=.*/IMAGE_TAG=${{ inputs.image_tag }}/' .env && \
+             bash scripts/remote-deploy.sh"
+
+      - name: Smoke tests
+        env:
+          SMOKE_IDENTITY_BASE_URL: ${{ secrets.SMOKE_IDENTITY_BASE_URL }}
+          SMOKE_STAYS_BASE_URL: ${{ secrets.SMOKE_STAYS_BASE_URL }}
+          SMOKE_CORS_ORIGIN_OK: ${{ secrets.SMOKE_CORS_ORIGIN_OK }}
+          SMOKE_CORS_ORIGIN_BAD: ${{ secrets.SMOKE_CORS_ORIGIN_BAD }}
+          SMOKE_EXPECT_NEXA_ENV: staging
+        run: |
+          if [[ -z "${SMOKE_IDENTITY_BASE_URL}" || -z "${SMOKE_STAYS_BASE_URL}" ]]; then
+            echo "Smoke URL secrets missing — fail closed." >&2
+            exit 1
+          fi
+          bash deploy/scripts/smoke.sh

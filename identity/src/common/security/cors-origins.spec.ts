@@ -15,6 +15,9 @@ describe('CORS allowlist SEC-005', () => {
     expect(resolveNexaStage({ NEXA_ENV: 'staging' } as NodeJS.ProcessEnv)).toBe(
       'staging',
     );
+    expect(resolveNexaStage({ NEXA_ENV: 'dogfood' } as NodeJS.ProcessEnv)).toBe(
+      'dogfood',
+    );
     expect(
       resolveNexaStage({ NODE_ENV: 'production' } as NodeJS.ProcessEnv),
     ).toBe('production');
@@ -23,10 +26,16 @@ describe('CORS allowlist SEC-005', () => {
     );
   });
 
-  it('requires explicit CORS_ORIGINS for staging and production', () => {
+  it('requires explicit CORS_ORIGINS for staging, dogfood, and production', () => {
     expect(() =>
       resolveCorsAllowlist({
         NEXA_ENV: 'staging',
+        CORS_ORIGINS: '',
+      } as NodeJS.ProcessEnv),
+    ).toThrow(/CORS_ORIGINS/);
+    expect(() =>
+      resolveCorsAllowlist({
+        NEXA_ENV: 'dogfood',
         CORS_ORIGINS: '',
       } as NodeJS.ProcessEnv),
     ).toThrow(/CORS_ORIGINS/);

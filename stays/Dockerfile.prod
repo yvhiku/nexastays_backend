@@ -1,60 +1,37 @@
-# Multi-stage build for production
+# Multi-stage production image for Nexa Stays (PROD-OPS-002).
+# Do NOT copy .env into the image. Inject secrets at runtime.
 FROM node:20-alpine AS deps
-
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install all dependencies (including dev dependencies for build)
 RUN npm ci
 
-# Build stage
 FROM node:20-alpine AS builder
-
 WORKDIR /app
-
-# Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-
-# Copy source code
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Production stage
 FROM node:20-alpine AS runner
-
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=3002
+ENV NEXA_SERVICE_NAME=nexa-stays
 
-# Copy package files
 COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy built application from builder
 COPY --from=builder /app/dist ./dist
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nestjs -u 1001
+RUN addgroup -g 1001 -S nodejs \
+  && adduser -S nestjs -u 1001 \
+  && chown -R nestjs:nodejs /app
 
-# Change ownership of app directory
-RUN chown -R nestjs:nodejs /app
-
-# Switch to non-root user
 USER nestjs
 
-# Expose port
-EXPOSE 3000
+EXPOSE 3002
 
-# Add healthcheck (using node since wget not available in alpine)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/api/v1/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD node -e "const p=process.env.PORT||'3002';require('http').get('http://127.0.0.1:'+p+'/api/v1/health/ready',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
-# Start the application
 CMD ["node", "dist/main.js"]
