@@ -41,6 +41,8 @@ export const DEV_DEFAULT_CORS_ORIGINS = [
   'http://127.0.0.1:3003',
   'http://localhost:3001',
   'http://127.0.0.1:3001',
+  'http://localhost:3005',
+  'http://127.0.0.1:3005',
 ];
 
 export function resolveCorsAllowlist(
