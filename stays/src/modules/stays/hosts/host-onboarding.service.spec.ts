@@ -166,4 +166,36 @@ describe('HostOnboardingService', () => {
     await expect(service.isApprovedHost('consumer-1')).resolves.toBe(true);
     await expect(service.canList('consumer-1')).resolves.toBe(false);
   });
+
+  it('getHostMe can_create_listing / can_publish_listing match canList triad', async () => {
+    hostProfileRepo.findOne!.mockResolvedValue({
+      ...existingProfile,
+      application_status: 'APPROVED',
+      host_verification_status: 'PENDING',
+      listing_frozen: false,
+    });
+    const weaker = await service.getHostMe(consumerUser);
+    expect(weaker.can_create_listing).toBe(false);
+    expect(weaker.can_publish_listing).toBe(false);
+
+    hostProfileRepo.findOne!.mockResolvedValue({
+      ...existingProfile,
+      application_status: 'APPROVED',
+      host_verification_status: 'APPROVED',
+      listing_frozen: false,
+    });
+    const ok = await service.getHostMe(consumerUser);
+    expect(ok.can_create_listing).toBe(true);
+    expect(ok.can_publish_listing).toBe(true);
+
+    hostProfileRepo.findOne!.mockResolvedValue({
+      ...existingProfile,
+      application_status: 'APPROVED',
+      host_verification_status: 'APPROVED',
+      listing_frozen: true,
+    });
+    const frozen = await service.getHostMe(consumerUser);
+    expect(frozen.can_create_listing).toBe(false);
+    expect(frozen.can_publish_listing).toBe(false);
+  });
 });

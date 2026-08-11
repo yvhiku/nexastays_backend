@@ -155,8 +155,11 @@ export class HostOnboardingService {
     });
 
     const isHost = profile?.application_status === 'APPROVED';
-    const canCreateListing =
-      profile?.application_status === 'APPROVED' && !profile?.listing_frozen;
+    const canList =
+      !!profile &&
+      profile.application_status === 'APPROVED' &&
+      profile.host_verification_status === 'APPROVED' &&
+      !profile.listing_frozen;
 
     return {
       is_host: isHost,
@@ -168,8 +171,8 @@ export class HostOnboardingService {
         (this.isIdentityVerified(user) ? 'VERIFIED' : 'NOT_STARTED'),
       host_verification_status:
         profile?.host_verification_status ?? 'NOT_STARTED',
-      can_create_listing: canCreateListing,
-      can_publish_listing: canCreateListing,
+      can_create_listing: canList,
+      can_publish_listing: canList,
       rejection_reason: profile?.rejection_reason ?? null,
       submitted_at: profile?.submitted_at ?? null,
       reviewed_at: profile?.reviewed_at ?? null,

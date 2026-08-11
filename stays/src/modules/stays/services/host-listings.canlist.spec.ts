@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { HostListingsService } from './host-listings.service';
 import { HostsService } from '../hosts/hosts.service';
 
@@ -75,7 +75,7 @@ describe('HostListingsService assertCanList (H15)', () => {
     expect(listingRepo.findOne).not.toHaveBeenCalled();
   });
 
-  it('requireOwnedListing path: Host A cannot mutate Host B listing (ForbiddenException)', async () => {
+  it('requireOwnedListing path: Host A cannot mutate Host B listing (NotFoundException)', async () => {
     listingRepo.findOne.mockResolvedValue({
       id: 'listing-b',
       host_user_id: 'host-b',
@@ -83,7 +83,7 @@ describe('HostListingsService assertCanList (H15)', () => {
     });
 
     await expect(service.pauseListing('host-a', 'listing-b')).rejects.toBeInstanceOf(
-      ForbiddenException,
+      NotFoundException,
     );
   });
 });

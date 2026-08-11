@@ -1,8 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
 
 /**
- * Mirrors host listing ownership helper used across host surfaces.
- * Full HTTP e2e against staging is Phase 3; this locks the ownership contract.
+ * Mirrors production HostListingsService.requireOwnedListing anti-enumeration
+ * contract (H17): missing OR wrong owner → NotFoundException.
  */
 describe('BOLA — listing ownership contract', () => {
   async function requireOwnedListing(

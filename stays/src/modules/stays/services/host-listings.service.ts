@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -89,6 +88,7 @@ export class HostListingsService {
     listingId: string,
     dto: UpdateHostListingDto,
   ) {
+    await this.assertCanList(userId);
     const listing = await this.requireOwnedListing(userId, listingId, [
       'rate_plan',
       'rules',
@@ -243,6 +243,7 @@ export class HostListingsService {
   }
 
   async resumeListing(userId: string, listingId: string) {
+    await this.assertCanList(userId);
     const listing = await this.requireOwnedListing(userId, listingId);
     if (listing.status !== 'PAUSED') {
       throw new BadRequestException('Only paused listings can be resumed.');
@@ -265,11 +266,9 @@ export class HostListingsService {
       where: { id: listingId },
       relations,
     });
-    if (!listing) {
+    // Anti-enumeration: missing and cross-host both look like NotFound (H17).
+    if (!listing || listing.host_user_id !== userId) {
       throw new NotFoundException('Listing not found');
-    }
-    if (listing.host_user_id !== userId) {
-      throw new ForbiddenException('You do not own this listing');
     }
     return listing;
   }
@@ -589,6 +588,7 @@ export class HostListingsService {
     listingId: string,
     dto: ReplaceListingMediaDto,
   ) {
+    await this.assertCanList(userId);
     const listing = await this.requireOwnedListing(userId, listingId, ['media']);
     if (!EDITABLE_STATUSES.includes(listing.status)) {
       throw new BadRequestException(
@@ -641,6 +641,7 @@ export class HostListingsService {
       is_active?: boolean;
     }> },
   ) {
+    await this.assertCanList(userId);
     const listing = await this.requireOwnedListing(userId, listingId);
     if (!EDITABLE_STATUSES.includes(listing.status)) {
       throw new BadRequestException(
