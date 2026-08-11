@@ -26,6 +26,7 @@ import { assertProductionSmsConfigured } from './modules/sms/sms-config';
 import { resolveCorsAllowlist } from './common/security/cors-origins';
 import { getJwtAudience, getJwtIssuer } from './common/security/jwt-claims';
 import { assertProductionIdentityUploadConfigured } from './common/security/upload-storage-policy';
+import { assertIdentityProductionEnvPolicy } from './common/security/production-env-policy';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-identity');
@@ -37,7 +38,9 @@ async function bootstrap() {
   // PROD-SEC-002: production must disable local KYC/profile disk uploads.
   assertProductionIdentityUploadConfigured();
 
-  // Production: require secrets so auth material is never ephemeral / defaulted
+  // Production: require secrets so auth material is never ephemeral / defaulted.
+  // Phase 1: DEMO_OTP / weak secrets / loopback URL fail-closed (testable policy).
+  assertIdentityProductionEnvPolicy();
   if (process.env.NODE_ENV === 'production') {
     void appConfig.kycHashPepper;
     void appConfig.refreshTokenPepper;
@@ -46,11 +49,6 @@ async function bootstrap() {
     if (!process.env.JWT_PRIVATE_KEY || !process.env.JWT_PUBLIC_KEY) {
       throw new Error(
         'JWT_PRIVATE_KEY and JWT_PUBLIC_KEY are required in production.',
-      );
-    }
-    if (process.env.DEMO_OTP_CODE) {
-      throw new Error(
-        'DEMO_OTP_CODE must not be set in production.',
       );
     }
     if (!process.env.ADMIN_PASSWORD_HASH) {

@@ -29,6 +29,7 @@ import { getJwtAudience, getJwtIssuer } from './common/security/jwt-claims';
 import { resolveNexaStage } from './common/security/cors-origins';
 import { assertPaymentProviderPolicy } from './modules/stays/payments/payment-provider.config';
 import { assertProductionMediaStorageConfigured } from './common/media/media-storage-policy';
+import { assertStaysProductionEnvPolicy } from './common/security/production-env-policy';
 
 async function bootstrap() {
   initOpenTelemetry('nexa-stays');
@@ -42,6 +43,9 @@ async function bootstrap() {
 
   // PROD-SEC-002: production object storage fail-closed (MEDIA_SERVICE_URL).
   assertProductionMediaStorageConfigured();
+
+  // Phase 1: weak secrets / loopback URL fail-closed when NODE_ENV=production.
+  assertStaysProductionEnvPolicy();
 
   if (process.env.NODE_ENV === 'production') {
     if (!process.env.DB_PASSWORD?.trim()) {

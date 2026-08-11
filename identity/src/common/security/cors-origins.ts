@@ -50,6 +50,23 @@ export const DEV_DEFAULT_CORS_ORIGINS = [
  * Explicit origin allowlist. Never returns `true` (reflect-any).
  * dogfood/staging/production require CORS_ORIGINS.
  */
+/**
+ * Credentials are always enabled on Identity. Reject wildcard / null origins
+ * whenever CORS_ORIGINS is explicitly configured (any stage).
+ */
+export function assertNoCredentialedWildcardCors(
+  origins: string[],
+): void {
+  for (const origin of origins) {
+    const o = origin.trim();
+    if (o === '*' || o.toLowerCase() === 'null') {
+      throw new Error(
+        'CORS_ORIGINS must not contain "*" or "null" when credentials are enabled.',
+      );
+    }
+  }
+}
+
 export function resolveCorsAllowlist(
   env: NodeJS.ProcessEnv = process.env,
 ): string[] {
@@ -62,8 +79,12 @@ export function resolveCorsAllowlist(
         `CORS_ORIGINS must be set for ${stage} (comma-separated trusted origins). Arbitrary Origin reflection is disabled.`,
       );
     }
+    assertNoCredentialedWildcardCors(configured);
     return configured;
   }
 
-  return configured.length > 0 ? configured : [...DEV_DEFAULT_CORS_ORIGINS];
+  const list =
+    configured.length > 0 ? configured : [...DEV_DEFAULT_CORS_ORIGINS];
+  assertNoCredentialedWildcardCors(configured);
+  return list;
 }

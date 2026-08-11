@@ -126,11 +126,52 @@ if [[ "${NEXA_ENV}" == "staging" || "${NEXA_ENV}" == "dogfood" ]]; then
   fi
 fi
 
+# Phase 1 — DEMO_OTP_CODE forbidden when NODE_ENV=production (dogfood VPS contract included)
+demo_otp=""
+if has_key "$SHARED_ENV" DEMO_OTP_CODE; then
+  demo_otp="$(get_val "$SHARED_ENV" DEMO_OTP_CODE)"
+fi
+if [[ -z "$demo_otp" ]] && has_key "$IDENTITY_ENV" DEMO_OTP_CODE; then
+  demo_otp="$(get_val "$IDENTITY_ENV" DEMO_OTP_CODE)"
+fi
+if [[ "${NODE_ENV}" == "production" && -n "${demo_otp}" ]]; then
+  echo "FAIL: DEMO_OTP_CODE must not be set when NODE_ENV=production" >&2
+  exit 1
+fi
+echo "OK: DEMO_OTP_CODE policy"
+
+# Phase 1 — Twilio runtime name (Identity sms-config): TWILIO_PHONE_NUMBER
+if [[ "${NODE_ENV}" == "production" ]]; then
+  req "$SHARED_ENV" TWILIO_ACCOUNT_SID
+  req "$SHARED_ENV" TWILIO_AUTH_TOKEN
+  req "$SHARED_ENV" TWILIO_PHONE_NUMBER
+  if has_key "$SHARED_ENV" TWILIO_FROM_NUMBER; then
+    echo "FAIL: TWILIO_FROM_NUMBER is not a runtime variable; use TWILIO_PHONE_NUMBER only" >&2
+    exit 1
+  fi
+fi
+
+# Phase 1 — credentialed CORS must not use wildcard
+CORS_ORIGINS="$(get_val "$SHARED_ENV" CORS_ORIGINS)"
+if echo "$CORS_ORIGINS" | grep -qE '(^|,)[[:space:]]*\*[[:space:]]*(,|$)'; then
+  echo "FAIL: CORS_ORIGINS must not contain wildcard * when credentials are enabled" >&2
+  exit 1
+fi
+echo "OK: CORS_ORIGINS has no wildcard"
+
+# Phase 1 — JWT issuer must not be loopback on deploy hosts
+JWT_ISSUER="$(get_val "$SHARED_ENV" JWT_ISSUER)"
+if echo "$JWT_ISSUER" | grep -qiE 'localhost|127\.0\.0\.1|::1'; then
+  echo "FAIL: JWT_ISSUER must not use a loopback host on deploy hosts" >&2
+  exit 1
+fi
+echo "OK: JWT_ISSUER is non-loopback"
+
 # B6 — reject known-dev / placeholder DB credentials outside development (never print values)
 is_weak_secret() {
   local v="$1"
   [[ -z "$v" ]] && return 0
-  echo "$v" | grep -qE 'nexa_identity_dev|nexa_stays_dev|CHANGE_ME|REPLACE_STRONG_PASSWORD|^REPLACE$|^dev$' && return 0
+  echo "$v" | grep -qE 'nexa_identity_dev|nexa_stays_dev|CHANGE_ME|REPLACE_STRONG_PASSWORD|^REPLACE$|^dev$|dev-internal-key' && return 0
   [[ "${#v}" -lt 12 ]] && return 0
   return 1
 }
@@ -139,9 +180,14 @@ ID_PW="$(get_val "$IDENTITY_ENV" DB_PASSWORD)"
 ST_PW="$(get_val "$STAYS_ENV" DB_PASSWORD)"
 ID_URL="$(get_val "$SHARED_ENV" IDENTITY_DATABASE_URL)"
 ST_URL="$(get_val "$SHARED_ENV" STAYS_DATABASE_URL)"
+INTERNAL_KEY="$(get_val "$SHARED_ENV" INTERNAL_SERVICE_KEY)"
 
 if is_weak_secret "$ID_PW" || is_weak_secret "$ST_PW"; then
   echo "FAIL: weak/default DB_PASSWORD rejected for NEXA_ENV=${NEXA_ENV} (value not printed)" >&2
+  exit 1
+fi
+if is_weak_secret "$INTERNAL_KEY"; then
+  echo "FAIL: weak/default INTERNAL_SERVICE_KEY rejected for NEXA_ENV=${NEXA_ENV} (value not printed)" >&2
   exit 1
 fi
 if echo "$ID_URL$ST_URL" | grep -qE 'nexa_identity_dev|nexa_stays_dev|CHANGE_ME|REPLACE_STRONG_PASSWORD'; then

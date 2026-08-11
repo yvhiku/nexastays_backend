@@ -27,6 +27,15 @@ describe('Stays CORS allowlist SEC-005', () => {
     expect(list).not.toContain('https://evil.example');
   });
 
+  it('rejects credentialed wildcard CORS', () => {
+    expect(() =>
+      resolveCorsAllowlist({
+        NODE_ENV: 'production',
+        CORS_ORIGINS: '*',
+      } as NodeJS.ProcessEnv),
+    ).toThrow(/wildcard|\*/);
+  });
+
   it('development defaults are controlled', () => {
     expect(resolveNexaStage({ NODE_ENV: 'development' } as NodeJS.ProcessEnv)).toBe(
       'development',

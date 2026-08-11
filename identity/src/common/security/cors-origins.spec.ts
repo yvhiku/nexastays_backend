@@ -68,6 +68,21 @@ describe('CORS allowlist SEC-005', () => {
     ).toEqual(['https://nexastays.ma', 'https://admin.nexastays.ma']);
   });
 
+  it('rejects credentialed wildcard CORS', () => {
+    expect(() =>
+      resolveCorsAllowlist({
+        NEXA_ENV: 'production',
+        CORS_ORIGINS: '*',
+      } as NodeJS.ProcessEnv),
+    ).toThrow(/wildcard|\*/);
+    expect(() =>
+      resolveCorsAllowlist({
+        NEXA_ENV: 'dogfood',
+        CORS_ORIGINS: 'https://web.example,*',
+      } as NodeJS.ProcessEnv),
+    ).toThrow(/wildcard|\*/);
+  });
+
   it('uses local defaults in development when CORS_ORIGINS unset', () => {
     expect(
       resolveCorsAllowlist({
