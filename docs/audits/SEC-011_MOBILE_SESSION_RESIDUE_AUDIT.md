@@ -44,7 +44,15 @@ flutter test test/features/auth/sec_011_session_residue_test.dart
 → All tests passed (8 SEC-011 cases)
 ```
 
-### Intentionally retained
+### Lint / build
+
+- `flutter analyze` on changed auth/storage files: no errors (pre-existing info deprecation on `encryptedSharedPreferences`).
+- Debug APK build: **skipped** at owner request; compile path covered by unit tests loading the app packages.
+
+### Commits
+
+- Mobile: `6b9d8fc`
+- Backend docs: `69f869c`
 
 - Binder + phone during active registration / KYC until logout or success
 - App restart resume of mid-registration **without** logout (product UX)
