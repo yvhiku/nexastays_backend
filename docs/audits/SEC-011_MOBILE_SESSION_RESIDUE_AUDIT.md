@@ -1,11 +1,69 @@
-# SEC-011 — Mobile OTP / Session Residue Audit
+# SEC-011 — Mobile OTP / Session Residue
 
-**Date:** 2026-08-11  
-**Mode:** AUDIT ONLY — no application code changes in this pass (report document only).  
+**Date (audit):** 2026-08-11  
+**Date (remediation):** 2026-08-11  
+**Product:** Nexa Stays mobile only. Nexa Pay is out of scope.
+
+| Field | Value |
+|-------|--------|
+| **Repository status** | **CLOSED** |
+| **Live / VPS** | **NOT VERIFIED** |
+| **Severity** | Medium (pre-fix); residual risk after fix is low (device-local abandon without logout still resumes intentionally) |
+
+---
+
+## Remediation summary (implemented)
+
+### Cleanup behavior
+
+| Event | OTP binder | Phone | Access/refresh/userId | cached_user | device id |
+|-------|------------|-------|----------------------|-------------|-----------|
+| Active KYC / mid-registration | **kept** | **kept** | n/a | kept | kept |
+| Logout / full auth wipe | **deleted** | **deleted** | **deleted** | **deleted** | **kept** |
+| Successful `completeRegistration` | **deleted** | kept (profile fallback) | **saved** | rewritten | kept |
+| Successful `createPin` | **deleted** (client hygiene; server already consumes) | kept | n/a | n/a | kept |
+| New `sendOtp` | **cleared** before send | **cleared** before send | unchanged | unchanged | kept |
+| `clearTokens()` only | **not** cleared | **not** cleared | **deleted** | n/a | kept |
+
+Helper: `SecureStorageService.clearRegistrationSecrets()` — separate from `clearTokens()`.
+
+Optional logout hygiene: deletes `has_pin_<userId>` for the logged-out user only.
+
+### Files changed (mobile)
+
+- `lib/core/storage/secure_storage.dart` — `SecureStorageKeys`, `clearRegistrationSecrets()`, `forTesting`
+- `lib/features/auth/data/repositories/auth_repository_impl.dart` — logout wipe, createPin binder delete, sendOtp wipe, returning-user binder drop, registration finalize helper
+- `lib/core/storage/local_storage.dart` — test reset hook
+- `lib/core/utils/phone_normalizer.dart` — non-const RegExp (SDK compatibility)
+- `test/features/auth/sec_011_session_residue_test.dart` — TESTS 1–7
+
+### Tests
+
+```
+flutter test test/features/auth/sec_011_session_residue_test.dart
+→ All tests passed (8 SEC-011 cases)
+```
+
+### Intentionally retained
+
+- Binder + phone during active registration / KYC until logout or success
+- App restart resume of mid-registration **without** logout (product UX)
+- Phone after successful registration (hydration / profile fallback)
+- `nexastays_device_id` across logout
+
+### Remaining residual risk
+
+- Shared-device abandon **without** logout can still resume within server ~120m TTL (intentional). Logout closes SEC-011 residue. Live device store behavior **NOT VERIFIED**.
+
+---
+
+# Original audit (below)
+
+**Mode (original):** AUDIT ONLY — historical record; remediation landed after this audit.  
 **Scope:** `nexastays-mobile` + Identity binder server controls relevant to mobile.  
 **Product:** **Nexa Stays only.** Nexa Pay is **not** part of this audit.
 
-**Final verdict: REMEDIATION REQUIRED**
+**Audit-time verdict was: REMEDIATION REQUIRED** (now remediated at repo level).
 
 ---
 
@@ -308,9 +366,11 @@ From Identity `auth.service.ts` / `otp_sessions`:
 
 ## 23. Final Verdict
 
-**REMEDIATION REQUIRED**
+**CLOSED (repository)** — remediation implemented 2026-08-11.
 
-SEC-011 is **not CLOSED**. This audit does not change status beyond documenting OPEN + remediation design.
+**Live / VPS:** **NOT VERIFIED**
+
+Original audit-time verdict was **REMEDIATION REQUIRED**; see remediation summary at top of this document.
 
 ---
 
