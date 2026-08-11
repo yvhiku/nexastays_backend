@@ -257,7 +257,7 @@ No tests modified. Live browser CSRF/XSS labs: **NOT RUN / NOT VERIFIED**.
 | SEC-011 | Mobile OTP/phone logout wipe | **CLOSED** | Medium pre-fix | **PASS** | NOT VERIFIED | Soft OK |
 | SEC-012 | AccountTypes / HOST JWT ≠ host | **ACCEPTED RESIDUAL RISK** | Low | **PASS-as-accepted** | N/A | No blocker |
 | SEC-013 | Logout CSRF beyond Lax+Origin | **ACCEPTED RESIDUAL RISK** | Low | **PASS-as-accepted** | NOT VERIFIED | No blocker |
-| P3-SEC-NEW-001 | Stale ambient-cookie docs | **OPEN** (docs) | Low | N/A | N/A | Docs only |
+| P3-SEC-NEW-001 | Stale ambient-cookie docs | Low | **CLOSED** (docs corrected 2026-08-11) |
 
 ---
 
@@ -268,7 +268,7 @@ No tests modified. Live browser CSRF/XSS labs: **NOT RUN / NOT VERIFIED**.
 | **P0** | **0** |
 | **P1** | **0** |
 | **P2** (code required in SEC-008–013) | **0** |
-| **P3** | SEC-012 hygiene optional; SEC-013 optional CSRF token; P3-SEC-NEW-001 docs |
+| P3 | SEC-012 hygiene optional; SEC-013 optional CSRF token; **P3-SEC-NEW-001 docs CLOSED** |
 | Outside slice (unchanged gates) | PROD-OPS live backups; Twilio/JWT/CORS deploy evidence; DAST; monitoring; Dependabot process — still open as **ops/live** gates in `status.md`, not SEC-008–013 remediations |
 
 ---
@@ -329,7 +329,7 @@ Optional docs-only: correct `status.md` ambient-cookie BLOCKING row (P3-SEC-NEW-
 4. SEC-008–013 regression-free? **Yes** (closed = PASS; residuals = PASS-as-accepted)  
 5. Accepted residual? **SEC-012, SEC-013** (+ Soft XSS memory residual on SEC-008)  
 6. Code changes required now? **No** for SEC-008–013  
-7. Docs/hygiene only? **P3-SEC-NEW-001**  
+7. Docs/hygiene only? **P3-SEC-NEW-001 CLOSED** (status.md corrected); residual Soft XSS memory on SEC-008 acknowledged  
 8. Dogfood OK (repo)? **Yes**  
 9. Public launch OK? **Not until live/VPS gates**  
 10. Still verify on VPS? **CSP, cookies, Origin CSRF, CORS, Twilio/JWT, backups**  
