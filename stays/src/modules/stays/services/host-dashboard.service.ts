@@ -8,6 +8,19 @@ import { StaysExternalCalendar } from '../entities/stays-external-calendar.entit
 import { StaysReviewsService } from './stays-reviews.service';
 import { BookingLifecycleService } from './booking-lifecycle.service';
 import { HostListingsService } from './host-listings.service';
+import {
+  getStaysPaymentProvider,
+  isMockPaymentProvider,
+} from '../payments/payment-provider.config';
+import { resolveNexaStage } from '../../../common/security/cors-origins';
+import {
+  bookedNightsInCalendarMonth,
+  getDashboardNow,
+  toCasablancaYmd,
+  toDateOnlyYmd,
+  ymdCompare,
+  ymdInHalfOpen,
+} from './host-dashboard-timezone';
 
 const EARNING_STATUSES: StaysBooking['status'][] = [
   'CONFIRMED',
@@ -101,6 +114,346 @@ export class HostDashboardService {
     private readonly lifecycleService: BookingLifecycleService,
     private readonly hostListingsService: HostListingsService,
   ) {}
+
+  /**
+   * H3 aggregated host dashboard — Casablanca TZ, gross/net/fees split,
+   * mock payout contract. Host scope = JWT sub only (no client hostId).
+   *
+   * Limitation: in-memory aggregation over host bookings (same as getHostStats).
+   * SQL rollups deferred if volume requires it later.
+   */
+  async getHostDashboard(hostUserId: string, at?: Date) {
+    const dash = getDashboardNow(at ?? new Date());
+    const listings = await this.listingRepo.find({
+      where: { host_user_id: hostUserId },
+      select: ['id', 'status'],
+    });
+    const listingIds = listings.map((l) => l.id);
+    const liveListings = listings.filter((l) => l.status === 'LIVE').length;
+
+    let bookings: StaysBooking[] = [];
+    if (listingIds.length > 0) {
+      bookings = await this.bookingRepo.find({
+        where: { listing_id: In(listingIds) },
+        relations: ['occupants'],
+      });
+    }
+
+    const hostPayout = (b: StaysBooking) => {
+      if (b.payout_amount != null) return Number(b.payout_amount);
+      return Math.max(0, Number(b.total_subtotal) - Number(b.host_fee));
+    };
+    const grossPaid = (b: StaysBooking) => Number(b.total_paid ?? 0);
+    const platformFees = (b: StaysBooking) =>
+      Number(b.guest_fee ?? 0) + Number(b.host_fee ?? 0);
+
+    let grossAll = 0;
+    let netAll = 0;
+    let feesAll = 0;
+    let grossThis = 0;
+    let netThis = 0;
+    let feesThis = 0;
+    let grossPrev = 0;
+    let netPrev = 0;
+    let feesPrev = 0;
+    let upcomingRevenue30d = 0;
+    let bookedNightsThisMonth = 0;
+    let bookedNightsPrevMonth = 0;
+
+    for (const b of bookings) {
+      if (!EARNING_STATUSES.includes(b.status)) continue;
+      const payout = hostPayout(b);
+      const gross = grossPaid(b);
+      const fees = platformFees(b);
+      grossAll += gross;
+      netAll += payout;
+      feesAll += fees;
+
+      // Month attribution: confirmed_at ?? created_at in Africa/Casablanca
+      const attrYmd = toCasablancaYmd(b.confirmed_at ?? b.created_at);
+      if (ymdInHalfOpen(attrYmd, dash.thisMonthStart, dash.thisMonthEndExclusive)) {
+        grossThis += gross;
+        netThis += payout;
+        feesThis += fees;
+      }
+      if (
+        ymdInHalfOpen(
+          attrYmd,
+          dash.previousMonthStart,
+          dash.previousMonthEndExclusive,
+        )
+      ) {
+        grossPrev += gross;
+        netPrev += payout;
+        feesPrev += fees;
+      }
+
+      const checkin = toDateOnlyYmd(b.checkin_date);
+      const checkout = toDateOnlyYmd(b.checkout_date);
+      bookedNightsThisMonth += bookedNightsInCalendarMonth(
+        checkin,
+        checkout,
+        dash.year,
+        dash.month,
+      );
+      bookedNightsPrevMonth += bookedNightsInCalendarMonth(
+        checkin,
+        checkout,
+        dash.previousYear,
+        dash.previousMonth,
+      );
+    }
+
+    // upcoming_revenue_30d = net payout of FUTURE earning bookings with
+    // check-in in [today, today+30) Casablanca days (CONFIRMED | CHECKED_IN).
+    for (const b of bookings) {
+      if (!FUTURE_EARNING_STATUSES.includes(b.status)) continue;
+      const checkin = toDateOnlyYmd(b.checkin_date);
+      if (ymdInHalfOpen(checkin, dash.today, dash.in30EndExclusive)) {
+        upcomingRevenue30d += hostPayout(b);
+      }
+    }
+
+    /**
+     * Occupancy (v1): booked nights in month /
+     * (days_in_month × max(live_listings, 1)).
+     * Ignores availability blocks — BOOKED_OVER_CAPACITY_V1.
+     */
+    const capacity = dash.daysInThisMonth * Math.max(liveListings, 1);
+    const occupancyPctThisMonth =
+      capacity > 0
+        ? Math.min(100, Math.round((bookedNightsThisMonth / capacity) * 1000) / 10)
+        : 0;
+
+    let checkinsToday = 0;
+    let checkoutsToday = 0;
+    let checkoutsTomorrow = 0;
+    let currentlyStaying = 0;
+    let newBookingsToday = 0;
+    let awaitingGuestPayment = 0;
+    let upcomingCheckins = 0;
+    let nextUpcoming: StaysBooking | null = null;
+
+    for (const b of bookings) {
+      const checkin = toDateOnlyYmd(b.checkin_date);
+      const checkout = toDateOnlyYmd(b.checkout_date);
+      const createdYmd = toCasablancaYmd(b.created_at);
+
+      if (createdYmd === dash.today) {
+        newBookingsToday += 1;
+      }
+
+      const life = this.lifecycleService.computeLifecycle(b, {
+        now: dash.nowJs,
+      });
+      if (life === 'PENDING_PAYMENT') {
+        awaitingGuestPayment += 1;
+      }
+      if (life === 'UPCOMING') {
+        upcomingCheckins += 1;
+        if (
+          !nextUpcoming ||
+          ymdCompare(checkin, toDateOnlyYmd(nextUpcoming.checkin_date)) < 0
+        ) {
+          nextUpcoming = b;
+        }
+      }
+
+      const stayStatuses =
+        b.status === 'CONFIRMED' || b.status === 'CHECKED_IN';
+      const checkoutStatuses =
+        stayStatuses || b.status === 'COMPLETED';
+
+      if (stayStatuses && checkin === dash.today) {
+        checkinsToday += 1;
+      }
+      if (checkoutStatuses && checkout === dash.today) {
+        checkoutsToday += 1;
+      }
+      if (checkoutStatuses && checkout === dash.tomorrow) {
+        checkoutsTomorrow += 1;
+      }
+      // Currently staying: calendar overlap with Casablanca today
+      if (
+        stayStatuses &&
+        ymdCompare(checkin, dash.today) <= 0 &&
+        ymdCompare(checkout, dash.today) > 0
+      ) {
+        currentlyStaying += 1;
+      }
+    }
+
+    const { pending, paidOut } = await this.sumHostPayoutLedger(
+      hostUserId,
+      listingIds,
+    );
+
+    let calendarStatus = {
+      healthy: true,
+      listings_needing_attention: 0,
+    };
+    if (listingIds.length > 0) {
+      const calendars = await this.calendarRepo.find({
+        where: { listing_id: In(listingIds) },
+        select: ['id', 'listing_id', 'status'],
+      });
+      const badListings = new Set(
+        calendars
+          .filter((c) => c.status === 'ERROR')
+          .map((c) => c.listing_id),
+      );
+      calendarStatus = {
+        healthy: badListings.size === 0,
+        listings_needing_attention: badListings.size,
+      };
+    }
+
+    const listingHealth = await this.buildListingHealth(
+      hostUserId,
+      listingIds,
+      liveListings,
+    );
+
+    const reviewsPayload = await this.staysReviewsService.listHostReviews(
+      hostUserId,
+      1,
+      1,
+    );
+
+    const currency = bookings.find((b) => b.currency)?.currency ?? 'MAD';
+    const payoutMeta = this.buildPayoutMeta();
+
+    return {
+      as_of: dash.asOfIso,
+      timezone: dash.timezone,
+      currency,
+      today: {
+        checkins_today: checkinsToday,
+        checkouts_today: checkoutsToday,
+        checkouts_tomorrow: checkoutsTomorrow,
+        currently_staying: currentlyStaying,
+        new_bookings_today: newBookingsToday,
+        awaiting_guest_payment: awaitingGuestPayment,
+      },
+      earnings: {
+        gross_revenue_all_time: round2(grossAll),
+        net_host_earnings_all_time: round2(netAll),
+        platform_fees_all_time: round2(feesAll),
+        this_month: {
+          gross_revenue: round2(grossThis),
+          net_host_earnings: round2(netThis),
+          platform_fees: round2(feesThis),
+          mom_pct: momPct(netThis, netPrev),
+        },
+        previous_month: {
+          gross_revenue: round2(grossPrev),
+          net_host_earnings: round2(netPrev),
+          platform_fees: round2(feesPrev),
+        },
+        upcoming_revenue_30d: round2(upcomingRevenue30d),
+      },
+      payouts: {
+        provider: payoutMeta.provider,
+        mode: payoutMeta.mode,
+        pending,
+        available: 0,
+        paid_out: paidOut,
+        currency,
+        disclaimer: payoutMeta.disclaimer,
+      },
+      operations: {
+        upcoming_checkins: upcomingCheckins,
+        next_checkin_date: nextUpcoming
+          ? toDateOnlyYmd(nextUpcoming.checkin_date)
+          : null,
+        next_guest_name: nextUpcoming
+          ? this.resolveGuestDisplayName(nextUpcoming)
+          : null,
+      },
+      inventory: {
+        live_listings: liveListings,
+        pending_listings: listings.filter(
+          (l) => l.status === 'SUBMITTED' || l.status === 'DRAFT',
+        ).length,
+        total_listings: listings.length,
+        occupancy_pct_this_month: occupancyPctThisMonth,
+        occupancy_basis: 'BOOKED_OVER_CAPACITY_V1' as const,
+      },
+      reviews: {
+        avg_rating: reviewsPayload.summary.overall_avg_rating,
+        total_reviews: reviewsPayload.summary.total_count,
+      },
+      messaging: {
+        unread_count: null as null,
+        status: 'unavailable' as const,
+      },
+      calendar_status: calendarStatus,
+      listing_health: listingHealth,
+      bookings_summary: {
+        total: bookings.length,
+        pending: bookings.filter((b) => PENDING_STATUSES.includes(b.status))
+          .length,
+        active: bookings.filter((b) => ACTIVE_STATUSES.includes(b.status))
+          .length,
+        completed: bookings.filter((b) => b.status === 'COMPLETED').length,
+        cancelled: bookings.filter(
+          (b) =>
+            b.status === 'CANCELLED_BY_GUEST' ||
+            b.status === 'CANCELLED_BY_HOST' ||
+            b.status === 'EXPIRED',
+        ).length,
+      },
+    };
+  }
+
+  private buildPayoutMeta(): {
+    provider: string;
+    mode: string;
+    disclaimer: string;
+  } {
+    const provider = getStaysPaymentProvider();
+    const stage = resolveNexaStage();
+    const mock = isMockPaymentProvider();
+    const mode = mock
+      ? stage === 'dogfood'
+        ? 'dogfood'
+        : stage === 'staging'
+          ? 'staging_mock'
+          : 'mock'
+      : stage;
+    const disclaimer = mock
+      ? 'Test environment — payouts are simulated. No real money is transferred.'
+      : 'Payout wallet settlement is not enabled. Pending amounts reflect ledger HOST_PAYOUT entries only.';
+    return { provider, mode, disclaimer };
+  }
+
+  private async sumHostPayoutLedger(
+    hostUserId: string,
+    listingIds: string[],
+  ): Promise<{ pending: number; paidOut: number }> {
+    if (listingIds.length === 0) {
+      return { pending: 0, paidOut: 0 };
+    }
+    const rows = await this.ledgerRepo
+      .createQueryBuilder('e')
+      .innerJoin('e.booking', 'b')
+      .innerJoin('b.listing', 'l')
+      .where('l.host_user_id = :hostUserId', { hostUserId })
+      .andWhere('e.type = :type', { type: 'HOST_PAYOUT' })
+      .andWhere('e.status IN (:...statuses)', {
+        statuses: ['PENDING', 'SETTLED'],
+      })
+      .getMany();
+
+    let pending = 0;
+    let paidOut = 0;
+    for (const row of rows) {
+      const amt = Number(row.amount);
+      if (row.status === 'PENDING') pending += amt;
+      if (row.status === 'SETTLED') paidOut += amt;
+    }
+    return { pending: round2(pending), paidOut: round2(paidOut) };
+  }
 
   async getHostStats(hostUserId: string) {
     const listings = await this.listingRepo.find({

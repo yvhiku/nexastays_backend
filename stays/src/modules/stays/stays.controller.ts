@@ -29,6 +29,7 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiBody,
+  ApiOkResponse,
 } from '@nestjs/swagger';
 import { createReadStream } from 'fs';
 import type { Request, Response } from 'express';
@@ -38,6 +39,7 @@ import { HostListingsService } from './services/host-listings.service';
 import { HostApplicationsService } from './hosts/host-applications.service';
 import { HostOnboardingService } from './hosts/host-onboarding.service';
 import { SubmitHostOnboardingDto } from './dto/submit-host-onboarding.dto';
+import { HostDashboardAggregateDto } from './dto/host-dashboard-aggregate.dto';
 import type { StaysUserContext } from './hosts/host-onboarding.types';
 import { AccountTypes } from '../../common/decorators/account-type.decorator';
 import { StaysCancellationService } from './services/stays-cancellation.service';
@@ -581,6 +583,19 @@ export class StaysController {
   @ApiOperation({ summary: 'Get host dashboard KPI stats' })
   async getHostStats(@CurrentUser() user: { userId: string }) {
     return this.hostDashboardService.getHostStats(user.userId);
+  }
+
+  /**
+   * H3 aggregated host dashboard (Casablanca TZ, gross/net/fees, mock payouts).
+   * AuthZ: JWT sub only — never accepts client hostId.
+   */
+  @Get('host/dashboard')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get aggregated host dashboard (H3)' })
+  @ApiOkResponse({ type: HostDashboardAggregateDto })
+  async getHostDashboard(@CurrentUser() user: { userId: string }) {
+    return this.hostDashboardService.getHostDashboard(user.userId);
   }
 
   /**
