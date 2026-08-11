@@ -1,32 +1,71 @@
-# SEC-008 — Web OTP / Identity Session Binder Audit
+# SEC-008 — Web OTP / Identity Session Binder
 
-**Date:** 2026-08-11  
+**Date (audit):** 2026-08-11  
+**Date (remediation):** 2026-08-11  
 **Component:** `nexastays_web` + Identity OTP/`identity_session` binder  
-**Mode:** AUDIT ONLY — no application code changes  
-**Product:** Nexa Stays only (Nexa Pay / inventing Stays PIN lifecycle: out of scope)
+**Product:** Nexa Stays only
 
 | Field | Value |
 |-------|--------|
-| **Primary verdict** | **ACCEPTED RESIDUAL RISK** |
+| **Repository status** | **CLOSED** |
+| **Live / VPS** | **NOT VERIFIED** |
+| **Pre-fix severity** | Low (Medium under XSS) |
+| **Post-fix residual** | Soft-nav memory XSS still possible (same heap); hard reload no longer restores binder |
+
+---
+
+## Remediation summary (implemented)
+
+### What changed
+
+1. **Memory-only binder** — `lib/otp-session-store.ts` holds the identity_session JWT in SPA heap only.  
+2. **No `sessionStorage.setItem` for binder** — AuthContext never persists `nexa_otp_session_token`.  
+3. **Legacy wipe** — `clearLegacyOtpSessionStorage()` removes historic sessionStorage key on hydrate / logout / JWT auth.  
+4. **Refresh-first hydrate** — mount always attempts `hydrateAuthSession()`; durable JWT clears any leftover memory binder; memory OTP is restored only if refresh yields no access token (same-tab soft remount).
+
+### Intentionally retained
+
+- Binder still readable by same-origin XSS while the SPA is mid-registration (memory). HttpOnly binder cookie was out of minimal scope.  
+- Hard reload abandons unfinished registration (must re-OTP) — intentional.  
+- Server TTL/consume unchanged.  
+- JWT `phone_number` claim unchanged (optional future strip).
+
+### Tests
+
+```
+npx tsx --test lib/__tests__/sec-008-otp-binder-storage.test.ts \
+  lib/__tests__/sec-009-registration-phone-url.test.ts \
+  lib/__tests__/auth-onboarding-flow.test.ts \
+  lib/__tests__/prod-sec-001-auth-transport.test.ts \
+  lib/__tests__/logout-session-revoke.test.ts \
+  lib/__tests__/journey-production-audit.test.ts
+→ 38 passed
+```
+
+---
+
+# Original audit (historical)
+
+**Mode (original):** AUDIT ONLY — historical record below; remediation landed after.
+
+| Field | Value |
+|-------|--------|
+| **Primary verdict (audit-time)** | ACCEPTED RESIDUAL RISK → then remediated at repo |
 | **Severity** | **Low** standalone; **Medium** residual **if** same-origin XSS exists |
-| **Repository status** | Residual OPEN as defense-in-depth (same class as Soft P3); not a remote standalone account-takeover bug |
-| **Live / VPS / browser CSRF XSS lab** | **NOT VERIFIED** |
 
 ---
 
 ## 1. Executive Summary
 
-SEC-008 concerns the **registration binder JWT** (`type: identity_session`, also accepted as `otp_session`) that Identity returns when OTP verify does not mint a durable access/refresh pair. The web client stores it in **`sessionStorage`** under `nexa_otp_session_token`, mirrors it in React `AuthContext` state as `tokenType === "otp_session"`, and sends it as **`Authorization: Bearer`** to Identity KYC/onboarding APIs and as **`otp_session_token` in the JSON body** for `POST /auth/registration/complete`.
+SEC-008 concerns the **registration binder JWT** (`type: identity_session`, also accepted as `otp_session`) that Identity returns when OTP verify does not mint a durable access/refresh pair. **Before remediation**, the web client stored it in **`sessionStorage`** under `nexa_otp_session_token`. **After remediation**, the binder is **memory-only** (see remediation summary above).
 
 **SMS OTP digits are not persisted** in web storage (React form state only). Access JWT remains **in-memory**; refresh remains **HttpOnly `nexa_refresh`** (PROD-SEC-001). SEC-009 phone-in-URL is **CLOSED** and is **not** reclassified as SEC-008.
 
-**Confirmed gap:** The binder is **JavaScript-readable** (sessionStorage + React state). JWT payload includes **`phone_number`** (PII readable without secret key). Same-origin XSS can steal the binder within server TTL (~120m) and call KYC / `completeRegistration` while the DB session is unconsumed.
+**Confirmed gap (pre-fix):** The binder was **JavaScript-readable** in sessionStorage. JWT payload includes **`phone_number`**. Same-origin XSS could steal the binder within server TTL (~120m).
 
-**Confirmed mitigations:** sessionStorage (not localStorage); ~120m TTL; DB `consumed` flag; JWT RS256 verify + iss/aud; logout / `setAuthJwt` clear the key; `completeRegistration` consumes before issuing durable tokens.
+**Confirmed mitigations:** ~120m TTL; DB `consumed` flag; JWT RS256 verify + iss/aud; logout / `setAuthJwt` clear the key; `completeRegistration` consumes before issuing durable tokens; **post-fix:** memory-only + refresh-first hydrate.
 
-**Verdict:** **ACCEPTED RESIDUAL RISK** for Soft/dogfood and mock-payment soft launch — XSS-amplified defense-in-depth, not a network-only vulnerability. Optional P3 hardening (memory-only or HttpOnly short-lived cookie; hydrate must not prefer OTP over valid refresh) remains recommended before **broad** public exposure, but is not a Current Critical/High blocker under existing CSP + PROD-SEC-001.
-
-**Do not reopen** SEC-009/010/011/012/013. **Do not** modify SEC-013.
+**Do not reopen** SEC-009/010/011/012/013.
 
 ---
 
@@ -48,7 +87,7 @@ SEC-008 concerns the **registration binder JWT** (`type: identity_session`, also
 OTP send → OTP verify
   ├─ Existing / select → access + refresh (cookie) → AuthContext JWT (memory)
   └─ New / onboarding.required → identity_session JWT
-       → sessionStorage nexa_otp_session_token
+       → memory otp-session-store (SEC-008; was sessionStorage pre-fix)
        → registration (memory phone; SEC-009)
        → KYC/Sumsub using Bearer = binder
        → APPROVED + onboarding.required=false
@@ -96,7 +135,8 @@ Server authority requires **JWT verify + DB row** (`sub` lookup, not expired, no
 
 | State | Storage | Lifetime | Cleared where | Risk |
 |-------|---------|----------|---------------|------|
-| Registration binder | `sessionStorage` key `nexa_otp_session_token` | Tab/session; survives reload | Logout; `setAuthJwt`; `clearStoredTokens` | XSS-readable |
+| Registration binder | **In-memory** `otp-session-store` (+ React state) | SPA heap; lost on hard reload | Logout; `setAuthJwt`; `clearStoredTokens`; refresh hydrate success | Mid-flow XSS still readable; **not** durable in sessionStorage |
+| Legacy sessionStorage key | Wiped on hydrate/logout | Migrated away | `clearLegacyOtpSessionStorage` | Must not be restored |
 | Binder mirror | React `AuthContext` `token` + `tokenType: otp_session` | Until logout/complete/reload hydrate | Same | XSS / DevTools |
 | Access JWT | In-memory (`access-token-store`) | Until refresh fail / logout / reload | Logout / clear | Not durable |
 | Refresh | HttpOnly `nexa_refresh` | Cookie TTL | Logout clear cookie | CSRF class = SEC-013 (accepted) |
@@ -362,11 +402,11 @@ Prefer (3)+(1) before inventing Pay PIN or changing Sumsub.
 
 ## 25. Final Verdict
 
-**ACCEPTED RESIDUAL RISK**
-
-SEC-008 is a **confirmed defense-in-depth residual** (JS-readable registration binder in `sessionStorage`), not a false positive and not fully CLOSED. Server TTL/consume + transport model keep standalone exploitability low. Treat optional remediation as Soft P3 hardening, not as an emergency privilege bug.
+**CLOSED (repository)** — memory-only binder + refresh-first hydrate + legacy sessionStorage wipe implemented 2026-08-11.
 
 **Live / VPS:** **NOT VERIFIED**
+
+Audit-time verdict was **ACCEPTED RESIDUAL RISK**; minimal remediation from §20 (memory + hydrate) landed. Residual XSS-amplified risk while mid-registration SPA memory remains accepted Soft residual (HttpOnly binder cookie not implemented).
 
 ---
 
