@@ -439,7 +439,9 @@ export class UsersController {
           ? 'image/jpeg'
           : 'application/octet-stream';
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'private, max-age=3600');
+    // Must not be shared across accounts: URL is identical for every user (/users/me/...).
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Vary', 'Authorization');
     createReadStream(filePath).pipe(res);
   }
 
