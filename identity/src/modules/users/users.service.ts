@@ -608,7 +608,7 @@ export class UsersService {
       : null;
     const kycProfile = await this.kycProfileRepository.findOne({
       where: { user_id: user.id },
-      select: ['status'],
+      select: ['status', 'date_of_birth'],
     });
     const onboarding = deriveIdentityOnboardingState({
       kycProfileExists: !!kycProfile,
@@ -616,20 +616,25 @@ export class UsersService {
       identityVerificationStatus: identity?.identity_verification_status,
       identityVerified: identity?.identity_verified,
     });
+    const formatDob = (value: Date | string | null | undefined): string | null => {
+      if (value == null || value === '') return null;
+      if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+      }
+      const s = String(value).trim().slice(0, 10);
+      return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+    };
+    const dateOfBirth =
+      formatDob(identity?.date_of_birth) ??
+      formatDob(user.date_of_birth) ??
+      formatDob(kycProfile?.date_of_birth) ??
+      null;
     const sharedFromIdentity = identity
       ? {
           full_name: identity.full_name ?? user.full_name,
           email: identity.email ?? user.email,
           city: identity.city ?? user.city ?? null,
-          date_of_birth: identity.date_of_birth
-            ? identity.date_of_birth instanceof Date
-              ? identity.date_of_birth.toISOString().slice(0, 10)
-              : String(identity.date_of_birth).slice(0, 10)
-            : user.date_of_birth
-              ? user.date_of_birth instanceof Date
-                ? user.date_of_birth.toISOString().slice(0, 10)
-                : String(user.date_of_birth).slice(0, 10)
-              : null,
+          date_of_birth: dateOfBirth,
           profile_photo_url: identity.profile_photo_url ?? user.profile_photo_url ?? null,
           address: identity.address ?? null,
           preferred_language: identity.preferred_language ?? null,
@@ -638,11 +643,7 @@ export class UsersService {
           full_name: user.full_name,
           email: user.email,
           city: user.city ?? null,
-          date_of_birth: user.date_of_birth
-            ? user.date_of_birth instanceof Date
-              ? user.date_of_birth.toISOString().slice(0, 10)
-              : String(user.date_of_birth).slice(0, 10)
-            : null,
+          date_of_birth: dateOfBirth,
           profile_photo_url: user.profile_photo_url ?? null,
           address: null as string | null,
           preferred_language: null as string | null,

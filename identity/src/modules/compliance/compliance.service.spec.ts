@@ -159,4 +159,134 @@ describe('ComplianceService (KYC source)', () => {
       expect.objectContaining({ kyc_status: 'VERIFIED' }),
     );
   });
+
+  describe('Sumsub DOB persistence (S2-02)', () => {
+    beforeEach(() => {
+      mockUserRepo.manager = { query: jest.fn().mockResolvedValue([]) };
+    });
+
+    it('persists provider DOB onto KYC + user when Sumsub info.dob is present', async () => {
+      const user = {
+        ...mockUser,
+        date_of_birth: null,
+        kyc_status: 'PENDING',
+        nationality: 'MA',
+        document_country: undefined,
+        unified_identity_id: null,
+        profile_locked_at: null,
+      } as User;
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockKycRepo.findOne.mockResolvedValue({
+        user_id: user.id,
+        status: 'PENDING',
+        source: 'STAYS',
+        provider: 'SUMSUB',
+        document_country: 'MA',
+        date_of_birth: null,
+        full_name: null,
+        email: null,
+      });
+
+      await (service as any).applySumsubReviewStatus({
+        userId: user.id,
+        source: 'STAYS',
+        applicantId: 'applicant-1',
+        eventType: 'applicantReviewed',
+        reviewStatus: 'completed',
+        reviewResult: { reviewAnswer: 'GREEN' },
+        providerDateOfBirth: '1991-07-04',
+      });
+
+      expect(mockKycRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          date_of_birth: '1991-07-04',
+          status: 'VERIFIED',
+        }),
+      );
+      expect(mockUserRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          date_of_birth: new Date('1991-07-04T00:00:00.000Z'),
+        }),
+      );
+    });
+
+    it('leaves DOB empty when Sumsub provides no DOB', async () => {
+      const user = {
+        ...mockUser,
+        date_of_birth: null,
+        kyc_status: 'PENDING',
+        nationality: 'MA',
+        profile_locked_at: null,
+        unified_identity_id: null,
+      } as User;
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockKycRepo.findOne.mockResolvedValue({
+        user_id: user.id,
+        status: 'PENDING',
+        source: 'STAYS',
+        provider: 'SUMSUB',
+        document_country: 'MA',
+        date_of_birth: null,
+        full_name: null,
+        email: null,
+      });
+      jest.spyOn(service as any, 'sumsubRequest').mockRejectedValue(
+        new Error('no applicant'),
+      );
+
+      await (service as any).applySumsubReviewStatus({
+        userId: user.id,
+        source: 'STAYS',
+        applicantId: 'applicant-missing-dob',
+        eventType: 'applicantReviewed',
+        reviewStatus: 'completed',
+        reviewResult: { reviewAnswer: 'GREEN' },
+        providerDateOfBirth: null,
+      });
+
+      expect(mockKycRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ date_of_birth: null }),
+      );
+      expect(mockUserRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ date_of_birth: null }),
+      );
+    });
+
+    it('does not overwrite an existing KYC DOB from webhook payload', async () => {
+      const user = {
+        ...mockUser,
+        date_of_birth: new Date('1990-01-01T00:00:00.000Z'),
+        kyc_status: 'VERIFIED',
+        nationality: 'MA',
+        unified_identity_id: null,
+      } as User;
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockKycRepo.findOne.mockResolvedValue({
+        user_id: user.id,
+        status: 'VERIFIED',
+        source: 'STAYS',
+        provider: 'SUMSUB',
+        document_country: 'MA',
+        date_of_birth: '1990-01-01',
+        full_name: null,
+        email: null,
+      });
+      const fetchSpy = jest.spyOn(service as any, 'sumsubRequest');
+
+      await (service as any).applySumsubReviewStatus({
+        userId: user.id,
+        source: 'STAYS',
+        applicantId: 'applicant-1',
+        eventType: 'applicantReviewed',
+        reviewStatus: 'completed',
+        reviewResult: { reviewAnswer: 'GREEN' },
+        providerDateOfBirth: '1999-12-31',
+      });
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(mockKycRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ date_of_birth: '1990-01-01' }),
+      );
+    });
+  });
 });

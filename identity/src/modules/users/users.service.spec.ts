@@ -1,27 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
-import { Wallet } from '../wallets/entities/wallet.entity';
-import { LedgerAccount } from '../ledger/entities/ledger-account.entity';
-import { LedgerEntry } from '../ledger/entities/ledger-entry.entity';
-import { LedgerTransaction } from '../ledger/entities/ledger-transaction.entity';
-import { AppTransaction } from '../transactions/entities/app-transaction.entity';
 import { KycProfile } from '../compliance/entities/kyc-profile.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { TrustedDevice } from '../auth/entities/trusted-device.entity';
 import { UserConsent } from './entities/user-consent.entity';
 import { OtpCode } from '../auth/entities/otp-code.entity';
-import { DataSource } from 'typeorm';
-import { LedgerService } from '../ledger/ledger.service';
-import { LedgerPostingService } from '../ledger/ledger-posting.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UnifiedIdentityService } from './unified-identity.service';
 import { IdentityPhoneNumbersService } from './identity-phone-numbers.service';
 import { ProfileSyncService } from './profile-sync.service';
+import { UserNotificationsService } from '../notifications/user-notifications.service';
 
 describe('UsersService (profile lock)', () => {
   let service: UsersService;
@@ -33,11 +25,6 @@ describe('UsersService (profile lock)', () => {
     save: jest.fn(),
     update: jest.fn(),
   };
-  const mockWalletRepo = { findOne: jest.fn(), save: jest.fn() };
-  const mockLedgerAccountRepo = { save: jest.fn() };
-  const mockLedgerEntryRepo = { save: jest.fn() };
-  const mockLedgerTxnRepo = { save: jest.fn() };
-  const mockAppTransactionRepo = { find: jest.fn(), save: jest.fn() };
   const mockKycRepo = { findOne: jest.fn(), save: jest.fn() };
   const mockAuditRepo = { save: jest.fn(), create: jest.fn() };
   const mockRefreshTokenRepo = {
@@ -52,7 +39,6 @@ describe('UsersService (profile lock)', () => {
   const mockTrustedDeviceRepo = { findOne: jest.fn(), find: jest.fn(), save: jest.fn() };
   const mockUserConsentRepo = { find: jest.fn(), save: jest.fn(), create: jest.fn() };
   const mockDataSource = { transaction: jest.fn() };
-  const mockLedgerService = { getBalance: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -60,23 +46,6 @@ describe('UsersService (profile lock)', () => {
       providers: [
         UsersService,
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
-        { provide: getRepositoryToken(Wallet), useValue: mockWalletRepo },
-        {
-          provide: getRepositoryToken(LedgerAccount),
-          useValue: mockLedgerAccountRepo,
-        },
-        {
-          provide: getRepositoryToken(LedgerEntry),
-          useValue: mockLedgerEntryRepo,
-        },
-        {
-          provide: getRepositoryToken(LedgerTransaction),
-          useValue: mockLedgerTxnRepo,
-        },
-        {
-          provide: getRepositoryToken(AppTransaction),
-          useValue: mockAppTransactionRepo,
-        },
         { provide: getRepositoryToken(KycProfile), useValue: mockKycRepo },
         { provide: getRepositoryToken(AuditLog), useValue: mockAuditRepo },
         {
@@ -93,14 +62,13 @@ describe('UsersService (profile lock)', () => {
         },
         { provide: getRepositoryToken(OtpCode), useValue: { findOne: jest.fn() } },
         { provide: DataSource, useValue: mockDataSource },
-        { provide: LedgerService, useValue: mockLedgerService },
-        {
-          provide: LedgerPostingService,
-          useValue: { postTwoLegJournal: jest.fn(), postJournal: jest.fn() },
-        },
         {
           provide: UnifiedIdentityService,
-          useValue: { findOrCreateByPhone: jest.fn(), getProfileByPhone: jest.fn() },
+          useValue: {
+            findOrCreateByPhone: jest.fn(),
+            getProfileByPhone: jest.fn(),
+            findById: jest.fn().mockResolvedValue(null),
+          },
         },
         {
           provide: IdentityPhoneNumbersService,
@@ -109,6 +77,13 @@ describe('UsersService (profile lock)', () => {
         {
           provide: ProfileSyncService,
           useValue: { updateSharedProfile: jest.fn().mockResolvedValue({}) },
+        },
+        {
+          provide: UserNotificationsService,
+          useValue: {
+            create: jest.fn(),
+            listForUser: jest.fn(),
+          },
         },
       ],
     }).compile();
@@ -133,7 +108,12 @@ describe('UsersService (profile lock)', () => {
         account_type: 'CONSUMER',
       } as User;
       mockUserRepo.findOne.mockResolvedValue(user);
-      mockUserRepo.findOneOrFail.mockResolvedValue({ ...user, ...{ full_name: 'Alice Updated', city: 'Rabat', date_of_birth: new Date('1990-05-15') } });
+      mockUserRepo.findOneOrFail.mockResolvedValue({
+        ...user,
+        full_name: 'Alice Updated',
+        city: 'Rabat',
+        date_of_birth: new Date('1990-05-15'),
+      });
       mockUserRepo.save.mockImplementation((u) => Promise.resolve({ ...user, ...u }));
 
       const dto: UpdateProfileDto = {
@@ -177,6 +157,17 @@ describe('UsersService (profile lock)', () => {
       expect(mockUserRepo.save).not.toHaveBeenCalled();
     });
 
+    it('throws 403 PROFILE_LOCKED when client tries to forge date_of_birth', async () => {
+      mockUserRepo.findOne.mockResolvedValue(lockedUser);
+
+      await expect(
+        service.updateProfile('u2', { date_of_birth: '2000-01-01' }),
+      ).rejects.toMatchObject({
+        response: { code: 'PROFILE_LOCKED' },
+      });
+      expect(mockUserRepo.save).not.toHaveBeenCalled();
+    });
+
     it('allows updating email when locked', async () => {
       mockUserRepo.findOne.mockResolvedValue(lockedUser);
       mockUserRepo.findOneOrFail.mockResolvedValue({ ...lockedUser, email: 'new@b.com' });
@@ -203,7 +194,10 @@ describe('UsersService (profile lock)', () => {
 
     it('allows updating profile_photo_url when locked', async () => {
       mockUserRepo.findOne.mockResolvedValue(lockedUser);
-      mockUserRepo.findOneOrFail.mockResolvedValue({ ...lockedUser, profile_photo_url: 'https://example.com/photo.jpg' });
+      mockUserRepo.findOneOrFail.mockResolvedValue({
+        ...lockedUser,
+        profile_photo_url: 'https://example.com/photo.jpg',
+      });
       mockUserRepo.save.mockImplementation((u) => Promise.resolve({ ...lockedUser, ...u }));
 
       await service.updateProfile('u2', {
@@ -308,12 +302,62 @@ describe('UsersService (profile lock)', () => {
         linked_user: null,
       } as User;
       mockUserRepo.findOne.mockResolvedValue(user);
+      mockKycRepo.findOne.mockResolvedValue({ status: 'APPROVED' });
 
       const out = await service.getMe('u3');
       expect(out.profile_locked).toBe(true);
       expect(out.locked_fields).toEqual(['full_name', 'date_of_birth']);
       expect(out.city).toBe('Fes');
       expect(out.date_of_birth).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('exposes date_of_birth from kyc_profiles when user/identity DOB is empty', async () => {
+      const user = {
+        id: 'u-dob-kyc',
+        phone_number: '+212600000001',
+        full_name: 'Approved User',
+        email: null,
+        city: 'Casablanca',
+        date_of_birth: null,
+        profile_photo_url: null,
+        profile_locked_at: new Date(),
+        kyc_status: 'APPROVED',
+        linked_user: null,
+        unified_identity_id: null,
+      } as User;
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockKycRepo.findOne.mockResolvedValue({
+        status: 'APPROVED',
+        date_of_birth: '1988-11-02',
+      });
+
+      const out = await service.getMe('u-dob-kyc');
+      expect(out.date_of_birth).toBe('1988-11-02');
+      expect(out.kyc_status).toBe('APPROVED');
+    });
+
+    it('keeps date_of_birth null when no layer has DOB', async () => {
+      const user = {
+        id: 'u-no-dob',
+        phone_number: '+212600000002',
+        full_name: 'No Dob',
+        email: null,
+        city: 'Rabat',
+        date_of_birth: null,
+        profile_photo_url: null,
+        profile_locked_at: new Date(),
+        kyc_status: 'APPROVED',
+        linked_user: null,
+        unified_identity_id: null,
+      } as User;
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockKycRepo.findOne.mockResolvedValue({
+        status: 'APPROVED',
+        date_of_birth: null,
+      });
+
+      const out = await service.getMe('u-no-dob');
+      expect(out.date_of_birth).toBeNull();
     });
   });
 });

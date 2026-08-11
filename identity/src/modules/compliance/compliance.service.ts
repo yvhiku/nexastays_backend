@@ -281,6 +281,57 @@ export class ComplianceService {
     }
   }
 
+  /** Normalize Sumsub `info.dob` / `fixedInfo.dob` to YYYY-MM-DD; never invent values. */
+  private extractSumsubIsoDob(
+    applicant: Record<string, unknown> | null | undefined,
+  ): string | null {
+    if (!applicant || typeof applicant !== 'object') return null;
+    const info = applicant.info as Record<string, unknown> | undefined;
+    const fixedInfo = applicant.fixedInfo as Record<string, unknown> | undefined;
+    for (const raw of [info?.dob, fixedInfo?.dob, applicant.dob]) {
+      if (typeof raw !== 'string') continue;
+      const dob = raw.trim().slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) return dob;
+    }
+    return null;
+  }
+
+  private normalizeIsoDob(value: string | null | undefined): string | null {
+    if (value == null || typeof value !== 'string') return null;
+    const dob = value.trim().slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(dob) ? dob : null;
+  }
+
+  /**
+   * Prefer already-known provider DOB; otherwise fetch Sumsub applicant once when KYC DOB is empty.
+   * Failures must not block KYC approval/rejection updates.
+   */
+  private async resolveSumsubDateOfBirth(params: {
+    providerDateOfBirth?: string | null;
+    applicantId?: string | null;
+    existingKycDob?: string | null;
+  }): Promise<string | null> {
+    if (this.normalizeIsoDob(params.existingKycDob)) {
+      return null;
+    }
+    const fromParam = this.normalizeIsoDob(params.providerDateOfBirth ?? null);
+    if (fromParam) return fromParam;
+    const applicantId = (params.applicantId ?? '').trim();
+    if (!applicantId) return null;
+    try {
+      const applicant = await this.sumsubRequest<Record<string, unknown>>(
+        'GET',
+        `/resources/applicants/${encodeURIComponent(applicantId)}/one`,
+      );
+      return this.extractSumsubIsoDob(applicant);
+    } catch {
+      safeLogger.debug('Sumsub applicant DOB fetch skipped', {
+        hasApplicantId: true,
+      });
+      return null;
+    }
+  }
+
   private async applySumsubReviewStatus(params: {
     userId: string;
     source: string;
@@ -289,6 +340,8 @@ export class ComplianceService {
     eventType?: string | null;
     reviewStatus?: string | null;
     reviewResult?: Record<string, unknown> | null;
+    /** Pre-extracted Sumsub ISO DOB from applicant sync (optional). */
+    providerDateOfBirth?: string | null;
   }) {
     const reviewAnswer = params.reviewResult?.reviewAnswer as string | undefined;
     const rejectLabels = params.reviewResult?.rejectLabels as unknown;
@@ -316,6 +369,15 @@ export class ComplianceService {
     kyc.last_webhook_event_type =
       (params.eventType ?? 'sumsubStatusSync').slice(0, 100) || null;
     kyc.last_webhook_received_at = new Date();
+
+    const providerDob = await this.resolveSumsubDateOfBirth({
+      providerDateOfBirth: params.providerDateOfBirth,
+      applicantId: params.applicantId,
+      existingKycDob: kyc.date_of_birth,
+    });
+    if (providerDob) {
+      kyc.date_of_birth = providerDob;
+    }
 
     const user = await this.userRepository.findOne({ where: { id: params.userId } });
 
@@ -367,7 +429,7 @@ export class ComplianceService {
       if (!user.date_of_birth && kyc.date_of_birth?.trim()) {
         const dob = kyc.date_of_birth.trim();
         if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
-          user.date_of_birth = new Date(dob);
+          user.date_of_birth = new Date(`${dob}T00:00:00.000Z`);
         }
       }
       if (
@@ -382,18 +444,27 @@ export class ComplianceService {
         user.unified_identity_id &&
         (userRowKycStatus === 'VERIFIED' || userRowKycStatus === 'APPROVED')
       ) {
+        const dobForIdentity =
+          this.normalizeIsoDob(kyc.date_of_birth) ??
+          (user.date_of_birth
+            ? user.date_of_birth instanceof Date
+              ? user.date_of_birth.toISOString().slice(0, 10)
+              : this.normalizeIsoDob(String(user.date_of_birth))
+            : null);
         await this.userRepository.manager.query(
           `UPDATE unified_identities
            SET identity_verified = true,
                identity_verification_status = 'APPROVED',
                full_name = COALESCE(NULLIF(BTRIM(COALESCE(full_name, '')), ''), $2),
                email = COALESCE(NULLIF(BTRIM(COALESCE(email, '')), ''), $3),
+               date_of_birth = COALESCE(date_of_birth, $4::date),
                updated_at = NOW()
            WHERE id = $1`,
           [
             user.unified_identity_id,
             user.full_name ?? null,
             user.email ?? null,
+            dobForIdentity,
           ],
         );
       }
@@ -491,33 +562,36 @@ export class ComplianceService {
       throw new BadRequestException(`Sumsub request failed: ${applicantText}`);
     }
 
-    let applicant: { id?: string; externalUserId?: string };
+    let applicant: Record<string, unknown>;
     try {
-      applicant = JSON.parse(applicantText) as {
-        id?: string;
-        externalUserId?: string;
-      };
+      applicant = JSON.parse(applicantText) as Record<string, unknown>;
     } catch {
       throw new BadRequestException('Sumsub applicant response invalid JSON');
     }
 
-    if (!applicant.id) {
+    const applicantId =
+      typeof applicant.id === 'string' ? applicant.id : undefined;
+    if (!applicantId) {
       return this.pendingSumsubSyncResult(userId, source);
     }
 
     const status = await this.sumsubRequest<{
       reviewStatus?: string;
       reviewResult?: Record<string, unknown>;
-    }>('GET', `/resources/applicants/${applicant.id}/status`);
+    }>('GET', `/resources/applicants/${applicantId}/status`);
 
     return this.applySumsubReviewStatus({
       userId,
       source,
-      applicantId: applicant.id,
-      externalUserId: applicant.externalUserId ?? externalUserId,
+      applicantId,
+      externalUserId:
+        (typeof applicant.externalUserId === 'string'
+          ? applicant.externalUserId
+          : null) ?? externalUserId,
       eventType: 'sumsubStatusSync',
       reviewStatus: status.reviewStatus ?? null,
       reviewResult: status.reviewResult ?? null,
+      providerDateOfBirth: this.extractSumsubIsoDob(applicant),
     });
   }
 
@@ -535,11 +609,11 @@ export class ComplianceService {
     const eventType = payload.type as string | undefined;
     const reviewStatus = payload.reviewStatus as string | undefined;
     const applicantId = payload.applicantId as string | undefined;
+    const applicantPayload =
+      (payload.applicant as Record<string, unknown> | undefined) ?? null;
     const reviewResult =
       (payload.reviewResult as Record<string, unknown> | undefined) ||
       ((payload.review as Record<string, unknown> | undefined)?.reviewResult as Record<string, unknown> | undefined);
-    const reviewAnswer = reviewResult?.reviewAnswer as string | undefined;
-    const rejectLabels = reviewResult?.rejectLabels as unknown;
 
     const userId = this.extractUserIdFromExternalId(externalUserId);
     if (!userId) {
@@ -555,6 +629,7 @@ export class ComplianceService {
       eventType,
       reviewStatus,
       reviewResult: reviewResult ?? null,
+      providerDateOfBirth: this.extractSumsubIsoDob(applicantPayload),
     });
 
     return { received: true, eventType: eventType ?? null, ...result };
