@@ -60,8 +60,12 @@ export class HostsService {
     return this.hostOnboarding.resolveProfileForUser(userId);
   }
 
+  /**
+   * Authoritative listing eligibility (H15).
+   * Must match HostOnboardingService.canList — never use isApprovedHost alone.
+   */
   async canList(userId: string): Promise<boolean> {
-    return this.hostOnboarding.isApprovedHost(userId);
+    return this.hostOnboarding.canList(userId);
   }
 
   uploadDocumentFront(

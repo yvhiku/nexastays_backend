@@ -91,12 +91,79 @@ describe('HostOnboardingService', () => {
     await expect(service.canList('consumer-1')).resolves.toBe(false);
   });
 
-  it('canList is true when application and verification approved', async () => {
+  it('canList is true when application and verification approved and not frozen', async () => {
     hostProfileRepo.findOne!.mockResolvedValue({
       ...existingProfile,
       application_status: 'APPROVED',
       host_verification_status: 'APPROVED',
+      listing_frozen: false,
     });
     await expect(service.canList('consumer-1')).resolves.toBe(true);
+  });
+
+  it('canList DENY when listing_frozen even if application+verification APPROVED', async () => {
+    hostProfileRepo.findOne!.mockResolvedValue({
+      ...existingProfile,
+      application_status: 'APPROVED',
+      host_verification_status: 'APPROVED',
+      listing_frozen: true,
+    });
+    await expect(service.canList('consumer-1')).resolves.toBe(false);
+  });
+
+  it('canList DENY when application APPROVED but host_verification PENDING', async () => {
+    hostProfileRepo.findOne!.mockResolvedValue({
+      ...existingProfile,
+      application_status: 'APPROVED',
+      host_verification_status: 'PENDING',
+      listing_frozen: false,
+    });
+    await expect(service.canList('consumer-1')).resolves.toBe(false);
+  });
+
+  it('canList DENY when application APPROVED but host_verification REJECTED', async () => {
+    hostProfileRepo.findOne!.mockResolvedValue({
+      ...existingProfile,
+      application_status: 'APPROVED',
+      host_verification_status: 'REJECTED',
+      listing_frozen: false,
+    });
+    await expect(service.canList('consumer-1')).resolves.toBe(false);
+  });
+
+  it('canList DENY when application REJECTED even if verification appears APPROVED', async () => {
+    hostProfileRepo.findOne!.mockResolvedValue({
+      ...existingProfile,
+      application_status: 'REJECTED',
+      host_verification_status: 'APPROVED',
+      listing_frozen: false,
+    });
+    await expect(service.canList('consumer-1')).resolves.toBe(false);
+  });
+
+  it('canList DENY when application DRAFT', async () => {
+    hostProfileRepo.findOne!.mockResolvedValue({
+      ...existingProfile,
+      application_status: 'DRAFT',
+      host_verification_status: 'PENDING',
+      listing_frozen: false,
+    });
+    await expect(service.canList('consumer-1')).resolves.toBe(false);
+  });
+
+  it('canList DENY when no host profile exists', async () => {
+    hostProfileRepo.findOne!.mockResolvedValue(null);
+    await expect(service.canList('unknown-user')).resolves.toBe(false);
+  });
+
+  it('isApprovedHost is application APPROVED only (weaker than canList)', async () => {
+    hostProfileRepo.findOne!.mockResolvedValue({
+      ...existingProfile,
+      application_status: 'APPROVED',
+      host_verification_status: 'PENDING',
+      listing_frozen: true,
+    });
+    await expect(service.isApprovedHost('consumer-1')).resolves.toBe(true);
+    await expect(service.canList('consumer-1')).resolves.toBe(false);
   });
 });
