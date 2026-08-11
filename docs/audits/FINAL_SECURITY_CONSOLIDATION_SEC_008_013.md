@@ -15,7 +15,7 @@
 | Closed remediations | SEC-008, SEC-009, SEC-010, SEC-011 — **REGRESSION PASS** |
 | Accepted residuals | SEC-012, SEC-013 — **PASS-as-accepted** (not reopen) |
 | New P0 / P1 / P2 in this pass | **None evidenced** |
-| New P3 / INFO | Stale docs (`status.md` ambient-cookie matrix; some web BUGS docs) — **P3-SEC-NEW-001** remains documentation hygiene |
+| New P3 / INFO | **P3-SEC-NEW-001 CLOSED** (status.md ambient-cookie matrix corrected 2026-08-11); some legacy web BUGS docs remain stale INFO |
 
 This pass did **not** reopen any closed finding. Contradictory wording in old docs does **not** override current code.
 
@@ -127,16 +127,9 @@ Residuals: no double-submit CSRF token; no `Sec-Fetch-Site`; Origin gate only wh
 
 ## 9. New findings
 
-### P3-SEC-NEW-001 — Stale security matrix (INFO / P3 hygiene) — OPEN
+### P3-SEC-NEW-001 — Stale security matrix (docs) — **CLOSED** (2026-08-11)
 
-| Field | Value |
-|-------|--------|
-| **Severity** | Low / documentation |
-| **Component** | `.cursor/docs/security/status.md` (and some web BUGS/legacy reviews) |
-| **Evidence** | Cookie/CSRF matrix still claims ambient access cookies exist as BLOCKING while PROD-SEC-001 CLOSED and code never issues ambient access |
-| **Exploitability** | None — docs only |
-| **Recommended action** | Update status matrix wording (docs-only; not this audit’s code pass) |
-| **Launch impact** | None if operators use SEC-008–013 audits as authority |
+Cookie/CSRF matrix in `.cursor/docs/security/status.md` updated: removed false claim that ambient access cookies “currently exist” as the reason for BLOCKING. Aligns with **PROD-SEC-001 CLOSED** (Bearer access + HttpOnly refresh). Live cookie/Origin verification remains a separate **NOT VERIFIED** ops gate.
 
 ### No new P0 / P1 / P2
 
@@ -317,7 +310,7 @@ Do **not** spend the next cycle on:
 - SEC-012 shared enum package  
 - Re-litigating SEC-008–011 code  
 
-Optional docs-only: correct `status.md` ambient-cookie BLOCKING row (P3-SEC-NEW-001).
+Optional: leave legacy `nexastays_web` BUGS/review docs as historical INFO (not runtime).
 
 ---
 
