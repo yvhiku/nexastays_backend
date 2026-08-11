@@ -29,6 +29,7 @@ import { StaysAvailabilityService } from './services/stays-availability.service'
 import { StaysAuditService } from './services/stays-audit.service';
 import { HostListingsService } from './services/host-listings.service';
 import { HostDashboardService } from './services/host-dashboard.service';
+import { HostAnalyticsService } from './services/host-analytics.service';
 import { StaysReviewsService } from './services/stays-reviews.service';
 import { BookingLifecycleService } from './services/booking-lifecycle.service';
 import { BookingLifecycleSchedulerService } from './services/booking-lifecycle-scheduler.service';
@@ -74,6 +75,7 @@ import { MessagingModule } from '../messaging/messaging.module';
     StaysCancellationService,
     HostListingsService,
     HostDashboardService,
+    HostAnalyticsService,
     BookingLifecycleService,
     BookingLifecycleSchedulerService,
     CalendarSyncService,

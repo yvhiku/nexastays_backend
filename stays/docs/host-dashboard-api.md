@@ -93,7 +93,7 @@ All dashboard “today / month / +30d” boundaries use **`Africa/Casablanca`** 
 1. In-memory aggregation over the host’s bookings (same pattern as `/host/stats`); SQL rollups deferred.
 2. Occupancy v1 ignores blocks (documented via `occupancy_basis`).
 3. No real payout wallet, CMI settlement, or `available` balance.
-4. No `GET /stays/host/analytics` / per-listing breakdown (H3 non-goal).
+4. Per-listing property performance is on `GET /stays/host/analytics` (H10 / H7) — not this dashboard.
 5. Messaging unread inventing is forbidden — field is explicitly unavailable.
 6. Extra vs H2 §9 shape: `earnings.previous_month` object is included for clarity; MoM remains on `this_month.mom_pct`.
 

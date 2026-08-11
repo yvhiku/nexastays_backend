@@ -121,10 +121,42 @@ export function bookedNightsInCalendarMonth(
     { zone: DASHBOARD_TIMEZONE },
   );
   const monthEnd = monthStart.plus({ months: 1 });
+  return bookedNightsInHalfOpenRange(
+    checkinYmd,
+    checkoutYmd,
+    monthStart.toISODate()!,
+    monthEnd.toISODate()!,
+  );
+}
+
+/**
+ * Nights of [checkin, checkout) that fall inside [periodStart, periodEndExclusive).
+ * Dates are Casablanca calendar YYYY-MM-DD.
+ */
+export function bookedNightsInHalfOpenRange(
+  checkinYmd: string,
+  checkoutYmd: string,
+  periodStartYmd: string,
+  periodEndExclusiveYmd: string,
+): number {
+  const periodStart = DateTime.fromISO(periodStartYmd, {
+    zone: DASHBOARD_TIMEZONE,
+  });
+  const periodEnd = DateTime.fromISO(periodEndExclusiveYmd, {
+    zone: DASHBOARD_TIMEZONE,
+  });
   const checkin = DateTime.fromISO(checkinYmd, { zone: DASHBOARD_TIMEZONE });
   const checkout = DateTime.fromISO(checkoutYmd, { zone: DASHBOARD_TIMEZONE });
-  const start = checkin > monthStart ? checkin : monthStart;
-  const end = checkout < monthEnd ? checkout : monthEnd;
+  const start = checkin > periodStart ? checkin : periodStart;
+  const end = checkout < periodEnd ? checkout : periodEnd;
   if (end <= start) return 0;
   return Math.round(end.diff(start, 'days').days);
+}
+
+/** Full stay nights [checkin, checkout). */
+export function stayNights(checkinYmd: string, checkoutYmd: string): number {
+  const checkin = DateTime.fromISO(checkinYmd, { zone: DASHBOARD_TIMEZONE });
+  const checkout = DateTime.fromISO(checkoutYmd, { zone: DASHBOARD_TIMEZONE });
+  if (checkout <= checkin) return 0;
+  return Math.round(checkout.diff(checkin, 'days').days);
 }

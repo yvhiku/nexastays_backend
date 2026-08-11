@@ -30,6 +30,7 @@ import {
   ApiConsumes,
   ApiBody,
   ApiOkResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { createReadStream } from 'fs';
 import type { Request, Response } from 'express';
@@ -40,11 +41,16 @@ import { HostApplicationsService } from './hosts/host-applications.service';
 import { HostOnboardingService } from './hosts/host-onboarding.service';
 import { SubmitHostOnboardingDto } from './dto/submit-host-onboarding.dto';
 import { HostDashboardAggregateDto } from './dto/host-dashboard-aggregate.dto';
+import {
+  HOST_ANALYTICS_PERIODS,
+  HostAnalyticsResponseDto,
+} from './dto/host-analytics.dto';
 import type { StaysUserContext } from './hosts/host-onboarding.types';
 import { AccountTypes } from '../../common/decorators/account-type.decorator';
 import { StaysCancellationService } from './services/stays-cancellation.service';
 import { StaysReviewsService } from './services/stays-reviews.service';
 import { HostDashboardService } from './services/host-dashboard.service';
+import { HostAnalyticsService } from './services/host-analytics.service';
 import { CalendarSyncService } from './services/calendar-sync.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
@@ -91,6 +97,7 @@ export class StaysController {
     private readonly cancellationService: StaysCancellationService,
     private readonly staysReviewsService: StaysReviewsService,
     private readonly hostDashboardService: HostDashboardService,
+    private readonly hostAnalyticsService: HostAnalyticsService,
     private readonly calendarSyncService: CalendarSyncService,
     private readonly platformSettings: PlatformSettingsService,
     private readonly identitySnapshotClient: IdentitySnapshotClient,
@@ -596,6 +603,33 @@ export class StaysController {
   @ApiOkResponse({ type: HostDashboardAggregateDto })
   async getHostDashboard(@CurrentUser() user: { userId: string }) {
     return this.hostDashboardService.getHostDashboard(user.userId);
+  }
+
+  /**
+   * H10 property performance analytics (H7 locked contract).
+   * AuthZ: JWT userId → host listings only — never accepts client hostId.
+   * Occupancy basis: BOOKED_NIGHTS_OVER_PERIOD_DAYS_V1 (not host capacity occupancy).
+   */
+  @Get('host/analytics')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get host property performance analytics (H10)',
+    description:
+      'Per-listing money, nights, occupancy (BOOKED_NIGHTS_OVER_PERIOD_DAYS_V1), reviews denorm, and health. Period boundaries use Africa/Casablanca. Host identity from JWT only.',
+  })
+  @ApiQuery({
+    name: 'period',
+    required: false,
+    enum: HOST_ANALYTICS_PERIODS,
+    description: 'Analytics period (default this_month)',
+  })
+  @ApiOkResponse({ type: HostAnalyticsResponseDto })
+  async getHostAnalytics(
+    @CurrentUser() user: { userId: string },
+    @Query('period') period?: string,
+  ) {
+    return this.hostAnalyticsService.getHostAnalytics(user.userId, period);
   }
 
   /**
