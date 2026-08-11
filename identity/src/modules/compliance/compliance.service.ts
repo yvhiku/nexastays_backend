@@ -357,6 +357,19 @@ export class ComplianceService {
 
     if (user) {
       user.kyc_status = userRowKycStatus;
+      // Prefer KYC form data if the user shell is still missing PII
+      if (!user.full_name?.trim() && kyc.full_name?.trim()) {
+        user.full_name = kyc.full_name.trim().slice(0, 100);
+      }
+      if (!user.email?.trim() && kyc.email?.trim()) {
+        user.email = kyc.email.trim().slice(0, 150);
+      }
+      if (!user.date_of_birth && kyc.date_of_birth?.trim()) {
+        const dob = kyc.date_of_birth.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+          user.date_of_birth = new Date(dob);
+        }
+      }
       if (
         userRowKycStatus === 'VERIFIED' &&
         !user.profile_locked_at
@@ -364,6 +377,26 @@ export class ComplianceService {
         user.profile_locked_at = new Date();
       }
       await this.userRepository.save(user);
+
+      if (
+        user.unified_identity_id &&
+        (userRowKycStatus === 'VERIFIED' || userRowKycStatus === 'APPROVED')
+      ) {
+        await this.userRepository.manager.query(
+          `UPDATE unified_identities
+           SET identity_verified = true,
+               identity_verification_status = 'APPROVED',
+               full_name = COALESCE(NULLIF(BTRIM(COALESCE(full_name, '')), ''), $2),
+               email = COALESCE(NULLIF(BTRIM(COALESCE(email, '')), ''), $3),
+               updated_at = NOW()
+           WHERE id = $1`,
+          [
+            user.unified_identity_id,
+            user.full_name ?? null,
+            user.email ?? null,
+          ],
+        );
+      }
     }
 
     return {
@@ -412,7 +445,18 @@ export class ComplianceService {
     kyc.source = source;
     kyc.reference = tokenData.userId ?? externalUserId;
     kyc.status = kyc.status || 'PENDING';
-    user.kyc_status = 'PENDING';
+
+    // Token minting must never downgrade an already-approved verification.
+    const protectedStatuses = new Set(['APPROVED', 'VERIFIED']);
+    const userStatus = (user.kyc_status || '').toUpperCase();
+    const profileStatus = (kyc.status || '').toUpperCase();
+    if (
+      !protectedStatuses.has(userStatus) &&
+      !protectedStatuses.has(profileStatus)
+    ) {
+      user.kyc_status = 'PENDING';
+    }
+
     await this.kycRepository.save(kyc);
     await this.userRepository.save(user);
 

@@ -136,4 +136,27 @@ describe('ComplianceService (KYC source)', () => {
       }),
     );
   });
+
+  it('does not downgrade VERIFIED user.kyc_status when minting Sumsub SDK tokens', async () => {
+    const verifiedUser = {
+      ...mockUser,
+      kyc_status: 'VERIFIED',
+    } as User;
+    mockUserRepo.findOne.mockResolvedValue(verifiedUser);
+    mockKycRepo.findOne.mockResolvedValue({
+      user_id: verifiedUser.id,
+      status: 'VERIFIED',
+      source: 'STAYS',
+    });
+    jest.spyOn(service as any, 'sumsubRequest').mockResolvedValue({
+      token: 'sumsub-token',
+      userId: `STAYS_${verifiedUser.id}`,
+    });
+
+    await service.createSumsubSdkToken(verifiedUser.id, 'STAYS');
+
+    expect(mockUserRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ kyc_status: 'VERIFIED' }),
+    );
+  });
 });
