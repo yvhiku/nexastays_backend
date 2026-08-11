@@ -59,6 +59,7 @@ import { UserNotificationsService } from '../notifications/user-notifications.se
 import { AuditService } from '../audit/audit.service';
 import { BotProtectionGuard } from '../../common/abuse/bot-protection.guard';
 import { ACCOUNT_CREATE_THROTTLE } from '../../common/abuse/throttle-presets';
+import { deriveIdentityOnboardingState } from '../../common/identity-onboarding';
 
 @ApiTags('Pay Users')
 @Controller(['users', 'pay/users'])
@@ -124,6 +125,10 @@ export class UsersController {
         date_of_birth: null,
         profile_photo_url: null,
         kyc_status: 'PENDING',
+        onboarding: deriveIdentityOnboardingState({
+          kycProfileExists: false,
+          kycStatus: 'PENDING',
+        }),
         status: 'ACTIVE',
         account_type: 'CONSUMER',
         profile_locked: false,

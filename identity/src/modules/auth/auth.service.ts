@@ -38,6 +38,10 @@ import {
 import { SmsService } from '../sms/sms.service';
 import { normalizePhoneOrThrow, tryNormalizePhoneNumber, phoneLookupCandidates } from '../../common/phone/phone-normalizer';
 import { KycProfile } from '../compliance/entities/kyc-profile.entity';
+import {
+  deriveIdentityOnboardingState,
+  type IdentityOnboardingState,
+} from '../../common/identity-onboarding';
 
 export interface RefreshTokenContext {
   device_id?: string | null;
@@ -518,6 +522,8 @@ export class AuthService {
     otp_session_token?: string;
     identity_session_token?: string;
     accounts?: Array<{ id: string; account_type: string }>;
+    account?: { id: string; type: string } | null;
+    onboarding?: IdentityOnboardingState;
     nexa_profile?: {
       exists: boolean;
       full_name?: string | null;
@@ -605,6 +611,21 @@ export class AuthService {
       accounts = await this.findAccountsByPhone(norm);
     }
     const consumer = await this.findConsumerByPhone(norm);
+    const consumerKyc = consumer
+      ? await this.kycProfileRepository.findOne({
+          where: { user_id: consumer.id },
+          select: ['status'],
+        })
+      : null;
+    const nexaProfile =
+      (await this.usersService.getNexaProfileByPhone(norm)) ?? undefined;
+    const onboarding = deriveIdentityOnboardingState({
+      kycProfileExists: !!consumerKyc,
+      kycStatus: consumerKyc?.status ?? consumer?.kyc_status,
+      identityVerificationStatus: identity.identity_verification_status,
+      identityVerified:
+        identity.identity_verified ?? nexaProfile?.identity_verified,
+    });
     const sessionToken = crypto.randomBytes(32).toString('hex');
     const otpSessionMinutes = 120;
     const expiresAt = new Date(Date.now() + otpSessionMinutes * 60 * 1000);
@@ -704,7 +725,9 @@ export class AuthService {
         otp_session_token: identitySessionJwt,
         identity_session_token: identitySessionJwt,
         accounts,
-        nexa_profile: (await this.usersService.getNexaProfileByPhone(norm)) ?? undefined,
+        account: { id: selected.id, type: selected.account_type },
+        onboarding,
+        nexa_profile: nexaProfile,
         access_token: accessToken,
         refresh_token,
         expires_in: appConfig.jwtExpiresIn,
@@ -748,7 +771,9 @@ export class AuthService {
       otp_session_token: identitySessionJwt,
       identity_session_token: identitySessionJwt,
       accounts,
-      nexa_profile: (await this.usersService.getNexaProfileByPhone(norm)) ?? undefined,
+      account: null,
+      onboarding,
+      nexa_profile: nexaProfile,
       kyc_reuse: kycReuse,
       expires_in: `${otpSessionMinutes}m`,
     };

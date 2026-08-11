@@ -40,6 +40,7 @@ import { detectImageType } from '../compliance/image-type.util';
 import { UserNotificationsService } from '../notifications/user-notifications.service';
 import { appConfig } from '../../common/config/app.config';
 import { isIdentityLocalUploadDisabled } from '../../common/security/upload-storage-policy';
+import { deriveIdentityOnboardingState } from '../../common/identity-onboarding';
 
 const PROFILE_PHOTO_DIR = 'uploads/profile';
 const PROFILE_PHOTO_MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -605,6 +606,16 @@ export class UsersService {
     const identity = user.unified_identity_id
       ? await this.unifiedIdentityService.findById(user.unified_identity_id)
       : null;
+    const kycProfile = await this.kycProfileRepository.findOne({
+      where: { user_id: user.id },
+      select: ['status'],
+    });
+    const onboarding = deriveIdentityOnboardingState({
+      kycProfileExists: !!kycProfile,
+      kycStatus: kycProfile?.status ?? user.kyc_status,
+      identityVerificationStatus: identity?.identity_verification_status,
+      identityVerified: identity?.identity_verified,
+    });
     const sharedFromIdentity = identity
       ? {
           full_name: identity.full_name ?? user.full_name,
@@ -644,6 +655,7 @@ export class UsersService {
       unified_identity_id: user.unified_identity_id ?? null,
       linked_user_id: user.linked_user_id ?? (linked?.id ?? null),
       kyc_status: user.kyc_status,
+      onboarding,
       status: user.status,
       risk_score: user.risk_score,
       last_login_at: user.last_login_at,

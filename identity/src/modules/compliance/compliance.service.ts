@@ -28,6 +28,7 @@ import {
 import { safeLogger } from '../../common/logging/safe-logger';
 import { normalizePhoneOrThrow, tryNormalizePhoneNumber } from '../../common/phone/phone-normalizer';
 import { isIdentityLocalUploadDisabled } from '../../common/security/upload-storage-policy';
+import { deriveIdentityOnboardingState } from '../../common/identity-onboarding';
 
 export type DocumentUploadOptions = {
   side?: 'front' | 'back';
@@ -249,6 +250,10 @@ export class ComplianceService {
       reviewAnswer: null as string | null,
       status: 'PENDING' as const,
       kycProfileStatus: 'PENDING' as const,
+      onboarding: deriveIdentityOnboardingState({
+        kycProfileExists: true,
+        kycStatus: 'PENDING',
+      }),
     };
   }
 
@@ -369,6 +374,10 @@ export class ComplianceService {
       reviewAnswer: reviewAnswer ?? null,
       status: userRowKycStatus,
       kycProfileStatus: kyc.status,
+      onboarding: deriveIdentityOnboardingState({
+        kycProfileExists: true,
+        kycStatus: kyc.status,
+      }),
     };
   }
 
@@ -749,9 +758,17 @@ export class ComplianceService {
     const kyc = await this.kycRepository.findOne({
       where: { user_id: userId },
     });
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['kyc_status'],
+    });
     return {
       user_id: userId,
       status: kyc?.status ?? 'NOT_STARTED',
+      onboarding: deriveIdentityOnboardingState({
+        kycProfileExists: !!kyc,
+        kycStatus: kyc?.status ?? user?.kyc_status,
+      }),
       documents: kyc?.documents ?? {
         id_document: false,
         selfie: false,
