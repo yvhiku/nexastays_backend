@@ -77,12 +77,10 @@ function buildConfirmTransactionMock(options: {
           return {
             createQueryBuilder: () => ({
               setLock: () => ({
-                leftJoinAndSelect: () => ({
-                  where: () => ({
-                    getOne: jest
-                      .fn()
-                      .mockResolvedValue({ ...options.booking, listing: { id: LISTING_ID } }),
-                  }),
+                where: () => ({
+                  getOne: jest
+                    .fn()
+                    .mockResolvedValue({ ...options.booking }),
                 }),
               }),
             }),

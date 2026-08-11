@@ -371,10 +371,12 @@ export class StaysPaymentsService {
         return 'ALREADY_PROCESSED';
       }
 
+      // Lock the booking row alone. Do not LEFT JOIN relations under FOR UPDATE —
+      // PostgreSQL rejects FOR UPDATE on the nullable side of an outer join (S2-01).
+      // Listing is locked separately below via listing_id.
       const lockedBooking = await bookingRepo
         .createQueryBuilder('b')
         .setLock('pessimistic_write')
-        .leftJoinAndSelect('b.listing', 'listing')
         .where('b.id = :id', { id: lockedIntent.booking_id })
         .getOne();
 

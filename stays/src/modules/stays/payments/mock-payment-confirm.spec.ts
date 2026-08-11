@@ -96,12 +96,10 @@ function buildTransactionMock(state: {
           return {
             createQueryBuilder: () => ({
               setLock: () => ({
-                leftJoinAndSelect: () => ({
-                  where: () => ({
-                    getOne: jest
-                      .fn()
-                      .mockResolvedValue({ ...state.booking, listing: { id: LISTING_ID } }),
-                  }),
+                where: () => ({
+                  getOne: jest
+                    .fn()
+                    .mockResolvedValue({ ...state.booking }),
                 }),
               }),
             }),
@@ -368,6 +366,91 @@ describe('Legacy mock webhook gate', () => {
 });
 
 describe('confirmPaymentSuccess idempotency', () => {
+  it('S2-01 — booking FOR UPDATE lock does not use LEFT JOIN (Postgres-safe)', async () => {
+    const intent = pendingIntent();
+    const booking = baseBooking();
+    const leftJoinAndSelect = jest.fn(() => {
+      throw new Error('LEFT JOIN under FOR UPDATE must not be used (S2-01)');
+    });
+    const bookingGetOne = jest.fn().mockResolvedValue({ ...booking });
+    const intentUpdate = jest.fn().mockResolvedValue(undefined);
+    const bookingUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+    const ledgerSave = jest.fn().mockResolvedValue(undefined);
+
+    const transaction = jest.fn(async (cb: (manager: unknown) => Promise<unknown>) => {
+      const manager = {
+        getRepository: (entity: unknown) => {
+          if (entity === StaysPaymentIntent) {
+            return {
+              createQueryBuilder: () => ({
+                setLock: () => ({
+                  where: () => ({
+                    getOne: jest.fn().mockResolvedValue({ ...intent }),
+                  }),
+                }),
+              }),
+              update: intentUpdate,
+            };
+          }
+          if (entity === StaysLedgerEntry) {
+            return {
+              findOne: jest.fn().mockResolvedValue(null),
+              save: ledgerSave,
+              create: (d: object) => d,
+            };
+          }
+          if (entity === StaysBooking) {
+            return {
+              createQueryBuilder: () => ({
+                setLock: () => ({
+                  leftJoinAndSelect,
+                  where: () => ({
+                    getOne: bookingGetOne,
+                  }),
+                }),
+              }),
+              update: bookingUpdate,
+            };
+          }
+          return {
+            createQueryBuilder: () => ({
+              setLock: () => ({
+                where: () => ({
+                  getOne: jest.fn().mockResolvedValue({ id: LISTING_ID }),
+                }),
+              }),
+            }),
+          };
+        },
+      };
+      return cb(manager);
+    });
+
+    const service = createPaymentsService({
+      bookingRepo: { findOne: jest.fn() },
+      intentRepo: {
+        findOne: jest.fn().mockResolvedValue({
+          id: INTENT_ID,
+          booking_id: BOOKING_ID,
+          provider: 'mock',
+          provider_intent_id: PROVIDER_INTENT_ID,
+          status: 'PENDING',
+          amount: 525,
+        }),
+      },
+      transaction,
+    });
+
+    const outcome = await service.confirmPaymentSuccess('mock', PROVIDER_INTENT_ID);
+    expect(outcome).toBe('CONFIRMED');
+    expect(leftJoinAndSelect).not.toHaveBeenCalled();
+    expect(bookingGetOne).toHaveBeenCalled();
+    expect(bookingUpdate).toHaveBeenCalledWith(
+      { id: BOOKING_ID, status: 'PAYMENT_PENDING' },
+      expect.objectContaining({ status: 'CONFIRMED' }),
+    );
+  });
+
   it('second webhook does not duplicate ledger when intent already succeeded', async () => {
     const intentRepo = {
       findOne: jest.fn().mockResolvedValue({
