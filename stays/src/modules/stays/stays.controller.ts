@@ -48,7 +48,7 @@ import {
 import type { StaysUserContext } from './hosts/host-onboarding.types';
 import { AccountTypes } from '../../common/decorators/account-type.decorator';
 import { StaysCancellationService } from './services/stays-cancellation.service';
-import { StaysReviewsService } from './services/stays-reviews.service';
+import { StaysReviewsService, parseReviewSort } from './services/stays-reviews.service';
 import { HostDashboardService } from './services/host-dashboard.service';
 import { HostAnalyticsService } from './services/host-analytics.service';
 import { CalendarSyncService } from './services/calendar-sync.service';
@@ -687,10 +687,16 @@ export class StaysController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List guest reviews for all host listings' })
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    enum: ['newest', 'highest', 'lowest'],
+  })
   async getHostReviews(
     @CurrentUser() user: { userId: string },
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('sort') sort?: string,
   ) {
     const p = page ? Number.parseInt(page, 10) : 1;
     const l = limit ? Number.parseInt(limit, 10) : 20;
@@ -698,6 +704,7 @@ export class StaysController {
       user.userId,
       Number.isFinite(p) ? p : 1,
       Number.isFinite(l) ? l : 20,
+      parseReviewSort(sort),
     );
   }
 

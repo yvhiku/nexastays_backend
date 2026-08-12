@@ -6,7 +6,7 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
-import { StaysReviewsService } from './stays-reviews.service';
+import { StaysReviewsService, parseReviewSort } from './stays-reviews.service';
 import { StaysListingReview } from '../entities/stays-listing-review.entity';
 import { StaysReviewMedia } from '../entities/stays-review-media.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
@@ -14,6 +14,8 @@ import { StaysBooking } from '../entities/stays-booking.entity';
 import { BookingLifecycleService } from './booking-lifecycle.service';
 import { ReviewAggregateService } from '../reviews/review-aggregate.service';
 import { DomainEventsService } from '../../../common/events/domain-events.service';
+import { TimelineSeederService } from '../../messaging/timeline-seeder.service';
+import { MediaStorageService } from '../../../common/media/media-storage.module';
 
 describe('StaysReviewsService', () => {
   let service: StaysReviewsService;
@@ -113,6 +115,14 @@ describe('StaysReviewsService', () => {
         { provide: BookingLifecycleService, useValue: lifecycleService },
         { provide: ReviewAggregateService, useValue: aggregateService },
         { provide: DomainEventsService, useValue: domainEvents },
+        {
+          provide: TimelineSeederService,
+          useValue: { markReviewCardSubmitted: jest.fn() },
+        },
+        {
+          provide: MediaStorageService,
+          useValue: { getSignedUrl: jest.fn(), upload: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -270,6 +280,48 @@ describe('StaysReviewsService', () => {
 
     await service.updateReview(guestId, 'review-uuid', { rating: 4 });
     expect(aggregateService.recalculateForListing).toHaveBeenCalled();
+  });
+
+  it('parseReviewSort defaults invalid values to newest', () => {
+    expect(parseReviewSort(undefined)).toBe('newest');
+    expect(parseReviewSort('bogus')).toBe('newest');
+    expect(parseReviewSort('highest')).toBe('highest');
+    expect(parseReviewSort('lowest')).toBe('lowest');
+    expect(parseReviewSort('newest')).toBe('newest');
+  });
+
+  it('listHostReviews applies deterministic ORDER BY for each sort', async () => {
+    listingRepo.find.mockResolvedValue([{ id: listingId }]);
+    reviewRepo.count.mockResolvedValue(2);
+    reviewRepo.find.mockResolvedValue([]);
+
+    await service.listHostReviews(hostId, 1, 20, 'newest');
+    expect(reviewRepo.find).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        order: { created_at: 'DESC' },
+      }),
+    );
+
+    await service.listHostReviews(hostId, 1, 20, 'highest');
+    expect(reviewRepo.find).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        order: { rating: 'DESC', created_at: 'DESC' },
+      }),
+    );
+
+    await service.listHostReviews(hostId, 1, 20, 'lowest');
+    expect(reviewRepo.find).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        order: { rating: 'ASC', created_at: 'DESC' },
+      }),
+    );
+
+    await service.listHostReviews(hostId, 1, 20, 'bogus' as 'newest');
+    expect(reviewRepo.find).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        order: { created_at: 'DESC' },
+      }),
+    );
   });
 });
 

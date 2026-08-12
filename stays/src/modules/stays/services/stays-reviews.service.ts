@@ -28,6 +28,24 @@ const PUBLISHED: ReviewStatus = 'PUBLISHED';
 
 export type ReviewSort = 'newest' | 'highest' | 'lowest';
 
+export function parseReviewSort(raw?: string | null): ReviewSort {
+  if (raw === 'highest' || raw === 'lowest' || raw === 'newest') return raw;
+  return 'newest';
+}
+
+function reviewListOrder(sort: ReviewSort):
+  | { created_at: 'DESC' }
+  | { rating: 'DESC'; created_at: 'DESC' }
+  | { rating: 'ASC'; created_at: 'DESC' } {
+  if (sort === 'highest') {
+    return { rating: 'DESC', created_at: 'DESC' };
+  }
+  if (sort === 'lowest') {
+    return { rating: 'ASC', created_at: 'DESC' };
+  }
+  return { created_at: 'DESC' };
+}
+
 @Injectable()
 export class StaysReviewsService {
   constructor(
@@ -114,12 +132,7 @@ export class StaysReviewsService {
     const safePage = Math.max(page, 1);
     const skip = (safePage - 1) * safeLimit;
 
-    const order =
-      sort === 'highest'
-        ? { rating: 'DESC' as const, created_at: 'DESC' as const }
-        : sort === 'lowest'
-          ? { rating: 'ASC' as const, created_at: 'DESC' as const }
-          : { created_at: 'DESC' as const };
+    const order = reviewListOrder(sort);
 
     const [rows, total] = await this.reviewRepo.findAndCount({
       where: { listing_id: listingId, status: PUBLISHED },
@@ -315,7 +328,13 @@ export class StaysReviewsService {
     });
   }
 
-  async listHostReviews(hostUserId: string, page = 1, limit = 20) {
+  async listHostReviews(
+    hostUserId: string,
+    page = 1,
+    limit = 20,
+    sort: ReviewSort = 'newest',
+  ) {
+    const resolvedSort = parseReviewSort(sort);
     const myListings = await this.listingRepo.find({
       where: { host_user_id: hostUserId },
       select: ['id'],
@@ -346,7 +365,7 @@ export class StaysReviewsService {
     const rows = await this.reviewRepo.find({
       where: { listing_id: In(listingIds), status: PUBLISHED },
       relations: ['listing', 'booking', 'booking.occupants', 'media'],
-      order: { created_at: 'DESC' },
+      order: reviewListOrder(resolvedSort),
       take: safeLimit,
       skip,
     });
