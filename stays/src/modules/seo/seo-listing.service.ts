@@ -1,14 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import {
   computeListingSeoScore,
   isListingIndexable,
 } from './seo-quality-scoring.service';
-import type { SeoListingPagePayload, SeoLocale } from './seo.types';
+import type {
+  SeoListingPagePayload,
+  SeoLocale,
+  SitemapEntryDto,
+} from './seo.types';
 
 const LOCALES: SeoLocale[] = ['en', 'fr', 'ar'];
+/** Bounded page size for full LIVE enumeration — never first-page-only. */
+const SITEMAP_BATCH_SIZE = 250;
+const LISTING_SITEMAP_PRIORITY = 0.8;
 
 @Injectable()
 export class SeoListingService {
@@ -16,6 +23,58 @@ export class SeoListingService {
     @InjectRepository(StaysListing)
     private readonly listingRepo: Repository<StaysListing>,
   ) {}
+
+  /**
+   * Full eligible LIVE+indexable listing universe for XML sitemap.
+   * Uses the same quality gates as buildListingPage (isListingIndexable).
+   * ID-first batching avoids TypeORM take()+join truncation on listing×media rows.
+   */
+  async listIndexableForSitemap(): Promise<SitemapEntryDto[]> {
+    const byPath = new Map<string, SitemapEntryDto>();
+    let afterId: string | null = null;
+
+    for (;;) {
+      const idQb = this.listingRepo
+        .createQueryBuilder('l')
+        .select(['l.id'])
+        .where('l.status = :status', { status: 'LIVE' })
+        .orderBy('l.id', 'ASC')
+        .take(SITEMAP_BATCH_SIZE);
+
+      if (afterId) {
+        idQb.andWhere('l.id > :afterId', { afterId });
+      }
+
+      const idRows = await idQb.getMany();
+      if (idRows.length === 0) break;
+
+      const ids = idRows.map((row) => row.id);
+      const batch = await this.listingRepo.find({
+        where: { id: In(ids) },
+        relations: ['media'],
+      });
+
+      for (const listing of batch) {
+        if (!this.isListingEligibleForSitemap(listing)) continue;
+
+        const lastmod = (listing.updated_at ?? listing.created_at).toISOString();
+        for (const locale of LOCALES) {
+          const path = `/${locale}/listings/${listing.id}`;
+          byPath.set(path, {
+            path,
+            locale,
+            lastmod,
+            priority: LISTING_SITEMAP_PRIORITY,
+          });
+        }
+      }
+
+      afterId = idRows[idRows.length - 1]!.id;
+      if (idRows.length < SITEMAP_BATCH_SIZE) break;
+    }
+
+    return Array.from(byPath.values());
+  }
 
   async buildListingPage(
     listingId: string,
@@ -112,6 +171,30 @@ export class SeoListingService {
       seoScore,
       lastmod: (listing.updated_at ?? listing.created_at).toISOString(),
     };
+  }
+
+  /** Same gates as buildListingPage indexability. */
+  private isListingEligibleForSitemap(listing: StaysListing): boolean {
+    const photos = (listing.media ?? []).filter((m) => m.kind === 'PHOTO');
+    const hasWalkthrough = (listing.media ?? []).some((m) => m.kind === 'WALKTHROUGH');
+    const description = listing.description?.trim() ?? '';
+    const title = listing.title?.trim() ?? '';
+
+    const seoScore = computeListingSeoScore({
+      photoCount: photos.length,
+      descriptionLength: description.length,
+      reviewCount: listing.review_count ?? 0,
+      avgRating: listing.avg_rating != null ? Number(listing.avg_rating) : null,
+      hasWalkthrough,
+    });
+
+    return isListingIndexable({
+      seoScore,
+      photoCount: photos.length,
+      titleLength: title.length,
+      descriptionLength: description.length,
+      status: listing.status,
+    });
   }
 
   private buildDescription(args: {

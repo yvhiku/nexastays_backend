@@ -100,6 +100,15 @@ export class SeoController {
   }
 
   @Public()
+  @Get('listings/sitemap')
+  @ApiOperation({
+    summary: 'Indexable LIVE listing detail URLs for sitemap generation',
+  })
+  listingSitemapEntries() {
+    return this.listingSeo.listIndexableForSitemap();
+  }
+
+  @Public()
   @Get('listings/:id')
   @ApiOperation({ summary: 'SEO metadata payload for a listing detail page' })
   getListingSeo(
