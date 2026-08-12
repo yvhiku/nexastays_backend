@@ -45,6 +45,14 @@ import {
   HOST_ANALYTICS_PERIODS,
   HostAnalyticsResponseDto,
 } from './dto/host-analytics.dto';
+import {
+  HostBookingsCountsQueryDto,
+  HostBookingsListQueryDto,
+} from './dto/host-bookings-list.dto';
+import {
+  HostListingsCountsQueryDto,
+  HostListingsListQueryDto,
+} from './dto/host-listings-list.dto';
 import type { StaysUserContext } from './hosts/host-onboarding.types';
 import { AccountTypes } from '../../common/decorators/account-type.decorator';
 import { StaysCancellationService } from './services/stays-cancellation.service';
@@ -388,14 +396,37 @@ export class StaysController {
   }
 
   /**
-   * Host's listings (approved hosts only; returns all statuses)
+   * Host's listings — cursor-paginated slim list (portal).
+   * Full unbounded summaries remain available to dashboard/analytics services internally.
    */
   @Get('host/listings')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get host listings' })
-  async getHostListings(@CurrentUser() user: { userId: string }) {
-    return this.hostListingsService.getHostListings(user.userId);
+  @ApiOperation({ summary: 'List host listings (cursor pagination)' })
+  async getHostListings(
+    @CurrentUser() user: { userId: string },
+    @Query() query: HostListingsListQueryDto,
+  ) {
+    return this.hostListingsService.listHostListingsPage(user.userId, query);
+  }
+
+  @Get('host/listings/counts')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Host listing status counts (scoped by search)' })
+  async getHostListingsCounts(
+    @CurrentUser() user: { userId: string },
+    @Query() query: HostListingsCountsQueryDto,
+  ) {
+    return this.hostListingsService.getHostListingsCounts(user.userId, query);
+  }
+
+  @Get('host/listings/options')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Slim listing options for selects' })
+  async getHostListingOptions(@CurrentUser() user: { userId: string }) {
+    return this.hostListingsService.getHostListingOptions(user.userId);
   }
 
   @Get('host/listings/:id')
@@ -633,14 +664,28 @@ export class StaysController {
   }
 
   /**
-   * Host's bookings - all bookings on listings owned by the host
+   * Host's bookings — cursor-paginated (portal).
    */
   @Get('host/bookings')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get host bookings' })
-  async getHostBookings(@CurrentUser() user: { userId: string }) {
-    return this.staysService.getHostBookings(user.userId);
+  @ApiOperation({ summary: 'List host bookings (cursor pagination)' })
+  async getHostBookings(
+    @CurrentUser() user: { userId: string },
+    @Query() query: HostBookingsListQueryDto,
+  ) {
+    return this.staysService.listHostBookingsPage(user.userId, query);
+  }
+
+  @Get('host/bookings/counts')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Host booking filter counts (scoped)' })
+  async getHostBookingsCounts(
+    @CurrentUser() user: { userId: string },
+    @Query() query: HostBookingsCountsQueryDto,
+  ) {
+    return this.staysService.getHostBookingsCounts(user.userId, query);
   }
 
   /**

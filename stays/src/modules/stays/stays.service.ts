@@ -37,6 +37,11 @@ import { DomainEventsService } from '../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import { BookingLifecycleService } from './services/booking-lifecycle.service';
 import { StaysReviewsService } from './services/stays-reviews.service';
+import { HostBookingsListService } from './services/host-bookings-list.service';
+import type {
+  HostBookingsListQueryDto,
+  HostBookingsCountsQueryDto,
+} from './dto/host-bookings-list.dto';
 
 @Injectable()
 export class StaysService {
@@ -59,6 +64,7 @@ export class StaysService {
     private readonly lifecycleService: BookingLifecycleService,
     private readonly reviewsService: StaysReviewsService,
     private readonly mediaStorage: MediaStorageService,
+    private readonly hostBookingsListService: HostBookingsListService,
   ) {}
 
   isGuestVerifiedForBooking(snapshot?: IdentitySnapshot | null): boolean {
@@ -810,25 +816,49 @@ export class StaysService {
     return ['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(booking.status);
   }
 
-  async getHostBookings(hostUserId: string) {
-    const bookings = await this.bookingRepo
-      .createQueryBuilder('b')
-      .innerJoinAndSelect('b.listing', 'listing')
-      .leftJoinAndSelect('listing.check_in_contact', 'check_in_contact')
-      .leftJoinAndSelect('listing.media', 'media')
-      .leftJoinAndSelect('b.occupants', 'occupants')
-      .where('listing.host_user_id = :hostUserId', { hostUserId })
-      .orderBy('b.created_at', 'DESC')
-      .getMany();
-    return bookings.map((b) => {
-      const response = this.toBookingResponse(b, false, true, {}, true);
-      const guestName = this.resolveGuestDisplayName(b);
-      return {
-        ...response,
-        guest_name: guestName,
-        guest_phone: this.resolveGuestPhone(b),
-      };
-    });
+  /**
+   * Paginated host bookings (cursor/keyset). Replaces unbounded getMany list.
+   * List payload omits listing.media / check_in_contact (unused by portal cards).
+   */
+  async listHostBookingsPage(
+    hostUserId: string,
+    query: HostBookingsListQueryDto,
+  ) {
+    return this.hostBookingsListService.listHostBookingsPage(
+      hostUserId,
+      query,
+      (b) => this.mapHostBookingListItem(b),
+    );
+  }
+
+  async getHostBookingsCounts(
+    hostUserId: string,
+    query: HostBookingsCountsQueryDto,
+  ) {
+    return this.hostBookingsListService.getHostBookingsCounts(
+      hostUserId,
+      query,
+    );
+  }
+
+  private mapHostBookingListItem(b: StaysBooking) {
+    const response = this.toBookingResponse(b, false, true, {}, true);
+    // Slim listing embed: drop media / contact from list responses
+    const listing = response.listing
+      ? {
+          ...response.listing,
+          media: [],
+          check_in_contact: null,
+          check_in_instructions: null,
+          address: null,
+        }
+      : null;
+    return {
+      ...response,
+      listing,
+      guest_name: this.resolveGuestDisplayName(b),
+      guest_phone: this.resolveGuestPhone(b),
+    };
   }
 
   async exportHostBookingsCsv(

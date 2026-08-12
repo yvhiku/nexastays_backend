@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { randomUUID } from 'crypto';
 import {
   StaysListing,
@@ -22,6 +22,17 @@ import type { CreateDraftListingDto } from '../dto/create-draft-listing.dto';
 import type { CreateHostListingDto } from '../dto/create-host-listing.dto';
 import type { UpdateHostListingDto } from '../dto/update-host-listing.dto';
 import type { ReplaceListingMediaDto } from '../dto/replace-listing-media.dto';
+import type {
+  HostListingSortParam,
+  HostListingStatusFilterParam,
+  HostListingsCountsQueryDto,
+  HostListingsListQueryDto,
+} from '../dto/host-listings-list.dto';
+import {
+  encodeHostListCursor,
+  decodeHostListCursor,
+} from '../utils/host-list-cursor.util';
+import { escapeIlikePattern } from '../utils/host-bookings-list-sql.util';
 import {
   assertCanSubmit,
   computeCompletionFlags,
@@ -63,6 +74,10 @@ export class HostListingsService {
     private readonly unitTypeRepo: Repository<StaysListingUnitType>,
   ) {}
 
+  /**
+   * Full summaries for analytics/dashboard backend — unbounded by design.
+   * Portal list UI must use listHostListingsPage instead.
+   */
   async getHostListings(userId: string) {
     const listings = await this.listingRepo.find({
       where: { host_user_id: userId },
@@ -70,6 +85,383 @@ export class HostListingsService {
       order: { created_at: 'DESC' },
     });
     return listings.map((l) => this.toHostListingSummary(l));
+  }
+
+  /** Slim id/title/city/status for selects (dashboard calendar, booking filters). */
+  async getHostListingOptions(userId: string) {
+    const rows = await this.listingRepo.find({
+      where: { host_user_id: userId },
+      select: ['id', 'title', 'city', 'status'],
+      order: { title: 'ASC', id: 'ASC' },
+    });
+    return rows.map((l) => ({
+      id: l.id,
+      title: l.title,
+      city: l.city,
+      status: l.status,
+    }));
+  }
+
+  async listHostListingsPage(userId: string, query: HostListingsListQueryDto) {
+    const limit = Math.min(Math.max(query.limit ?? 20, 1), 50);
+    const status: HostListingStatusFilterParam = query.status ?? 'all';
+    const sort: HostListingSortParam = query.sort ?? 'default';
+    const search = (query.search ?? '').trim();
+
+    const ctx = {
+      kind: 'listings' as const,
+      hostId: userId,
+      sort,
+      filter: '',
+      search: search.toLowerCase(),
+      listingId: '',
+      status,
+    };
+
+    const cursorPayload = decodeHostListCursor(query.cursor, ctx);
+
+    const qb = this.listingRepo
+      .createQueryBuilder('l')
+      .leftJoinAndSelect('l.rate_plan', 'rate_plan')
+      .leftJoinAndSelect('l.media', 'media')
+      .where('l.host_user_id = :userId', { userId });
+
+    this.applyListingStatusFilter(qb, status);
+    if (search) {
+      const pattern = `%${escapeIlikePattern(search.toLowerCase())}%`;
+      qb.andWhere(
+        `(
+          LOWER(COALESCE(l.title, '')) LIKE :searchPattern ESCAPE '\\'
+          OR LOWER(COALESCE(l.city, '')) LIKE :searchPattern ESCAPE '\\'
+        )`,
+        { searchPattern: pattern },
+      );
+    }
+
+    qb.addSelect(
+      'COALESCE(l.last_edited_at, l.updated_at)',
+      'updated_sort',
+    );
+    qb.addSelect('rate_plan.base_price', 'price_sort');
+
+    this.applyListingOrder(qb, sort);
+    this.applyListingKeyset(qb, sort, cursorPayload);
+    qb.take(limit + 1);
+
+    const { entities, raw } = await qb.getRawAndEntities();
+    const hasNext = entities.length > limit;
+    const pageEntities = hasNext ? entities.slice(0, limit) : entities;
+    const pageRaw = hasNext ? raw.slice(0, limit) : raw;
+
+    const items = pageEntities.map((l) => this.toHostListingListItem(l));
+
+    let nextCursor: string | null = null;
+    if (hasNext && pageEntities.length > 0) {
+      const last = pageEntities[pageEntities.length - 1];
+      const lastRaw = pageRaw[pageRaw.length - 1] as Record<string, unknown>;
+      nextCursor = encodeHostListCursor(
+        ctx,
+        this.listingCursorKeys(sort, last, lastRaw),
+        last.id,
+      );
+    }
+
+    return {
+      items,
+      pagination: {
+        limit,
+        has_next: hasNext,
+        next_cursor: nextCursor,
+      },
+    };
+  }
+
+  async getHostListingsCounts(
+    userId: string,
+    query: HostListingsCountsQueryDto,
+  ) {
+    const search = (query.search ?? '').trim();
+    const statuses: HostListingStatusFilterParam[] = [
+      'all',
+      'active',
+      'pending',
+      'paused',
+      'draft',
+      'needs_changes',
+    ];
+    const counts: Record<string, number> = {};
+    for (const status of statuses) {
+      const qb = this.listingRepo
+        .createQueryBuilder('l')
+        .where('l.host_user_id = :userId', { userId });
+      this.applyListingStatusFilter(qb, status);
+      if (search) {
+        const pattern = `%${escapeIlikePattern(search.toLowerCase())}%`;
+        qb.andWhere(
+          `(
+            LOWER(COALESCE(l.title, '')) LIKE :searchPattern ESCAPE '\\'
+            OR LOWER(COALESCE(l.city, '')) LIKE :searchPattern ESCAPE '\\'
+          )`,
+          { searchPattern: pattern },
+        );
+      }
+      counts[status] = await qb.getCount();
+    }
+    return counts;
+  }
+
+  private applyListingStatusFilter(
+    qb: SelectQueryBuilder<StaysListing>,
+    status: HostListingStatusFilterParam,
+  ) {
+    switch (status) {
+      case 'all':
+        return;
+      case 'active':
+        qb.andWhere(`l.status IN ('LIVE', 'APPROVED')`);
+        return;
+      case 'pending':
+        qb.andWhere(`l.status = 'SUBMITTED'`);
+        return;
+      case 'paused':
+        qb.andWhere(`l.status = 'PAUSED'`);
+        return;
+      case 'draft':
+        qb.andWhere(`l.status = 'DRAFT'`);
+        return;
+      case 'needs_changes':
+        qb.andWhere(`l.status = 'REJECTED'`);
+        return;
+      default:
+        return;
+    }
+  }
+
+  private applyListingOrder(
+    qb: SelectQueryBuilder<StaysListing>,
+    sort: HostListingSortParam,
+  ) {
+    if (sort === 'default') {
+      qb.orderBy('l.created_at', 'DESC');
+      qb.addOrderBy('l.id', 'DESC');
+      return;
+    }
+    if (sort === 'title') {
+      qb.orderBy('l.title', 'ASC');
+      qb.addOrderBy('l.id', 'ASC');
+      return;
+    }
+    if (sort === 'city') {
+      qb.orderBy('l.city', 'ASC');
+      qb.addOrderBy('l.id', 'ASC');
+      return;
+    }
+    if (sort === 'status') {
+      qb.orderBy('l.status', 'ASC');
+      qb.addOrderBy('l.id', 'ASC');
+      return;
+    }
+    if (sort === 'updated') {
+      // Client: missing last_edited_at sorts last; API uses COALESCE(last_edited_at, updated_at)
+      // Newest first; NULLs last
+      qb.orderBy('updated_sort', 'DESC', 'NULLS LAST');
+      qb.addOrderBy('l.id', 'DESC');
+      return;
+    }
+    if (sort === 'price') {
+      // Client: null price sorts last; ASC among priced
+      qb.orderBy('price_sort', 'ASC', 'NULLS LAST');
+      qb.addOrderBy('l.id', 'ASC');
+    }
+  }
+
+  private applyListingKeyset(
+    qb: SelectQueryBuilder<StaysListing>,
+    sort: HostListingSortParam,
+    cursor: ReturnType<typeof decodeHostListCursor>,
+  ) {
+    if (!cursor) return;
+    const k = cursor.keys;
+    const id = cursor.id;
+
+    if (sort === 'default') {
+      qb.andWhere(
+        `(
+          l.created_at < :cCreated
+          OR (l.created_at = :cCreated AND l.id < :cId)
+        )`,
+        { cCreated: k.created_at, cId: id },
+      );
+      return;
+    }
+    if (sort === 'title') {
+      qb.andWhere(
+        `(
+          l.title > :cTitle
+          OR (l.title = :cTitle AND l.id > :cId)
+        )`,
+        { cTitle: String(k.title ?? ''), cId: id },
+      );
+      return;
+    }
+    if (sort === 'city') {
+      qb.andWhere(
+        `(
+          l.city > :cCity
+          OR (l.city = :cCity AND l.id > :cId)
+        )`,
+        { cCity: String(k.city ?? ''), cId: id },
+      );
+      return;
+    }
+    if (sort === 'status') {
+      qb.andWhere(
+        `(
+          l.status > :cStatus
+          OR (l.status = :cStatus AND l.id > :cId)
+        )`,
+        { cStatus: String(k.status ?? ''), cId: id },
+      );
+      return;
+    }
+    if (sort === 'updated') {
+      // DESC NULLS LAST keyset
+      if (k.updated_sort == null) {
+        qb.andWhere(
+          `(
+            COALESCE(l.last_edited_at, l.updated_at) IS NULL
+            AND l.id < :cId
+          )`,
+          { cId: id },
+        );
+      } else {
+        qb.andWhere(
+          `(
+            COALESCE(l.last_edited_at, l.updated_at) < :cUpdated
+            OR (
+              COALESCE(l.last_edited_at, l.updated_at) = :cUpdated
+              AND l.id < :cId
+            )
+            OR COALESCE(l.last_edited_at, l.updated_at) IS NULL
+          )`,
+          { cUpdated: k.updated_sort, cId: id },
+        );
+      }
+      return;
+    }
+    if (sort === 'price') {
+      if (k.price_sort == null) {
+        qb.andWhere(
+          `(rate_plan.base_price IS NULL AND l.id > :cId)`,
+          { cId: id },
+        );
+      } else {
+        qb.andWhere(
+          `(
+            rate_plan.base_price > :cPrice
+            OR (rate_plan.base_price = :cPrice AND l.id > :cId)
+            OR rate_plan.base_price IS NULL
+          )`,
+          { cPrice: Number(k.price_sort), cId: id },
+        );
+      }
+    }
+  }
+
+  private listingCursorKeys(
+    sort: HostListingSortParam,
+    listing: StaysListing,
+    raw: Record<string, unknown>,
+  ): Record<string, string | number | null> {
+    if (sort === 'default') {
+      return {
+        created_at:
+          listing.created_at instanceof Date
+            ? listing.created_at.toISOString()
+            : String(listing.created_at),
+      };
+    }
+    if (sort === 'title') return { title: listing.title };
+    if (sort === 'city') return { city: listing.city };
+    if (sort === 'status') return { status: listing.status };
+    if (sort === 'updated') {
+      const v =
+        raw.updated_sort ?? listing.last_edited_at ?? listing.updated_at;
+      return {
+        updated_sort:
+          v == null
+            ? null
+            : v instanceof Date
+              ? v.toISOString()
+              : String(v),
+      };
+    }
+    const price = raw.price_sort ?? listing.rate_plan?.base_price;
+    return {
+      price_sort: price == null ? null : Number(price),
+    };
+  }
+
+  /** Slim list item: cover media only (no full media[] / unit_types / rules). */
+  private toHostListingListItem(listing: StaysListing) {
+    const completion = this.completionPayload(listing);
+    const media = listing.media || [];
+    const photos = media.filter(
+      (m) =>
+        !m.kind ||
+        String(m.kind).toUpperCase() === 'PHOTO' ||
+        String(m.kind).toUpperCase() === 'IMAGE',
+    );
+    const pool = photos.length > 0 ? photos : media;
+    const cover =
+      pool.find((m) => m.is_cover) ??
+      [...pool].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0];
+
+    return {
+      id: listing.id,
+      title: listing.title,
+      listing_type: listing.listing_type,
+      booking_model: listing.booking_model,
+      city: listing.city,
+      country: listing.country ?? 'MA',
+      status: listing.status,
+      last_edited_at: listing.last_edited_at ?? listing.updated_at,
+      archived_at: listing.archived_at ?? null,
+      ...completion,
+      rate_plan: listing.rate_plan
+        ? {
+            base_price: Number(listing.rate_plan.base_price),
+            weekend_price: listing.rate_plan.weekend_price
+              ? Number(listing.rate_plan.weekend_price)
+              : null,
+            currency: listing.rate_plan.currency,
+          }
+        : null,
+      cover_media: cover
+        ? {
+            asset_id: cover.asset_id,
+            kind: cover.kind,
+            sort_order: cover.sort_order ?? 0,
+            is_cover: cover.is_cover ?? false,
+          }
+        : null,
+      // Compat: single-element media array so existing listingCoverMediaUrl works
+      media: cover
+        ? [
+            {
+              asset_id: cover.asset_id,
+              kind: cover.kind,
+              sort_order: cover.sort_order ?? 0,
+              category: cover.category ?? null,
+              unit_type_id: cover.unit_type_id ?? null,
+              is_cover: true,
+            },
+          ]
+        : [],
+      rules: null,
+      unit_types: [],
+      created_at: listing.created_at,
+    };
   }
 
   async getHostListingById(userId: string, listingId: string) {
