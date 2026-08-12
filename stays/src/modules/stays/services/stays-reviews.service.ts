@@ -345,7 +345,7 @@ export class StaysReviewsService {
 
     const rows = await this.reviewRepo.find({
       where: { listing_id: In(listingIds), status: PUBLISHED },
-      relations: ['listing', 'booking', 'booking.occupants'],
+      relations: ['listing', 'booking', 'booking.occupants', 'media'],
       order: { created_at: 'DESC' },
       take: safeLimit,
       skip,
@@ -379,6 +379,12 @@ export class StaysReviewsService {
     return {
       reviews: rows.map((r) => {
         const listing = r.listing as StaysListing;
+        const media = (r.media ?? [])
+          .sort((a, b) => a.display_order - b.display_order)
+          .map((m) => ({
+            asset_id: m.asset_id,
+            display_order: m.display_order,
+          }));
         return {
           id: r.id,
           listing_id: r.listing_id,
@@ -387,6 +393,7 @@ export class StaysReviewsService {
           rating: Number(r.rating),
           comment: r.comment ?? '',
           created_at: r.created_at.toISOString(),
+          media,
         };
       }),
       summary: {
