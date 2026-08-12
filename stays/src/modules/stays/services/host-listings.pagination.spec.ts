@@ -244,4 +244,41 @@ describe('HostListingsService listHostListingsPage (multi-media pagination)', ()
     ).rejects.toThrow(/cursor/i);
     expect(listingRepo.createQueryBuilder).not.toHaveBeenCalled();
   });
+
+  it('default keyset uses +1ms created_at tie window (ms vs µs)', async () => {
+    const first = await service.listHostListingsPage(hostId, {
+      limit: LIMIT,
+      sort: 'default',
+      status: 'all',
+    });
+    expect(first.pagination.next_cursor).toBeTruthy();
+
+    listingRepo.createQueryBuilder.mockClear();
+    await service.listHostListingsPage(hostId, {
+      limit: LIMIT,
+      cursor: first.pagination.next_cursor!,
+      sort: 'default',
+      status: 'all',
+    });
+
+    const qb = listingRepo.createQueryBuilder.mock.results[0]?.value as {
+      andWhere: jest.Mock;
+    };
+    const keysetCall = qb.andWhere.mock.calls.find(
+      (c: unknown[]) =>
+        typeof c[0] === 'string' &&
+        c[0].includes('cCreatedEnd') &&
+        Array.isArray(c) &&
+        c[1] &&
+        typeof c[1] === 'object' &&
+        'cCreatedEnd' in (c[1] as object),
+    );
+    expect(keysetCall).toBeTruthy();
+    const params = keysetCall![1] as {
+      cCreated: Date;
+      cCreatedEnd: Date;
+      cId: string;
+    };
+    expect(params.cCreatedEnd.getTime() - params.cCreated.getTime()).toBe(1);
+  });
 });

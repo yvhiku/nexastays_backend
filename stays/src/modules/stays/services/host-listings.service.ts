@@ -315,12 +315,20 @@ export class HostListingsService {
     const id = cursor.id;
 
     if (sort === 'default') {
+      // +1ms tie window: JS Date / toISOString is ms-only; PG timestamptz keeps µs.
+      // Exact equality after round-trip fails for seed batches that share one created_at.
+      const cCreated = new Date(String(k.created_at));
+      const cCreatedEnd = new Date(cCreated.getTime() + 1);
       qb.andWhere(
         `(
           l.created_at < :cCreated
-          OR (l.created_at = :cCreated AND l.id < :cId)
+          OR (
+            l.created_at >= :cCreated
+            AND l.created_at < :cCreatedEnd
+            AND l.id < :cId
+          )
         )`,
-        { cCreated: k.created_at, cId: id },
+        { cCreated, cCreatedEnd, cId: id },
       );
       return;
     }
@@ -355,7 +363,7 @@ export class HostListingsService {
       return;
     }
     if (sort === 'updated') {
-      // DESC NULLS LAST keyset
+      // DESC NULLS LAST keyset (+1ms window for timestamptz µs vs JS ms)
       if (k.updated_sort == null) {
         qb.andWhere(
           `(
@@ -365,16 +373,19 @@ export class HostListingsService {
           { cId: id },
         );
       } else {
+        const cUpdated = new Date(String(k.updated_sort));
+        const cUpdatedEnd = new Date(cUpdated.getTime() + 1);
         qb.andWhere(
           `(
             COALESCE(l.last_edited_at, l.updated_at) < :cUpdated
             OR (
-              COALESCE(l.last_edited_at, l.updated_at) = :cUpdated
+              COALESCE(l.last_edited_at, l.updated_at) >= :cUpdated
+              AND COALESCE(l.last_edited_at, l.updated_at) < :cUpdatedEnd
               AND l.id < :cId
             )
             OR COALESCE(l.last_edited_at, l.updated_at) IS NULL
           )`,
-          { cUpdated: k.updated_sort, cId: id },
+          { cUpdated, cUpdatedEnd, cId: id },
         );
       }
       return;
