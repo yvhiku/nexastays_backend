@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
+import { DataSource, In, Repository, SelectQueryBuilder } from 'typeorm';
 import { randomUUID } from 'crypto';
 import {
   StaysListing,
@@ -102,6 +102,11 @@ export class HostListingsService {
     }));
   }
 
+  /**
+   * Two-phase cursor pagination:
+   * 1) Keyset page on listing rows only (never OneToMany media in LIMIT).
+   * 2) Hydrate rate_plan + media for those distinct IDs, then slim DTO.
+   */
   async listHostListingsPage(userId: string, query: HostListingsListQueryDto) {
     const limit = Math.min(Math.max(query.limit ?? 20, 1), 50);
     const status: HostListingStatusFilterParam = query.status ?? 'all';
@@ -120,11 +125,15 @@ export class HostListingsService {
 
     const cursorPayload = decodeHostListCursor(query.cursor, ctx);
 
+    // Phase 1: distinct listings only — no media join (OneToMany multiplies LIMIT rows).
     const qb = this.listingRepo
       .createQueryBuilder('l')
-      .leftJoinAndSelect('l.rate_plan', 'rate_plan')
-      .leftJoinAndSelect('l.media', 'media')
       .where('l.host_user_id = :userId', { userId });
+
+    // rate_plan is 1:1 — safe for price sort/keyset; still no media.
+    if (sort === 'price') {
+      qb.leftJoin('l.rate_plan', 'rate_plan');
+    }
 
     this.applyListingStatusFilter(qb, status);
     if (search) {
@@ -142,7 +151,9 @@ export class HostListingsService {
       'COALESCE(l.last_edited_at, l.updated_at)',
       'updated_sort',
     );
-    qb.addSelect('rate_plan.base_price', 'price_sort');
+    if (sort === 'price') {
+      qb.addSelect('rate_plan.base_price', 'price_sort');
+    }
 
     this.applyListingOrder(qb, sort);
     this.applyListingKeyset(qb, sort, cursorPayload);
@@ -152,16 +163,35 @@ export class HostListingsService {
     const hasNext = entities.length > limit;
     const pageEntities = hasNext ? entities.slice(0, limit) : entities;
     const pageRaw = hasNext ? raw.slice(0, limit) : raw;
+    const pageIds = pageEntities.map((l) => l.id);
 
-    const items = pageEntities.map((l) => this.toHostListingListItem(l));
+    // Phase 2: hydrate slim relations for the distinct page IDs only.
+    const hydrated =
+      pageIds.length === 0
+        ? []
+        : await this.listingRepo.find({
+            where: { id: In(pageIds), host_user_id: userId },
+            relations: ['rate_plan', 'media'],
+          });
+    const byId = new Map(hydrated.map((l) => [l.id, l]));
+    const ordered = pageIds
+      .map((id) => byId.get(id))
+      .filter((l): l is StaysListing => !!l);
+
+    const items = ordered.map((l) => this.toHostListingListItem(l));
 
     let nextCursor: string | null = null;
     if (hasNext && pageEntities.length > 0) {
       const last = pageEntities[pageEntities.length - 1];
-      const lastRaw = pageRaw[pageRaw.length - 1] as Record<string, unknown>;
+      const lastRaw = (pageRaw[pageRaw.length - 1] ?? {}) as Record<
+        string,
+        unknown
+      >;
+      // Prefer hydrated rate_plan for price cursor when raw alias missing.
+      const lastHydrated = byId.get(last.id) ?? last;
       nextCursor = encodeHostListCursor(
         ctx,
-        this.listingCursorKeys(sort, last, lastRaw),
+        this.listingCursorKeys(sort, lastHydrated, lastRaw),
         last.id,
       );
     }
