@@ -587,6 +587,27 @@ describe('SupportTicketsService', () => {
     expect(staysAudit.log.mock.calls[0][0].metadata.body).toBeUndefined();
   });
 
+  it('rejects SUPPORT source conversation for investigation transcript', async () => {
+    const { service, reportRepo, convRepo } = buildService();
+    reportRepo.findOne.mockResolvedValue({
+      id: 'report-1',
+      conversation_id: 'conv-support',
+    });
+    convRepo.findOne.mockResolvedValue({
+      id: 'conv-support',
+      type: 'SUPPORT',
+      guest_user_id: 'g1',
+      host_user_id: 'h1',
+    });
+    await expect(
+      service.getInvestigationConversation(
+        'report-1',
+        'conversation_reported',
+        50,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('rolls back REVIEWED when escalation ticket ensure fails', async () => {
     const { service, reportRepo, ticketRepo, staysAudit, convRepo } = buildService();
     const report = {

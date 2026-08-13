@@ -1227,6 +1227,94 @@ export class SupportTicketsService {
     };
   }
 
+  async getInvestigationConversation(
+    reportId: string,
+    kind: (typeof TRUST_REPORT_KINDS)[number],
+    limit = 50,
+    beforeSequence?: number,
+  ) {
+    const canonical =
+      kind === 'conversation_reported'
+        ? await this.reportRepo.findOne({ where: { id: reportId } })
+        : await this.safetyRepo.findOne({ where: { id: reportId } });
+    if (!canonical) throw new NotFoundException('Report not found');
+
+    const conv = await this.convRepo.findOne({
+      where: { id: canonical.conversation_id },
+    });
+    if (!conv || conv.type === 'SUPPORT') {
+      throw new NotFoundException('Report not found');
+    }
+
+    const take = Math.min(Math.max(limit, 1), 50);
+    const qb = this.messageRepo
+      .createQueryBuilder('m')
+      .where('m.conversation_id = :id', { id: conv.id })
+      .andWhere("m.type != 'SYSTEM_INTERNAL'")
+      .andWhere('m.deleted_at IS NULL')
+      .orderBy('m.conversation_sequence', 'DESC')
+      .take(take + 1);
+    if (beforeSequence != null) {
+      qb.andWhere('m.conversation_sequence < :seq', { seq: beforeSequence });
+    }
+    const rows = await qb.getMany();
+    const hasMore = rows.length > take;
+    const page = (hasMore ? rows.slice(0, take) : rows).reverse();
+    const messageIds = page.map((m) => m.id);
+    const attachmentRows = messageIds.length
+      ? (
+          await this.attachmentRepo.find({
+            where: { message_id: In(messageIds) },
+          })
+        ).filter((a): a is typeof a & { message_id: string } => !!a.message_id)
+      : [];
+    const byMessage = new Map<string, typeof attachmentRows>();
+    for (const att of attachmentRows) {
+      const list = byMessage.get(att.message_id) ?? [];
+      list.push(att);
+      byMessage.set(att.message_id, list);
+    }
+    const evidence = attachmentRows.length
+      ? await this.buildEvidence(attachmentRows.map((a) => a.id))
+      : [];
+    const evidenceById = new Map(evidence.map((e) => [e.id, e]));
+
+    return {
+      conversation: {
+        id: conv.id,
+        booking_id: conv.booking_id,
+        listing_id: conv.listing_id,
+        type: conv.type,
+      },
+      items: page.map((m) => {
+        let senderRole: 'GUEST' | 'HOST' | 'UNKNOWN' = 'UNKNOWN';
+        if (m.sender_id && m.sender_id === conv.guest_user_id) senderRole = 'GUEST';
+        else if (m.sender_id && m.sender_id === conv.host_user_id) {
+          senderRole = 'HOST';
+        }
+        const atts = byMessage.get(m.id) ?? [];
+        return {
+          id: m.id,
+          sender_id: m.sender_id,
+          sender_role: senderRole,
+          type: m.type,
+          body: m.body ?? '',
+          conversation_sequence: Number(m.conversation_sequence),
+          created_at: (m.sent_at ?? m.created_at).toISOString(),
+          attachments: atts
+            .map((a) => evidenceById.get(a.id))
+            .filter(Boolean),
+        };
+      }),
+      next_cursor: hasMore
+        ? {
+            before_sequence: Number(page[0]?.conversation_sequence),
+          }
+        : null,
+      has_more: hasMore,
+    };
+  }
+
   async resolveEvidenceForCanonical(
     attachmentIds: string[],
     allowedIds: string[],

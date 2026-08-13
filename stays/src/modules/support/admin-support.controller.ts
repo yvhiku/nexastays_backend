@@ -20,6 +20,7 @@ import {
   AdminListTicketsQueryDto,
   AdminListReportsQueryDto,
   CreateSupportTicketNoteDto,
+  InvestigationConversationQueryDto,
   ListSupportTicketNotesQueryDto,
   PatchSupportTicketDto,
   PatchTrustReportDto,
@@ -110,6 +111,18 @@ export class AdminSupportController {
     return this.supportTickets.listReportsForAdmin(query);
   }
 
+  @Get('reports/:id/conversation')
+  investigationConversation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: InvestigationConversationQueryDto,
+  ) {
+    return this.supportTickets.getInvestigationConversation(
+      id,
+      query.kind,
+      query.limit,
+      query.before_sequence,
+    );
+  }
 
 
   @Get('reports/:id')

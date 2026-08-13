@@ -133,6 +133,25 @@ export const TRUST_REPORT_STATUSES = [
   'DISMISSED',
 ] as const;
 
+export class InvestigationConversationQueryDto {
+  @IsString()
+  @IsIn([...TRUST_REPORT_KINDS])
+  kind!: (typeof TRUST_REPORT_KINDS)[number];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  before_sequence?: number;
+}
+
 export class PatchTrustReportDto {
   @IsString()
   @IsIn([...TRUST_REPORT_KINDS])
