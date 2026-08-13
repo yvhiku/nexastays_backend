@@ -24,6 +24,10 @@ import { StaysHostProfile } from '../stays/entities/stays-host-profile.entity';
 import { StaysAuditService } from '../stays/services/stays-audit.service';
 import { IdentityUserClient } from '../../common/identity/identity-user.client';
 import {
+  computeSupportSla,
+  suggestRouting,
+} from './support-sla.config';
+import {
   StaysSupportTicket,
   SupportTicketParty,
   SupportTicketCategory,
@@ -506,6 +510,8 @@ export class SupportTicketsService {
         customer_name: customerName,
         requester_email: requesterEmail,
         resolved_at: null,
+        first_admin_response_at: null,
+        closed_at: null,
       });
       const savedTicket = await manager.getRepository(StaysSupportTicket).save(ticket);
 
@@ -784,11 +790,14 @@ export class SupportTicketsService {
 
     if (patch.status !== undefined) {
       ticket.status = patch.status as SupportTicketStatus;
-      if (patch.status === 'RESOLVED' || patch.status === 'CLOSED') {
+      if (patch.status === 'RESOLVED') {
         ticket.resolved_at = ticket.resolved_at ?? new Date();
-      } else {
-        ticket.resolved_at = null;
+      } else if (patch.status === 'CLOSED') {
+        ticket.closed_at = ticket.closed_at ?? new Date();
+        // Keep first resolved_at; set if closing without prior resolve.
+        ticket.resolved_at = ticket.resolved_at ?? new Date();
       }
+      // Do not clear resolved_at / closed_at on reopen or other transitions.
     }
     if (patch.priority !== undefined) {
       ticket.priority = patch.priority as SupportTicketPriority;
@@ -916,6 +925,8 @@ export class SupportTicketsService {
           ticket.status === 'OPEN' || ticket.status === 'WAITING_FOR_CUSTOMER'
             ? 'IN_PROGRESS'
             : ticket.status,
+        // First successful admin SUPPORT reply only (COALESCE / once).
+        first_admin_response_at: ticket.first_admin_response_at ?? new Date(),
         updated_at: new Date(),
       });
 
@@ -964,7 +975,7 @@ export class SupportTicketsService {
 
   /**
    * After a customer SUPPORT message is inserted, update unread + status
-   * in the same transaction. Clears resolved_at only for RESOLVED → OPEN.
+   * in the same transaction. Preserves first resolved_at on RESOLVED → OPEN.
    */
   async applyCustomerSupportMessageEffects(
     manager: EntityManager,
@@ -981,9 +992,6 @@ export class SupportTicketsService {
       status: nextStatus,
       updated_at: new Date(),
     };
-    if (ticket.status === 'RESOLVED' && nextStatus === 'OPEN') {
-      patch.resolved_at = null;
-    }
     await manager.getRepository(StaysSupportTicket).update(ticket.id, patch);
   }
 
@@ -1891,6 +1899,18 @@ export class SupportTicketsService {
   }
 
   private toListRow(ticket: StaysSupportTicket, bookingRef: string | null = null) {
+    const sla = computeSupportSla({
+      createdAt: ticket.created_at,
+      priority: ticket.priority,
+      firstAdminResponseAt: ticket.first_admin_response_at,
+      resolvedAt: ticket.resolved_at,
+    });
+    const routingSuggestion = suggestRouting({
+      category: ticket.category,
+      currentPriority: ticket.priority,
+      hasReportId: !!ticket.report_id,
+      hasSafetyIssueId: !!ticket.safety_issue_id,
+    });
     return {
       id: ticket.id,
       ticket_number: ticket.ticket_number,
@@ -1905,6 +1925,9 @@ export class SupportTicketsService {
       created_at: ticket.created_at.toISOString(),
       updated_at: ticket.updated_at.toISOString(),
       resolved_at: ticket.resolved_at?.toISOString() ?? null,
+      closed_at: ticket.closed_at?.toISOString() ?? null,
+      first_admin_response_at:
+        ticket.first_admin_response_at?.toISOString() ?? null,
       booking_id: ticket.booking_id,
       booking_reference: bookingRef,
       listing_id: ticket.listing_id,
@@ -1913,6 +1936,8 @@ export class SupportTicketsService {
       unread_for_support: ticket.unread_for_support,
       last_message_preview: ticket.last_message_preview,
       requester_email: ticket.requester_email,
+      sla,
+      routing_suggestion: routingSuggestion,
     };
   }
 

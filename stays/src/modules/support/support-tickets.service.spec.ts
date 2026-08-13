@@ -748,19 +748,21 @@ describe('SupportTicketsService', () => {
       party: 'GUEST',
       status: 'OPEN',
       assigned_admin_id: null,
+      first_admin_response_at: null,
     };
     const ticketQb = {
       setLock: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       getOne: jest.fn().mockResolvedValue(lockedTicket),
     };
+    const ticketUpdate = jest.fn();
     dataSource.transaction = jest.fn(async (fn: (m: unknown) => unknown) =>
       fn({
         getRepository: jest.fn((entity: unknown) => {
           if (entity === StaysSupportTicket) {
             return {
               createQueryBuilder: jest.fn(() => ticketQb),
-              update: jest.fn(),
+              update: ticketUpdate,
             };
           }
           if (entity === StaysConversation) {
@@ -781,6 +783,12 @@ describe('SupportTicketsService', () => {
 
     const msg = await service.sendAdminMessage('ticket-1', 'admin-1', 'We can help');
     expect(msg.sender_type).toBe('SUPPORT_AGENT');
+    expect(ticketUpdate).toHaveBeenCalledWith(
+      'ticket-1',
+      expect.objectContaining({
+        first_admin_response_at: expect.any(Date),
+      }),
+    );
     expect(timelineSeeder.insertMessage).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -792,6 +800,86 @@ describe('SupportTicketsService', () => {
     );
     expect(ticketRepo.findOne).not.toHaveBeenCalled();
     expect(convRepo.findOne).not.toHaveBeenCalled();
+  });
+
+  it('does not overwrite first_admin_response_at on second admin reply', async () => {
+    const { service, dataSource } = buildService();
+    const firstAt = new Date('2026-01-01T12:00:00.000Z');
+    const lockedTicket = {
+      id: 'ticket-1',
+      conversation_id: 'conv-1',
+      requester_user_id: 'guest-1',
+      party: 'GUEST',
+      status: 'IN_PROGRESS',
+      assigned_admin_id: 'admin-1',
+      first_admin_response_at: firstAt,
+    };
+    const ticketUpdate = jest.fn();
+    dataSource.transaction = jest.fn(async (fn: (m: unknown) => unknown) =>
+      fn({
+        getRepository: jest.fn((entity: unknown) => {
+          if (entity === StaysSupportTicket) {
+            return {
+              createQueryBuilder: jest.fn(() => ({
+                setLock: jest.fn().mockReturnThis(),
+                where: jest.fn().mockReturnThis(),
+                getOne: jest.fn().mockResolvedValue(lockedTicket),
+              })),
+              update: ticketUpdate,
+            };
+          }
+          if (entity === StaysConversation) {
+            return {
+              findOne: jest.fn().mockResolvedValue({
+                id: 'conv-1',
+                unread_guest: 0,
+                type: 'SUPPORT',
+              }),
+              update: jest.fn(),
+            };
+          }
+          return { update: jest.fn() };
+        }),
+      }),
+    );
+    await service.sendAdminMessage('ticket-1', 'admin-1', 'Follow-up');
+    expect(ticketUpdate).toHaveBeenCalledWith(
+      'ticket-1',
+      expect.objectContaining({ first_admin_response_at: firstAt }),
+    );
+  });
+
+  it('sets closed_at on CLOSED without clearing resolved_at', async () => {
+    const { service, ticketRepo } = buildService();
+    const resolvedAt = new Date('2026-01-01T00:00:00.000Z');
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'RESOLVED',
+      priority: 'NORMAL',
+      assigned_admin_id: 'admin-1',
+      resolved_at: resolvedAt,
+      closed_at: null,
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+      first_admin_response_at: new Date('2026-01-01T01:00:00.000Z'),
+      report_id: null,
+      safety_issue_id: null,
+    });
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+    const row = await service.patchForAdmin(
+      'ticket-1',
+      { status: 'CLOSED' },
+      'admin-1',
+    );
+    expect(row.closed_at).toBeTruthy();
+    expect(row.resolved_at).toBe(resolvedAt.toISOString());
   });
 
   it('rejects CLOSED admin send with 409 and does not insert a message', async () => {
@@ -822,19 +910,20 @@ describe('SupportTicketsService', () => {
     expect(timelineSeeder.insertMessage).not.toHaveBeenCalled();
   });
 
-  it('applies customer message effects: RESOLVED reopens and clears resolved_at', async () => {
+  it('applies customer message effects: RESOLVED reopens and preserves resolved_at', async () => {
     const { service } = buildService();
     const update = jest.fn();
     const manager = {
       getRepository: jest.fn(() => ({ update })),
     };
+    const resolvedAt = new Date('2026-01-01T00:00:00.000Z');
     await service.applyCustomerSupportMessageEffects(
       manager as never,
       {
         id: 'ticket-1',
         status: 'RESOLVED',
         party: 'GUEST',
-        resolved_at: new Date('2026-01-01T00:00:00.000Z'),
+        resolved_at: resolvedAt,
       } as never,
       'Follow up',
     );
@@ -843,10 +932,10 @@ describe('SupportTicketsService', () => {
       expect.objectContaining({
         status: 'OPEN',
         unread_for_support: true,
-        resolved_at: null,
         last_message_preview: 'Follow up',
       }),
     );
+    expect(update.mock.calls[0][1].resolved_at).toBeUndefined();
   });
 
   it('preserves WAITING_FOR_HOST for GUEST party and does not clear resolved_at', async () => {

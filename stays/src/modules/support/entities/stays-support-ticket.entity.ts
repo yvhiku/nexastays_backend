@@ -93,6 +93,14 @@ export class StaysSupportTicket {
   @Column({ type: 'timestamptz', name: 'resolved_at', nullable: true })
   resolved_at: Date | null;
 
+  /** Set once on first successful admin SUPPORT message (never cleared). */
+  @Column({ type: 'timestamptz', name: 'first_admin_response_at', nullable: true })
+  first_admin_response_at: Date | null;
+
+  /** Set once when entering CLOSED (never cleared). */
+  @Column({ type: 'timestamptz', name: 'closed_at', nullable: true })
+  closed_at: Date | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;
 

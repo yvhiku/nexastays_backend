@@ -8,7 +8,7 @@ import type {
  * Documented for Phase 1.1 — do not drift without an explicit product change.
  *
  * WAITING_FOR_HOST advances only when the ticket party is HOST.
- * RESOLVED → OPEN (resolved_at cleared by the caller).
+ * RESOLVED → OPEN (first resolved_at is preserved by the caller — Phase 3).
  * CLOSED is rejected before this runs (409).
  */
 export function nextStatusAfterCustomerMessage(input: {
