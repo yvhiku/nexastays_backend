@@ -150,6 +150,7 @@ export class ConversationsService {
       });
 
     for (const conv of filtered) {
+      if (conv.type === 'SUPPORT') continue;
       const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
       if (this.snapshotRepair.isSnapshotIncomplete(snapshot)) {
         void this.outbox.enqueueDirect(MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED, {
@@ -220,7 +221,10 @@ export class ConversationsService {
     }
 
     const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
-    if (this.snapshotRepair.isSnapshotIncomplete(snapshot)) {
+    if (
+      conv.type !== 'SUPPORT' &&
+      this.snapshotRepair.isSnapshotIncomplete(snapshot)
+    ) {
       void this.outbox.enqueueDirect(MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED, {
         conversationId: conv.id,
       });

@@ -22,6 +22,7 @@ export class ParticipantPresentationService {
   ) {}
 
   async resolveHostDisplayName(hostUserId: string): Promise<string | null> {
+    if (!hostUserId?.trim()) return null;
     const profile = await this.hostProfileRepo.findOne({
       where: { user_id: hostUserId },
     });

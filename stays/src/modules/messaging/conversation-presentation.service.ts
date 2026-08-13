@@ -47,6 +47,10 @@ export class ConversationPresentationService {
     snapshot: ReservationSnapshot,
     bookingStatus?: string | null,
   ): Promise<ConversationPresentation> {
+    if (conv.type === 'SUPPORT') {
+      return this.buildSupportPresentation(conv, snapshot);
+    }
+
     const isGuest = conv.guest_user_id === viewerUserId;
     const counterpartId = isGuest ? conv.host_user_id : conv.guest_user_id;
     const counterpart = await this.participants.resolveCounterpartIdentity(
@@ -81,6 +85,46 @@ export class ConversationPresentationService {
       },
       listing: {
         title: snapshot.listingTitle ?? 'Stay',
+        city: snapshot.city ?? null,
+      },
+      reservation,
+    };
+  }
+
+  /** Customer ↔ Nexa Support threads have no host counterpart or stay dates. */
+  private buildSupportPresentation(
+    conv: StaysConversation,
+    snapshot: ReservationSnapshot,
+  ): ConversationPresentation {
+    const subject =
+      snapshot.listingTitle?.trim() ||
+      snapshot.hostDisplayName?.trim() ||
+      'Support request';
+    const ticketRef = snapshot.bookingReference?.trim() || null;
+    const subtitle = ticketRef ?? 'Support';
+    const reservation = this.buildReservationPresentation(conv, {
+      ...snapshot,
+      listingTitle: subject,
+      checkinDate: snapshot.checkinDate || '',
+      checkoutDate: snapshot.checkoutDate || '',
+      guestCount: snapshot.guestCount ?? 0,
+      hostDisplayName: 'Nexa Support',
+    });
+
+    return {
+      title: 'Nexa Support',
+      subtitle,
+      avatar: null,
+      bookingChip: ticketRef ? `${subject} • ${ticketRef}` : subject,
+      statusChip: 'Support',
+      counterpart: {
+        id: '',
+        displayName: 'Nexa Support',
+        verified: true,
+        rating: null,
+      },
+      listing: {
+        title: subject,
         city: snapshot.city ?? null,
       },
       reservation,

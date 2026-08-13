@@ -226,11 +226,16 @@ export class SupportTicketsService {
 
     const created = await this.dataSource.transaction(async (manager) => {
       const ticketNumber = await this.allocateTicketNumber(manager);
+      const subject = dto.subject.trim();
       const conversation = await this.createSupportConversation(
         manager,
         userId,
         party,
         links.listingId,
+        {
+          subject,
+          ticketNumber,
+        },
       );
 
       const preview = dto.message.trim().slice(0, 200);
@@ -239,7 +244,7 @@ export class SupportTicketsService {
         requester_user_id: userId,
         party,
         category: dto.category as SupportTicketCategory,
-        subject: dto.subject.trim(),
+        subject,
         status: 'OPEN',
         priority: options.priority ?? 'NORMAL',
         assigned_admin_id: null,
@@ -667,6 +672,7 @@ export class SupportTicketsService {
     userId: string,
     party: SupportTicketParty,
     listingId: string | null,
+    meta: { subject: string; ticketNumber: string },
   ): Promise<StaysConversation> {
     const convRepo = manager.getRepository(StaysConversation);
     const conv = convRepo.create({
@@ -675,7 +681,15 @@ export class SupportTicketsService {
       messaging_state: 'ACTIVE',
       guest_visibility: 'ACTIVE',
       host_visibility: 'ACTIVE',
-      reservation_snapshot: {},
+      reservation_snapshot: {
+        listingTitle: meta.subject,
+        listingId,
+        bookingReference: meta.ticketNumber,
+        hostDisplayName: 'Nexa Support',
+        checkinDate: '',
+        checkoutDate: '',
+        guestCount: 0,
+      },
       listing_id: listingId,
       guest_user_id: party === 'GUEST' ? userId : null,
       host_user_id: party === 'HOST' ? userId : null,
