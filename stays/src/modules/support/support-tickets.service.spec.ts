@@ -657,6 +657,52 @@ describe('SupportTicketsService', () => {
     });
   });
 
+  it('returns empty analytics for empty created_at range', async () => {
+    const { service, dataSource } = buildService();
+    dataSource.query
+      .mockResolvedValueOnce([
+        {
+          created: 0,
+          open: 0,
+          resolved: 0,
+          closed: 0,
+          escalated: 0,
+          avg_first_response_seconds: null,
+          median_first_response_seconds: null,
+          avg_first_resolution_seconds: null,
+          median_first_resolution_seconds: null,
+          avg_closure_seconds: null,
+          median_closure_seconds: null,
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          responses: 0,
+          average_rating: null,
+          r1: 0,
+          r2: 0,
+          r3: 0,
+          r4: 0,
+          r5: 0,
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const analytics = await service.getAnalyticsForAdmin({
+      from: '2026-01-01T00:00:00.000Z',
+      to: '2026-02-01T00:00:00.000Z',
+    });
+    expect(analytics.tickets.created).toBe(0);
+    expect(analytics.response.averageFirstResponseSeconds).toBeNull();
+    expect(analytics.csat.responses).toBe(0);
+    expect(analytics.sla.firstResponse).toEqual({
+      onTrack: 0,
+      atRisk: 0,
+      breached: 0,
+    });
+  });
+
   it('creates and lists internal notes without body in audit', async () => {
     const { service, ticketRepo, noteRepo, staysAudit } = buildService();
     ticketRepo.findOne.mockResolvedValue({ id: 'ticket-1' });

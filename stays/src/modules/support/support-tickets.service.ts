@@ -26,6 +26,7 @@ import { IdentityUserClient } from '../../common/identity/identity-user.client';
 import {
   computeSupportSla,
   suggestRouting,
+  SUPPORT_SLA,
 } from './support-sla.config';
 import {
   StaysSupportTicket,
@@ -1408,6 +1409,237 @@ export class SupportTicketsService {
     const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
     if (!ticket) throw new NotFoundException('Ticket not found');
     return this.listActivityForEntity('support_ticket', ticketId, limit, offset);
+  }
+
+  /**
+   * Support ops analytics for tickets created in [from, to).
+   * SLA thresholds come from SUPPORT_SLA (not hardcoded SQL intervals).
+   */
+  async getAnalyticsForAdmin(query: { from?: string; to?: string } = {}) {
+    const now = new Date();
+    let from = query.from ? new Date(query.from) : new Date(0);
+    let toExclusive = query.to ? new Date(query.to) : new Date(now.getTime() + 1);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(toExclusive.getTime())) {
+      throw new BadRequestException('Invalid from/to date');
+    }
+    if (from >= toExclusive) {
+      throw new BadRequestException('from must be before to');
+    }
+
+    const frLow = SUPPORT_SLA.LOW.firstResponseHours;
+    const frNormal = SUPPORT_SLA.NORMAL.firstResponseHours;
+    const frHigh = SUPPORT_SLA.HIGH.firstResponseHours;
+    const frUrgent = SUPPORT_SLA.URGENT.firstResponseHours;
+    const resLow = SUPPORT_SLA.LOW.resolutionHours;
+    const resNormal = SUPPORT_SLA.NORMAL.resolutionHours;
+    const resHigh = SUPPORT_SLA.HIGH.resolutionHours;
+    const resUrgent = SUPPORT_SLA.URGENT.resolutionHours;
+
+    const frHoursExpr = `
+      CASE t.priority
+        WHEN 'LOW' THEN $3::int
+        WHEN 'HIGH' THEN $5::int
+        WHEN 'URGENT' THEN $6::int
+        ELSE $4::int
+      END
+    `;
+    const resHoursExpr = `
+      CASE t.priority
+        WHEN 'LOW' THEN $7::int
+        WHEN 'HIGH' THEN $9::int
+        WHEN 'URGENT' THEN $10::int
+        ELSE $8::int
+      END
+    `;
+
+    // Incomplete: elapsed/window < 0.8 ON_TRACK, < 1 AT_RISK, else BREACHED.
+    // Complete: completed <= target ON_TRACK else BREACHED.
+    const legStateSql = (
+      completedCol: string,
+      hoursExpr: string,
+    ) => `
+      CASE
+        WHEN ${completedCol} IS NOT NULL THEN
+          CASE
+            WHEN ${completedCol} <= t.created_at + ((${hoursExpr}) * INTERVAL '1 hour')
+              THEN 'ON_TRACK'
+            ELSE 'BREACHED'
+          END
+        ELSE
+          CASE
+            WHEN EXTRACT(EPOCH FROM ($11::timestamptz - t.created_at))
+              < 0.8 * (${hoursExpr}) * 3600 THEN 'ON_TRACK'
+            WHEN EXTRACT(EPOCH FROM ($11::timestamptz - t.created_at))
+              < (${hoursExpr}) * 3600 THEN 'AT_RISK'
+            ELSE 'BREACHED'
+          END
+      END
+    `;
+
+    const params = [
+      from.toISOString(),
+      toExclusive.toISOString(),
+      frLow,
+      frNormal,
+      frHigh,
+      frUrgent,
+      resLow,
+      resNormal,
+      resHigh,
+      resUrgent,
+      now.toISOString(),
+    ];
+
+    const [summary] = await this.dataSource.query(
+      `
+      SELECT
+        COUNT(*)::int AS created,
+        COUNT(*) FILTER (WHERE t.status IN ('OPEN','IN_PROGRESS','WAITING_FOR_CUSTOMER','WAITING_FOR_HOST','ESCALATED'))::int AS open,
+        COUNT(*) FILTER (WHERE t.status = 'RESOLVED')::int AS resolved,
+        COUNT(*) FILTER (WHERE t.status = 'CLOSED')::int AS closed,
+        COUNT(*) FILTER (WHERE t.status = 'ESCALATED')::int AS escalated,
+        AVG(EXTRACT(EPOCH FROM (t.first_admin_response_at - t.created_at)))
+          FILTER (WHERE t.first_admin_response_at IS NOT NULL) AS avg_first_response_seconds,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (
+          ORDER BY EXTRACT(EPOCH FROM (t.first_admin_response_at - t.created_at))
+        ) FILTER (WHERE t.first_admin_response_at IS NOT NULL) AS median_first_response_seconds,
+        AVG(EXTRACT(EPOCH FROM (t.resolved_at - t.created_at)))
+          FILTER (WHERE t.resolved_at IS NOT NULL) AS avg_first_resolution_seconds,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (
+          ORDER BY EXTRACT(EPOCH FROM (t.resolved_at - t.created_at))
+        ) FILTER (WHERE t.resolved_at IS NOT NULL) AS median_first_resolution_seconds,
+        AVG(EXTRACT(EPOCH FROM (t.closed_at - t.created_at)))
+          FILTER (WHERE t.closed_at IS NOT NULL) AS avg_closure_seconds,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (
+          ORDER BY EXTRACT(EPOCH FROM (t.closed_at - t.created_at))
+        ) FILTER (WHERE t.closed_at IS NOT NULL) AS median_closure_seconds
+      FROM stays_support_tickets t
+      WHERE t.created_at >= $1::timestamptz
+        AND t.created_at < $2::timestamptz
+      `,
+      params.slice(0, 2),
+    );
+
+    const slaRows = await this.dataSource.query(
+      `
+      SELECT
+        ${legStateSql('t.first_admin_response_at', frHoursExpr)} AS fr_state,
+        ${legStateSql('t.resolved_at', resHoursExpr)} AS res_state,
+        COUNT(*)::int AS cnt
+      FROM stays_support_tickets t
+      WHERE t.created_at >= $1::timestamptz
+        AND t.created_at < $2::timestamptz
+      GROUP BY 1, 2
+      `,
+      params,
+    );
+
+    const emptyBuckets = () => ({ onTrack: 0, atRisk: 0, breached: 0 });
+    const firstResponseSla = emptyBuckets();
+    const firstResolutionSla = emptyBuckets();
+    const bump = (
+      bag: { onTrack: number; atRisk: number; breached: number },
+      state: string,
+      n: number,
+    ) => {
+      if (state === 'ON_TRACK') bag.onTrack += n;
+      else if (state === 'AT_RISK') bag.atRisk += n;
+      else bag.breached += n;
+    };
+    for (const row of slaRows as { fr_state: string; res_state: string; cnt: number }[]) {
+      bump(firstResponseSla, row.fr_state, Number(row.cnt));
+      bump(firstResolutionSla, row.res_state, Number(row.cnt));
+    }
+
+    const [csat] = await this.dataSource.query(
+      `
+      SELECT
+        COUNT(*)::int AS responses,
+        AVG(c.rating)::float AS average_rating,
+        COUNT(*) FILTER (WHERE c.rating = 1)::int AS r1,
+        COUNT(*) FILTER (WHERE c.rating = 2)::int AS r2,
+        COUNT(*) FILTER (WHERE c.rating = 3)::int AS r3,
+        COUNT(*) FILTER (WHERE c.rating = 4)::int AS r4,
+        COUNT(*) FILTER (WHERE c.rating = 5)::int AS r5
+      FROM stays_support_ticket_csat c
+      INNER JOIN stays_support_tickets t ON t.id = c.ticket_id
+      WHERE t.created_at >= $1::timestamptz
+        AND t.created_at < $2::timestamptz
+      `,
+      params.slice(0, 2),
+    );
+
+    const categories = await this.dataSource.query(
+      `
+      SELECT t.category AS category, COUNT(*)::int AS count
+      FROM stays_support_tickets t
+      WHERE t.created_at >= $1::timestamptz
+        AND t.created_at < $2::timestamptz
+      GROUP BY t.category
+      ORDER BY count DESC, t.category ASC
+      `,
+      params.slice(0, 2),
+    );
+
+    const priorities = await this.dataSource.query(
+      `
+      SELECT t.priority AS priority, COUNT(*)::int AS count
+      FROM stays_support_tickets t
+      WHERE t.created_at >= $1::timestamptz
+        AND t.created_at < $2::timestamptz
+      GROUP BY t.priority
+      ORDER BY count DESC, t.priority ASC
+      `,
+      params.slice(0, 2),
+    );
+
+    const num = (v: unknown) =>
+      v == null || v === '' ? null : Number(v);
+
+    return {
+      from: from.toISOString(),
+      to: toExclusive.toISOString(),
+      tickets: {
+        created: Number(summary?.created ?? 0),
+        open: Number(summary?.open ?? 0),
+        resolved: Number(summary?.resolved ?? 0),
+        closed: Number(summary?.closed ?? 0),
+        escalated: Number(summary?.escalated ?? 0),
+      },
+      response: {
+        averageFirstResponseSeconds: num(summary?.avg_first_response_seconds),
+        medianFirstResponseSeconds: num(summary?.median_first_response_seconds),
+      },
+      firstResolution: {
+        averageSeconds: num(summary?.avg_first_resolution_seconds),
+        medianSeconds: num(summary?.median_first_resolution_seconds),
+      },
+      closure: {
+        averageSeconds: num(summary?.avg_closure_seconds),
+        medianSeconds: num(summary?.median_closure_seconds),
+      },
+      sla: {
+        firstResponse: firstResponseSla,
+        firstResolution: firstResolutionSla,
+      },
+      csat: {
+        responses: Number(csat?.responses ?? 0),
+        averageRating: num(csat?.average_rating),
+        ratingDistribution: {
+          '1': Number(csat?.r1 ?? 0),
+          '2': Number(csat?.r2 ?? 0),
+          '3': Number(csat?.r3 ?? 0),
+          '4': Number(csat?.r4 ?? 0),
+          '5': Number(csat?.r5 ?? 0),
+        },
+      },
+      categories: (categories as { category: string; count: number }[]).map(
+        (r) => ({ category: r.category, count: Number(r.count) }),
+      ),
+      priorities: (priorities as { priority: string; count: number }[]).map(
+        (r) => ({ priority: r.priority, count: Number(r.count) }),
+      ),
+    };
   }
 
   async listReportActivity(

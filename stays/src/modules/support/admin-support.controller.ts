@@ -33,6 +33,7 @@ import {
   SendSupportTicketMessageDto,
   TRUST_REPORT_KINDS,
 } from './dto/support-ticket.dto';
+import { AdminSupportAnalyticsQueryDto } from './dto/support-analytics.dto';
 import { IsIn, IsString } from 'class-validator';
 
 class GetTrustReportQueryDto {
@@ -61,6 +62,11 @@ export class AdminSupportController {
     private readonly supportTickets: SupportTicketsService,
     private readonly cannedReplies: SupportCannedRepliesService,
   ) {}
+
+  @Get('support/analytics')
+  supportAnalytics(@Query() query: AdminSupportAnalyticsQueryDto) {
+    return this.supportTickets.getAnalyticsForAdmin(query);
+  }
 
   @Get('support/tickets')
   listTickets(@Query() query: AdminListTicketsQueryDto) {
