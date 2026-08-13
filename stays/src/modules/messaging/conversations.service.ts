@@ -323,9 +323,9 @@ export class ConversationsService {
     });
     return {
       reportId: report.id,
-      ticketId: ticket?.id,
-      ticketNumber: ticket?.ticket_number,
-      supportConversationId: ticket?.conversation_id,
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticket_number,
+      supportConversationId: ticket.conversation_id,
     };
   }
 
@@ -389,9 +389,9 @@ export class ConversationsService {
     return {
       supportUrl: `/contact?safety=1&safety_issue_id=${encodeURIComponent(safety.id)}`,
       safetyIssueId: safety.id,
-      ticketId: ticket?.id,
-      ticketNumber: ticket?.ticket_number,
-      supportConversationId: ticket?.conversation_id,
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticket_number,
+      supportConversationId: ticket.conversation_id,
     };
   }
 

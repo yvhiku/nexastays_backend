@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -260,7 +260,7 @@ describe('SupportTicketsService', () => {
       } as never,
     });
 
-    expect(result?.id).toBe('ticket-existing');
+    expect(result.id).toBe('ticket-existing');
     expect(ticketRepo.findOne).toHaveBeenCalledWith({
       where: { report_id: 'report-1' },
     });
@@ -289,7 +289,7 @@ describe('SupportTicketsService', () => {
       } as never,
     });
 
-    expect(result?.id).toBe('ticket-safety');
+    expect(result.id).toBe('ticket-safety');
     expect(ticketRepo.findOne).toHaveBeenCalledWith({
       where: { safety_issue_id: 'safety-1' },
     });
@@ -757,7 +757,7 @@ describe('SupportTicketsService', () => {
       } as never,
     });
 
-    expect(result.ticket?.id).toBe('ticket-race');
+    expect(result.ticket.id).toBe('ticket-race');
     expect(manager.query).toHaveBeenCalledWith(
       expect.stringMatching(/^SAVEPOINT /),
     );
@@ -765,5 +765,130 @@ describe('SupportTicketsService', () => {
       expect.stringMatching(/^ROLLBACK TO SAVEPOINT /),
     );
     expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws when 23505 reuse finds no ticket (no ticket:null success)', async () => {
+    const { service, ticketRepo, reportRepo, manager } = buildService();
+    reportRepo.findOne.mockResolvedValue({
+      id: 'report-1',
+      reporter_user_id: 'guest-1',
+    });
+    ticketRepo.findOne.mockResolvedValue(null);
+    ticketRepo.save.mockRejectedValueOnce(uniqueViolation());
+
+    await expect(
+      service.provisionReportWithTicket({
+        conversationId: 'booking-conv',
+        reporterUserId: 'guest-1',
+        reason: 'spam',
+        sourceConversation: {
+          id: 'booking-conv',
+          guest_user_id: 'guest-1',
+          host_user_id: 'host-1',
+          booking_id: null,
+          listing_id: null,
+        } as never,
+      }),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
+
+    expect(manager.query).toHaveBeenCalledWith(
+      expect.stringMatching(/^ROLLBACK TO SAVEPOINT /),
+    );
+  });
+
+  it('throws when safety 23505 reuse finds no ticket', async () => {
+    const { service, ticketRepo, safetyRepo } = buildService();
+    safetyRepo.findOne.mockResolvedValue({
+      id: 'safety-1',
+      reporter_user_id: 'guest-1',
+      category: 'FRAUD',
+    });
+    ticketRepo.findOne.mockResolvedValue(null);
+    ticketRepo.save.mockRejectedValueOnce(uniqueViolation());
+
+    await expect(
+      service.provisionSafetyIssueWithTicket({
+        conversationId: 'booking-conv',
+        reporterUserId: 'guest-1',
+        category: 'FRAUD',
+        details: 'scam',
+        sourceConversation: {
+          id: 'booking-conv',
+          guest_user_id: 'guest-1',
+          host_user_id: 'host-1',
+          booking_id: null,
+          listing_id: null,
+        } as never,
+      }),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
+  });
+
+  it('does not escalate when source conversation is missing', async () => {
+    const { service, reportRepo, ticketRepo, staysAudit, convRepo } = buildService();
+    const report = {
+      id: 'report-1',
+      status: 'REVIEWED',
+      conversation_id: 'missing-conv',
+      reporter_user_id: 'guest-1',
+      reported_user_id: 'host-1',
+      booking_id: null,
+      listing_id: null,
+      reason: 'spam',
+      attachment_ids: [],
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+    };
+    reportRepo.findOne.mockResolvedValue(report);
+    ticketRepo.findOne.mockResolvedValue(null);
+    convRepo.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.patchReportForAdmin(
+        'report-1',
+        { kind: 'conversation_reported', status: 'ESCALATED' },
+        'admin-1',
+      ),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
+
+    expect(report.status).toBe('REVIEWED');
+    expect(reportRepo.save).not.toHaveBeenCalled();
+    expect(staysAudit.log).not.toHaveBeenCalled();
+  });
+
+  it('keeps REVIEWED when escalate hits unrecovered 23505', async () => {
+    const { service, reportRepo, ticketRepo, staysAudit, convRepo } = buildService();
+    const report = {
+      id: 'report-1',
+      status: 'REVIEWED',
+      conversation_id: 'conv-src',
+      reporter_user_id: 'guest-1',
+      reported_user_id: 'host-1',
+      booking_id: null,
+      listing_id: null,
+      reason: 'spam',
+      attachment_ids: [],
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+    };
+    reportRepo.findOne.mockResolvedValue(report);
+    ticketRepo.findOne.mockResolvedValue(null);
+    convRepo.findOne.mockResolvedValue({
+      id: 'conv-src',
+      guest_user_id: 'guest-1',
+      host_user_id: 'host-1',
+    });
+    ticketRepo.save.mockRejectedValue(uniqueViolation());
+
+    await expect(
+      service.patchReportForAdmin(
+        'report-1',
+        { kind: 'conversation_reported', status: 'ESCALATED' },
+        'admin-1',
+      ),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
+
+    expect(report.status).toBe('REVIEWED');
+    expect(reportRepo.save).not.toHaveBeenCalled();
+    expect(staysAudit.log).not.toHaveBeenCalled();
   });
 });

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, QueryFailedError, Repository } from 'typeorm';
@@ -59,6 +60,17 @@ function isUniqueViolation(err: unknown): boolean {
     err !== null &&
     (err as { code?: string }).code === '23505'
   );
+}
+
+const ENSURE_TICKET_FAILED = 'Failed to ensure support ticket.';
+
+function requireTicket(
+  ticket: StaysSupportTicket | null | undefined,
+): StaysSupportTicket {
+  if (!ticket) {
+    throw new InternalServerErrorException(ENSURE_TICKET_FAILED);
+  }
+  return ticket;
 }
 
 @Injectable()
@@ -163,7 +175,7 @@ export class SupportTicketsService {
     sourceConversation: StaysConversation;
   }): Promise<{
     report: StaysConversationReport;
-    ticket: StaysSupportTicket | null;
+    ticket: StaysSupportTicket;
   }> {
     const result = await this.dataSource.transaction(async (manager) => {
       const report = await this.createReport(
@@ -185,12 +197,10 @@ export class SupportTicketsService {
       });
       return { report, ticket };
     });
-    if (result.ticket) {
-      this.realtime.publish(input.reporterUserId, {
-        conversationId: result.ticket.conversation_id,
-        reason: 'MESSAGE_CREATED',
-      });
-    }
+    this.realtime.publish(input.reporterUserId, {
+      conversationId: result.ticket.conversation_id,
+      reason: 'MESSAGE_CREATED',
+    });
     return result;
   }
 
@@ -210,7 +220,7 @@ export class SupportTicketsService {
     sourceConversation: StaysConversation;
   }): Promise<{
     safety: StaysSafetyIssue;
-    ticket: StaysSupportTicket | null;
+    ticket: StaysSupportTicket;
   }> {
     const result = await this.dataSource.transaction(async (manager) => {
       const safety = await this.createSafetyIssue(
@@ -233,12 +243,10 @@ export class SupportTicketsService {
       });
       return { safety, ticket };
     });
-    if (result.ticket) {
-      this.realtime.publish(input.reporterUserId, {
-        conversationId: result.ticket.conversation_id,
-        reason: 'MESSAGE_CREATED',
-      });
-    }
+    this.realtime.publish(input.reporterUserId, {
+      conversationId: result.ticket.conversation_id,
+      reason: 'MESSAGE_CREATED',
+    });
     return result;
   }
 
@@ -247,12 +255,13 @@ export class SupportTicketsService {
    * the admin Support queue without requiring a separate Contact Support step.
    * When `manager` is provided, participates in the caller's transaction
    * (no nested independent TX).
+   * Always returns a valid ticket or throws — never null.
    */
   async ensureTicketForReport(input: {
     report: StaysConversationReport;
     sourceConversation: StaysConversation;
     manager?: EntityManager;
-  }): Promise<StaysSupportTicket | null> {
+  }): Promise<StaysSupportTicket> {
     const ticketRepo = input.manager
       ? input.manager.getRepository(StaysSupportTicket)
       : this.ticketRepo;
@@ -286,12 +295,18 @@ export class SupportTicketsService {
         },
         { party, manager: input.manager },
       );
-      return ticketRepo.findOne({ where: { id: created.id } });
+      return requireTicket(
+        await ticketRepo.findOne({ where: { id: created.id } }),
+      );
     } catch (err) {
       if (isUniqueViolation(err)) {
-        return ticketRepo.findOne({
-          where: { report_id: input.report.id },
-        });
+        // createTicketForUser already rolled back the failed insert via
+        // savepoint (nested) or aborted standalone TX; outer TX is still usable.
+        return requireTicket(
+          await ticketRepo.findOne({
+            where: { report_id: input.report.id },
+          }),
+        );
       }
       throw err;
     }
@@ -300,12 +315,13 @@ export class SupportTicketsService {
   /**
    * Opens an ops Support Ticket for a safety issue so agents can action it.
    * When `manager` is provided, participates in the caller's transaction.
+   * Always returns a valid ticket or throws — never null.
    */
   async ensureTicketForSafetyIssue(input: {
     safety: StaysSafetyIssue;
     sourceConversation: StaysConversation;
     manager?: EntityManager;
-  }): Promise<StaysSupportTicket | null> {
+  }): Promise<StaysSupportTicket> {
     const ticketRepo = input.manager
       ? input.manager.getRepository(StaysSupportTicket)
       : this.ticketRepo;
@@ -341,12 +357,16 @@ export class SupportTicketsService {
         },
         { party, priority: 'HIGH', manager: input.manager },
       );
-      return ticketRepo.findOne({ where: { id: created.id } });
+      return requireTicket(
+        await ticketRepo.findOne({ where: { id: created.id } }),
+      );
     } catch (err) {
       if (isUniqueViolation(err)) {
-        return ticketRepo.findOne({
-          where: { safety_issue_id: input.safety.id },
-        });
+        return requireTicket(
+          await ticketRepo.findOne({
+            where: { safety_issue_id: input.safety.id },
+          }),
+        );
       }
       throw err;
     }
@@ -551,6 +571,7 @@ export class SupportTicketsService {
       if (isUniqueViolation(err)) {
         const reused = await reuseAfterUnique(options.manager);
         if (reused) return reused;
+        throw new InternalServerErrorException(ENSURE_TICKET_FAILED);
       }
       throw err;
     }
@@ -1137,14 +1158,14 @@ export class SupportTicketsService {
 
     // ESCALATED: ensure ticket before status change in one TX so failure
     // cannot leave the canonical row escalated without a ticket.
-    let ticketId: string | null = null;
+    let ticketId: string;
     await this.dataSource.transaction(async (manager) => {
       const ticketRepo = manager.getRepository(StaysSupportTicket);
       const convRepo = manager.getRepository(StaysConversation);
       const reportRepo = manager.getRepository(StaysConversationReport);
       const safetyRepo = manager.getRepository(StaysSafetyIssue);
 
-      let ticket =
+      let ticket: StaysSupportTicket | null =
         input.kind === 'conversation_reported'
           ? await ticketRepo.findOne({
               where: { report_id: input.row.id },
@@ -1157,23 +1178,24 @@ export class SupportTicketsService {
         const conv = await convRepo.findOne({
           where: { id: input.row.conversation_id },
         });
-        if (conv) {
-          ticket =
-            input.kind === 'conversation_reported'
-              ? await this.ensureTicketForReport({
-                  report: input.row as StaysConversationReport,
-                  sourceConversation: conv,
-                  manager,
-                })
-              : await this.ensureTicketForSafetyIssue({
-                  safety: input.row as StaysSafetyIssue,
-                  sourceConversation: conv,
-                  manager,
-                });
+        if (!conv) {
+          throw new InternalServerErrorException(ENSURE_TICKET_FAILED);
         }
+        ticket =
+          input.kind === 'conversation_reported'
+            ? await this.ensureTicketForReport({
+                report: input.row as StaysConversationReport,
+                sourceConversation: conv,
+                manager,
+              })
+            : await this.ensureTicketForSafetyIssue({
+                safety: input.row as StaysSafetyIssue,
+                sourceConversation: conv,
+                manager,
+              });
       }
 
-      if (ticket && ticket.priority !== 'URGENT') {
+      if (ticket.priority !== 'URGENT') {
         await ticketRepo.update(ticket.id, {
           priority: 'HIGH',
           updated_at: new Date(),
@@ -1189,7 +1211,7 @@ export class SupportTicketsService {
         await safetyRepo.save(input.row as StaysSafetyIssue);
       }
 
-      ticketId = ticket?.id ?? null;
+      ticketId = ticket.id;
     });
 
     await this.staysAudit.log({
