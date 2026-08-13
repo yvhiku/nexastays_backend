@@ -7,6 +7,7 @@ import {
   StaysSupportTicketRefCounter,
   StaysSupportTicketNote,
   StaysSupportTicketCsat,
+  StaysSupportCannedReply,
 } from './entities';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
 import { StaysMessage } from '../messaging/entities/stays-message.entity';
@@ -18,6 +19,7 @@ import { StaysAuditLog } from '../stays/entities/stays-audit-log.entity';
 import { MessagingModule } from '../messaging/messaging.module';
 import { StaysModule } from '../stays/stays.module';
 import { SupportTicketsService } from './support-tickets.service';
+import { SupportCannedRepliesService } from './support-canned-replies.service';
 import { SupportTicketsController } from './support-tickets.controller';
 import { AdminSupportController } from './admin-support.controller';
 
@@ -32,6 +34,7 @@ import { AdminSupportController } from './admin-support.controller';
       StaysSupportTicketRefCounter,
       StaysSupportTicketNote,
       StaysSupportTicketCsat,
+      StaysSupportCannedReply,
       StaysConversation,
       StaysMessage,
       StaysMessageAttachment,
@@ -42,7 +45,7 @@ import { AdminSupportController } from './admin-support.controller';
     ]),
   ],
   controllers: [SupportTicketsController, AdminSupportController],
-  providers: [SupportTicketsService],
-  exports: [SupportTicketsService],
+  providers: [SupportTicketsService, SupportCannedRepliesService],
+  exports: [SupportTicketsService, SupportCannedRepliesService],
 })
 export class SupportModule {}

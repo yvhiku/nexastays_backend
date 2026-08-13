@@ -125,6 +125,62 @@ export class CreateSupportTicketCsatDto {
   comment?: string;
 }
 
+export class CreateCannedReplyDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  title!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(5000)
+  body!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  category?: string;
+}
+
+export class PatchCannedReplyDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(5000)
+  body?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  category?: string | null;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === true || value === 'true' || value === '1') return true;
+    if (value === false || value === 'false' || value === '0') return false;
+    return value;
+  })
+  @IsBoolean()
+  is_active?: boolean;
+}
+
+export class ListCannedRepliesQueryDto {
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === true || value === 'true' || value === '1') return true;
+    if (value === false || value === 'false' || value === '0') return false;
+    return value;
+  })
+  @IsBoolean()
+  includeInactive?: boolean;
+}
+
 export class ListSupportTicketNotesQueryDto {
   @IsOptional()
   @Type(() => Number)

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -16,13 +17,17 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupportTicketsService } from './support-tickets.service';
+import { SupportCannedRepliesService } from './support-canned-replies.service';
 import {
   AdminListTicketsQueryDto,
   AdminListReportsQueryDto,
+  CreateCannedReplyDto,
   CreateSupportTicketNoteDto,
   InvestigationConversationQueryDto,
   ListActivityQueryDto,
+  ListCannedRepliesQueryDto,
   ListSupportTicketNotesQueryDto,
+  PatchCannedReplyDto,
   PatchSupportTicketDto,
   PatchTrustReportDto,
   SendSupportTicketMessageDto,
@@ -52,11 +57,44 @@ class ReportActivityQueryDto extends ListActivityQueryDto {
 @Roles('ADMIN')
 @ApiBearerAuth()
 export class AdminSupportController {
-  constructor(private readonly supportTickets: SupportTicketsService) {}
+  constructor(
+    private readonly supportTickets: SupportTicketsService,
+    private readonly cannedReplies: SupportCannedRepliesService,
+  ) {}
 
   @Get('support/tickets')
   listTickets(@Query() query: AdminListTicketsQueryDto) {
     return this.supportTickets.listForAdmin(query);
+  }
+
+  @Get('support/canned-replies')
+  listCannedReplies(@Query() query: ListCannedRepliesQueryDto) {
+    return this.cannedReplies.list(query.includeInactive === true);
+  }
+
+  @Post('support/canned-replies')
+  createCannedReply(
+    @CurrentUser() user: { userId: string },
+    @Body() body: CreateCannedReplyDto,
+  ) {
+    return this.cannedReplies.create(user.userId, body);
+  }
+
+  @Patch('support/canned-replies/:id')
+  patchCannedReply(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: PatchCannedReplyDto,
+  ) {
+    return this.cannedReplies.patch(id, user.userId, body);
+  }
+
+  @Delete('support/canned-replies/:id')
+  deactivateCannedReply(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.cannedReplies.deactivate(id, user.userId);
   }
 
   @Get('support/tickets/open-count')
