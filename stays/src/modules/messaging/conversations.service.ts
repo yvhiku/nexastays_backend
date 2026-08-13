@@ -270,12 +270,20 @@ export class ConversationsService {
     return { conversationVersion: nextVersion };
   }
 
-  async report(conversationId: string, userId: string, reason?: string): Promise<void> {
+  async report(
+    conversationId: string,
+    userId: string,
+    reason?: string,
+    attachmentIds: string[] = [],
+  ): Promise<void> {
     const conv = await this.convRepo.findOne({ where: { id: conversationId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) {
       throw new NotFoundException('Conversation not found');
     }
-    await this.audit.log('conversation_reported', conv.id, userId, { reason: reason ?? '' });
+    await this.audit.log('conversation_reported', conv.id, userId, {
+      reason: reason ?? '',
+      ...(attachmentIds.length ? { attachmentIds } : {}),
+    });
   }
 
   async block(conversationId: string, userId: string): Promise<void> {
@@ -296,15 +304,17 @@ export class ConversationsService {
   async safety(
     conversationId: string,
     userId: string,
-    payload: { category: string; details?: string },
+    payload: { category: string; details?: string; attachmentIds?: string[] },
   ): Promise<{ supportUrl: string }> {
     const conv = await this.convRepo.findOne({ where: { id: conversationId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) {
       throw new NotFoundException('Conversation not found');
     }
+    const attachmentIds = payload.attachmentIds ?? [];
     await this.audit.log('safety_issue', conv.id, userId, {
       category: payload.category,
       details: payload.details?.trim() || undefined,
+      ...(attachmentIds.length ? { attachmentIds } : {}),
     });
     return { supportUrl: '/contact?safety=1' };
   }

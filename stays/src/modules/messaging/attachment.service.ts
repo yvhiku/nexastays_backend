@@ -55,6 +55,39 @@ export class AttachmentService {
     return this.ingestFile(conv.id, null, userId, file);
   }
 
+  /**
+   * Report/safety evidence upload — participant only (works when messaging is locked).
+   * Images only; max 3 referenced later via report/safety attachmentIds.
+   */
+  async createEvidenceFromUpload(
+    conversationId: string,
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<AttachmentDto> {
+    await this.getParticipantConversation(conversationId, userId);
+    if (!file?.buffer?.length) throw new BadRequestException('No file uploaded');
+    const declaredMime = (file.mimetype || '').toLowerCase().split(';')[0].trim();
+    if (!declaredMime.startsWith('image/') || !ALLOWED_DECLARED_MIMES.has(declaredMime)) {
+      throw new BadRequestException('Only image screenshots are allowed');
+    }
+    return this.ingestFile(conversationId, null, userId, file);
+  }
+
+  /** Keep evidence out of orphan attachment cleanup after a successful report. */
+  async markAsReportEvidence(attachmentIds: string[]): Promise<void> {
+    if (!attachmentIds.length) return;
+    const rows = await this.attachmentRepo.find({
+      where: { id: In(attachmentIds), message_id: IsNull() },
+    });
+    for (const row of rows) {
+      const name = row.original_filename ?? 'screenshot';
+      if (name.startsWith('report-evidence:')) continue;
+      await this.attachmentRepo.update(row.id, {
+        original_filename: `report-evidence:${name}`.slice(0, 500),
+      });
+    }
+  }
+
   async createFromUploadInSession(
     conversationId: string,
     sessionId: string,
@@ -143,6 +176,20 @@ export class AttachmentService {
     for (const row of rows) {
       if (row.status !== 'READY') {
         throw new BadRequestException('Attachment not ready');
+      }
+    }
+    return rows;
+  }
+
+  async assertEvidenceReady(
+    conversationId: string,
+    userId: string,
+    attachmentIds: string[],
+  ): Promise<StaysMessageAttachment[]> {
+    const rows = await this.assertReadyForSend(conversationId, userId, attachmentIds);
+    for (const row of rows) {
+      if (!row.mime || !isImageMime(row.mime)) {
+        throw new BadRequestException('Only image screenshots are allowed');
       }
     }
     return rows;

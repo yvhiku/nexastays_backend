@@ -50,9 +50,15 @@ export class AttachmentCleanupScheduler {
       await this.sessionRepo.delete(session.id);
     }
 
-    const orphanRows = await this.attachmentRepo.find({
-      where: { message_id: IsNull(), session_id: IsNull(), created_at: LessThan(cutoff) },
-    });
+    const orphanRows = await this.attachmentRepo
+      .createQueryBuilder('a')
+      .where('a.message_id IS NULL')
+      .andWhere('a.session_id IS NULL')
+      .andWhere('a.created_at < :cutoff', { cutoff })
+      .andWhere(
+        "(a.original_filename IS NULL OR a.original_filename NOT LIKE 'report-evidence:%')",
+      )
+      .getMany();
     for (const row of orphanRows) {
       await this.attachments.deleteUnlinkedAttachment(row);
       removed++;

@@ -1,4 +1,12 @@
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export const SAFETY_ISSUE_CATEGORIES = [
   'FEEL_UNSAFE',
@@ -19,4 +27,10 @@ export class SafetyIssueDto {
   @IsString()
   @MaxLength(500)
   details?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsUUID('4', { each: true })
+  attachmentIds?: string[];
 }

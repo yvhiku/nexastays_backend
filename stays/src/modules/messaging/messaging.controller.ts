@@ -210,6 +210,23 @@ export class MessagingController {
     return this.attachments.createFromUpload(id, user.userId, file);
   }
 
+  @Post('conversations/:id/report-evidence')
+  @ApiOperation({ summary: 'Upload screenshot evidence for report or safety issue' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: multerLimits(MAX_ATTACHMENT_BYTES),
+    }),
+  )
+  uploadReportEvidence(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.attachments.createEvidenceFromUpload(id, user.userId, file);
+  }
+
   @Get('conversations/:id/attachments/:attachmentId')
   @ApiOperation({ summary: 'Get attachment status and signed URLs' })
   getAttachment(
@@ -266,12 +283,19 @@ export class MessagingController {
   }
 
   @Post('conversations/:id/report')
-  report(
+  async report(
     @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReportConversationDto,
   ) {
-    return this.conversations.report(id, user.userId, dto.reason).then(() => ({ ok: true }));
+    const attachmentIds = dto.attachmentIds ?? [];
+    if (attachmentIds.length) {
+      await this.attachments.assertEvidenceReady(id, user.userId, attachmentIds);
+      await this.attachments.markAsReportEvidence(attachmentIds);
+    }
+    return this.conversations
+      .report(id, user.userId, dto.reason, attachmentIds)
+      .then(() => ({ ok: true }));
   }
 
   @Post('conversations/:id/block')
@@ -283,14 +307,20 @@ export class MessagingController {
   }
 
   @Post('conversations/:id/safety')
-  safety(
+  async safety(
     @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SafetyIssueDto,
   ) {
+    const attachmentIds = dto.attachmentIds ?? [];
+    if (attachmentIds.length) {
+      await this.attachments.assertEvidenceReady(id, user.userId, attachmentIds);
+      await this.attachments.markAsReportEvidence(attachmentIds);
+    }
     return this.conversations.safety(id, user.userId, {
       category: dto.category,
       details: dto.details,
+      attachmentIds,
     });
   }
 }
