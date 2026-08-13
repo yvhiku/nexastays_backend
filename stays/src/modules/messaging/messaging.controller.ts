@@ -293,9 +293,13 @@ export class MessagingController {
       await this.attachments.assertEvidenceReady(id, user.userId, attachmentIds);
       await this.attachments.markAsReportEvidence(attachmentIds);
     }
-    return this.conversations
-      .report(id, user.userId, dto.reason, attachmentIds)
-      .then(() => ({ ok: true }));
+    const result = await this.conversations.report(
+      id,
+      user.userId,
+      dto.reason,
+      attachmentIds,
+    );
+    return { ok: true, reportId: result.reportId };
   }
 
   @Post('conversations/:id/block')

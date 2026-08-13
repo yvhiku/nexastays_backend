@@ -2,13 +2,45 @@ import { Injectable } from '@nestjs/common';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import type { ConversationPermissions } from './messaging.types';
 
+export type MessagingAccessOptions = {
+  /** ADMIN JWT may read/send SUPPORT conversations only — never occupies guest/host ids. */
+  isAdmin?: boolean;
+};
+
 @Injectable()
 export class MessagingPermissionsService {
-  resolve(conversation: StaysConversation, userId: string): ConversationPermissions {
+  resolve(
+    conversation: StaysConversation,
+    userId: string,
+    options: MessagingAccessOptions = {},
+  ): ConversationPermissions {
     const isGuest = conversation.guest_user_id === userId;
     const isHost = conversation.host_user_id === userId;
-    if (!isGuest && !isHost) {
+    const isSupportAdmin =
+      Boolean(options.isAdmin) && conversation.type === 'SUPPORT';
+
+    if (!isGuest && !isHost && !isSupportAdmin) {
       return this.denied();
+    }
+
+    if (isSupportAdmin && !isGuest && !isHost) {
+      const readOnlyState =
+        conversation.messaging_state === 'READ_ONLY' ||
+        conversation.messaging_state === 'ARCHIVED' ||
+        conversation.messaging_state === 'LOCKED';
+      return {
+        canSend: !readOnlyState,
+        canUpload: !readOnlyState,
+        canCall: false,
+        canReport: false,
+        canBlock: false,
+        canReview: false,
+        viewerRole: 'host',
+        isReadOnly: readOnlyState,
+        canArchive: false,
+        canDelete: false,
+        notificationLevel: 'ALL',
+      };
     }
 
     const blocked =
@@ -55,10 +87,18 @@ export class MessagingPermissionsService {
     };
   }
 
-  isParticipant(conversation: StaysConversation, userId: string): boolean {
-    return (
-      conversation.guest_user_id === userId || conversation.host_user_id === userId
-    );
+  isParticipant(
+    conversation: StaysConversation,
+    userId: string,
+    options: MessagingAccessOptions = {},
+  ): boolean {
+    if (
+      conversation.guest_user_id === userId ||
+      conversation.host_user_id === userId
+    ) {
+      return true;
+    }
+    return Boolean(options.isAdmin) && conversation.type === 'SUPPORT';
   }
 
   visibilityFor(conversation: StaysConversation, userId: string): string {

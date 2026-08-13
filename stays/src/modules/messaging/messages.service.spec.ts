@@ -12,6 +12,7 @@ import { AttachmentService } from './attachment.service';
 import { AttachmentSessionService } from './attachment-session.service';
 import { ParticipantPresentationService } from './participant-presentation.service';
 import { MessagingRealtimeService } from './messaging-realtime.service';
+import { SupportTicketsService } from '../support/support-tickets.service';
 import { EVENTS } from '@nexa/event-bus';
 
 describe('MessagesService', () => {
@@ -187,6 +188,12 @@ describe('MessagesService', () => {
           },
         },
         { provide: MessagingRealtimeService, useValue: realtime },
+        {
+          provide: SupportTicketsService,
+          useValue: {
+            markUnreadForSupportFromCustomerMessage: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

@@ -17,6 +17,7 @@ import { DomainEventsModule } from './common/events/domain-events.module';
 import { MediaStorageModule } from './common/media/media-storage.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
+import { SupportModule } from './modules/support/support.module';
 import { PlatformSettingsModule } from './modules/platform-settings/platform-settings.module';
 import { SeoModule } from './modules/seo/seo.module';
 import {
@@ -41,6 +42,7 @@ import { HttpExceptionFilter } from './common/filters';
     StaysModule,
     StaysPaymentsModule,
     MessagingModule,
+    SupportModule,
     AdminModule,
     SeoModule,
   ],

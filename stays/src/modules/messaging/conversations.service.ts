@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Brackets, In } from 'typeorm';
 import { StaysConversation } from './entities/stays-conversation.entity';
@@ -15,6 +21,7 @@ import { MessagingOutboxService } from './outbox.service';
 import { MESSAGING_INTERNAL_EVENTS } from './messaging-internal.events';
 import { ConversationRepairService } from './conversation-repair.service';
 import { MessagingStateService } from './messaging-state.service';
+import { SupportTicketsService } from '../support/support-tickets.service';
 import type {
   ConversationDetailResponse,
   ConversationDomain,
@@ -40,6 +47,8 @@ export class ConversationsService {
     private readonly outbox: MessagingOutboxService,
     private readonly repair: ConversationRepairService,
     private readonly messagingState: MessagingStateService,
+    @Inject(forwardRef(() => SupportTicketsService))
+    private readonly supportTickets: SupportTicketsService,
   ) {}
 
   async listConversations(
@@ -275,15 +284,23 @@ export class ConversationsService {
     userId: string,
     reason?: string,
     attachmentIds: string[] = [],
-  ): Promise<void> {
+  ): Promise<{ reportId: string }> {
     const conv = await this.convRepo.findOne({ where: { id: conversationId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) {
       throw new NotFoundException('Conversation not found');
     }
+    const report = await this.supportTickets.createReport({
+      conversationId: conv.id,
+      reporterUserId: userId,
+      reason,
+      attachmentIds,
+    });
     await this.audit.log('conversation_reported', conv.id, userId, {
       reason: reason ?? '',
+      reportId: report.id,
       ...(attachmentIds.length ? { attachmentIds } : {}),
     });
+    return { reportId: report.id };
   }
 
   async block(conversationId: string, userId: string): Promise<void> {
@@ -305,18 +322,29 @@ export class ConversationsService {
     conversationId: string,
     userId: string,
     payload: { category: string; details?: string; attachmentIds?: string[] },
-  ): Promise<{ supportUrl: string }> {
+  ): Promise<{ supportUrl: string; safetyIssueId: string }> {
     const conv = await this.convRepo.findOne({ where: { id: conversationId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) {
       throw new NotFoundException('Conversation not found');
     }
     const attachmentIds = payload.attachmentIds ?? [];
+    const safety = await this.supportTickets.createSafetyIssue({
+      conversationId: conv.id,
+      reporterUserId: userId,
+      category: payload.category,
+      details: payload.details,
+      attachmentIds,
+    });
     await this.audit.log('safety_issue', conv.id, userId, {
       category: payload.category,
       details: payload.details?.trim() || undefined,
+      safetyIssueId: safety.id,
       ...(attachmentIds.length ? { attachmentIds } : {}),
     });
-    return { supportUrl: '/contact?safety=1' };
+    return {
+      supportUrl: `/contact?safety=1&safety_issue_id=${encodeURIComponent(safety.id)}`,
+      safetyIssueId: safety.id,
+    };
   }
 
   async reopenConversation(

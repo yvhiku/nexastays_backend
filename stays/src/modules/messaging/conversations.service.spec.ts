@@ -13,6 +13,7 @@ import { ConversationRepairService } from './conversation-repair.service';
 import { SnapshotRepairService } from './snapshot-repair.service';
 import { MessagingOutboxService } from './outbox.service';
 import { MessagingStateService } from './messaging-state.service';
+import { SupportTicketsService } from '../support/support-tickets.service';
 
 describe('ConversationsService', () => {
   let service: ConversationsService;
@@ -125,6 +126,13 @@ describe('ConversationsService', () => {
             reopenConversation: jest.fn(),
             enterPostStay: jest.fn(),
             archiveConversation: jest.fn(),
+          },
+        },
+        {
+          provide: SupportTicketsService,
+          useValue: {
+            createReport: jest.fn().mockResolvedValue({ id: 'report-1' }),
+            createSafetyIssue: jest.fn().mockResolvedValue({ id: 'safety-1' }),
           },
         },
       ],

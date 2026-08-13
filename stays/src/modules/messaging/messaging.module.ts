@@ -39,11 +39,13 @@ import { MessageSearchService } from './message-search.service';
 import { MessagingRealtimeService } from './messaging-realtime.service';
 import { DomainEventsModule } from '../../common/events/domain-events.module';
 import { StaysModule } from '../stays/stays.module';
+import { SupportModule } from '../support/support.module';
 
 @Module({
   imports: [
     DomainEventsModule,
     forwardRef(() => StaysModule),
+    forwardRef(() => SupportModule),
     TypeOrmModule.forFeature([
       StaysConversation,
       StaysMessage,
@@ -83,6 +85,12 @@ import { StaysModule } from '../stays/stays.module';
     MessageSearchService,
     MessagingRealtimeService,
   ],
-  exports: [ConversationProvisionService, MessagingStateService, TimelineSeederService],
+  exports: [
+    ConversationProvisionService,
+    MessagingStateService,
+    TimelineSeederService,
+    MessagingRealtimeService,
+    MessagingPermissionsService,
+  ],
 })
 export class MessagingModule {}

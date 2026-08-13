@@ -37,9 +37,22 @@ describe('MessagingPermissionsService', () => {
     expect(service.visibilityFor(conv, 'host-1')).toBe('ACTIVE');
   });
 
-  it('sets viewerRole per participant', () => {
-    const conv = baseConversation();
-    expect(service.resolve(conv, 'guest-1').viewerRole).toBe('guest');
-    expect(service.resolve(conv, 'host-1').viewerRole).toBe('host');
+  it('allows ADMIN access only on SUPPORT conversations', () => {
+    const booking = baseConversation();
+    (booking as { type?: string }).type = 'BOOKING';
+    expect(service.isParticipant(booking, 'admin-1', { isAdmin: true })).toBe(
+      false,
+    );
+
+    const support = baseConversation();
+    (support as { type?: string }).type = 'SUPPORT';
+    support.guest_user_id = 'guest-1';
+    support.host_user_id = null as unknown as string;
+    expect(service.isParticipant(support, 'admin-1', { isAdmin: true })).toBe(
+      true,
+    );
+    expect(service.resolve(support, 'admin-1', { isAdmin: true }).canSend).toBe(
+      true,
+    );
   });
 });

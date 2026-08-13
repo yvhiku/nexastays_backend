@@ -3,6 +3,8 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, EntityManager } from 'typeorm';
@@ -23,6 +25,7 @@ import {
 } from './message-payload.mapper';
 import { EVENTS } from '@nexa/event-bus';
 import { MessagingRealtimeService } from './messaging-realtime.service';
+import { SupportTicketsService } from '../support/support-tickets.service';
 
 @Injectable()
 export class MessagesService {
@@ -40,6 +43,8 @@ export class MessagesService {
     private readonly attachmentSessions: AttachmentSessionService,
     private readonly participants: ParticipantPresentationService,
     private readonly realtime: MessagingRealtimeService,
+    @Inject(forwardRef(() => SupportTicketsService))
+    private readonly supportTickets: SupportTicketsService,
   ) {}
 
   realtimeStream(userId: string) {
@@ -183,6 +188,7 @@ export class MessagesService {
     });
 
     this.publishMessageCreated(conv, userId, saved.id);
+    await this.markSupportUnreadIfNeeded(conv, userId, trimmed);
 
     return this.toDto(saved, userId, []);
   }
@@ -242,6 +248,7 @@ export class MessagesService {
     });
 
     this.publishMessageCreated(conv, userId, saved.id);
+    await this.markSupportUnreadIfNeeded(conv, userId, preview);
 
     const atts = await this.attachments.loadForMessages([
       { id: saved.id, metadata: saved.metadata ?? {} },
@@ -312,6 +319,7 @@ export class MessagesService {
     });
 
     this.publishMessageCreated(conv, userId, saved.id);
+    await this.markSupportUnreadIfNeeded(conv, userId, preview);
 
     const atts = await this.attachments.loadForMessages([
       { id: saved.id, metadata: saved.metadata ?? {} },
@@ -374,6 +382,21 @@ export class MessagesService {
     });
 
     return { conversationVersion: nextVersion };
+  }
+
+  private async markSupportUnreadIfNeeded(
+    conv: StaysConversation,
+    senderUserId: string,
+    preview: string,
+  ): Promise<void> {
+    if (conv.type !== 'SUPPORT') return;
+    const isRequester =
+      senderUserId === conv.guest_user_id || senderUserId === conv.host_user_id;
+    if (!isRequester) return;
+    await this.supportTickets.markUnreadForSupportFromCustomerMessage(
+      conv.id,
+      preview,
+    );
   }
 
   private publishMessageCreated(
