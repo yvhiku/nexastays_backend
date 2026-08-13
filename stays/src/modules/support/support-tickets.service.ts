@@ -34,6 +34,7 @@ import { StaysSafetyIssue } from './entities/stays-safety-issue.entity';
 import { StaysSupportTicketRefCounter } from './entities/stays-support-ticket-ref-counter.entity';
 import {
   AdminListTicketsQueryDto,
+  AdminListReportsQueryDto,
   CreateSupportTicketDto,
   PatchSupportTicketDto,
   PatchTrustReportDto,
@@ -916,14 +917,149 @@ export class SupportTicketsService {
     await manager.getRepository(StaysSupportTicket).update(ticket.id, patch);
   }
 
-  async listReportsForAdmin(limit = 200) {
-    const take = Math.min(Math.max(limit, 1), 200);
+  async listReportsForAdmin(query: AdminListReportsQueryDto = {}) {
+    const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
+    const offset = Math.max(query.offset ?? 0, 0);
+    const kind = query.kind;
+    const includeReports = !kind || kind === 'conversation_reported';
+    const includeSafety = !kind || kind === 'safety_issue';
+
+    // Reports have no category column.
+    if (kind === 'conversation_reported' && query.category) {
+      return { items: [], total: 0, limit, offset, hasMore: false };
+    }
+
+    const reportParams: unknown[] = [];
+    const safetyParams: unknown[] = [];
+    const unions: string[] = [];
+
+    const buildWhere = (
+      alias: 'r' | 's',
+      textExpr: string,
+      push: (v: unknown) => string,
+      forSafetyCategory: boolean,
+    ) => {
+      const parts: string[] = [];
+      if (query.status) parts.push(`${alias}.status = ${push(query.status)}`);
+      if (query.reporterUserId) {
+        parts.push(`${alias}.reporter_user_id = ${push(query.reporterUserId)}`);
+      }
+      if (query.reportedUserId) {
+        parts.push(`${alias}.reported_user_id = ${push(query.reportedUserId)}`);
+      }
+      if (query.bookingId) {
+        parts.push(`${alias}.booking_id = ${push(query.bookingId)}`);
+      }
+      if (query.listingId) {
+        parts.push(`${alias}.listing_id = ${push(query.listingId)}`);
+      }
+      if (forSafetyCategory && query.category) {
+        parts.push(`${alias}.category = ${push(query.category)}`);
+      }
+      const search = query.search?.trim();
+      if (search) {
+        const q = `%${search.replace(/[%_]/g, '\\$&')}%`;
+        const s = push(q);
+        parts.push(
+          `(${textExpr} ILIKE ${s} ESCAPE '\\'
+            OR ${alias}.reporter_user_id ILIKE ${s} ESCAPE '\\'
+            OR COALESCE(${alias}.reported_user_id, '') ILIKE ${s} ESCAPE '\\'
+            OR COALESCE(b.booking_reference, '') ILIKE ${s} ESCAPE '\\'
+            OR COALESCE(l.title, '') ILIKE ${s} ESCAPE '\\')`,
+        );
+      }
+      return parts.length ? `WHERE ${parts.join(' AND ')}` : '';
+    };
+
+    if (includeReports && !query.category) {
+      const where = buildWhere(
+        'r',
+        "COALESCE(r.reason, '')",
+        (v) => {
+          reportParams.push(v);
+          return `$${reportParams.length}`;
+        },
+        false,
+      );
+      unions.push(`
+        SELECT r.id, 'conversation_reported'::text AS kind, r.created_at
+        FROM stays_conversation_reports r
+        LEFT JOIN stays_bookings b ON b.id = r.booking_id
+        LEFT JOIN stays_listings l ON l.id = r.listing_id
+        ${where}
+      `);
+    }
+    if (includeSafety) {
+      const where = buildWhere(
+        's',
+        "COALESCE(s.category, '') || ' ' || COALESCE(s.details, '')",
+        (v) => {
+          safetyParams.push(v);
+          return `$${reportParams.length + safetyParams.length}`;
+        },
+        true,
+      );
+      unions.push(`
+        SELECT s.id, 'safety_issue'::text AS kind, s.created_at
+        FROM stays_safety_issues s
+        LEFT JOIN stays_bookings b ON b.id = s.booking_id
+        LEFT JOIN stays_listings l ON l.id = s.listing_id
+        ${where}
+      `);
+    }
+
+    if (!unions.length) {
+      return { items: [], total: 0, limit, offset, hasMore: false };
+    }
+
+    const allParams = [...reportParams, ...safetyParams];
+    const unionSql = unions.join(' UNION ALL ');
+    const countRows = await this.dataSource.query(
+      `SELECT COUNT(*)::int AS total FROM (${unionSql}) u`,
+      allParams,
+    );
+    const total = Number(countRows?.[0]?.total ?? 0);
+
+    const limitPh = `$${allParams.length + 1}`;
+    const offsetPh = `$${allParams.length + 2}`;
+    const pageRows: Array<{ id: string; kind: string }> =
+      await this.dataSource.query(
+        `SELECT u.id, u.kind FROM (${unionSql}) u
+         ORDER BY u.created_at DESC, u.id DESC
+         LIMIT ${limitPh} OFFSET ${offsetPh}`,
+        [...allParams, limit, offset],
+      );
+
+    const reportIds = pageRows
+      .filter((r) => r.kind === 'conversation_reported')
+      .map((r) => r.id);
+    const safetyIds = pageRows
+      .filter((r) => r.kind === 'safety_issue')
+      .map((r) => r.id);
+
     const [reports, safety] = await Promise.all([
-      this.reportRepo.find({ order: { created_at: 'DESC' }, take }),
-      this.safetyRepo.find({ order: { created_at: 'DESC' }, take }),
+      reportIds.length
+        ? this.reportRepo.find({ where: { id: In(reportIds) } })
+        : Promise.resolve([] as StaysConversationReport[]),
+      safetyIds.length
+        ? this.safetyRepo.find({ where: { id: In(safetyIds) } })
+        : Promise.resolve([] as StaysSafetyIssue[]),
     ]);
     const composed = await this.composeTrustRecords(reports, safety, false);
-    return { items: composed.slice(0, take) };
+    const byKey = new Map(
+      composed.map((item) => [`${item.kind}:${item.id}`, item]),
+    );
+    const items = pageRows
+      .map((row) => byKey.get(`${row.kind}:${row.id}`))
+      .filter(Boolean);
+
+    return {
+      items,
+      total,
+      limit,
+      offset,
+      hasMore: offset + items.length < total,
+    };
   }
 
   async getReportForAdmin(

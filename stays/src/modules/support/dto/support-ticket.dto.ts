@@ -178,3 +178,56 @@ export class AdminListTicketsQueryDto {
   @MaxLength(200)
   search?: string;
 }
+
+export class AdminListReportsQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
+  @IsOptional()
+  @IsString()
+  @IsIn([...TRUST_REPORT_STATUSES])
+  status?: (typeof TRUST_REPORT_STATUSES)[number];
+
+  @IsOptional()
+  @IsString()
+  @IsIn([...TRUST_REPORT_KINDS])
+  kind?: (typeof TRUST_REPORT_KINDS)[number];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  reporterUserId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  reportedUserId?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  bookingId?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  listingId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  search?: string;
+}

@@ -142,6 +142,11 @@ describe('SupportTicketsService', () => {
       transaction: jest.fn(async (fn: (m: typeof manager) => unknown) =>
         fn(manager),
       ),
+      query: jest.fn(async (sql: string) => {
+        if (sql.includes('COUNT(*)')) return [{ total: 0 }];
+        if (sql.includes('SELECT u.id')) return [];
+        return [];
+      }),
     };
 
     const service = new SupportTicketsService(
@@ -410,7 +415,8 @@ describe('SupportTicketsService', () => {
   });
 
   it('dismissed reports remain listed and escalation does not downgrade URGENT', async () => {
-    const { service, reportRepo, ticketRepo, staysAudit, convRepo } = buildService();
+    const { service, reportRepo, ticketRepo, staysAudit, convRepo, dataSource } =
+      buildService();
     const report = {
       id: 'report-1',
       status: 'OPEN',
@@ -455,8 +461,27 @@ describe('SupportTicketsService', () => {
     );
 
     reportRepo.find.mockResolvedValue([{ ...report, status: 'DISMISSED' }]);
+    dataSource.query
+      .mockResolvedValueOnce([{ total: 1 }])
+      .mockResolvedValueOnce([
+        { id: 'report-1', kind: 'conversation_reported' },
+      ]);
     const listed = await service.listReportsForAdmin();
     expect(listed.items.some((item) => item.status === 'DISMISSED')).toBe(true);
+    expect(listed.total).toBe(1);
+    expect(listed.hasMore).toBe(false);
+  });
+
+  it('paginates admin reports with default limit and empty page', async () => {
+    const { service, dataSource } = buildService();
+    dataSource.query
+      .mockResolvedValueOnce([{ total: 0 }])
+      .mockResolvedValueOnce([]);
+    const listed = await service.listReportsForAdmin({ limit: 500, offset: 0 });
+    expect(listed.limit).toBe(100);
+    expect(listed.total).toBe(0);
+    expect(listed.items).toEqual([]);
+    expect(listed.hasMore).toBe(false);
   });
 
   it('rolls back REVIEWED when escalation ticket ensure fails', async () => {

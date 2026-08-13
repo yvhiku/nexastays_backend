@@ -18,22 +18,18 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupportTicketsService } from './support-tickets.service';
 import {
   AdminListTicketsQueryDto,
+  AdminListReportsQueryDto,
   PatchSupportTicketDto,
   PatchTrustReportDto,
   SendSupportTicketMessageDto,
   TRUST_REPORT_KINDS,
 } from './dto/support-ticket.dto';
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsString } from 'class-validator';
 
 class GetTrustReportQueryDto {
   @IsString()
   @IsIn([...TRUST_REPORT_KINDS])
   kind!: (typeof TRUST_REPORT_KINDS)[number];
-}
-
-class ListReportsQueryDto {
-  @IsOptional()
-  limit?: number;
 }
 
 @ApiTags('Stays Admin Support')
@@ -88,11 +84,8 @@ export class AdminSupportController {
   }
 
   @Get('reports')
-  listReports(@Query() query: ListReportsQueryDto) {
-    const parsed = query.limit ? Number(query.limit) : 200;
-    return this.supportTickets.listReportsForAdmin(
-      Number.isFinite(parsed) ? parsed : 200,
-    );
+  listReports(@Query() query: AdminListReportsQueryDto) {
+    return this.supportTickets.listReportsForAdmin(query);
   }
 
   @Get('reports/:id')
