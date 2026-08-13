@@ -1158,8 +1158,7 @@ export class SupportTicketsService {
 
     // ESCALATED: ensure ticket before status change in one TX so failure
     // cannot leave the canonical row escalated without a ticket.
-    let ticketId: string;
-    await this.dataSource.transaction(async (manager) => {
+    const ticketId = await this.dataSource.transaction(async (manager) => {
       const ticketRepo = manager.getRepository(StaysSupportTicket);
       const convRepo = manager.getRepository(StaysConversation);
       const reportRepo = manager.getRepository(StaysConversationReport);
@@ -1211,7 +1210,7 @@ export class SupportTicketsService {
         await safetyRepo.save(input.row as StaysSafetyIssue);
       }
 
-      ticketId = ticket.id;
+      return ticket.id;
     });
 
     await this.staysAudit.log({

@@ -1,7 +1,7 @@
 import type {
   SupportTicketParty,
   SupportTicketStatus,
-} from '../entities/stays-support-ticket.entity';
+} from './entities/stays-support-ticket.entity';
 
 /**
  * Customer-message ticket status transitions for SUPPORT threads.
