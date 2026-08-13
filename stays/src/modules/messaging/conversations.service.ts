@@ -293,12 +293,19 @@ export class ConversationsService {
     await this.audit.log('user_blocked', conv.id, userId, {});
   }
 
-  async safety(conversationId: string, userId: string): Promise<{ supportUrl: string }> {
+  async safety(
+    conversationId: string,
+    userId: string,
+    payload: { category: string; details?: string },
+  ): Promise<{ supportUrl: string }> {
     const conv = await this.convRepo.findOne({ where: { id: conversationId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) {
       throw new NotFoundException('Conversation not found');
     }
-    await this.audit.log('safety_issue', conv.id, userId, {});
+    await this.audit.log('safety_issue', conv.id, userId, {
+      category: payload.category,
+      details: payload.details?.trim() || undefined,
+    });
     return { supportUrl: '/contact?safety=1' };
   }
 

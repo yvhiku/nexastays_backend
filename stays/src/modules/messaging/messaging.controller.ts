@@ -25,6 +25,7 @@ import { MessageSearchService } from './message-search.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateVisibilityDto } from './dto/update-visibility.dto';
 import { ReportConversationDto } from './dto/report-conversation.dto';
+import { SafetyIssueDto } from './dto/safety-issue.dto';
 import { ReopenConversationDto } from './dto/reopen-conversation.dto';
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
@@ -285,7 +286,11 @@ export class MessagingController {
   safety(
     @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SafetyIssueDto,
   ) {
-    return this.conversations.safety(id, user.userId);
+    return this.conversations.safety(id, user.userId, {
+      category: dto.category,
+      details: dto.details,
+    });
   }
 }
