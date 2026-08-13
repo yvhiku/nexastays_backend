@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, InternalServerErrorException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -113,6 +113,11 @@ describe('SupportTicketsService', () => {
         email: 'ada@example.com',
         verified: false,
       }),
+      getAuthz: jest.fn().mockResolvedValue({
+        authz_version: 1,
+        status: 'ACTIVE',
+        account_type: 'ADMIN',
+      }),
     };
     const staysAudit = { log: jest.fn().mockResolvedValue(undefined) };
 
@@ -148,6 +153,7 @@ describe('SupportTicketsService', () => {
         return [];
       }),
     };
+
 
     const service = new SupportTicketsService(
       dataSource as never,
@@ -482,6 +488,71 @@ describe('SupportTicketsService', () => {
     expect(listed.total).toBe(0);
     expect(listed.items).toEqual([]);
     expect(listed.hasMore).toBe(false);
+  });
+
+  it('assigns verified ADMIN and audits assignment', async () => {
+    const { service, ticketRepo, identityUsers, staysAudit } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'OPEN',
+      priority: 'NORMAL',
+      assigned_admin_id: null,
+      resolved_at: null,
+      ticket_number: 'SUP-2026-000001',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+
+    await service.patchForAdmin(
+      'ticket-1',
+      { assigned_admin_id: 'admin-2' },
+      'admin-1',
+    );
+    expect(identityUsers.getAuthz).toHaveBeenCalledWith('admin-2');
+    expect(staysAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'support_ticket_assigned',
+        entityType: 'support_ticket',
+        metadata: expect.objectContaining({
+          fromAdminId: null,
+          toAdminId: 'admin-2',
+        }),
+      }),
+    );
+  });
+
+  it('rejects non-ADMIN assignee with 422', async () => {
+    const { service, identityUsers } = buildService();
+    identityUsers.getAuthz.mockResolvedValue({
+      account_type: 'GUEST',
+      status: 'ACTIVE',
+      authz_version: 1,
+    });
+    await expect(
+      service.patchForAdmin('ticket-1', { assigned_admin_id: 'guest-1' }, 'admin-1'),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+
+  it('rejects unknown assignee with 404', async () => {
+    const { service, identityUsers } = buildService();
+    identityUsers.getAuthz.mockResolvedValue(null);
+    await expect(
+      service.patchForAdmin('ticket-1', { assigned_admin_id: 'missing' }, 'admin-1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects combining unassigned with assignedAdminId', async () => {
+    const { service } = buildService();
+    await expect(
+      service.listForAdmin({ unassigned: true, assignedAdminId: 'admin-1' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rolls back REVIEWED when escalation ticket ensure fails', async () => {

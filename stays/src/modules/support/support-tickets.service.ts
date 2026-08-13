@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ConflictException,
   InternalServerErrorException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, QueryFailedError, Repository } from 'typeorm';
@@ -606,6 +607,11 @@ export class SupportTicketsService {
   }
 
   async listForAdmin(query: AdminListTicketsQueryDto = {}) {
+    if (query.unassigned === true && query.assignedAdminId) {
+      throw new BadRequestException(
+        'Cannot combine unassigned=true with assignedAdminId',
+      );
+    }
     const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
     const offset = Math.max(query.offset ?? 0, 0);
     const qb = this.ticketRepo
@@ -628,7 +634,9 @@ export class SupportTicketsService {
     if (query.category) {
       qb.andWhere('t.category = :category', { category: query.category });
     }
-    if (query.assignedAdminId) {
+    if (query.unassigned === true) {
+      qb.andWhere('t.assigned_admin_id IS NULL');
+    } else if (query.assignedAdminId) {
       qb.andWhere('t.assigned_admin_id = :assignedAdminId', {
         assignedAdminId: query.assignedAdminId,
       });
@@ -744,9 +752,29 @@ export class SupportTicketsService {
     };
   }
 
-  async patchForAdmin(ticketId: string, patch: PatchSupportTicketDto) {
+  async patchForAdmin(
+    ticketId: string,
+    patch: PatchSupportTicketDto,
+    actorUserId?: string,
+  ) {
+    if (patch.assigned_admin_id) {
+      const authz = await this.identityUsers.getAuthz(patch.assigned_admin_id);
+      if (!authz) {
+        throw new NotFoundException('Admin user not found');
+      }
+      if (authz.account_type !== 'ADMIN') {
+        throw new UnprocessableEntityException(
+          'Assignee must be an ADMIN account',
+        );
+      }
+    }
+
     const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
     if (!ticket) throw new NotFoundException('Ticket not found');
+
+    const fromStatus = ticket.status;
+    const fromPriority = ticket.priority;
+    const fromAdminId = ticket.assigned_admin_id;
 
     if (patch.status !== undefined) {
       ticket.status = patch.status as SupportTicketStatus;
@@ -764,6 +792,42 @@ export class SupportTicketsService {
     }
     ticket.updated_at = new Date();
     const saved = await this.ticketRepo.save(ticket);
+
+    const actor = actorUserId ?? 'system';
+    if (patch.assigned_admin_id !== undefined) {
+      await this.staysAudit.log({
+        actorUserId: actor,
+        actorRole: 'ADMIN',
+        entityType: 'support_ticket',
+        entityId: saved.id,
+        action: 'support_ticket_assigned',
+        metadata: {
+          fromAdminId: fromAdminId,
+          toAdminId: saved.assigned_admin_id,
+        },
+      });
+    }
+    if (patch.status !== undefined && patch.status !== fromStatus) {
+      await this.staysAudit.log({
+        actorUserId: actor,
+        actorRole: 'ADMIN',
+        entityType: 'support_ticket',
+        entityId: saved.id,
+        action: 'ticket_status_changed',
+        metadata: { from: fromStatus, to: saved.status },
+      });
+    }
+    if (patch.priority !== undefined && patch.priority !== fromPriority) {
+      await this.staysAudit.log({
+        actorUserId: actor,
+        actorRole: 'ADMIN',
+        entityType: 'support_ticket',
+        entityId: saved.id,
+        action: 'ticket_priority_changed',
+        metadata: { from: fromPriority, to: saved.priority },
+      });
+    }
+
     return this.toListRow(saved);
   }
 

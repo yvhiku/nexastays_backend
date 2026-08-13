@@ -7,6 +7,12 @@ export type IdentityProfileSummary = {
   verified: boolean;
 };
 
+export type IdentityAuthz = {
+  authz_version: number;
+  status: string;
+  account_type: string;
+};
+
 @Injectable()
 export class IdentityUserClient {
   private readonly logger = new Logger(IdentityUserClient.name);
@@ -29,6 +35,34 @@ export class IdentityUserClient {
   async getDisplayName(userId: string): Promise<string | null> {
     const summary = await this.getProfileSummary(userId);
     return summary?.fullName ?? null;
+  }
+
+  /**
+   * S2S authz lookup for assignee validation. Returns null when the user
+   * does not exist (or the identity service returns non-OK).
+   */
+  async getAuthz(userId: string): Promise<IdentityAuthz | null> {
+    if (!userId) return null;
+    try {
+      const res = await fetch(
+        `${this.baseUrl()}/internal/users/${encodeURIComponent(userId)}/authz`,
+        { headers: this.internalHeaders() },
+      );
+      if (res.status === 404) return null;
+      if (!res.ok) {
+        this.logger.warn(`authz lookup failed for ${userId}: ${res.status}`);
+        return null;
+      }
+      const data = (await res.json()) as Partial<IdentityAuthz>;
+      return {
+        authz_version: Number(data.authz_version ?? 1),
+        status: String(data.status ?? ''),
+        account_type: String(data.account_type ?? ''),
+      };
+    } catch (err) {
+      this.logger.warn(`authz lookup error for ${userId}: ${err}`);
+      return null;
+    }
   }
 
   async getProfileSummary(userId: string): Promise<IdentityProfileSummary | null> {

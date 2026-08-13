@@ -32,6 +32,7 @@ class GetTrustReportQueryDto {
   kind!: (typeof TRUST_REPORT_KINDS)[number];
 }
 
+
 @ApiTags('Stays Admin Support')
 @Controller('admin/stays')
 @Throttle({
@@ -63,10 +64,11 @@ export class AdminSupportController {
 
   @Patch('support/tickets/:id')
   patchTicket(
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: PatchSupportTicketDto,
   ) {
-    return this.supportTickets.patchForAdmin(id, body);
+    return this.supportTickets.patchForAdmin(id, body, user.userId);
   }
 
   @Get('support/tickets/:id/messages')
@@ -83,10 +85,14 @@ export class AdminSupportController {
     return this.supportTickets.sendAdminMessage(id, user.userId, body.body);
   }
 
+
+
   @Get('reports')
   listReports(@Query() query: AdminListReportsQueryDto) {
     return this.supportTickets.listReportsForAdmin(query);
   }
+
+
 
   @Get('reports/:id')
   getReport(

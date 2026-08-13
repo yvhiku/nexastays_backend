@@ -1,5 +1,6 @@
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsOptional,
@@ -159,6 +160,15 @@ export class AdminListTicketsQueryDto {
   @IsString()
   @MaxLength(128)
   assignedAdminId?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === true || value === 'true' || value === '1') return true;
+    if (value === false || value === 'false' || value === '0') return false;
+    return value;
+  })
+  @IsBoolean()
+  unassigned?: boolean;
 
   @IsOptional()
   @IsString()
