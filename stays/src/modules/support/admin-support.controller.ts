@@ -19,6 +19,8 @@ import { SupportTicketsService } from './support-tickets.service';
 import {
   AdminListTicketsQueryDto,
   AdminListReportsQueryDto,
+  CreateSupportTicketNoteDto,
+  ListSupportTicketNotesQueryDto,
   PatchSupportTicketDto,
   PatchTrustReportDto,
   SendSupportTicketMessageDto,
@@ -85,6 +87,22 @@ export class AdminSupportController {
     return this.supportTickets.sendAdminMessage(id, user.userId, body.body);
   }
 
+  @Get('support/tickets/:id/notes')
+  listNotes(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: ListSupportTicketNotesQueryDto,
+  ) {
+    return this.supportTickets.listNotesForAdmin(id, query.limit);
+  }
+
+  @Post('support/tickets/:id/notes')
+  createNote(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: CreateSupportTicketNoteDto,
+  ) {
+    return this.supportTickets.createNoteForAdmin(id, user.userId, body.body);
+  }
 
 
   @Get('reports')

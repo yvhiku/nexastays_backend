@@ -154,6 +154,22 @@ describe('SupportTicketsService', () => {
       }),
     };
 
+    const noteRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      create: jest.fn((row: unknown) => row),
+      save: jest.fn(async (row: Record<string, unknown>) => ({
+        ...row,
+        id: (row.id as string) ?? 'note-1',
+        created_at: new Date('2026-01-01T00:00:00.000Z'),
+      })),
+      createQueryBuilder: jest.fn(() => ({
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      })),
+    };
 
     const service = new SupportTicketsService(
       dataSource as never,
@@ -166,6 +182,7 @@ describe('SupportTicketsService', () => {
       bookingRepo as never,
       listingRepo as never,
       hostProfileRepo as never,
+      noteRepo as never,
       timelineSeeder as never,
       realtime as never,
       media as never,
@@ -191,6 +208,7 @@ describe('SupportTicketsService', () => {
       staysAudit,
       media,
       messageRepo,
+      noteRepo,
     };
   }
 
@@ -553,6 +571,20 @@ describe('SupportTicketsService', () => {
     await expect(
       service.listForAdmin({ unassigned: true, assignedAdminId: 'admin-1' }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('creates and lists internal notes without body in audit', async () => {
+    const { service, ticketRepo, noteRepo, staysAudit } = buildService();
+    ticketRepo.findOne.mockResolvedValue({ id: 'ticket-1' });
+    noteRepo.createQueryBuilder = jest.fn();
+    await service.createNoteForAdmin('ticket-1', 'admin-1', 'Internal only');
+    expect(staysAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'support_ticket_note_added',
+        metadata: expect.objectContaining({ noteId: 'note-1' }),
+      }),
+    );
+    expect(staysAudit.log.mock.calls[0][0].metadata.body).toBeUndefined();
   });
 
   it('rolls back REVIEWED when escalation ticket ensure fails', async () => {

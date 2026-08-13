@@ -33,6 +33,7 @@ import {
 import { StaysConversationReport } from './entities/stays-conversation-report.entity';
 import { StaysSafetyIssue } from './entities/stays-safety-issue.entity';
 import { StaysSupportTicketRefCounter } from './entities/stays-support-ticket-ref-counter.entity';
+import { StaysSupportTicketNote } from './entities/stays-support-ticket-note.entity';
 import {
   AdminListTicketsQueryDto,
   AdminListReportsQueryDto,
@@ -97,6 +98,8 @@ export class SupportTicketsService {
     private readonly listingRepo: Repository<StaysListing>,
     @InjectRepository(StaysHostProfile)
     private readonly hostProfileRepo: Repository<StaysHostProfile>,
+    @InjectRepository(StaysSupportTicketNote)
+    private readonly noteRepo: Repository<StaysSupportTicketNote>,
     private readonly timelineSeeder: TimelineSeederService,
     private readonly realtime: MessagingRealtimeService,
     private readonly media: MessagingMediaService,
@@ -1165,6 +1168,63 @@ export class SupportTicketsService {
       next: patch.status,
       actorUserId,
     });
+  }
+
+  async listNotesForAdmin(ticketId: string, limit = 100) {
+    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    const take = Math.min(Math.max(limit, 1), 200);
+    const rows = await this.noteRepo.find({
+      where: { ticket_id: ticketId },
+      order: { created_at: 'ASC', id: 'ASC' },
+      take,
+    });
+    return {
+      items: rows.map((n) => ({
+        id: n.id,
+        ticket_id: n.ticket_id,
+        author_admin_id: n.author_admin_id,
+        body: n.body,
+        created_at: n.created_at.toISOString(),
+      })),
+    };
+  }
+
+  async createNoteForAdmin(
+    ticketId: string,
+    authorAdminId: string,
+    body: string,
+  ) {
+    const trimmed = body.trim();
+    if (!trimmed) throw new BadRequestException('Note body required');
+    if (trimmed.length > 5000) {
+      throw new BadRequestException('Note body too long');
+    }
+    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+
+    const note = await this.noteRepo.save(
+      this.noteRepo.create({
+        ticket_id: ticketId,
+        author_admin_id: authorAdminId,
+        body: trimmed,
+      }),
+    );
+    await this.staysAudit.log({
+      actorUserId: authorAdminId,
+      actorRole: 'ADMIN',
+      entityType: 'support_ticket',
+      entityId: ticketId,
+      action: 'support_ticket_note_added',
+      metadata: { ticketId, noteId: note.id },
+    });
+    return {
+      id: note.id,
+      ticket_id: note.ticket_id,
+      author_admin_id: note.author_admin_id,
+      body: note.body,
+      created_at: note.created_at.toISOString(),
+    };
   }
 
   async resolveEvidenceForCanonical(

@@ -105,6 +105,22 @@ export class SendSupportTicketMessageDto {
   body!: string;
 }
 
+export class CreateSupportTicketNoteDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(5000)
+  body!: string;
+}
+
+export class ListSupportTicketNotesQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  limit?: number;
+}
+
 export const TRUST_REPORT_KINDS = [
   'conversation_reported',
   'safety_issue',
