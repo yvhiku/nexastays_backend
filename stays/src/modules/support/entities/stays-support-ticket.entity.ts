@@ -87,6 +87,9 @@ export class StaysSupportTicket {
   @Column({ type: 'varchar', length: 256, name: 'customer_name', nullable: true })
   customer_name: string | null;
 
+  @Column({ type: 'varchar', length: 256, name: 'requester_email', nullable: true })
+  requester_email: string | null;
+
   @Column({ type: 'timestamptz', name: 'resolved_at', nullable: true })
   resolved_at: Date | null;
 

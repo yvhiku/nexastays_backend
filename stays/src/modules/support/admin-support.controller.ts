@@ -3,12 +3,10 @@ import {
   Controller,
   Get,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
-  DefaultValuePipe,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -19,9 +17,24 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupportTicketsService } from './support-tickets.service';
 import {
+  AdminListTicketsQueryDto,
   PatchSupportTicketDto,
+  PatchTrustReportDto,
   SendSupportTicketMessageDto,
+  TRUST_REPORT_KINDS,
 } from './dto/support-ticket.dto';
+import { IsIn, IsOptional, IsString } from 'class-validator';
+
+class GetTrustReportQueryDto {
+  @IsString()
+  @IsIn([...TRUST_REPORT_KINDS])
+  kind!: (typeof TRUST_REPORT_KINDS)[number];
+}
+
+class ListReportsQueryDto {
+  @IsOptional()
+  limit?: number;
+}
 
 @ApiTags('Stays Admin Support')
 @Controller('admin/stays')
@@ -36,10 +49,15 @@ export class AdminSupportController {
   constructor(private readonly supportTickets: SupportTicketsService) {}
 
   @Get('support/tickets')
-  listTickets(
-    @Query('limit', new DefaultValuePipe(200), ParseIntPipe) limit: number,
-  ) {
-    return this.supportTickets.listForAdmin(limit);
+  listTickets(@Query() query: AdminListTicketsQueryDto) {
+    return this.supportTickets.listForAdmin(query);
+  }
+
+  @Get('support/tickets/open-count')
+  countOpenTickets() {
+    return this.supportTickets.countOpenTicketsForAdmin().then((total) => ({
+      total,
+    }));
   }
 
   @Get('support/tickets/:id')
@@ -70,9 +88,27 @@ export class AdminSupportController {
   }
 
   @Get('reports')
-  listReports(
-    @Query('limit', new DefaultValuePipe(200), ParseIntPipe) limit: number,
+  listReports(@Query() query: ListReportsQueryDto) {
+    const parsed = query.limit ? Number(query.limit) : 200;
+    return this.supportTickets.listReportsForAdmin(
+      Number.isFinite(parsed) ? parsed : 200,
+    );
+  }
+
+  @Get('reports/:id')
+  getReport(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: GetTrustReportQueryDto,
   ) {
-    return this.supportTickets.listReportsForAdmin(limit);
+    return this.supportTickets.getReportForAdmin(id, query.kind);
+  }
+
+  @Patch('reports/:id')
+  patchReport(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: PatchTrustReportDto,
+  ) {
+    return this.supportTickets.patchReportForAdmin(id, body, user.userId);
   }
 }

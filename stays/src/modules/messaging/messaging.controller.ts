@@ -299,7 +299,13 @@ export class MessagingController {
       dto.reason,
       attachmentIds,
     );
-    return { ok: true, reportId: result.reportId };
+    return {
+      ok: true,
+      reportId: result.reportId,
+      ticketId: result.ticketId,
+      ticketNumber: result.ticketNumber,
+      supportConversationId: result.supportConversationId,
+    };
   }
 
   @Post('conversations/:id/block')

@@ -4,14 +4,18 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, QueryFailedError, Repository } from 'typeorm';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
 import { StaysMessage } from '../messaging/entities/stays-message.entity';
+import { StaysMessageAttachment } from '../messaging/entities/stays-message-attachment.entity';
 import { TimelineSeederService } from '../messaging/timeline-seeder.service';
 import { MessagingRealtimeService } from '../messaging/messaging-realtime.service';
+import { MessagingMediaService } from '../messaging/messaging-media.service';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysHostProfile } from '../stays/entities/stays-host-profile.entity';
+import { StaysAuditService } from '../stays/services/stays-audit.service';
+import { IdentityUserClient } from '../../common/identity/identity-user.client';
 import {
   StaysSupportTicket,
   SupportTicketParty,
@@ -22,7 +26,35 @@ import {
 import { StaysConversationReport } from './entities/stays-conversation-report.entity';
 import { StaysSafetyIssue } from './entities/stays-safety-issue.entity';
 import { StaysSupportTicketRefCounter } from './entities/stays-support-ticket-ref-counter.entity';
-import { CreateSupportTicketDto, PatchSupportTicketDto } from './dto/support-ticket.dto';
+import {
+  AdminListTicketsQueryDto,
+  CreateSupportTicketDto,
+  PatchSupportTicketDto,
+  PatchTrustReportDto,
+  SUPPORT_TICKET_STATUSES,
+  TRUST_REPORT_KINDS,
+  TRUST_REPORT_STATUSES,
+} from './dto/support-ticket.dto';
+
+const OPEN_TICKET_STATUSES: SupportTicketStatus[] = [
+  'OPEN',
+  'IN_PROGRESS',
+  'WAITING_FOR_CUSTOMER',
+  'WAITING_FOR_HOST',
+  'ESCALATED',
+];
+
+function isUniqueViolation(err: unknown): boolean {
+  if (err instanceof QueryFailedError) {
+    const driver = err.driverError as { code?: string };
+    return driver?.code === '23505';
+  }
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { code?: string }).code === '23505'
+  );
+}
 
 @Injectable()
 export class SupportTicketsService {
@@ -38,6 +70,8 @@ export class SupportTicketsService {
     private readonly convRepo: Repository<StaysConversation>,
     @InjectRepository(StaysMessage)
     private readonly messageRepo: Repository<StaysMessage>,
+    @InjectRepository(StaysMessageAttachment)
+    private readonly attachmentRepo: Repository<StaysMessageAttachment>,
     @InjectRepository(StaysBooking)
     private readonly bookingRepo: Repository<StaysBooking>,
     @InjectRepository(StaysListing)
@@ -46,6 +80,9 @@ export class SupportTicketsService {
     private readonly hostProfileRepo: Repository<StaysHostProfile>,
     private readonly timelineSeeder: TimelineSeederService,
     private readonly realtime: MessagingRealtimeService,
+    private readonly media: MessagingMediaService,
+    private readonly identityUsers: IdentityUserClient,
+    private readonly staysAudit: StaysAuditService,
   ) {}
 
   async createReport(input: {
@@ -53,13 +90,19 @@ export class SupportTicketsService {
     reporterUserId: string;
     reason?: string;
     attachmentIds?: string[];
+    bookingId?: string | null;
+    listingId?: string | null;
+    reportedUserId?: string | null;
   }): Promise<StaysConversationReport> {
     const row = this.reportRepo.create({
       conversation_id: input.conversationId,
       reporter_user_id: input.reporterUserId,
       reason: input.reason?.trim() || null,
       attachment_ids: input.attachmentIds ?? [],
-      status: 'open',
+      status: 'OPEN',
+      booking_id: input.bookingId ?? null,
+      listing_id: input.listingId ?? null,
+      reported_user_id: input.reportedUserId ?? null,
     });
     return this.reportRepo.save(row);
   }
@@ -70,6 +113,9 @@ export class SupportTicketsService {
     category: string;
     details?: string;
     attachmentIds?: string[];
+    bookingId?: string | null;
+    listingId?: string | null;
+    reportedUserId?: string | null;
   }): Promise<StaysSafetyIssue> {
     const row = this.safetyRepo.create({
       conversation_id: input.conversationId,
@@ -77,7 +123,10 @@ export class SupportTicketsService {
       category: input.category,
       details: input.details?.trim() || null,
       attachment_ids: input.attachmentIds ?? [],
-      status: 'open',
+      status: 'OPEN',
+      booking_id: input.bookingId ?? null,
+      listing_id: input.listingId ?? null,
+      reported_user_id: input.reportedUserId ?? null,
     });
     return this.safetyRepo.save(row);
   }
@@ -103,25 +152,32 @@ export class SupportTicketsService {
       input.report.reason?.trim() || 'Conversation reported by customer';
     const subject = reason.slice(0, 120) || 'Conversation report';
 
-    return this.createTicketForUser(
-      input.report.reporter_user_id,
-      {
-        category: 'OTHER',
-        subject,
-        message: reason,
-        reportId: input.report.id,
-        ...(input.sourceConversation.booking_id
-          ? { bookingId: input.sourceConversation.booking_id }
-          : {}),
-        ...(input.sourceConversation.listing_id
-          ? { listingId: input.sourceConversation.listing_id }
-          : {}),
-      },
-      { party },
-    ).then(async (created) => {
-      const ticket = await this.ticketRepo.findOne({ where: { id: created.id } });
-      return ticket;
-    });
+    try {
+      const created = await this.createTicketForUser(
+        input.report.reporter_user_id,
+        {
+          category: 'OTHER',
+          subject,
+          message: reason,
+          reportId: input.report.id,
+          ...(input.sourceConversation.booking_id
+            ? { bookingId: input.sourceConversation.booking_id }
+            : {}),
+          ...(input.sourceConversation.listing_id
+            ? { listingId: input.sourceConversation.listing_id }
+            : {}),
+        },
+        { party },
+      );
+      return this.ticketRepo.findOne({ where: { id: created.id } });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        return this.ticketRepo.findOne({
+          where: { report_id: input.report.id },
+        });
+      }
+      throw err;
+    }
   }
 
   /**
@@ -146,24 +202,32 @@ export class SupportTicketsService {
       : `[${input.safety.category}] Safety issue reported`;
     const subject = message.slice(0, 120);
 
-    return this.createTicketForUser(
-      input.safety.reporter_user_id,
-      {
-        category: 'FRAUD',
-        subject,
-        message,
-        safetyIssueId: input.safety.id,
-        ...(input.sourceConversation.booking_id
-          ? { bookingId: input.sourceConversation.booking_id }
-          : {}),
-        ...(input.sourceConversation.listing_id
-          ? { listingId: input.sourceConversation.listing_id }
-          : {}),
-      },
-      { party, priority: 'HIGH' },
-    ).then(async (created) => {
+    try {
+      const created = await this.createTicketForUser(
+        input.safety.reporter_user_id,
+        {
+          category: 'FRAUD',
+          subject,
+          message,
+          safetyIssueId: input.safety.id,
+          ...(input.sourceConversation.booking_id
+            ? { bookingId: input.sourceConversation.booking_id }
+            : {}),
+          ...(input.sourceConversation.listing_id
+            ? { listingId: input.sourceConversation.listing_id }
+            : {}),
+        },
+        { party, priority: 'HIGH' },
+      );
       return this.ticketRepo.findOne({ where: { id: created.id } });
-    });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        return this.ticketRepo.findOne({
+          where: { safety_issue_id: input.safety.id },
+        });
+      }
+      throw err;
+    }
   }
 
   private partyFromConversation(
@@ -223,8 +287,13 @@ export class SupportTicketsService {
 
     const party = options.party ?? (await this.resolveParty(userId));
     const links = await this.resolveOwnedLinks(userId, party, dto);
+    const identity = await this.identityUsers.getProfileSummary(userId);
+    const customerName = options.customerName?.trim() || identity?.fullName || null;
+    const requesterEmail = identity?.email || null;
 
-    const created = await this.dataSource.transaction(async (manager) => {
+    let created: StaysSupportTicket;
+    try {
+      created = await this.dataSource.transaction(async (manager) => {
       const ticketNumber = await this.allocateTicketNumber(manager);
       const subject = dto.subject.trim();
       const conversation = await this.createSupportConversation(
@@ -255,7 +324,8 @@ export class SupportTicketsService {
         safety_issue_id: links.safetyIssueId,
         unread_for_support: true,
         last_message_preview: preview,
-        customer_name: options.customerName ?? null,
+        customer_name: customerName,
+        requester_email: requesterEmail,
         resolved_at: null,
       });
       const savedTicket = await manager.getRepository(StaysSupportTicket).save(ticket);
@@ -273,11 +343,53 @@ export class SupportTicketsService {
         },
         senderId: userId,
         clientMessageId: dto.clientRequestId ?? null,
-        senderDisplayName: options.customerName ?? 'Customer',
+        senderDisplayName: customerName ?? 'Customer',
       });
 
       return savedTicket;
     });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        if (dto.reportId) {
+          const existing = await this.ticketRepo.findOne({
+            where: { report_id: dto.reportId, requester_user_id: userId },
+          });
+          if (existing) {
+            return {
+              id: existing.id,
+              ticket_number: existing.ticket_number,
+              conversation_id: existing.conversation_id,
+              status: existing.status,
+              category: existing.category,
+              subject: existing.subject,
+              party: existing.party,
+              created_at: existing.created_at.toISOString(),
+            };
+          }
+        }
+        if (dto.safetyIssueId) {
+          const existing = await this.ticketRepo.findOne({
+            where: {
+              safety_issue_id: dto.safetyIssueId,
+              requester_user_id: userId,
+            },
+          });
+          if (existing) {
+            return {
+              id: existing.id,
+              ticket_number: existing.ticket_number,
+              conversation_id: existing.conversation_id,
+              status: existing.status,
+              category: existing.category,
+              subject: existing.subject,
+              party: existing.party,
+              created_at: existing.created_at.toISOString(),
+            };
+          }
+        }
+      }
+      throw err;
+    }
 
     this.realtime.publish(userId, {
       conversationId: created.conversation_id,
@@ -314,12 +426,67 @@ export class SupportTicketsService {
     return this.toListRow(ticket);
   }
 
-  async listForAdmin(limit = 200) {
-    const take = Math.min(Math.max(limit, 1), 200);
-    const rows = await this.ticketRepo.find({
-      order: { updated_at: 'DESC' },
-      take,
-    });
+  async listForAdmin(query: AdminListTicketsQueryDto = {}) {
+    const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
+    const offset = Math.max(query.offset ?? 0, 0);
+    const qb = this.ticketRepo
+      .createQueryBuilder('t')
+      .leftJoin(StaysBooking, 'b', 'b.id = t.booking_id')
+      .leftJoin(StaysListing, 'l', 'l.id = t.listing_id');
+
+    const statuses = (query.status ?? '')
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter((s): s is SupportTicketStatus =>
+        (SUPPORT_TICKET_STATUSES as readonly string[]).includes(s),
+      );
+    if (statuses.length) {
+      qb.andWhere('t.status IN (:...statuses)', { statuses });
+    }
+    if (query.priority) {
+      qb.andWhere('t.priority = :priority', { priority: query.priority });
+    }
+    if (query.category) {
+      qb.andWhere('t.category = :category', { category: query.category });
+    }
+    if (query.assignedAdminId) {
+      qb.andWhere('t.assigned_admin_id = :assignedAdminId', {
+        assignedAdminId: query.assignedAdminId,
+      });
+    }
+    if (query.requesterUserId) {
+      qb.andWhere('t.requester_user_id = :requesterUserId', {
+        requesterUserId: query.requesterUserId,
+      });
+    }
+    if (query.bookingId) {
+      qb.andWhere('t.booking_id = :bookingId', { bookingId: query.bookingId });
+    }
+    if (query.listingId) {
+      qb.andWhere('t.listing_id = :listingId', { listingId: query.listingId });
+    }
+    const search = query.search?.trim();
+    if (search) {
+      const q = `%${search.replace(/[%_]/g, '\\$&')}%`;
+      qb.andWhere(
+        `(t.ticket_number ILIKE :q ESCAPE '\\'
+          OR t.subject ILIKE :q ESCAPE '\\'
+          OR t.customer_name ILIKE :q ESCAPE '\\'
+          OR t.requester_email ILIKE :q ESCAPE '\\'
+          OR b.booking_reference ILIKE :q ESCAPE '\\'
+          OR l.title ILIKE :q ESCAPE '\\')`,
+        { q },
+      );
+    }
+
+    const total = await qb.clone().getCount();
+    const rows = await qb
+      .orderBy('t.updated_at', 'DESC')
+      .skip(offset)
+      .take(limit)
+      .getMany();
+
+    await this.hydrateTicketIdentities(rows);
     const bookingRefs = await this.loadBookingRefs(
       rows.map((r) => r.booking_id).filter(Boolean) as string[],
     );
@@ -327,7 +494,18 @@ export class SupportTicketsService {
       items: rows.map((row) =>
         this.toListRow(row, bookingRefs.get(row.booking_id ?? '') ?? null),
       ),
+      total,
+      limit,
+      offset,
+      hasMore: offset + rows.length < total,
     };
+  }
+
+  async countOpenTicketsForAdmin(): Promise<number> {
+    return this.ticketRepo
+      .createQueryBuilder('t')
+      .where('t.status IN (:...statuses)', { statuses: OPEN_TICKET_STATUSES })
+      .getCount();
   }
 
   async getForAdmin(ticketId: string) {
@@ -523,60 +701,362 @@ export class SupportTicketsService {
       this.reportRepo.find({ order: { created_at: 'DESC' }, take }),
       this.safetyRepo.find({ order: { created_at: 'DESC' }, take }),
     ]);
+    const composed = await this.composeTrustRecords(reports, safety, false);
+    return { items: composed.slice(0, take) };
+  }
 
-    const ticketByReport = reports.length
-      ? await this.ticketRepo
-          .createQueryBuilder('t')
-          .where('t.report_id IN (:...ids)', { ids: reports.map((r) => r.id) })
-          .getMany()
+  async getReportForAdmin(
+    id: string,
+    kind: (typeof TRUST_REPORT_KINDS)[number],
+  ) {
+    if (kind === 'conversation_reported') {
+      const row = await this.reportRepo.findOne({ where: { id } });
+      if (!row) throw new NotFoundException('Report not found');
+      const [item] = await this.composeTrustRecords([row], [], true);
+      return item;
+    }
+    const row = await this.safetyRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Report not found');
+    const [item] = await this.composeTrustRecords([], [row], true);
+    return item;
+  }
+
+  async patchReportForAdmin(
+    id: string,
+    patch: PatchTrustReportDto,
+    actorUserId: string,
+  ) {
+    if (patch.kind === 'conversation_reported') {
+      const row = await this.reportRepo.findOne({ where: { id } });
+      if (!row) throw new NotFoundException('Report not found');
+      return this.applyTrustStatus({
+        kind: 'conversation_reported',
+        row,
+        next: patch.status,
+        actorUserId,
+      });
+    }
+    const row = await this.safetyRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Report not found');
+    return this.applyTrustStatus({
+      kind: 'safety_issue',
+      row,
+      next: patch.status,
+      actorUserId,
+    });
+  }
+
+  async resolveEvidenceForCanonical(
+    attachmentIds: string[],
+    allowedIds: string[],
+  ) {
+    const allowed = new Set(allowedIds.filter(Boolean));
+    for (const id of attachmentIds) {
+      if (!allowed.has(id)) {
+        throw new BadRequestException('Invalid attachment references');
+      }
+    }
+    return this.buildEvidence(attachmentIds.filter((id) => allowed.has(id)));
+  }
+
+  private async composeTrustRecords(
+    reports: StaysConversationReport[],
+    safety: StaysSafetyIssue[],
+    includeEvidence: boolean,
+  ) {
+    const reportTickets = reports.length
+      ? await this.ticketRepo.find({
+          where: { report_id: In(reports.map((r) => r.id)) },
+        })
       : [];
-    const ticketBySafety = safety.length
-      ? await this.ticketRepo
-          .createQueryBuilder('t')
-          .where('t.safety_issue_id IN (:...ids)', {
-            ids: safety.map((s) => s.id),
-          })
-          .getMany()
+    const safetyTickets = safety.length
+      ? await this.ticketRepo.find({
+          where: { safety_issue_id: In(safety.map((s) => s.id)) },
+        })
       : [];
-    const reportTicket = new Map(
-      ticketByReport.filter((t) => t.report_id).map((t) => [t.report_id!, t.id]),
+    const ticketByReport = new Map(
+      reportTickets.filter((t) => t.report_id).map((t) => [t.report_id!, t]),
     );
-    const safetyTicket = new Map(
-      ticketBySafety
+    const ticketBySafety = new Map(
+      safetyTickets
         .filter((t) => t.safety_issue_id)
-        .map((t) => [t.safety_issue_id!, t.id]),
+        .map((t) => [t.safety_issue_id!, t]),
     );
 
-    const items = [
-      ...reports.map((row) => ({
-        id: row.id,
-        kind: 'conversation_reported' as const,
-        reason: row.reason ?? undefined,
-        category: undefined as string | undefined,
-        actor_user_id: row.reporter_user_id,
-        conversation_id: row.conversation_id,
-        booking_id: undefined as string | undefined,
-        listing_id: undefined as string | undefined,
-        support_ticket_id: reportTicket.get(row.id),
-        created_at: row.created_at.toISOString(),
-        status: row.status,
-      })),
-      ...safety.map((row) => ({
-        id: row.id,
-        kind: 'safety_issue' as const,
-        reason: undefined as string | undefined,
-        category: row.category,
-        actor_user_id: row.reporter_user_id,
-        conversation_id: row.conversation_id,
-        booking_id: undefined as string | undefined,
-        listing_id: undefined as string | undefined,
-        support_ticket_id: safetyTicket.get(row.id),
-        created_at: row.created_at.toISOString(),
-        status: row.status,
-      })),
-    ].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const bookingIds = [
+      ...reports.map((r) => r.booking_id),
+      ...safety.map((s) => s.booking_id),
+    ].filter(Boolean) as string[];
+    const listingIds = [
+      ...reports.map((r) => r.listing_id),
+      ...safety.map((s) => s.listing_id),
+    ].filter(Boolean) as string[];
+    const userIds = [
+      ...reports.flatMap((r) => [r.reporter_user_id, r.reported_user_id]),
+      ...safety.flatMap((s) => [s.reporter_user_id, s.reported_user_id]),
+    ].filter(Boolean) as string[];
 
-    return { items: items.slice(0, take) };
+    const [bookings, listings, identities] = await Promise.all([
+      bookingIds.length
+        ? this.bookingRepo.find({
+            where: { id: In(bookingIds) },
+            select: ['id', 'booking_reference'],
+          })
+        : Promise.resolve([] as StaysBooking[]),
+      listingIds.length
+        ? this.listingRepo.find({
+            where: { id: In(listingIds) },
+            select: ['id', 'title'],
+          })
+        : Promise.resolve([] as StaysListing[]),
+      this.loadIdentities(userIds),
+    ]);
+    const bookingMap = new Map(bookings.map((b) => [b.id, b]));
+    const listingMap = new Map(listings.map((l) => [l.id, l]));
+
+    const reportItems = await Promise.all(
+      reports.map(async (row) => {
+        const ticket = ticketByReport.get(row.id) ?? null;
+        return {
+          id: row.id,
+          kind: 'conversation_reported' as const,
+          reason: row.reason ?? undefined,
+          category: undefined as string | undefined,
+          status: row.status,
+          created_at: row.created_at.toISOString(),
+          conversation_id: row.conversation_id,
+          booking_id: row.booking_id,
+          listing_id: row.listing_id,
+          actor_user_id: row.reporter_user_id,
+          reporter: this.toPerson(row.reporter_user_id, identities, true),
+          reported_user: row.reported_user_id
+            ? this.toPerson(row.reported_user_id, identities, false)
+            : null,
+          booking: this.toBookingRef(row.booking_id, bookingMap),
+          listing: this.toListingRef(row.listing_id, listingMap),
+          ticket: ticket
+            ? {
+                id: ticket.id,
+                ticket_number: ticket.ticket_number,
+                status: ticket.status,
+              }
+            : null,
+          support_ticket_id: ticket?.id,
+          evidence_count: row.attachment_ids?.length ?? 0,
+          ...(includeEvidence
+            ? { evidence: await this.buildEvidence(row.attachment_ids ?? []) }
+            : {}),
+        };
+      }),
+    );
+    const safetyItems = await Promise.all(
+      safety.map(async (row) => {
+        const ticket = ticketBySafety.get(row.id) ?? null;
+        return {
+          id: row.id,
+          kind: 'safety_issue' as const,
+          reason: undefined as string | undefined,
+          category: row.category,
+          status: row.status,
+          created_at: row.created_at.toISOString(),
+          conversation_id: row.conversation_id,
+          booking_id: row.booking_id,
+          listing_id: row.listing_id,
+          actor_user_id: row.reporter_user_id,
+          reporter: this.toPerson(row.reporter_user_id, identities, true),
+          reported_user: row.reported_user_id
+            ? this.toPerson(row.reported_user_id, identities, false)
+            : null,
+          booking: this.toBookingRef(row.booking_id, bookingMap),
+          listing: this.toListingRef(row.listing_id, listingMap),
+          ticket: ticket
+            ? {
+                id: ticket.id,
+                ticket_number: ticket.ticket_number,
+                status: ticket.status,
+              }
+            : null,
+          support_ticket_id: ticket?.id,
+          evidence_count: row.attachment_ids?.length ?? 0,
+          ...(includeEvidence
+            ? { evidence: await this.buildEvidence(row.attachment_ids ?? []) }
+            : {}),
+        };
+      }),
+    );
+
+    return [...reportItems, ...safetyItems].sort((a, b) =>
+      b.created_at.localeCompare(a.created_at),
+    );
+  }
+
+  private async applyTrustStatus(input: {
+    kind: (typeof TRUST_REPORT_KINDS)[number];
+    row: StaysConversationReport | StaysSafetyIssue;
+    next: (typeof TRUST_REPORT_STATUSES)[number];
+    actorUserId: string;
+  }) {
+    const from = input.row.status;
+    input.row.status = input.next;
+    input.row.updated_at = new Date();
+    if (input.kind === 'conversation_reported') {
+      await this.reportRepo.save(input.row as StaysConversationReport);
+    } else {
+      await this.safetyRepo.save(input.row as StaysSafetyIssue);
+    }
+
+    let ticket: StaysSupportTicket | null =
+      input.kind === 'conversation_reported'
+        ? await this.ticketRepo.findOne({
+            where: { report_id: input.row.id },
+          })
+        : await this.ticketRepo.findOne({
+            where: { safety_issue_id: input.row.id },
+          });
+
+    if (input.next === 'ESCALATED') {
+      if (!ticket) {
+        const conv = await this.convRepo.findOne({
+          where: { id: input.row.conversation_id },
+        });
+        if (conv) {
+          ticket =
+            input.kind === 'conversation_reported'
+              ? await this.ensureTicketForReport({
+                  report: input.row as StaysConversationReport,
+                  sourceConversation: conv,
+                })
+              : await this.ensureTicketForSafetyIssue({
+                  safety: input.row as StaysSafetyIssue,
+                  sourceConversation: conv,
+                });
+        }
+      }
+      if (ticket && ticket.priority !== 'URGENT' && ticket.priority !== 'HIGH') {
+        ticket.priority = 'HIGH';
+        ticket.updated_at = new Date();
+        await this.ticketRepo.save(ticket);
+      }
+    }
+
+    await this.staysAudit.log({
+      actorUserId: input.actorUserId,
+      actorRole: 'ADMIN',
+      entityType:
+        input.kind === 'conversation_reported'
+          ? 'conversation_report'
+          : 'safety_issue',
+      entityId: input.row.id,
+      action: 'status_changed',
+      metadata: {
+        from,
+        to: input.next,
+        ticketId: ticket?.id ?? null,
+      },
+    });
+
+    return this.getReportForAdmin(input.row.id, input.kind);
+  }
+
+  private async buildEvidence(attachmentIds: string[]) {
+    if (!attachmentIds.length) return [];
+    const allowed = new Set(attachmentIds);
+    const rows = await this.attachmentRepo.find({
+      where: { id: In(attachmentIds) },
+    });
+    return rows
+      .filter((row) => allowed.has(row.id))
+      .map((row) => {
+        const signed = this.media.resolveAttachment(
+          row.id,
+          'full',
+          row.media_version ?? 1,
+        );
+        return {
+          id: row.id,
+          url: signed.url,
+          contentType: row.mime,
+          filename: row.original_filename,
+          createdAt: row.created_at.toISOString(),
+        };
+      });
+  }
+
+  private async loadIdentities(userIds: string[]) {
+    const unique = [...new Set(userIds)];
+    const entries = await Promise.all(
+      unique.map(
+        async (id) =>
+          [id, await this.identityUsers.getProfileSummary(id)] as const,
+      ),
+    );
+    return new Map(entries);
+  }
+
+  private toPerson(
+    userId: string,
+    identities: Map<
+      string,
+      Awaited<ReturnType<IdentityUserClient['getProfileSummary']>>
+    >,
+    includeEmail: boolean,
+  ) {
+    const summary = identities.get(userId);
+    return {
+      id: userId,
+      name: summary?.fullName ?? null,
+      ...(includeEmail ? { email: summary?.email ?? null } : {}),
+    };
+  }
+
+  private toBookingRef(
+    bookingId: string | null,
+    bookings: Map<string, StaysBooking>,
+  ) {
+    if (!bookingId) return null;
+    const row = bookings.get(bookingId);
+    return row
+      ? { id: row.id, reference: row.booking_reference }
+      : { id: bookingId, reference: null };
+  }
+
+  private toListingRef(
+    listingId: string | null,
+    listings: Map<string, StaysListing>,
+  ) {
+    if (!listingId) return null;
+    const row = listings.get(listingId);
+    return row
+      ? { id: row.id, title: row.title }
+      : { id: listingId, title: null };
+  }
+
+  private async hydrateTicketIdentities(rows: StaysSupportTicket[]) {
+    const missing = rows.filter(
+      (row) => !row.customer_name || !row.requester_email,
+    );
+    if (!missing.length) return;
+    await Promise.all(
+      missing.map(async (row) => {
+        const summary = await this.identityUsers.getProfileSummary(
+          row.requester_user_id,
+        );
+        const name = summary?.fullName ?? null;
+        const email = summary?.email ?? null;
+        const patch: Partial<StaysSupportTicket> = {};
+        if (!row.customer_name && name) {
+          row.customer_name = name;
+          patch.customer_name = name;
+        }
+        if (!row.requester_email && email) {
+          row.requester_email = email;
+          patch.requester_email = email;
+        }
+        if (Object.keys(patch).length) {
+          await this.ticketRepo.update(row.id, patch);
+        }
+      }),
+    );
   }
 
   private async resolveParty(userId: string): Promise<SupportTicketParty> {
@@ -716,7 +1196,7 @@ export class SupportTicketsService {
       ticket_number: ticket.ticket_number,
       subject: ticket.subject,
       category: ticket.category,
-      customer_name: ticket.customer_name ?? 'Customer',
+      customer_name: ticket.customer_name,
       party: ticket.party,
       party_type: ticket.party,
       assigned_admin_id: ticket.assigned_admin_id,
@@ -732,6 +1212,7 @@ export class SupportTicketsService {
       safety_issue_id: ticket.safety_issue_id,
       unread_for_support: ticket.unread_for_support,
       last_message_preview: ticket.last_message_preview,
+      requester_email: ticket.requester_email,
     };
   }
 

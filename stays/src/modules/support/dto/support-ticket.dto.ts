@@ -1,9 +1,13 @@
+import { Type } from 'class-transformer';
 import {
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
+  Min,
   MinLength,
   ValidateIf,
 } from 'class-validator';
@@ -98,4 +102,79 @@ export class SendSupportTicketMessageDto {
   @MinLength(1)
   @MaxLength(2000)
   body!: string;
+}
+
+export const TRUST_REPORT_KINDS = [
+  'conversation_reported',
+  'safety_issue',
+] as const;
+
+export const TRUST_REPORT_STATUSES = [
+  'OPEN',
+  'REVIEWED',
+  'ESCALATED',
+  'DISMISSED',
+] as const;
+
+export class PatchTrustReportDto {
+  @IsString()
+  @IsIn([...TRUST_REPORT_KINDS])
+  kind!: (typeof TRUST_REPORT_KINDS)[number];
+
+  @IsString()
+  @IsIn([...TRUST_REPORT_STATUSES])
+  status!: (typeof TRUST_REPORT_STATUSES)[number];
+}
+
+export class AdminListTicketsQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn([...SUPPORT_TICKET_PRIORITIES])
+  priority?: (typeof SUPPORT_TICKET_PRIORITIES)[number];
+
+  @IsOptional()
+  @IsString()
+  @IsIn([...SUPPORT_TICKET_CATEGORIES])
+  category?: (typeof SUPPORT_TICKET_CATEGORIES)[number];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  assignedAdminId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  requesterUserId?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  bookingId?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  listingId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  search?: string;
 }

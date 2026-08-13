@@ -91,6 +91,7 @@ import { SupportModule } from '../support/support.module';
     TimelineSeederService,
     MessagingRealtimeService,
     MessagingPermissionsService,
+    MessagingMediaService,
   ],
 })
 export class MessagingModule {}

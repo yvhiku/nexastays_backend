@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConversationsService } from './conversations.service';
 import { StaysConversation } from './entities/stays-conversation.entity';
@@ -133,6 +134,16 @@ describe('ConversationsService', () => {
           useValue: {
             createReport: jest.fn().mockResolvedValue({ id: 'report-1' }),
             createSafetyIssue: jest.fn().mockResolvedValue({ id: 'safety-1' }),
+            ensureTicketForReport: jest.fn().mockResolvedValue({
+              id: 'ticket-1',
+              ticket_number: 'SUP-2026-000001',
+              conversation_id: 'support-conv-1',
+            }),
+            ensureTicketForSafetyIssue: jest.fn().mockResolvedValue({
+              id: 'ticket-2',
+              ticket_number: 'SUP-2026-000002',
+              conversation_id: 'support-conv-2',
+            }),
           },
         },
       ],
@@ -186,5 +197,23 @@ describe('ConversationsService', () => {
     await service.listConversations(guestId, 'all', 'wifi password');
     const qb = convRepo.createQueryBuilder.mock.results[0].value;
     expect(qb.andWhere).toHaveBeenCalled();
+  });
+
+  it('returns linked ticket fields after report and rejects SUPPORT threads', async () => {
+    convRepo.findOne.mockResolvedValue(makeConv());
+    const result = await service.report(convId, guestId, '[SPAM_SCAM]');
+    expect(result).toEqual(
+      expect.objectContaining({
+        reportId: 'report-1',
+        ticketId: 'ticket-1',
+        ticketNumber: 'SUP-2026-000001',
+        supportConversationId: 'support-conv-1',
+      }),
+    );
+
+    convRepo.findOne.mockResolvedValue(makeConv({ type: 'SUPPORT' }));
+    await expect(service.report(convId, guestId, 'nested')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

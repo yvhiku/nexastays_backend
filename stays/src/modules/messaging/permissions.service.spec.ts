@@ -55,4 +55,13 @@ describe('MessagingPermissionsService', () => {
       true,
     );
   });
+
+  it('disables canReport on SUPPORT conversations for participants', () => {
+    const support = baseConversation();
+    (support as { type?: string }).type = 'SUPPORT';
+    expect(service.resolve(support, 'guest-1').canReport).toBe(false);
+    const booking = baseConversation();
+    (booking as { type?: string }).type = 'BOOKING';
+    expect(service.resolve(booking, 'guest-1').canReport).toBe(true);
+  });
 });

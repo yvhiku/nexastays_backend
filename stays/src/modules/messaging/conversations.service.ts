@@ -288,9 +288,17 @@ export class ConversationsService {
     userId: string,
     reason?: string,
     attachmentIds: string[] = [],
-  ): Promise<{ reportId: string }> {
+  ): Promise<{
+    reportId: string;
+    ticketId?: string;
+    ticketNumber?: string;
+    supportConversationId?: string;
+  }> {
     const conv = await this.convRepo.findOne({ where: { id: conversationId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) {
+      throw new NotFoundException('Conversation not found');
+    }
+    if (conv.type === 'SUPPORT') {
       throw new NotFoundException('Conversation not found');
     }
     const report = await this.supportTickets.createReport({
@@ -298,8 +306,16 @@ export class ConversationsService {
       reporterUserId: userId,
       reason,
       attachmentIds,
+      bookingId: conv.booking_id,
+      listingId: conv.listing_id,
+      reportedUserId:
+        conv.guest_user_id === userId
+          ? conv.host_user_id
+          : conv.host_user_id === userId
+            ? conv.guest_user_id
+            : null,
     });
-    await this.supportTickets.ensureTicketForReport({
+    const ticket = await this.supportTickets.ensureTicketForReport({
       report,
       sourceConversation: conv,
     });
@@ -308,7 +324,12 @@ export class ConversationsService {
       reportId: report.id,
       ...(attachmentIds.length ? { attachmentIds } : {}),
     });
-    return { reportId: report.id };
+    return {
+      reportId: report.id,
+      ticketId: ticket?.id,
+      ticketNumber: ticket?.ticket_number,
+      supportConversationId: ticket?.conversation_id,
+    };
   }
 
   async block(conversationId: string, userId: string): Promise<void> {
@@ -330,9 +351,18 @@ export class ConversationsService {
     conversationId: string,
     userId: string,
     payload: { category: string; details?: string; attachmentIds?: string[] },
-  ): Promise<{ supportUrl: string; safetyIssueId: string }> {
+  ): Promise<{
+    supportUrl: string;
+    safetyIssueId: string;
+    ticketId?: string;
+    ticketNumber?: string;
+    supportConversationId?: string;
+  }> {
     const conv = await this.convRepo.findOne({ where: { id: conversationId } });
     if (!conv || !this.permissions.isParticipant(conv, userId)) {
+      throw new NotFoundException('Conversation not found');
+    }
+    if (conv.type === 'SUPPORT') {
       throw new NotFoundException('Conversation not found');
     }
     const attachmentIds = payload.attachmentIds ?? [];
@@ -342,8 +372,16 @@ export class ConversationsService {
       category: payload.category,
       details: payload.details,
       attachmentIds,
+      bookingId: conv.booking_id,
+      listingId: conv.listing_id,
+      reportedUserId:
+        conv.guest_user_id === userId
+          ? conv.host_user_id
+          : conv.host_user_id === userId
+            ? conv.guest_user_id
+            : null,
     });
-    await this.supportTickets.ensureTicketForSafetyIssue({
+    const ticket = await this.supportTickets.ensureTicketForSafetyIssue({
       safety,
       sourceConversation: conv,
     });
@@ -356,6 +394,9 @@ export class ConversationsService {
     return {
       supportUrl: `/contact?safety=1&safety_issue_id=${encodeURIComponent(safety.id)}`,
       safetyIssueId: safety.id,
+      ticketId: ticket?.id,
+      ticketNumber: ticket?.ticket_number,
+      supportConversationId: ticket?.conversation_id,
     };
   }
 

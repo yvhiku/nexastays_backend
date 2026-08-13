@@ -60,7 +60,7 @@ export class MessagingPermissionsService {
       canSend: !isReadOnly && !blocked,
       canUpload: !isReadOnly && !blocked,
       canCall: isGuest && !blocked && conversation.messaging_state === 'ACTIVE',
-      canReport: !blocked,
+      canReport: !blocked && conversation.type !== 'SUPPORT',
       canBlock: !blocked,
       canReview: isGuest && conversation.messaging_state !== 'LOCKED',
       viewerRole: isGuest ? 'guest' : 'host',

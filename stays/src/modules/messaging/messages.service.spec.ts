@@ -25,6 +25,7 @@ describe('MessagesService', () => {
   let outbox: { enqueue: jest.Mock };
   let timelineSeeder: { insertMessage: jest.Mock };
   let realtime: { stream: jest.Mock; publish: jest.Mock };
+  let supportTickets: { markUnreadForSupportFromCustomerMessage: jest.Mock };
   let transactionManager: {
     getRepository: jest.Mock;
   };
@@ -132,6 +133,9 @@ describe('MessagesService', () => {
       stream: jest.fn(),
       publish: jest.fn(),
     };
+    supportTickets = {
+      markUnreadForSupportFromCustomerMessage: jest.fn(),
+    };
 
     transactionManager = {
       getRepository: jest.fn((entity) => {
@@ -190,9 +194,7 @@ describe('MessagesService', () => {
         { provide: MessagingRealtimeService, useValue: realtime },
         {
           provide: SupportTicketsService,
-          useValue: {
-            markUnreadForSupportFromCustomerMessage: jest.fn(),
-          },
+          useValue: supportTickets,
         },
       ],
     }).compile();
@@ -229,6 +231,19 @@ describe('MessagesService', () => {
       reason: 'MESSAGE_CREATED',
       messageId: 'new-msg',
     });
+  });
+
+  it('marks unread_for_support when the customer sends on a SUPPORT thread', async () => {
+    convRepo.findOne.mockResolvedValue({
+      ...conversation,
+      type: 'SUPPORT',
+      host_user_id: null,
+    });
+    await service.sendText(convId, guestId, 'Need help', 'client-2');
+    expect(supportTickets.markUnreadForSupportFromCustomerMessage).toHaveBeenCalledWith(
+      convId,
+      'Need help',
+    );
   });
 
   it('bumps conversation_version on markRead', async () => {

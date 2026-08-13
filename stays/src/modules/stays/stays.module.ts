@@ -89,6 +89,7 @@ import { MessagingModule } from '../messaging/messaging.module';
     StaysAvailabilityService,
     ExploreService,
     CalendarSyncService,
+    StaysAuditService,
   ],
 })
 export class StaysModule {}
