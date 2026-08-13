@@ -132,17 +132,21 @@ describe('ConversationsService', () => {
         {
           provide: SupportTicketsService,
           useValue: {
-            createReport: jest.fn().mockResolvedValue({ id: 'report-1' }),
-            createSafetyIssue: jest.fn().mockResolvedValue({ id: 'safety-1' }),
-            ensureTicketForReport: jest.fn().mockResolvedValue({
-              id: 'ticket-1',
-              ticket_number: 'SUP-2026-000001',
-              conversation_id: 'support-conv-1',
+            provisionReportWithTicket: jest.fn().mockResolvedValue({
+              report: { id: 'report-1' },
+              ticket: {
+                id: 'ticket-1',
+                ticket_number: 'SUP-2026-000001',
+                conversation_id: 'support-conv-1',
+              },
             }),
-            ensureTicketForSafetyIssue: jest.fn().mockResolvedValue({
-              id: 'ticket-2',
-              ticket_number: 'SUP-2026-000002',
-              conversation_id: 'support-conv-2',
+            provisionSafetyIssueWithTicket: jest.fn().mockResolvedValue({
+              safety: { id: 'safety-1' },
+              ticket: {
+                id: 'ticket-2',
+                ticket_number: 'SUP-2026-000002',
+                conversation_id: 'support-conv-2',
+              },
             }),
           },
         },

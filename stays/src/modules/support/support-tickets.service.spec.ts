@@ -5,6 +5,10 @@ import { validate } from 'class-validator';
 import { SupportTicketsService } from './support-tickets.service';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
 import { StaysSupportTicket } from './entities/stays-support-ticket.entity';
+import { StaysConversationReport } from './entities/stays-conversation-report.entity';
+import { StaysSafetyIssue } from './entities/stays-safety-issue.entity';
+import { StaysBooking } from '../stays/entities/stays-booking.entity';
+import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { PatchTrustReportDto } from './dto/support-ticket.dto';
 import { CLOSED_SUPPORT_TICKET_MESSAGE } from './support-ticket-state';
 
@@ -113,13 +117,23 @@ describe('SupportTicketsService', () => {
     const staysAudit = { log: jest.fn().mockResolvedValue(undefined) };
 
     const manager = {
-      query: jest
-        .fn()
-        .mockResolvedValueOnce(undefined)
-        .mockResolvedValueOnce([{ counter: '7' }]),
+      query: jest.fn().mockImplementation(async (sql: string) => {
+        if (typeof sql === 'string' && sql.includes('SAVEPOINT')) {
+          return undefined;
+        }
+        if (typeof sql === 'string' && sql.includes('stays_support_ticket_ref_counters')) {
+          if (sql.includes('INSERT')) return undefined;
+          return [{ counter: '7' }];
+        }
+        return undefined;
+      }),
       getRepository: jest.fn((entity: unknown) => {
         if (entity === StaysConversation) return convRepo;
         if (entity === StaysSupportTicket) return ticketRepo;
+        if (entity === StaysConversationReport) return reportRepo;
+        if (entity === StaysSafetyIssue) return safetyRepo;
+        if (entity === StaysBooking) return bookingRepo;
+        if (entity === StaysListing) return listingRepo;
         return ticketRepo;
       }),
     };
@@ -634,5 +648,82 @@ describe('SupportTicketsService', () => {
     await expect(
       service.lockTicketForCustomerSend(manager as never, 'conv-1'),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('provisionReportWithTicket uses one TX and rolls back when ticket ensure fails', async () => {
+    const { service, reportRepo, dataSource, timelineSeeder } = buildService();
+    reportRepo.findOne.mockResolvedValue({
+      id: 'report-1',
+      reporter_user_id: 'guest-1',
+    });
+    timelineSeeder.insertMessage.mockRejectedValue(new Error('ticket insert failed'));
+
+    await expect(
+      service.provisionReportWithTicket({
+        conversationId: 'booking-conv',
+        reporterUserId: 'guest-1',
+        reason: 'spam',
+        sourceConversation: {
+          id: 'booking-conv',
+          guest_user_id: 'guest-1',
+          host_user_id: 'host-1',
+          booking_id: null,
+          listing_id: null,
+        } as never,
+      }),
+    ).rejects.toThrow('ticket insert failed');
+
+    expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+    expect(reportRepo.save).toHaveBeenCalled();
+    // Nested independent TX must not start — insert runs on the shared manager.
+    expect(dataSource.transaction.mock.calls.length).toBe(1);
+  });
+
+  it('reuses ticket on unique conflict via savepoint without poisoning outer TX', async () => {
+    const { service, ticketRepo, reportRepo, manager, dataSource } = buildService();
+    const raceTicket = {
+      id: 'ticket-race',
+      ticket_number: 'SUP-2026-000009',
+      conversation_id: 'conv-9',
+      status: 'OPEN',
+      category: 'OTHER',
+      subject: 'spam',
+      party: 'GUEST',
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      report_id: 'report-1',
+      requester_user_id: 'guest-1',
+    };
+    reportRepo.findOne.mockResolvedValue({
+      id: 'report-1',
+      reporter_user_id: 'guest-1',
+    });
+    ticketRepo.findOne
+      .mockResolvedValueOnce(null) // ensure existing
+      .mockResolvedValueOnce(null) // createTicket existing by reportId
+      .mockResolvedValueOnce(raceTicket) // reuse after 23505
+      .mockResolvedValueOnce(raceTicket); // ensure load by id
+    ticketRepo.save.mockRejectedValueOnce(uniqueViolation());
+
+    const result = await service.provisionReportWithTicket({
+      conversationId: 'booking-conv',
+      reporterUserId: 'guest-1',
+      reason: 'spam',
+      sourceConversation: {
+        id: 'booking-conv',
+        guest_user_id: 'guest-1',
+        host_user_id: 'host-1',
+        booking_id: null,
+        listing_id: null,
+      } as never,
+    });
+
+    expect(result.ticket?.id).toBe('ticket-race');
+    expect(manager.query).toHaveBeenCalledWith(
+      expect.stringMatching(/^SAVEPOINT /),
+    );
+    expect(manager.query).toHaveBeenCalledWith(
+      expect.stringMatching(/^ROLLBACK TO SAVEPOINT /),
+    );
+    expect(dataSource.transaction).toHaveBeenCalledTimes(1);
   });
 });

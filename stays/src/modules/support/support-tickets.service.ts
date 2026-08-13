@@ -90,16 +90,22 @@ export class SupportTicketsService {
     private readonly staysAudit: StaysAuditService,
   ) {}
 
-  async createReport(input: {
-    conversationId: string;
-    reporterUserId: string;
-    reason?: string;
-    attachmentIds?: string[];
-    bookingId?: string | null;
-    listingId?: string | null;
-    reportedUserId?: string | null;
-  }): Promise<StaysConversationReport> {
-    const row = this.reportRepo.create({
+  async createReport(
+    input: {
+      conversationId: string;
+      reporterUserId: string;
+      reason?: string;
+      attachmentIds?: string[];
+      bookingId?: string | null;
+      listingId?: string | null;
+      reportedUserId?: string | null;
+    },
+    manager?: EntityManager,
+  ): Promise<StaysConversationReport> {
+    const repo = manager
+      ? manager.getRepository(StaysConversationReport)
+      : this.reportRepo;
+    const row = repo.create({
       conversation_id: input.conversationId,
       reporter_user_id: input.reporterUserId,
       reason: input.reason?.trim() || null,
@@ -109,20 +115,26 @@ export class SupportTicketsService {
       listing_id: input.listingId ?? null,
       reported_user_id: input.reportedUserId ?? null,
     });
-    return this.reportRepo.save(row);
+    return repo.save(row);
   }
 
-  async createSafetyIssue(input: {
-    conversationId: string;
-    reporterUserId: string;
-    category: string;
-    details?: string;
-    attachmentIds?: string[];
-    bookingId?: string | null;
-    listingId?: string | null;
-    reportedUserId?: string | null;
-  }): Promise<StaysSafetyIssue> {
-    const row = this.safetyRepo.create({
+  async createSafetyIssue(
+    input: {
+      conversationId: string;
+      reporterUserId: string;
+      category: string;
+      details?: string;
+      attachmentIds?: string[];
+      bookingId?: string | null;
+      listingId?: string | null;
+      reportedUserId?: string | null;
+    },
+    manager?: EntityManager,
+  ): Promise<StaysSafetyIssue> {
+    const repo = manager
+      ? manager.getRepository(StaysSafetyIssue)
+      : this.safetyRepo;
+    const row = repo.create({
       conversation_id: input.conversationId,
       reporter_user_id: input.reporterUserId,
       category: input.category,
@@ -133,18 +145,118 @@ export class SupportTicketsService {
       listing_id: input.listingId ?? null,
       reported_user_id: input.reportedUserId ?? null,
     });
-    return this.safetyRepo.save(row);
+    return repo.save(row);
+  }
+
+  /**
+   * Atomically create a conversation report + Support ticket + SUPPORT thread.
+   * Failure rolls back all newly created rows (no orphan canonical report).
+   */
+  async provisionReportWithTicket(input: {
+    conversationId: string;
+    reporterUserId: string;
+    reason?: string;
+    attachmentIds?: string[];
+    bookingId?: string | null;
+    listingId?: string | null;
+    reportedUserId?: string | null;
+    sourceConversation: StaysConversation;
+  }): Promise<{
+    report: StaysConversationReport;
+    ticket: StaysSupportTicket | null;
+  }> {
+    const result = await this.dataSource.transaction(async (manager) => {
+      const report = await this.createReport(
+        {
+          conversationId: input.conversationId,
+          reporterUserId: input.reporterUserId,
+          reason: input.reason,
+          attachmentIds: input.attachmentIds,
+          bookingId: input.bookingId,
+          listingId: input.listingId,
+          reportedUserId: input.reportedUserId,
+        },
+        manager,
+      );
+      const ticket = await this.ensureTicketForReport({
+        report,
+        sourceConversation: input.sourceConversation,
+        manager,
+      });
+      return { report, ticket };
+    });
+    if (result.ticket) {
+      this.realtime.publish(input.reporterUserId, {
+        conversationId: result.ticket.conversation_id,
+        reason: 'MESSAGE_CREATED',
+      });
+    }
+    return result;
+  }
+
+  /**
+   * Atomically create a safety issue + Support ticket + SUPPORT thread.
+   * Failure rolls back all newly created rows (no orphan canonical safety row).
+   */
+  async provisionSafetyIssueWithTicket(input: {
+    conversationId: string;
+    reporterUserId: string;
+    category: string;
+    details?: string;
+    attachmentIds?: string[];
+    bookingId?: string | null;
+    listingId?: string | null;
+    reportedUserId?: string | null;
+    sourceConversation: StaysConversation;
+  }): Promise<{
+    safety: StaysSafetyIssue;
+    ticket: StaysSupportTicket | null;
+  }> {
+    const result = await this.dataSource.transaction(async (manager) => {
+      const safety = await this.createSafetyIssue(
+        {
+          conversationId: input.conversationId,
+          reporterUserId: input.reporterUserId,
+          category: input.category,
+          details: input.details,
+          attachmentIds: input.attachmentIds,
+          bookingId: input.bookingId,
+          listingId: input.listingId,
+          reportedUserId: input.reportedUserId,
+        },
+        manager,
+      );
+      const ticket = await this.ensureTicketForSafetyIssue({
+        safety,
+        sourceConversation: input.sourceConversation,
+        manager,
+      });
+      return { safety, ticket };
+    });
+    if (result.ticket) {
+      this.realtime.publish(input.reporterUserId, {
+        conversationId: result.ticket.conversation_id,
+        reason: 'MESSAGE_CREATED',
+      });
+    }
+    return result;
   }
 
   /**
    * Opens an ops Support Ticket for a conversation report so it appears in
    * the admin Support queue without requiring a separate Contact Support step.
+   * When `manager` is provided, participates in the caller's transaction
+   * (no nested independent TX).
    */
   async ensureTicketForReport(input: {
     report: StaysConversationReport;
     sourceConversation: StaysConversation;
+    manager?: EntityManager;
   }): Promise<StaysSupportTicket | null> {
-    const existing = await this.ticketRepo.findOne({
+    const ticketRepo = input.manager
+      ? input.manager.getRepository(StaysSupportTicket)
+      : this.ticketRepo;
+    const existing = await ticketRepo.findOne({
       where: { report_id: input.report.id },
     });
     if (existing) return existing;
@@ -172,12 +284,12 @@ export class SupportTicketsService {
             ? { listingId: input.sourceConversation.listing_id }
             : {}),
         },
-        { party },
+        { party, manager: input.manager },
       );
-      return this.ticketRepo.findOne({ where: { id: created.id } });
+      return ticketRepo.findOne({ where: { id: created.id } });
     } catch (err) {
       if (isUniqueViolation(err)) {
-        return this.ticketRepo.findOne({
+        return ticketRepo.findOne({
           where: { report_id: input.report.id },
         });
       }
@@ -187,12 +299,17 @@ export class SupportTicketsService {
 
   /**
    * Opens an ops Support Ticket for a safety issue so agents can action it.
+   * When `manager` is provided, participates in the caller's transaction.
    */
   async ensureTicketForSafetyIssue(input: {
     safety: StaysSafetyIssue;
     sourceConversation: StaysConversation;
+    manager?: EntityManager;
   }): Promise<StaysSupportTicket | null> {
-    const existing = await this.ticketRepo.findOne({
+    const ticketRepo = input.manager
+      ? input.manager.getRepository(StaysSupportTicket)
+      : this.ticketRepo;
+    const existing = await ticketRepo.findOne({
       where: { safety_issue_id: input.safety.id },
     });
     if (existing) return existing;
@@ -222,15 +339,35 @@ export class SupportTicketsService {
             ? { listingId: input.sourceConversation.listing_id }
             : {}),
         },
-        { party, priority: 'HIGH' },
+        { party, priority: 'HIGH', manager: input.manager },
       );
-      return this.ticketRepo.findOne({ where: { id: created.id } });
+      return ticketRepo.findOne({ where: { id: created.id } });
     } catch (err) {
       if (isUniqueViolation(err)) {
-        return this.ticketRepo.findOne({
+        return ticketRepo.findOne({
           where: { safety_issue_id: input.safety.id },
         });
       }
+      throw err;
+    }
+  }
+
+  /**
+   * Unique violations abort the PostgreSQL transaction. Isolate ticket inserts
+   * in a savepoint so callers can safely reuse an existing row on 23505.
+   */
+  private async withUniqueConflictSavepoint<T>(
+    manager: EntityManager,
+    work: () => Promise<T>,
+  ): Promise<T> {
+    const sp = `sp_support_ticket_${Date.now().toString(36)}`;
+    await manager.query(`SAVEPOINT ${sp}`);
+    try {
+      const result = await work();
+      await manager.query(`RELEASE SAVEPOINT ${sp}`);
+      return result;
+    } catch (err) {
+      await manager.query(`ROLLBACK TO SAVEPOINT ${sp}`);
       throw err;
     }
   }
@@ -250,10 +387,16 @@ export class SupportTicketsService {
       party?: SupportTicketParty;
       customerName?: string | null;
       priority?: SupportTicketPriority;
+      /** When set, join this TX (no nested dataSource.transaction / no SSE). */
+      manager?: EntityManager;
     } = {},
   ) {
+    const ticketRepo = options.manager
+      ? options.manager.getRepository(StaysSupportTicket)
+      : this.ticketRepo;
+
     if (dto.reportId) {
-      const existing = await this.ticketRepo.findOne({
+      const existing = await ticketRepo.findOne({
         where: { report_id: dto.reportId, requester_user_id: userId },
       });
       if (existing) {
@@ -270,7 +413,7 @@ export class SupportTicketsService {
       }
     }
     if (dto.safetyIssueId) {
-      const existing = await this.ticketRepo.findOne({
+      const existing = await ticketRepo.findOne({
         where: {
           safety_issue_id: dto.safetyIssueId,
           requester_user_id: userId,
@@ -291,14 +434,17 @@ export class SupportTicketsService {
     }
 
     const party = options.party ?? (await this.resolveParty(userId));
-    const links = await this.resolveOwnedLinks(userId, party, dto);
+    const links = await this.resolveOwnedLinks(
+      userId,
+      party,
+      dto,
+      options.manager,
+    );
     const identity = await this.identityUsers.getProfileSummary(userId);
     const customerName = options.customerName?.trim() || identity?.fullName || null;
     const requesterEmail = identity?.email || null;
 
-    let created: StaysSupportTicket;
-    try {
-      created = await this.dataSource.transaction(async (manager) => {
+    const insertTicket = async (manager: EntityManager) => {
       const ticketNumber = await this.allocateTicketNumber(manager);
       const subject = dto.subject.trim();
       const conversation = await this.createSupportConversation(
@@ -352,56 +498,9 @@ export class SupportTicketsService {
       });
 
       return savedTicket;
-    });
-    } catch (err) {
-      if (isUniqueViolation(err)) {
-        if (dto.reportId) {
-          const existing = await this.ticketRepo.findOne({
-            where: { report_id: dto.reportId, requester_user_id: userId },
-          });
-          if (existing) {
-            return {
-              id: existing.id,
-              ticket_number: existing.ticket_number,
-              conversation_id: existing.conversation_id,
-              status: existing.status,
-              category: existing.category,
-              subject: existing.subject,
-              party: existing.party,
-              created_at: existing.created_at.toISOString(),
-            };
-          }
-        }
-        if (dto.safetyIssueId) {
-          const existing = await this.ticketRepo.findOne({
-            where: {
-              safety_issue_id: dto.safetyIssueId,
-              requester_user_id: userId,
-            },
-          });
-          if (existing) {
-            return {
-              id: existing.id,
-              ticket_number: existing.ticket_number,
-              conversation_id: existing.conversation_id,
-              status: existing.status,
-              category: existing.category,
-              subject: existing.subject,
-              party: existing.party,
-              created_at: existing.created_at.toISOString(),
-            };
-          }
-        }
-      }
-      throw err;
-    }
+    };
 
-    this.realtime.publish(userId, {
-      conversationId: created.conversation_id,
-      reason: 'MESSAGE_CREATED',
-    });
-
-    return {
+    const toCreatedDto = (created: StaysSupportTicket) => ({
       id: created.id,
       ticket_number: created.ticket_number,
       conversation_id: created.conversation_id,
@@ -410,7 +509,60 @@ export class SupportTicketsService {
       subject: created.subject,
       party: created.party,
       created_at: created.created_at.toISOString(),
+    });
+
+    const reuseAfterUnique = async (manager?: EntityManager) => {
+      const repo = manager
+        ? manager.getRepository(StaysSupportTicket)
+        : this.ticketRepo;
+      if (dto.reportId) {
+        const existing = await repo.findOne({
+          where: { report_id: dto.reportId, requester_user_id: userId },
+        });
+        if (existing) return toCreatedDto(existing);
+      }
+      if (dto.safetyIssueId) {
+        const existing = await repo.findOne({
+          where: {
+            safety_issue_id: dto.safetyIssueId,
+            requester_user_id: userId,
+          },
+        });
+        if (existing) return toCreatedDto(existing);
+      }
+      return null;
     };
+
+    let created: StaysSupportTicket;
+    try {
+      if (options.manager) {
+        // Nested in an outer TX: isolate 23505 with a savepoint so the outer
+        // transaction stays usable for conflict reuse.
+        created = await this.withUniqueConflictSavepoint(
+          options.manager,
+          () => insertTicket(options.manager!),
+        );
+      } else {
+        created = await this.dataSource.transaction((manager) =>
+          insertTicket(manager),
+        );
+      }
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        const reused = await reuseAfterUnique(options.manager);
+        if (reused) return reused;
+      }
+      throw err;
+    }
+
+    if (!options.manager) {
+      this.realtime.publish(userId, {
+        conversationId: created.conversation_id,
+        reason: 'MESSAGE_CREATED',
+      });
+    }
+
+    return toCreatedDto(created);
   }
 
   async listForUser(userId: string, limit = 50) {
@@ -1118,17 +1270,31 @@ export class SupportTicketsService {
     userId: string,
     party: SupportTicketParty,
     dto: CreateSupportTicketDto,
+    manager?: EntityManager,
   ): Promise<{
     bookingId: string | null;
     listingId: string | null;
     reportId: string | null;
     safetyIssueId: string | null;
   }> {
+    const bookingRepo = manager
+      ? manager.getRepository(StaysBooking)
+      : this.bookingRepo;
+    const listingRepo = manager
+      ? manager.getRepository(StaysListing)
+      : this.listingRepo;
+    const reportRepo = manager
+      ? manager.getRepository(StaysConversationReport)
+      : this.reportRepo;
+    const safetyRepo = manager
+      ? manager.getRepository(StaysSafetyIssue)
+      : this.safetyRepo;
+
     let bookingId: string | null = null;
     let listingId: string | null = null;
 
     if (dto.bookingId) {
-      const booking = await this.bookingRepo.findOne({
+      const booking = await bookingRepo.findOne({
         where: { id: dto.bookingId },
         relations: ['listing'],
       });
@@ -1143,7 +1309,7 @@ export class SupportTicketsService {
     }
 
     if (dto.listingId) {
-      const listing = await this.listingRepo.findOne({ where: { id: dto.listingId } });
+      const listing = await listingRepo.findOne({ where: { id: dto.listingId } });
       if (!listing) throw new NotFoundException('Ticket not found');
       if (party === 'HOST' && listing.host_user_id !== userId) {
         throw new NotFoundException('Ticket not found');
@@ -1159,7 +1325,7 @@ export class SupportTicketsService {
 
     let reportId: string | null = null;
     if (dto.reportId) {
-      const report = await this.reportRepo.findOne({ where: { id: dto.reportId } });
+      const report = await reportRepo.findOne({ where: { id: dto.reportId } });
       if (!report || report.reporter_user_id !== userId) {
         throw new NotFoundException('Ticket not found');
       }
@@ -1168,7 +1334,7 @@ export class SupportTicketsService {
 
     let safetyIssueId: string | null = null;
     if (dto.safetyIssueId) {
-      const safety = await this.safetyRepo.findOne({ where: { id: dto.safetyIssueId } });
+      const safety = await safetyRepo.findOne({ where: { id: dto.safetyIssueId } });
       if (!safety || safety.reporter_user_id !== userId) {
         throw new NotFoundException('Ticket not found');
       }

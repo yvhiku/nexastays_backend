@@ -301,7 +301,7 @@ export class ConversationsService {
     if (conv.type === 'SUPPORT') {
       throw new NotFoundException('Conversation not found');
     }
-    const report = await this.supportTickets.createReport({
+    const { report, ticket } = await this.supportTickets.provisionReportWithTicket({
       conversationId: conv.id,
       reporterUserId: userId,
       reason,
@@ -314,9 +314,6 @@ export class ConversationsService {
           : conv.host_user_id === userId
             ? conv.guest_user_id
             : null,
-    });
-    const ticket = await this.supportTickets.ensureTicketForReport({
-      report,
       sourceConversation: conv,
     });
     await this.audit.log('conversation_reported', conv.id, userId, {
@@ -366,25 +363,23 @@ export class ConversationsService {
       throw new NotFoundException('Conversation not found');
     }
     const attachmentIds = payload.attachmentIds ?? [];
-    const safety = await this.supportTickets.createSafetyIssue({
-      conversationId: conv.id,
-      reporterUserId: userId,
-      category: payload.category,
-      details: payload.details,
-      attachmentIds,
-      bookingId: conv.booking_id,
-      listingId: conv.listing_id,
-      reportedUserId:
-        conv.guest_user_id === userId
-          ? conv.host_user_id
-          : conv.host_user_id === userId
-            ? conv.guest_user_id
-            : null,
-    });
-    const ticket = await this.supportTickets.ensureTicketForSafetyIssue({
-      safety,
-      sourceConversation: conv,
-    });
+    const { safety, ticket } =
+      await this.supportTickets.provisionSafetyIssueWithTicket({
+        conversationId: conv.id,
+        reporterUserId: userId,
+        category: payload.category,
+        details: payload.details,
+        attachmentIds,
+        bookingId: conv.booking_id,
+        listingId: conv.listing_id,
+        reportedUserId:
+          conv.guest_user_id === userId
+            ? conv.host_user_id
+            : conv.host_user_id === userId
+              ? conv.guest_user_id
+              : null,
+        sourceConversation: conv,
+      });
     await this.audit.log('safety_issue', conv.id, userId, {
       category: payload.category,
       details: payload.details?.trim() || undefined,
