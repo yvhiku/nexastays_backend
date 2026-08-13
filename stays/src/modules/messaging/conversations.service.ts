@@ -295,6 +295,10 @@ export class ConversationsService {
       reason,
       attachmentIds,
     });
+    await this.supportTickets.ensureTicketForReport({
+      report,
+      sourceConversation: conv,
+    });
     await this.audit.log('conversation_reported', conv.id, userId, {
       reason: reason ?? '',
       reportId: report.id,
@@ -334,6 +338,10 @@ export class ConversationsService {
       category: payload.category,
       details: payload.details,
       attachmentIds,
+    });
+    await this.supportTickets.ensureTicketForSafetyIssue({
+      safety,
+      sourceConversation: conv,
     });
     await this.audit.log('safety_issue', conv.id, userId, {
       category: payload.category,

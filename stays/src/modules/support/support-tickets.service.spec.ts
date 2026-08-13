@@ -167,6 +167,60 @@ describe('SupportTicketsService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('ensureTicketForReport is idempotent when ticket already exists', async () => {
+    const { service, ticketRepo } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-existing',
+      report_id: 'report-1',
+    });
+
+    const result = await service.ensureTicketForReport({
+      report: {
+        id: 'report-1',
+        reporter_user_id: 'guest-1',
+        reason: 'spam',
+      } as never,
+      sourceConversation: {
+        id: 'booking-conv',
+        guest_user_id: 'guest-1',
+        host_user_id: 'host-1',
+        booking_id: 'booking-1',
+        listing_id: 'listing-1',
+      } as never,
+    });
+
+    expect(result?.id).toBe('ticket-existing');
+    expect(ticketRepo.findOne).toHaveBeenCalledWith({
+      where: { report_id: 'report-1' },
+    });
+  });
+
+  it('createTicketForUser reuses ticket for same reportId', async () => {
+    const { service, ticketRepo, timelineSeeder } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      ticket_number: 'SUP-2026-000001',
+      conversation_id: 'conv-1',
+      status: 'OPEN',
+      category: 'OTHER',
+      subject: 'spam',
+      party: 'GUEST',
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      report_id: 'report-1',
+      requester_user_id: 'guest-1',
+    });
+
+    const result = await service.createTicketForUser('guest-1', {
+      category: 'OTHER',
+      subject: 'spam',
+      message: 'spam',
+      reportId: 'report-1',
+    });
+
+    expect(result.id).toBe('ticket-1');
+    expect(timelineSeeder.insertMessage).not.toHaveBeenCalled();
+  });
+
   it('maps admin messages as SUPPORT_AGENT', async () => {
     const { service, ticketRepo, convRepo, timelineSeeder, realtime, dataSource } =
       buildService();

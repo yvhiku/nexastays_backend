@@ -82,11 +82,145 @@ export class SupportTicketsService {
     return this.safetyRepo.save(row);
   }
 
+  /**
+   * Opens an ops Support Ticket for a conversation report so it appears in
+   * the admin Support queue without requiring a separate Contact Support step.
+   */
+  async ensureTicketForReport(input: {
+    report: StaysConversationReport;
+    sourceConversation: StaysConversation;
+  }): Promise<StaysSupportTicket | null> {
+    const existing = await this.ticketRepo.findOne({
+      where: { report_id: input.report.id },
+    });
+    if (existing) return existing;
+
+    const party = this.partyFromConversation(
+      input.sourceConversation,
+      input.report.reporter_user_id,
+    );
+    const reason =
+      input.report.reason?.trim() || 'Conversation reported by customer';
+    const subject = reason.slice(0, 120) || 'Conversation report';
+
+    return this.createTicketForUser(
+      input.report.reporter_user_id,
+      {
+        category: 'OTHER',
+        subject,
+        message: reason,
+        reportId: input.report.id,
+        ...(input.sourceConversation.booking_id
+          ? { bookingId: input.sourceConversation.booking_id }
+          : {}),
+        ...(input.sourceConversation.listing_id
+          ? { listingId: input.sourceConversation.listing_id }
+          : {}),
+      },
+      { party },
+    ).then(async (created) => {
+      const ticket = await this.ticketRepo.findOne({ where: { id: created.id } });
+      return ticket;
+    });
+  }
+
+  /**
+   * Opens an ops Support Ticket for a safety issue so agents can action it.
+   */
+  async ensureTicketForSafetyIssue(input: {
+    safety: StaysSafetyIssue;
+    sourceConversation: StaysConversation;
+  }): Promise<StaysSupportTicket | null> {
+    const existing = await this.ticketRepo.findOne({
+      where: { safety_issue_id: input.safety.id },
+    });
+    if (existing) return existing;
+
+    const party = this.partyFromConversation(
+      input.sourceConversation,
+      input.safety.reporter_user_id,
+    );
+    const details = input.safety.details?.trim();
+    const message = details
+      ? `[${input.safety.category}] ${details}`
+      : `[${input.safety.category}] Safety issue reported`;
+    const subject = message.slice(0, 120);
+
+    return this.createTicketForUser(
+      input.safety.reporter_user_id,
+      {
+        category: 'FRAUD',
+        subject,
+        message,
+        safetyIssueId: input.safety.id,
+        ...(input.sourceConversation.booking_id
+          ? { bookingId: input.sourceConversation.booking_id }
+          : {}),
+        ...(input.sourceConversation.listing_id
+          ? { listingId: input.sourceConversation.listing_id }
+          : {}),
+      },
+      { party, priority: 'HIGH' },
+    ).then(async (created) => {
+      return this.ticketRepo.findOne({ where: { id: created.id } });
+    });
+  }
+
+  private partyFromConversation(
+    conversation: StaysConversation,
+    reporterUserId: string,
+  ): SupportTicketParty {
+    if (conversation.host_user_id === reporterUserId) return 'HOST';
+    return 'GUEST';
+  }
+
   async createTicketForUser(
     userId: string,
     dto: CreateSupportTicketDto,
-    options: { party?: SupportTicketParty; customerName?: string | null } = {},
+    options: {
+      party?: SupportTicketParty;
+      customerName?: string | null;
+      priority?: SupportTicketPriority;
+    } = {},
   ) {
+    if (dto.reportId) {
+      const existing = await this.ticketRepo.findOne({
+        where: { report_id: dto.reportId, requester_user_id: userId },
+      });
+      if (existing) {
+        return {
+          id: existing.id,
+          ticket_number: existing.ticket_number,
+          conversation_id: existing.conversation_id,
+          status: existing.status,
+          category: existing.category,
+          subject: existing.subject,
+          party: existing.party,
+          created_at: existing.created_at.toISOString(),
+        };
+      }
+    }
+    if (dto.safetyIssueId) {
+      const existing = await this.ticketRepo.findOne({
+        where: {
+          safety_issue_id: dto.safetyIssueId,
+          requester_user_id: userId,
+        },
+      });
+      if (existing) {
+        return {
+          id: existing.id,
+          ticket_number: existing.ticket_number,
+          conversation_id: existing.conversation_id,
+          status: existing.status,
+          category: existing.category,
+          subject: existing.subject,
+          party: existing.party,
+          created_at: existing.created_at.toISOString(),
+        };
+      }
+    }
+
     const party = options.party ?? (await this.resolveParty(userId));
     const links = await this.resolveOwnedLinks(userId, party, dto);
 
@@ -107,7 +241,7 @@ export class SupportTicketsService {
         category: dto.category as SupportTicketCategory,
         subject: dto.subject.trim(),
         status: 'OPEN',
-        priority: 'NORMAL',
+        priority: options.priority ?? 'NORMAL',
         assigned_admin_id: null,
         conversation_id: conversation.id,
         booking_id: links.bookingId,
