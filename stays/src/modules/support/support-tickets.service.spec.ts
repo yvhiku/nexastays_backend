@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -6,6 +6,7 @@ import { SupportTicketsService } from './support-tickets.service';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
 import { StaysSupportTicket } from './entities/stays-support-ticket.entity';
 import { PatchTrustReportDto } from './dto/support-ticket.dto';
+import { CLOSED_SUPPORT_TICKET_MESSAGE } from './support-ticket-state';
 
 describe('SupportTicketsService', () => {
   function uniqueViolation() {
@@ -481,24 +482,41 @@ describe('SupportTicketsService', () => {
   it('maps admin messages as SUPPORT_AGENT', async () => {
     const { service, ticketRepo, convRepo, timelineSeeder, realtime, dataSource } =
       buildService();
-    ticketRepo.findOne.mockResolvedValue({
+    const lockedTicket = {
       id: 'ticket-1',
       conversation_id: 'conv-1',
       requester_user_id: 'guest-1',
       party: 'GUEST',
       status: 'OPEN',
       assigned_admin_id: null,
-    });
-    convRepo.findOne.mockResolvedValue({
-      id: 'conv-1',
-      unread_guest: 0,
-      unread_host: 0,
-      type: 'SUPPORT',
-    });
-
+    };
+    const ticketQb = {
+      setLock: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(lockedTicket),
+    };
     dataSource.transaction = jest.fn(async (fn: (m: unknown) => unknown) =>
       fn({
-        getRepository: jest.fn(() => ({ update: jest.fn() })),
+        getRepository: jest.fn((entity: unknown) => {
+          if (entity === StaysSupportTicket) {
+            return {
+              createQueryBuilder: jest.fn(() => ticketQb),
+              update: jest.fn(),
+            };
+          }
+          if (entity === StaysConversation) {
+            return {
+              findOne: jest.fn().mockResolvedValue({
+                id: 'conv-1',
+                unread_guest: 0,
+                unread_host: 0,
+                type: 'SUPPORT',
+              }),
+              update: jest.fn(),
+            };
+          }
+          return { update: jest.fn() };
+        }),
       }),
     );
 
@@ -513,5 +531,108 @@ describe('SupportTicketsService', () => {
       'guest-1',
       expect.objectContaining({ reason: 'MESSAGE_CREATED' }),
     );
+    expect(ticketRepo.findOne).not.toHaveBeenCalled();
+    expect(convRepo.findOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects CLOSED admin send with 409 and does not insert a message', async () => {
+    const { service, timelineSeeder, dataSource } = buildService();
+    const ticketQb = {
+      setLock: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue({
+        id: 'ticket-1',
+        status: 'CLOSED',
+        conversation_id: 'conv-1',
+      }),
+    };
+    dataSource.transaction = jest.fn(async (fn: (m: unknown) => unknown) =>
+      fn({
+        getRepository: jest.fn(() => ({
+          createQueryBuilder: jest.fn(() => ticketQb),
+        })),
+      }),
+    );
+
+    await expect(
+      service.sendAdminMessage('ticket-1', 'admin-1', 'Too late'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.sendAdminMessage('ticket-1', 'admin-1', 'Too late'),
+    ).rejects.toThrow(CLOSED_SUPPORT_TICKET_MESSAGE);
+    expect(timelineSeeder.insertMessage).not.toHaveBeenCalled();
+  });
+
+  it('applies customer message effects: RESOLVED reopens and clears resolved_at', async () => {
+    const { service } = buildService();
+    const update = jest.fn();
+    const manager = {
+      getRepository: jest.fn(() => ({ update })),
+    };
+    await service.applyCustomerSupportMessageEffects(
+      manager as never,
+      {
+        id: 'ticket-1',
+        status: 'RESOLVED',
+        party: 'GUEST',
+        resolved_at: new Date('2026-01-01T00:00:00.000Z'),
+      } as never,
+      'Follow up',
+    );
+    expect(update).toHaveBeenCalledWith(
+      'ticket-1',
+      expect.objectContaining({
+        status: 'OPEN',
+        unread_for_support: true,
+        resolved_at: null,
+        last_message_preview: 'Follow up',
+      }),
+    );
+  });
+
+  it('preserves WAITING_FOR_HOST for GUEST party and does not clear resolved_at', async () => {
+    const { service } = buildService();
+    const update = jest.fn();
+    const manager = {
+      getRepository: jest.fn(() => ({ update })),
+    };
+    await service.applyCustomerSupportMessageEffects(
+      manager as never,
+      {
+        id: 'ticket-1',
+        status: 'WAITING_FOR_HOST',
+        party: 'GUEST',
+        resolved_at: new Date('2026-01-01T00:00:00.000Z'),
+      } as never,
+      'Ping',
+    );
+    expect(update).toHaveBeenCalledWith(
+      'ticket-1',
+      expect.objectContaining({
+        status: 'WAITING_FOR_HOST',
+        unread_for_support: true,
+      }),
+    );
+    expect(update.mock.calls[0][1].resolved_at).toBeUndefined();
+  });
+
+  it('rejects CLOSED customer lock with 409', async () => {
+    const { service } = buildService();
+    const ticketQb = {
+      setLock: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue({
+        id: 'ticket-1',
+        status: 'CLOSED',
+      }),
+    };
+    const manager = {
+      getRepository: jest.fn(() => ({
+        createQueryBuilder: jest.fn(() => ticketQb),
+      })),
+    };
+    await expect(
+      service.lockTicketForCustomerSend(manager as never, 'conv-1'),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { MessagesService } from './messages.service';
 import { StaysConversation } from './entities/stays-conversation.entity';
@@ -25,7 +26,10 @@ describe('MessagesService', () => {
   let outbox: { enqueue: jest.Mock };
   let timelineSeeder: { insertMessage: jest.Mock };
   let realtime: { stream: jest.Mock; publish: jest.Mock };
-  let supportTickets: { markUnreadForSupportFromCustomerMessage: jest.Mock };
+  let supportTickets: {
+    lockTicketForCustomerSend: jest.Mock;
+    applyCustomerSupportMessageEffects: jest.Mock;
+  };
   let transactionManager: {
     getRepository: jest.Mock;
   };
@@ -134,7 +138,12 @@ describe('MessagesService', () => {
       publish: jest.fn(),
     };
     supportTickets = {
-      markUnreadForSupportFromCustomerMessage: jest.fn(),
+      lockTicketForCustomerSend: jest.fn().mockResolvedValue({
+        id: 'ticket-1',
+        status: 'OPEN',
+        party: 'GUEST',
+      }),
+      applyCustomerSupportMessageEffects: jest.fn(),
     };
 
     transactionManager = {
@@ -233,17 +242,38 @@ describe('MessagesService', () => {
     });
   });
 
-  it('marks unread_for_support when the customer sends on a SUPPORT thread', async () => {
+  it('locks ticket then applies customer support effects inside the send TX', async () => {
     convRepo.findOne.mockResolvedValue({
       ...conversation,
       type: 'SUPPORT',
       host_user_id: null,
     });
     await service.sendText(convId, guestId, 'Need help', 'client-2');
-    expect(supportTickets.markUnreadForSupportFromCustomerMessage).toHaveBeenCalledWith(
+    expect(supportTickets.lockTicketForCustomerSend).toHaveBeenCalledWith(
+      transactionManager,
       convId,
+    );
+    expect(supportTickets.applyCustomerSupportMessageEffects).toHaveBeenCalledWith(
+      transactionManager,
+      expect.objectContaining({ id: 'ticket-1' }),
       'Need help',
     );
+    expect(timelineSeeder.insertMessage).toHaveBeenCalled();
+  });
+
+  it('rejects CLOSED support send before inserting a message', async () => {
+    convRepo.findOne.mockResolvedValue({
+      ...conversation,
+      type: 'SUPPORT',
+      host_user_id: null,
+    });
+    supportTickets.lockTicketForCustomerSend.mockRejectedValue(
+      new ConflictException('This support ticket is closed.'),
+    );
+    await expect(
+      service.sendText(convId, guestId, 'Too late', 'client-3'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(timelineSeeder.insertMessage).not.toHaveBeenCalled();
   });
 
   it('bumps conversation_version on markRead', async () => {

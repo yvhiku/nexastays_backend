@@ -173,6 +173,12 @@ export class MessagesService {
     await this.rateLimit.assertCanSend(userId, conv.id, trimmed);
 
     const saved = await this.dataSource.transaction(async (manager) => {
+      const supportTicket = await this.prepareCustomerSupportSend(
+        manager,
+        conv,
+        userId,
+      );
+
       const senderDisplayName = await this.resolveSenderDisplayName(conv, userId);
       const message = await this.timelineSeeder.insertMessage(manager, conv, {
         type: 'TEXT',
@@ -184,11 +190,17 @@ export class MessagesService {
       });
 
       await this.enqueueDeliveryEvents(manager, conv, message, userId, trimmed);
+      if (supportTicket) {
+        await this.supportTickets.applyCustomerSupportMessageEffects(
+          manager,
+          supportTicket,
+          trimmed,
+        );
+      }
       return message;
     });
 
     this.publishMessageCreated(conv, userId, saved.id);
-    await this.markSupportUnreadIfNeeded(conv, userId, trimmed);
 
     return this.toDto(saved, userId, []);
   }
@@ -226,6 +238,12 @@ export class MessagesService {
     await this.rateLimit.assertCanSend(userId, conv.id, preview);
 
     const saved = await this.dataSource.transaction(async (manager) => {
+      const supportTicket = await this.prepareCustomerSupportSend(
+        manager,
+        conv,
+        userId,
+      );
+
       const message = await this.timelineSeeder.insertMessage(manager, conv, {
         type,
         body: caption?.trim() ?? null,
@@ -244,11 +262,17 @@ export class MessagesService {
 
       await this.attachments.linkToMessage(message.id, attachmentIds, conv.id, manager);
       await this.enqueueDeliveryEvents(manager, conv, message, userId, preview);
+      if (supportTicket) {
+        await this.supportTickets.applyCustomerSupportMessageEffects(
+          manager,
+          supportTicket,
+          preview,
+        );
+      }
       return message;
     });
 
     this.publishMessageCreated(conv, userId, saved.id);
-    await this.markSupportUnreadIfNeeded(conv, userId, preview);
 
     const atts = await this.attachments.loadForMessages([
       { id: saved.id, metadata: saved.metadata ?? {} },
@@ -295,6 +319,12 @@ export class MessagesService {
     await this.rateLimit.assertCanSend(userId, conv.id, preview);
 
     const saved = await this.dataSource.transaction(async (manager) => {
+      const supportTicket = await this.prepareCustomerSupportSend(
+        manager,
+        conv,
+        userId,
+      );
+
       const message = await this.timelineSeeder.insertMessage(manager, conv, {
         type,
         body: caption?.trim() ?? null,
@@ -315,11 +345,17 @@ export class MessagesService {
       await this.attachments.linkToMessage(message.id, attachmentIds, conv.id, manager);
       await this.attachmentSessions.finalizeSession(session.id);
       await this.enqueueDeliveryEvents(manager, conv, message, userId, preview);
+      if (supportTicket) {
+        await this.supportTickets.applyCustomerSupportMessageEffects(
+          manager,
+          supportTicket,
+          preview,
+        );
+      }
       return message;
     });
 
     this.publishMessageCreated(conv, userId, saved.id);
-    await this.markSupportUnreadIfNeeded(conv, userId, preview);
 
     const atts = await this.attachments.loadForMessages([
       { id: saved.id, metadata: saved.metadata ?? {} },
@@ -384,19 +420,19 @@ export class MessagesService {
     return { conversationVersion: nextVersion };
   }
 
-  private async markSupportUnreadIfNeeded(
+  /**
+   * SUPPORT customer sends: lock ticket (FOR UPDATE) and reject CLOSED before insert.
+   */
+  private async prepareCustomerSupportSend(
+    manager: EntityManager,
     conv: StaysConversation,
     senderUserId: string,
-    preview: string,
-  ): Promise<void> {
-    if (conv.type !== 'SUPPORT') return;
+  ) {
+    if (conv.type !== 'SUPPORT') return null;
     const isRequester =
       senderUserId === conv.guest_user_id || senderUserId === conv.host_user_id;
-    if (!isRequester) return;
-    await this.supportTickets.markUnreadForSupportFromCustomerMessage(
-      conv.id,
-      preview,
-    );
+    if (!isRequester) return null;
+    return this.supportTickets.lockTicketForCustomerSend(manager, conv.id);
   }
 
   private publishMessageCreated(

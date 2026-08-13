@@ -2,9 +2,14 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, QueryFailedError, Repository } from 'typeorm';
+import {
+  CLOSED_SUPPORT_TICKET_MESSAGE,
+  nextStatusAfterCustomerMessage,
+} from './support-ticket-state';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
 import { StaysMessage } from '../messaging/entities/stays-message.entity';
 import { StaysMessageAttachment } from '../messaging/entities/stays-message-attachment.entity';
@@ -622,16 +627,23 @@ export class SupportTicketsService {
     const trimmed = body.trim();
     if (!trimmed) throw new BadRequestException('Message body required');
 
-    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
-    if (!ticket) throw new NotFoundException('Ticket not found');
-    if (ticket.status === 'CLOSED') {
-      throw new NotFoundException('Ticket not found');
-    }
-
-    const conv = await this.convRepo.findOne({ where: { id: ticket.conversation_id } });
-    if (!conv) throw new NotFoundException('Ticket not found');
-
     const saved = await this.dataSource.transaction(async (manager) => {
+      const ticket = await manager
+        .getRepository(StaysSupportTicket)
+        .createQueryBuilder('t')
+        .setLock('pessimistic_write')
+        .where('t.id = :id', { id: ticketId })
+        .getOne();
+      if (!ticket) throw new NotFoundException('Ticket not found');
+      if (ticket.status === 'CLOSED') {
+        throw new ConflictException(CLOSED_SUPPORT_TICKET_MESSAGE);
+      }
+
+      const conv = await manager.getRepository(StaysConversation).findOne({
+        where: { id: ticket.conversation_id },
+      });
+      if (!conv) throw new NotFoundException('Ticket not found');
+
       const message = await this.timelineSeeder.insertMessage(manager, conv, {
         type: 'TEXT',
         body: trimmed,
@@ -663,36 +675,72 @@ export class SupportTicketsService {
         updated_at: new Date(),
       });
 
-      return message;
+      return {
+        message,
+        requesterUserId: ticket.requester_user_id,
+        conversationId: conv.id,
+      };
     });
 
-    this.realtime.publish(ticket.requester_user_id, {
-      conversationId: conv.id,
+    this.realtime.publish(saved.requesterUserId, {
+      conversationId: saved.conversationId,
       reason: 'MESSAGE_CREATED',
-      messageId: saved.id,
+      messageId: saved.message.id,
     });
 
     return {
-      id: saved.id,
+      id: saved.message.id,
       sender_type: 'SUPPORT_AGENT',
       sender_id: adminUserId,
       body: trimmed,
-      created_at: (saved.sent_at ?? saved.created_at).toISOString(),
+      created_at: (saved.message.sent_at ?? saved.message.created_at).toISOString(),
     };
   }
 
-  async markUnreadForSupportFromCustomerMessage(
+  /**
+   * Lock the SUPPORT ticket before inserting a customer message.
+   * Throws 409 if CLOSED. Returns null when no ticket is linked.
+   */
+  async lockTicketForCustomerSend(
+    manager: EntityManager,
     conversationId: string,
+  ): Promise<StaysSupportTicket | null> {
+    const ticket = await manager
+      .getRepository(StaysSupportTicket)
+      .createQueryBuilder('t')
+      .setLock('pessimistic_write')
+      .where('t.conversation_id = :id', { id: conversationId })
+      .getOne();
+    if (!ticket) return null;
+    if (ticket.status === 'CLOSED') {
+      throw new ConflictException(CLOSED_SUPPORT_TICKET_MESSAGE);
+    }
+    return ticket;
+  }
+
+  /**
+   * After a customer SUPPORT message is inserted, update unread + status
+   * in the same transaction. Clears resolved_at only for RESOLVED → OPEN.
+   */
+  async applyCustomerSupportMessageEffects(
+    manager: EntityManager,
+    ticket: StaysSupportTicket,
     preview: string,
   ): Promise<void> {
-    await this.ticketRepo.update(
-      { conversation_id: conversationId },
-      {
-        unread_for_support: true,
-        last_message_preview: preview.slice(0, 200),
-        updated_at: new Date(),
-      },
-    );
+    const nextStatus = nextStatusAfterCustomerMessage({
+      status: ticket.status,
+      party: ticket.party,
+    });
+    const patch: Partial<StaysSupportTicket> = {
+      unread_for_support: true,
+      last_message_preview: preview.slice(0, 200),
+      status: nextStatus,
+      updated_at: new Date(),
+    };
+    if (ticket.status === 'RESOLVED' && nextStatus === 'OPEN') {
+      patch.resolved_at = null;
+    }
+    await manager.getRepository(StaysSupportTicket).update(ticket.id, patch);
   }
 
   async listReportsForAdmin(limit = 200) {
