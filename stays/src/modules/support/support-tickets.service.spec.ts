@@ -170,6 +170,15 @@ describe('SupportTicketsService', () => {
         getMany: jest.fn().mockResolvedValue([]),
       })),
     };
+    const csatRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn((row: unknown) => row),
+      save: jest.fn(async (row: Record<string, unknown>) => ({
+        ...row,
+        id: (row.id as string) ?? 'csat-1',
+        submitted_at: new Date('2026-01-02T00:00:00.000Z'),
+      })),
+    };
     const auditLogRepo = {
       createQueryBuilder: jest.fn(() => ({
         where: jest.fn().mockReturnThis(),
@@ -196,6 +205,7 @@ describe('SupportTicketsService', () => {
       listingRepo as never,
       hostProfileRepo as never,
       noteRepo as never,
+      csatRepo as never,
       auditLogRepo as never,
       timelineSeeder as never,
       realtime as never,
@@ -223,6 +233,7 @@ describe('SupportTicketsService', () => {
       media,
       messageRepo,
       noteRepo,
+      csatRepo,
       auditLogRepo,
     };
   }
@@ -586,6 +597,64 @@ describe('SupportTicketsService', () => {
     await expect(
       service.listForAdmin({ unassigned: true, assignedAdminId: 'admin-1' }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('accepts CSAT for RESOLVED requester and rejects OPEN / duplicate / cross-user', async () => {
+    const { service, ticketRepo, csatRepo } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      requester_user_id: 'guest-1',
+      status: 'RESOLVED',
+    });
+    const submitted = await service.submitCsatForUser('guest-1', 'ticket-1', {
+      rating: 5,
+      comment: 'Great',
+    });
+    expect(submitted.submitted).toBe(true);
+    expect(submitted.csat?.rating).toBe(5);
+
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      requester_user_id: 'guest-1',
+      status: 'OPEN',
+    });
+    await expect(
+      service.submitCsatForUser('guest-1', 'ticket-1', { rating: 4 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      requester_user_id: 'guest-1',
+      status: 'CLOSED',
+    });
+    csatRepo.findOne.mockResolvedValue({
+      id: 'csat-1',
+      ticket_id: 'ticket-1',
+      rating: 5,
+      comment: 'Great',
+      submitted_at: new Date(),
+    });
+    await expect(
+      service.submitCsatForUser('guest-1', 'ticket-1', { rating: 3 }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    ticketRepo.findOne.mockResolvedValue(null);
+    await expect(
+      service.submitCsatForUser('other', 'ticket-1', { rating: 5 }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('GET CSAT returns submitted false when absent', async () => {
+    const { service, ticketRepo } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      requester_user_id: 'guest-1',
+      status: 'RESOLVED',
+    });
+    await expect(service.getCsatForUser('guest-1', 'ticket-1')).resolves.toEqual({
+      submitted: false,
+      csat: null,
+    });
   });
 
   it('creates and lists internal notes without body in audit', async () => {

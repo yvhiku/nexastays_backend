@@ -112,6 +112,19 @@ export class CreateSupportTicketNoteDto {
   body!: string;
 }
 
+export class CreateSupportTicketCsatDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating!: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  comment?: string;
+}
+
 export class ListSupportTicketNotesQueryDto {
   @IsOptional()
   @Type(() => Number)

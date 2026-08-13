@@ -11,7 +11,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupportTicketsService } from './support-tickets.service';
-import { CreateSupportTicketDto } from './dto/support-ticket.dto';
+import { CreateSupportTicketDto, CreateSupportTicketCsatDto } from './dto/support-ticket.dto';
 
 @ApiTags('Support')
 @Controller('support')
@@ -49,5 +49,22 @@ export class SupportTicketsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.supportTickets.getForUser(user.userId, id);
+  }
+
+  @Get('tickets/:id/csat')
+  getCsat(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.supportTickets.getCsatForUser(user.userId, id);
+  }
+
+  @Post('tickets/:id/csat')
+  submitCsat(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: CreateSupportTicketCsatDto,
+  ) {
+    return this.supportTickets.submitCsatForUser(user.userId, id, body);
   }
 }

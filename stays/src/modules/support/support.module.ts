@@ -6,6 +6,7 @@ import {
   StaysSafetyIssue,
   StaysSupportTicketRefCounter,
   StaysSupportTicketNote,
+  StaysSupportTicketCsat,
 } from './entities';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
 import { StaysMessage } from '../messaging/entities/stays-message.entity';
@@ -30,6 +31,7 @@ import { AdminSupportController } from './admin-support.controller';
       StaysSafetyIssue,
       StaysSupportTicketRefCounter,
       StaysSupportTicketNote,
+      StaysSupportTicketCsat,
       StaysConversation,
       StaysMessage,
       StaysMessageAttachment,

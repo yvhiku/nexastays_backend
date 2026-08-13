@@ -38,6 +38,7 @@ import { StaysConversationReport } from './entities/stays-conversation-report.en
 import { StaysSafetyIssue } from './entities/stays-safety-issue.entity';
 import { StaysSupportTicketRefCounter } from './entities/stays-support-ticket-ref-counter.entity';
 import { StaysSupportTicketNote } from './entities/stays-support-ticket-note.entity';
+import { StaysSupportTicketCsat } from './entities/stays-support-ticket-csat.entity';
 import { StaysAuditLog } from '../stays/entities/stays-audit-log.entity';
 import {
   AdminListTicketsQueryDto,
@@ -105,6 +106,8 @@ export class SupportTicketsService {
     private readonly hostProfileRepo: Repository<StaysHostProfile>,
     @InjectRepository(StaysSupportTicketNote)
     private readonly noteRepo: Repository<StaysSupportTicketNote>,
+    @InjectRepository(StaysSupportTicketCsat)
+    private readonly csatRepo: Repository<StaysSupportTicketCsat>,
     @InjectRepository(StaysAuditLog)
     private readonly auditLogRepo: Repository<StaysAuditLog>,
     private readonly timelineSeeder: TimelineSeederService,
@@ -761,6 +764,7 @@ export class SupportTicketsService {
       listing,
       report,
       safety_issue,
+      csat: await this.loadCsatForTicket(ticket.id),
     };
   }
 
@@ -1236,6 +1240,80 @@ export class SupportTicketsService {
       body: note.body,
       created_at: note.created_at.toISOString(),
     };
+  }
+
+  private mapCsatRow(row: StaysSupportTicketCsat) {
+    return {
+      rating: row.rating,
+      comment: row.comment,
+      submitted_at: row.submitted_at.toISOString(),
+    };
+  }
+
+  private async loadCsatForTicket(ticketId: string) {
+    const row = await this.csatRepo.findOne({ where: { ticket_id: ticketId } });
+    return row ? this.mapCsatRow(row) : null;
+  }
+
+  async getCsatForUser(userId: string, ticketId: string) {
+    const ticket = await this.ticketRepo.findOne({
+      where: { id: ticketId, requester_user_id: userId },
+    });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    const row = await this.csatRepo.findOne({ where: { ticket_id: ticketId } });
+    if (!row) return { submitted: false as const, csat: null };
+    return { submitted: true as const, csat: this.mapCsatRow(row) };
+  }
+
+  async submitCsatForUser(
+    userId: string,
+    ticketId: string,
+    input: { rating: number; comment?: string },
+  ) {
+    const rating = Number(input.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw new BadRequestException('Rating must be an integer from 1 to 5');
+    }
+    const comment = input.comment?.trim() || null;
+    if (comment && comment.length > 2000) {
+      throw new BadRequestException('Comment too long');
+    }
+
+    const ticket = await this.ticketRepo.findOne({
+      where: { id: ticketId, requester_user_id: userId },
+    });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    if (ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED') {
+      throw new BadRequestException(
+        'CSAT is only available for RESOLVED or CLOSED tickets',
+      );
+    }
+
+    const existing = await this.csatRepo.findOne({
+      where: { ticket_id: ticketId },
+    });
+    if (existing) {
+      throw new ConflictException('CSAT already submitted for this ticket');
+    }
+
+    try {
+      const saved = await this.csatRepo.save(
+        this.csatRepo.create({
+          ticket_id: ticketId,
+          rating,
+          comment,
+        }),
+      );
+      return {
+        submitted: true as const,
+        csat: this.mapCsatRow(saved),
+      };
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new ConflictException('CSAT already submitted for this ticket');
+      }
+      throw err;
+    }
   }
 
   async getInvestigationConversation(
