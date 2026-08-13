@@ -2246,6 +2246,7 @@ export class SupportTicketsService {
       unread_for_support: ticket.unread_for_support,
       last_message_preview: ticket.last_message_preview,
       requester_email: ticket.requester_email,
+      conversation_id: ticket.conversation_id,
       sla,
       routing_suggestion: routingSuggestion,
     };
