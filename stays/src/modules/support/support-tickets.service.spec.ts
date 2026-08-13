@@ -442,6 +442,7 @@ describe('SupportTicketsService', () => {
       'admin-1',
     );
     expect(ticketRepo.save).not.toHaveBeenCalled();
+    expect(ticketRepo.update).not.toHaveBeenCalled();
     expect(staysAudit.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'status_changed',
@@ -456,6 +457,45 @@ describe('SupportTicketsService', () => {
     reportRepo.find.mockResolvedValue([{ ...report, status: 'DISMISSED' }]);
     const listed = await service.listReportsForAdmin();
     expect(listed.items.some((item) => item.status === 'DISMISSED')).toBe(true);
+  });
+
+  it('rolls back REVIEWED when escalation ticket ensure fails', async () => {
+    const { service, reportRepo, ticketRepo, staysAudit, convRepo } = buildService();
+    const report = {
+      id: 'report-1',
+      status: 'REVIEWED',
+      conversation_id: 'conv-src',
+      reporter_user_id: 'guest-1',
+      reported_user_id: 'host-1',
+      booking_id: null,
+      listing_id: null,
+      reason: 'spam',
+      attachment_ids: [],
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+    };
+    reportRepo.findOne.mockResolvedValue(report);
+    ticketRepo.findOne.mockResolvedValue(null);
+    convRepo.findOne.mockResolvedValue({
+      id: 'conv-src',
+      guest_user_id: 'guest-1',
+      host_user_id: 'host-1',
+    });
+    jest
+      .spyOn(service, 'ensureTicketForReport')
+      .mockRejectedValue(new Error('ensure failed'));
+
+    await expect(
+      service.patchReportForAdmin(
+        'report-1',
+        { kind: 'conversation_reported', status: 'ESCALATED' },
+        'admin-1',
+      ),
+    ).rejects.toThrow('ensure failed');
+
+    expect(report.status).toBe('REVIEWED');
+    expect(reportRepo.save).not.toHaveBeenCalled();
+    expect(staysAudit.log).not.toHaveBeenCalled();
   });
 
   it('rejects PATCH without kind or with invalid status', async () => {

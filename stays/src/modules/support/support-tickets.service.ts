@@ -1097,26 +1097,64 @@ export class SupportTicketsService {
     actorUserId: string;
   }) {
     const from = input.row.status;
-    input.row.status = input.next;
-    input.row.updated_at = new Date();
-    if (input.kind === 'conversation_reported') {
-      await this.reportRepo.save(input.row as StaysConversationReport);
-    } else {
-      await this.safetyRepo.save(input.row as StaysSafetyIssue);
+
+    if (input.next !== 'ESCALATED') {
+      input.row.status = input.next;
+      input.row.updated_at = new Date();
+      if (input.kind === 'conversation_reported') {
+        await this.reportRepo.save(input.row as StaysConversationReport);
+      } else {
+        await this.safetyRepo.save(input.row as StaysSafetyIssue);
+      }
+
+      const ticket =
+        input.kind === 'conversation_reported'
+          ? await this.ticketRepo.findOne({
+              where: { report_id: input.row.id },
+            })
+          : await this.ticketRepo.findOne({
+              where: { safety_issue_id: input.row.id },
+            });
+
+      await this.staysAudit.log({
+        actorUserId: input.actorUserId,
+        actorRole: 'ADMIN',
+        entityType:
+          input.kind === 'conversation_reported'
+            ? 'conversation_report'
+            : 'safety_issue',
+        entityId: input.row.id,
+        action: 'status_changed',
+        metadata: {
+          from,
+          to: input.next,
+          ticketId: ticket?.id ?? null,
+        },
+      });
+
+      return this.getReportForAdmin(input.row.id, input.kind);
     }
 
-    let ticket: StaysSupportTicket | null =
-      input.kind === 'conversation_reported'
-        ? await this.ticketRepo.findOne({
-            where: { report_id: input.row.id },
-          })
-        : await this.ticketRepo.findOne({
-            where: { safety_issue_id: input.row.id },
-          });
+    // ESCALATED: ensure ticket before status change in one TX so failure
+    // cannot leave the canonical row escalated without a ticket.
+    let ticketId: string | null = null;
+    await this.dataSource.transaction(async (manager) => {
+      const ticketRepo = manager.getRepository(StaysSupportTicket);
+      const convRepo = manager.getRepository(StaysConversation);
+      const reportRepo = manager.getRepository(StaysConversationReport);
+      const safetyRepo = manager.getRepository(StaysSafetyIssue);
 
-    if (input.next === 'ESCALATED') {
+      let ticket =
+        input.kind === 'conversation_reported'
+          ? await ticketRepo.findOne({
+              where: { report_id: input.row.id },
+            })
+          : await ticketRepo.findOne({
+              where: { safety_issue_id: input.row.id },
+            });
+
       if (!ticket) {
-        const conv = await this.convRepo.findOne({
+        const conv = await convRepo.findOne({
           where: { id: input.row.conversation_id },
         });
         if (conv) {
@@ -1125,19 +1163,34 @@ export class SupportTicketsService {
               ? await this.ensureTicketForReport({
                   report: input.row as StaysConversationReport,
                   sourceConversation: conv,
+                  manager,
                 })
               : await this.ensureTicketForSafetyIssue({
                   safety: input.row as StaysSafetyIssue,
                   sourceConversation: conv,
+                  manager,
                 });
         }
       }
-      if (ticket && ticket.priority !== 'URGENT' && ticket.priority !== 'HIGH') {
+
+      if (ticket && ticket.priority !== 'URGENT') {
+        await ticketRepo.update(ticket.id, {
+          priority: 'HIGH',
+          updated_at: new Date(),
+        });
         ticket.priority = 'HIGH';
-        ticket.updated_at = new Date();
-        await this.ticketRepo.save(ticket);
       }
-    }
+
+      input.row.status = 'ESCALATED';
+      input.row.updated_at = new Date();
+      if (input.kind === 'conversation_reported') {
+        await reportRepo.save(input.row as StaysConversationReport);
+      } else {
+        await safetyRepo.save(input.row as StaysSafetyIssue);
+      }
+
+      ticketId = ticket?.id ?? null;
+    });
 
     await this.staysAudit.log({
       actorUserId: input.actorUserId,
@@ -1150,8 +1203,8 @@ export class SupportTicketsService {
       action: 'status_changed',
       metadata: {
         from,
-        to: input.next,
-        ticketId: ticket?.id ?? null,
+        to: 'ESCALATED',
+        ticketId,
       },
     });
 
