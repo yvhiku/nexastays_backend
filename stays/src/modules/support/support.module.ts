@@ -5,6 +5,7 @@ import {
   StaysConversationReport,
   StaysSafetyIssue,
   StaysSupportTicketRefCounter,
+  StaysSupportTicketNote,
 } from './entities';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
 import { StaysMessage } from '../messaging/entities/stays-message.entity';
@@ -27,6 +28,7 @@ import { AdminSupportController } from './admin-support.controller';
       StaysConversationReport,
       StaysSafetyIssue,
       StaysSupportTicketRefCounter,
+      StaysSupportTicketNote,
       StaysConversation,
       StaysMessage,
       StaysMessageAttachment,
