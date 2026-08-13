@@ -121,6 +121,21 @@ export class ListSupportTicketNotesQueryDto {
   limit?: number;
 }
 
+export class ListActivityQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+}
+
 export const TRUST_REPORT_KINDS = [
   'conversation_reported',
   'safety_issue',

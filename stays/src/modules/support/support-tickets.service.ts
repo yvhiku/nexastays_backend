@@ -34,6 +34,7 @@ import { StaysConversationReport } from './entities/stays-conversation-report.en
 import { StaysSafetyIssue } from './entities/stays-safety-issue.entity';
 import { StaysSupportTicketRefCounter } from './entities/stays-support-ticket-ref-counter.entity';
 import { StaysSupportTicketNote } from './entities/stays-support-ticket-note.entity';
+import { StaysAuditLog } from '../stays/entities/stays-audit-log.entity';
 import {
   AdminListTicketsQueryDto,
   AdminListReportsQueryDto,
@@ -100,6 +101,8 @@ export class SupportTicketsService {
     private readonly hostProfileRepo: Repository<StaysHostProfile>,
     @InjectRepository(StaysSupportTicketNote)
     private readonly noteRepo: Repository<StaysSupportTicketNote>,
+    @InjectRepository(StaysAuditLog)
+    private readonly auditLogRepo: Repository<StaysAuditLog>,
     private readonly timelineSeeder: TimelineSeederService,
     private readonly realtime: MessagingRealtimeService,
     private readonly media: MessagingMediaService,
@@ -1312,6 +1315,67 @@ export class SupportTicketsService {
           }
         : null,
       has_more: hasMore,
+    };
+  }
+
+  async listTicketActivity(ticketId: string, limit = 50, offset = 0) {
+    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    return this.listActivityForEntity('support_ticket', ticketId, limit, offset);
+  }
+
+  async listReportActivity(
+    reportId: string,
+    kind: (typeof TRUST_REPORT_KINDS)[number],
+    limit = 50,
+    offset = 0,
+  ) {
+    if (kind === 'conversation_reported') {
+      const row = await this.reportRepo.findOne({ where: { id: reportId } });
+      if (!row) throw new NotFoundException('Report not found');
+      return this.listActivityForEntity(
+        'conversation_report',
+        reportId,
+        limit,
+        offset,
+      );
+    }
+    const row = await this.safetyRepo.findOne({ where: { id: reportId } });
+    if (!row) throw new NotFoundException('Report not found');
+    return this.listActivityForEntity('safety_issue', reportId, limit, offset);
+  }
+
+  private async listActivityForEntity(
+    entityType: string,
+    entityId: string,
+    limit: number,
+    offset: number,
+  ) {
+    const take = Math.min(Math.max(limit, 1), 100);
+    const skip = Math.max(offset, 0);
+    const qb = this.auditLogRepo
+      .createQueryBuilder('a')
+      .where('a.entity_type = :entityType', { entityType })
+      .andWhere('a.entity_id = :entityId', { entityId });
+    const total = await qb.clone().getCount();
+    const rows = await qb
+      .orderBy('a.created_at', 'DESC')
+      .addOrderBy('a.id', 'DESC')
+      .skip(skip)
+      .take(take)
+      .getMany();
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        action: row.action,
+        actor_id: row.actor_user_id,
+        metadata: row.metadata ?? {},
+        created_at: row.created_at.toISOString(),
+      })),
+      total,
+      limit: take,
+      offset: skip,
+      hasMore: skip + rows.length < total,
     };
   }
 

@@ -21,6 +21,7 @@ import {
   AdminListReportsQueryDto,
   CreateSupportTicketNoteDto,
   InvestigationConversationQueryDto,
+  ListActivityQueryDto,
   ListSupportTicketNotesQueryDto,
   PatchSupportTicketDto,
   PatchTrustReportDto,
@@ -35,6 +36,11 @@ class GetTrustReportQueryDto {
   kind!: (typeof TRUST_REPORT_KINDS)[number];
 }
 
+class ReportActivityQueryDto extends ListActivityQueryDto {
+  @IsString()
+  @IsIn([...TRUST_REPORT_KINDS])
+  kind!: (typeof TRUST_REPORT_KINDS)[number];
+}
 
 @ApiTags('Stays Admin Support')
 @Controller('admin/stays')
@@ -105,6 +111,13 @@ export class AdminSupportController {
     return this.supportTickets.createNoteForAdmin(id, user.userId, body.body);
   }
 
+  @Get('support/tickets/:id/activity')
+  ticketActivity(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: ListActivityQueryDto,
+  ) {
+    return this.supportTickets.listTicketActivity(id, query.limit, query.offset);
+  }
 
   @Get('reports')
   listReports(@Query() query: AdminListReportsQueryDto) {
@@ -124,6 +137,18 @@ export class AdminSupportController {
     );
   }
 
+  @Get('reports/:id/activity')
+  reportActivity(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: ReportActivityQueryDto,
+  ) {
+    return this.supportTickets.listReportActivity(
+      id,
+      query.kind,
+      query.limit,
+      query.offset,
+    );
+  }
 
   @Get('reports/:id')
   getReport(

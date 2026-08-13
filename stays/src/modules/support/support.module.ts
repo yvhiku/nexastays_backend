@@ -13,6 +13,7 @@ import { StaysMessageAttachment } from '../messaging/entities/stays-message-atta
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysHostProfile } from '../stays/entities/stays-host-profile.entity';
+import { StaysAuditLog } from '../stays/entities/stays-audit-log.entity';
 import { MessagingModule } from '../messaging/messaging.module';
 import { StaysModule } from '../stays/stays.module';
 import { SupportTicketsService } from './support-tickets.service';
@@ -35,6 +36,7 @@ import { AdminSupportController } from './admin-support.controller';
       StaysBooking,
       StaysListing,
       StaysHostProfile,
+      StaysAuditLog,
     ]),
   ],
   controllers: [SupportTicketsController, AdminSupportController],

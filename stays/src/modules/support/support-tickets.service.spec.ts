@@ -170,6 +170,19 @@ describe('SupportTicketsService', () => {
         getMany: jest.fn().mockResolvedValue([]),
       })),
     };
+    const auditLogRepo = {
+      createQueryBuilder: jest.fn(() => ({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(0),
+        getMany: jest.fn().mockResolvedValue([]),
+        clone: jest.fn().mockReturnThis(),
+      })),
+    };
 
     const service = new SupportTicketsService(
       dataSource as never,
@@ -183,6 +196,7 @@ describe('SupportTicketsService', () => {
       listingRepo as never,
       hostProfileRepo as never,
       noteRepo as never,
+      auditLogRepo as never,
       timelineSeeder as never,
       realtime as never,
       media as never,
@@ -209,6 +223,7 @@ describe('SupportTicketsService', () => {
       media,
       messageRepo,
       noteRepo,
+      auditLogRepo,
     };
   }
 
@@ -606,6 +621,47 @@ describe('SupportTicketsService', () => {
         50,
       ),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('lists ticket activity by entity_type and entity_id only', async () => {
+    const { service, ticketRepo, auditLogRepo } = buildService();
+    ticketRepo.findOne.mockResolvedValue({ id: 'ticket-1' });
+    const where = jest.fn().mockReturnThis();
+    const andWhere = jest.fn().mockReturnThis();
+    const orderBy = jest.fn().mockReturnThis();
+    const addOrderBy = jest.fn().mockReturnThis();
+    const skip = jest.fn().mockReturnThis();
+    const take = jest.fn().mockReturnThis();
+    const getCount = jest.fn().mockResolvedValue(1);
+    const getMany = jest.fn().mockResolvedValue([
+      {
+        id: 'audit-1',
+        action: 'support_ticket_assigned',
+        actor_user_id: 'admin-1',
+        metadata: { fromAdminId: null, toAdminId: 'admin-2' },
+        created_at: new Date(),
+      },
+    ]);
+    const clone = jest.fn(() => ({ getCount }));
+    auditLogRepo.createQueryBuilder = jest.fn(() => ({
+      where,
+      andWhere,
+      orderBy,
+      addOrderBy,
+      skip,
+      take,
+      getMany,
+      clone,
+    }));
+    const listed = await service.listTicketActivity('ticket-1', 50, 0);
+    expect(where).toHaveBeenCalledWith('a.entity_type = :entityType', {
+      entityType: 'support_ticket',
+    });
+    expect(andWhere).toHaveBeenCalledWith('a.entity_id = :entityId', {
+      entityId: 'ticket-1',
+    });
+    expect(listed.total).toBe(1);
+    expect(listed.hasMore).toBe(false);
   });
 
   it('rolls back REVIEWED when escalation ticket ensure fails', async () => {
