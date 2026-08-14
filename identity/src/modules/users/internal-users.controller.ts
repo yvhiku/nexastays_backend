@@ -86,7 +86,12 @@ export class InternalUsersController {
   @ApiOperation({ summary: 'S2S: minimal profile for messaging presentation' })
   async profileSummary(
     @Param('userId') userId: string,
-  ): Promise<{ fullName: string | null; email: string | null; verified: boolean }> {
+  ): Promise<{
+    fullName: string | null;
+    email: string | null;
+    phone: string | null;
+    verified: boolean;
+  }> {
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -94,6 +99,7 @@ export class InternalUsersController {
     return {
       fullName: user.full_name?.trim() || null,
       email: user.email?.trim() || null,
+      phone: user.phone_number?.trim() || null,
       verified: user.kyc_status === 'VERIFIED',
     };
   }

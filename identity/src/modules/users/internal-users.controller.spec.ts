@@ -6,6 +6,7 @@ import { InternalServiceGuard } from '../../common/guards/internal-service.guard
 describe('InternalUsersController.listActiveSupportAgents', () => {
   const usersService = {
     listActiveSupportAgents: jest.fn(),
+    findById: jest.fn(),
   };
   const controller = new InternalUsersController(
     usersService as unknown as UsersService,
@@ -26,6 +27,23 @@ describe('InternalUsersController.listActiveSupportAgents', () => {
       items: [
         { id: 'agent-1', status: 'ACTIVE', staff_role: 'SUPPORT_AGENT' },
       ],
+    });
+  });
+
+  it('includes phone on the S2S profile summary for support contact', async () => {
+    usersService.findById.mockResolvedValue({
+      id: 'host-1',
+      full_name: 'Mohamed Fikri',
+      email: 'fikri@nexa.ma',
+      phone_number: '+212693211350',
+      kyc_status: 'VERIFIED',
+    });
+
+    await expect(controller.profileSummary('host-1')).resolves.toEqual({
+      fullName: 'Mohamed Fikri',
+      email: 'fikri@nexa.ma',
+      phone: '+212693211350',
+      verified: true,
     });
   });
 });
