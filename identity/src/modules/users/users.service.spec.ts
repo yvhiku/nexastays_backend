@@ -21,6 +21,7 @@ describe('UsersService (profile lock)', () => {
 
   const mockUserRepo = {
     findOne: jest.fn(),
+    find: jest.fn(),
     findOneOrFail: jest.fn(),
     save: jest.fn(),
     update: jest.fn(),
@@ -358,6 +359,40 @@ describe('UsersService (profile lock)', () => {
 
       const out = await service.getMe('u-no-dob');
       expect(out.date_of_birth).toBeNull();
+    });
+  });
+
+  describe('listActiveSupportAgents', () => {
+    it('returns ACTIVE SUPPORT_AGENT ids only', async () => {
+      mockUserRepo.find.mockResolvedValue([
+        { id: 'agent-1', status: 'ACTIVE', staff_role: 'SUPPORT_AGENT' },
+      ]);
+
+      await expect(service.listActiveSupportAgents()).resolves.toEqual({
+        items: [
+          {
+            id: 'agent-1',
+            status: 'ACTIVE',
+            staff_role: 'SUPPORT_AGENT',
+          },
+        ],
+      });
+      expect(mockUserRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            account_type: 'ADMIN',
+            staff_role: 'SUPPORT_AGENT',
+            status: 'ACTIVE',
+          },
+        }),
+      );
+    });
+
+    it('returns an empty roster when no active agents exist', async () => {
+      mockUserRepo.find.mockResolvedValue([]);
+      await expect(service.listActiveSupportAgents()).resolves.toEqual({
+        items: [],
+      });
     });
   });
 });

@@ -430,6 +430,32 @@ export class UsersService {
   }
 
   /**
+   * S2S roster for Stays auto-assignment. ACTIVE SUPPORT_AGENT only.
+   * Frozen agents and Super Admins are excluded. Admin JWT listing may
+   * still include frozen rows.
+   */
+  async listActiveSupportAgents(): Promise<{
+    items: { id: string; status: string; staff_role: string }[];
+  }> {
+    const rows = await this.userRepository.find({
+      where: {
+        account_type: 'ADMIN',
+        staff_role: 'SUPPORT_AGENT',
+        status: 'ACTIVE',
+      },
+      select: ['id', 'status', 'staff_role'],
+      order: { id: 'ASC' },
+    });
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        status: row.status,
+        staff_role: row.staff_role || 'SUPPORT_AGENT',
+      })),
+    };
+  }
+
+  /**
    * Get CONSUMER account for an identity (for payouts, wallet operations).
    * Returns null if identity has no CONSUMER account.
    */

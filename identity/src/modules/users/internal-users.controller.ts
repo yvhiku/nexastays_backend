@@ -20,6 +20,17 @@ import { UsersService } from './users.service';
 export class InternalUsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  /** Must be declared before `:userId` routes so "support-agents" is not captured as an id. */
+  @Get('support-agents')
+  @ApiOperation({
+    summary: 'S2S: ACTIVE SUPPORT_AGENT roster for ticket auto-assignment',
+  })
+  async listActiveSupportAgents(): Promise<{
+    items: { id: string; status: string; staff_role: string }[];
+  }> {
+    return this.usersService.listActiveSupportAgents();
+  }
+
   @Get(':userId/authz')
   @ApiOperation({ summary: 'S2S: authz version for ADMIN role revocation checks' })
   async authzState(
