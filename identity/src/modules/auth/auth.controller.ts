@@ -83,9 +83,15 @@ export class AuthController {
   @ApiBearerAuth('bearer')
   session(
     @CurrentUser()
-    user: { userId: string; role?: string; roles?: string[] },
+    user: {
+      userId: string;
+      role?: string;
+      roles?: string[];
+      email?: string;
+      account_type?: string;
+    },
   ) {
-    return { authenticated: true, user };
+    return this.authService.sessionPayload(user);
   }
 
   @Post('login')

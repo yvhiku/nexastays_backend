@@ -415,7 +415,17 @@ export class UsersService {
   async findById(userId: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id: userId },
-      select: ['id', 'account_type', 'phone_number', 'full_name', 'email', 'unified_identity_id'],
+      select: [
+        'id',
+        'account_type',
+        'phone_number',
+        'full_name',
+        'email',
+        'unified_identity_id',
+        'status',
+        'authz_version',
+        'staff_role',
+      ],
     });
   }
 

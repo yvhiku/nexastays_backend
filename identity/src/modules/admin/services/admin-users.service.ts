@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { User, type StaffRole } from '../../users/entities/user.entity';
 import { IdentityPhoneNumber } from '../../users/entities/identity-phone-number.entity';
 import { Wallet } from '../../wallets/entities/wallet.entity';
 import { KycProfile } from '../../compliance/entities/kyc-profile.entity';
@@ -92,6 +92,7 @@ export class AdminUsersService {
         'u.email as email',
         'u.city as city',
         'u.account_type as account_type',
+        'u.staff_role as staff_role',
         'u.linked_user_id as linked_user_id',
         'u.status as account_status',
         'u.risk_score as risk_score',
@@ -113,6 +114,7 @@ export class AdminUsersService {
       email: row.email,
       city: row.city ?? null,
       account_type: row.account_type || 'CONSUMER',
+      staff_role: row.staff_role || 'ADMIN',
       linked_user_id: row.linked_user_id ?? null,
       kyc_status: row.kyc_status || 'UNVERIFIED',
       wallet_id: null,
@@ -262,6 +264,7 @@ export class AdminUsersService {
         'u.date_of_birth as date_of_birth',
         'u.nationality as nationality',
         'u.account_type as account_type',
+        'u.staff_role as staff_role',
         'u.linked_user_id as linked_user_id',
         'u.unified_identity_id as unified_identity_id',
         'u.status as account_status',
@@ -333,6 +336,7 @@ export class AdminUsersService {
       address: row.address ?? null,
       phones,
       account_type: row.account_type || 'CONSUMER',
+      staff_role: row.staff_role || 'ADMIN',
       linked_user_id: row.linked_user_id ?? null,
       linked_user,
       kyc_status: row.kyc_status || 'UNVERIFIED',
@@ -348,6 +352,50 @@ export class AdminUsersService {
       last_login_at: row.last_login_at,
       ...(profilePhotoUrl ? { profile_photo_url: profilePhotoUrl } : {}),
     };
+  }
+
+  async updateStaffRole(
+    id: string,
+    staffRole: StaffRole,
+    adminUser?: RequestUser,
+  ) {
+    if (adminUser?.userId && adminUser.userId === id) {
+      throw new ForbiddenException('Cannot change your own staff role');
+    }
+    if (staffRole !== 'ADMIN' && staffRole !== 'SUPPORT_AGENT') {
+      throw new BadRequestException('Invalid staff role');
+    }
+
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.account_type !== 'ADMIN') {
+      throw new BadRequestException(
+        'Staff role can only be set on ADMIN accounts',
+      );
+    }
+
+    const from = user.staff_role || 'ADMIN';
+    user.staff_role = staffRole;
+    await this.usersRepository.save(user);
+    await this.authzVersions.bump(id);
+    await this.refreshTokenRepository
+      .createQueryBuilder()
+      .update()
+      .set({ revoked_at: new Date() })
+      .where('user_id = :userId', { userId: id })
+      .andWhere('revoked_at IS NULL')
+      .execute();
+    await this.auditService.logAction({
+      action: 'STAFF_ROLE_CHANGED',
+      entityType: 'user',
+      entityId: id,
+      userId: id,
+      metadata: { from, to: staffRole },
+      adminUser,
+    });
+    return { success: true, staff_role: staffRole };
   }
 
   async updateStatus(id: string, status: string, adminUser?: RequestUser) {

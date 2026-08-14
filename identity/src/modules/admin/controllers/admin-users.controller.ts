@@ -16,6 +16,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { AdminUsersService } from '../services/admin-users.service';
 import { AdminUsersQueryDto } from '../dto/admin-users.query.dto';
 import { UpdateUserStatusDto } from '../dto/update-user-status.dto';
+import { UpdateStaffRoleDto } from '../dto/update-staff-role.dto';
 import type { AdminRequest } from '../types/admin-request';
 
 @ApiTags('Pay Admin')
@@ -67,6 +68,15 @@ export class AdminUsersController {
     @Req() req: AdminRequest,
   ) {
     return this.adminUsersService.updateStatus(id, body.status, req.user);
+  }
+
+  @Patch(':id/staff-role')
+  updateStaffRole(
+    @Param('id') id: string,
+    @Body() body: UpdateStaffRoleDto,
+    @Req() req: AdminRequest,
+  ) {
+    return this.adminUsersService.updateStaffRole(id, body.staffRole, req.user);
   }
 
   @Post(':userId/freeze')

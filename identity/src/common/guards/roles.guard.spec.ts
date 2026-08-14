@@ -102,6 +102,79 @@ describe('RolesGuard SEC-003', () => {
     expect(authzVersions.getAuthzState).not.toHaveBeenCalled();
   });
 
+  it('does not treat account_type ADMIN as a JWT role', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['ADMIN']);
+    await expect(
+      guard.canActivate(ctx({ userId: 'u1', account_type: 'ADMIN' })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(authzVersions.getAuthzState).not.toHaveBeenCalled();
+  });
+
+  it('denies SUPPORT_AGENT on ADMIN routes without live lookup', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['ADMIN']);
+    await expect(
+      guard.canActivate(
+        ctx({
+          userId: 'agent-1',
+          roles: ['SUPPORT_AGENT'],
+          role: 'SUPPORT_AGENT',
+          av: 1,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(authzVersions.getAuthzState).not.toHaveBeenCalled();
+  });
+
+  it('allows SUPPORT_AGENT on SUPPORT_AGENT routes when av matches', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['SUPPORT_AGENT']);
+    authzVersions.getAuthzState.mockResolvedValue({
+      authz_version: 2,
+      status: 'ACTIVE',
+      account_type: 'ADMIN',
+      staff_role: 'SUPPORT_AGENT',
+    });
+    await expect(
+      guard.canActivate(
+        ctx({
+          userId: 'agent-1',
+          roles: ['SUPPORT_AGENT'],
+          av: 2,
+          authz_version: 2,
+        }),
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it('denies frozen SUPPORT_AGENT', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['SUPPORT_AGENT']);
+    authzVersions.getAuthzState.mockResolvedValue({
+      authz_version: 2,
+      status: 'FROZEN',
+      account_type: 'ADMIN',
+      staff_role: 'SUPPORT_AGENT',
+    });
+    await expect(
+      guard.canActivate(
+        ctx({ userId: 'agent-1', roles: ['SUPPORT_AGENT'], av: 2 }),
+      ),
+    ).rejects.toThrow(/revoked/i);
+  });
+
+  it('denies stale SUPPORT_AGENT token after av bump', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['SUPPORT_AGENT']);
+    authzVersions.getAuthzState.mockResolvedValue({
+      authz_version: 5,
+      status: 'ACTIVE',
+      account_type: 'ADMIN',
+      staff_role: 'SUPPORT_AGENT',
+    });
+    await expect(
+      guard.canActivate(
+        ctx({ userId: 'agent-1', roles: ['SUPPORT_AGENT'], av: 2 }),
+      ),
+    ).rejects.toThrow(/revoked/i);
+  });
+
   it('cannot upgrade privilege from client role claim alone without ADMIN requirement path', async () => {
     reflector.getAllAndOverride.mockReturnValue(['ADMIN']);
     authzVersions.getAuthzState.mockResolvedValue({

@@ -8,6 +8,21 @@ import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { IdentityAuthzClient } from '../identity/identity-authz.client';
 
+function jwtRoles(user: {
+  roles?: string[];
+  role?: string;
+}): string[] {
+  if (Array.isArray(user?.roles) && user.roles.length > 0) {
+    return user.roles.map(String);
+  }
+  if (user?.role) return [String(user.role)];
+  return [];
+}
+
+function isStaffRole(role: string): boolean {
+  return role === 'ADMIN' || role === 'SUPPORT_AGENT';
+}
+
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
@@ -32,14 +47,7 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    const userRoles: string[] = Array.isArray(user?.roles)
-      ? user.roles
-      : user?.role
-        ? [user.role]
-        : user?.account_type === 'ADMIN'
-          ? ['ADMIN']
-          : [];
-
+    const userRoles = jwtRoles(user);
     const hasRole = requiredRoles.some((role) => userRoles.includes(role));
 
     if (!hasRole) {
@@ -48,8 +56,9 @@ export class RolesGuard implements CanActivate {
       );
     }
 
-    // SEC-003: ADMIN routes require Identity authz_version (+ short admin JWT TTL).
-    if (requiredRoles.includes('ADMIN') || userRoles.includes('ADMIN')) {
+    const staffContext =
+      requiredRoles.some(isStaffRole) || userRoles.some(isStaffRole);
+    if (staffContext) {
       const state = await this.authzClient.getAuthzState(user.userId);
       if (state.account_type !== 'ADMIN' || state.status === 'FROZEN') {
         throw new ForbiddenException('Administrator privilege revoked');

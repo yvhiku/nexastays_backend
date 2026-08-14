@@ -57,4 +57,43 @@ describe('Stays RolesGuard SEC-003', () => {
     ).resolves.toBe(true);
     expect(authzClient.getAuthzState).not.toHaveBeenCalled();
   });
+
+  it('denies SUPPORT_AGENT on ADMIN routes', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['ADMIN']);
+    await expect(
+      guard.canActivate(
+        ctx({ userId: 'agent-1', roles: ['SUPPORT_AGENT'], av: 1 }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(authzClient.getAuthzState).not.toHaveBeenCalled();
+  });
+
+  it('runs live authz for SUPPORT_AGENT routes', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['SUPPORT_AGENT']);
+    authzClient.getAuthzState.mockResolvedValue({
+      authz_version: 3,
+      status: 'ACTIVE',
+      account_type: 'ADMIN',
+      staff_role: 'SUPPORT_AGENT',
+    });
+    await expect(
+      guard.canActivate(
+        ctx({ userId: 'agent-1', roles: ['SUPPORT_AGENT'], av: 3 }),
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it('denies frozen SUPPORT_AGENT on SUPPORT_AGENT routes', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['SUPPORT_AGENT']);
+    authzClient.getAuthzState.mockResolvedValue({
+      authz_version: 3,
+      status: 'FROZEN',
+      account_type: 'ADMIN',
+    });
+    await expect(
+      guard.canActivate(
+        ctx({ userId: 'agent-1', roles: ['SUPPORT_AGENT'], av: 3 }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
 });

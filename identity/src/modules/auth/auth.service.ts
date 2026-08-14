@@ -17,7 +17,7 @@ import {
   getJwtAudience,
   getJwtIssuer,
 } from '../../common/security/jwt-claims';
-import { User } from '../users/entities/user.entity';
+import { User, staffJwtClaims } from '../users/entities/user.entity';
 import { OtpCode } from './entities/otp-code.entity';
 import { OtpSession } from './entities/otp-session.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
@@ -170,7 +170,14 @@ export class AuthService {
       authz_version?: number;
     },
   ): string {
-    const isAdmin = accountType === 'ADMIN' || profile?.role === 'ADMIN';
+    const isStaff =
+      accountType === 'ADMIN' ||
+      profile?.role === 'ADMIN' ||
+      profile?.role === 'SUPPORT_AGENT' ||
+      (Array.isArray(profile?.roles) &&
+        profile.roles.some(
+          (role) => role === 'ADMIN' || role === 'SUPPORT_AGENT',
+        ));
     const authzVersion = Number(profile?.authz_version ?? 1);
     return this.jwtService.sign(
       {
@@ -181,10 +188,10 @@ export class AuthService {
         auth_method: authMethod,
         role: profile?.role,
         roles: profile?.roles,
-        ...(isAdmin ? { av: authzVersion } : {}),
+        ...(isStaff ? { av: authzVersion } : {}),
       },
       {
-        expiresIn: isAdmin ? getJwtAdminExpiresIn() : getJwtAccessExpiresIn(),
+        expiresIn: isStaff ? getJwtAdminExpiresIn() : getJwtAccessExpiresIn(),
         issuer: getJwtIssuer(),
         audience: getJwtAudience(),
       } as any,
@@ -199,16 +206,55 @@ export class AuthService {
     });
     const kyc_status = kyc?.status ?? user.kyc_status ?? null;
     const kyc_tier = kyc?.level ?? null;
+    const staff =
+      user.account_type === 'ADMIN'
+        ? staffJwtClaims(user.staff_role)
+        : { role: undefined, roles: undefined };
     return {
       phone_number: user.phone_number,
       email: user.email,
+      full_name: user.full_name,
       kyc_status,
       kyc_tier,
       kyc_provider: kyc?.provider ?? null,
       kyc_updated_at: kyc?.reviewed_at ?? kyc?.last_webhook_received_at ?? null,
-      role: user.account_type === 'ADMIN' ? 'ADMIN' : undefined,
-      roles: user.account_type === 'ADMIN' ? ['ADMIN'] : undefined,
+      role: staff.role,
+      roles: staff.roles,
+      staff_role: user.account_type === 'ADMIN' ? staff.role : undefined,
       authz_version: Number(user.authz_version ?? 1),
+    };
+  }
+
+  async sessionPayload(jwtUser: {
+    userId: string;
+    role?: string;
+    roles?: string[];
+    email?: string;
+    account_type?: string;
+  }) {
+    const user = await this.userRepository.findOne({
+      where: { id: jwtUser.userId },
+    });
+    const staff =
+      user?.account_type === 'ADMIN'
+        ? staffJwtClaims(user.staff_role)
+        : {
+            role: jwtUser.role,
+            roles: jwtUser.roles,
+          };
+    return {
+      authenticated: true,
+      user: {
+        userId: jwtUser.userId,
+        email: user?.email ?? jwtUser.email ?? null,
+        full_name: user?.full_name ?? null,
+        name: user?.full_name ?? null,
+        account_type: user?.account_type ?? jwtUser.account_type,
+        role: staff.role,
+        roles: staff.roles,
+        staff_role:
+          user?.account_type === 'ADMIN' ? staff.role : undefined,
+      },
     };
   }
 
@@ -1201,6 +1247,7 @@ export class AuthService {
         status: 'ACTIVE',
         kyc_status: 'APPROVED',
         account_type: 'ADMIN',
+        staff_role: 'ADMIN',
       });
     } else {
       if (user.account_type !== 'ADMIN') user.account_type = 'ADMIN';
@@ -1216,6 +1263,8 @@ export class AuthService {
     user.last_login_at = now;
     await this.userRepository.save(user);
 
+    const profile = await this.tokenProfileForUser(user.id);
+    const staff = staffJwtClaims(user.staff_role);
     const token = this.issueAccountScopedToken(
       user.id,
       (await this.unifiedIdentityService.ensureIdentityForAdminUser(user.id)) ??
@@ -1224,9 +1273,9 @@ export class AuthService {
       'pin_only',
       undefined,
       {
-        role: 'ADMIN',
-        roles: ['ADMIN'],
-        authz_version: Number(user.authz_version ?? 1),
+        role: profile?.role ?? staff.role,
+        roles: profile?.roles ?? staff.roles,
+        authz_version: Number(profile?.authz_version ?? user.authz_version ?? 1),
       },
     );
 
@@ -1236,8 +1285,9 @@ export class AuthService {
         id: user.id,
         email: user.email,
         full_name: user.full_name,
-        role: 'ADMIN',
-        roles: ['ADMIN'],
+        role: profile?.role ?? staff.role,
+        roles: profile?.roles ?? staff.roles,
+        staff_role: staff.role,
       },
     };
   }

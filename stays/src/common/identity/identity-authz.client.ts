@@ -5,6 +5,7 @@ type AuthzState = {
   authz_version: number;
   status: string;
   account_type: string;
+  staff_role?: string;
 };
 
 const CACHE_TTL_MS = 30_000;
@@ -38,6 +39,7 @@ export class IdentityAuthzClient {
         authz_version: cached.authz_version,
         status: cached.status,
         account_type: cached.account_type,
+        staff_role: cached.staff_role,
       };
     }
 
@@ -53,13 +55,18 @@ export class IdentityAuthzClient {
       });
       if (!res.ok) {
         this.logger.warn(`authz lookup failed HTTP ${res.status}`);
-        return { authz_version: -1, status: 'UNKNOWN', account_type: 'CONSUMER' };
+        return {
+          authz_version: -1,
+          status: 'UNKNOWN',
+          account_type: 'CONSUMER',
+        };
       }
       const body = (await res.json()) as AuthzState;
       const state: AuthzState = {
         authz_version: Number(body.authz_version ?? 1),
         status: String(body.status ?? 'UNKNOWN'),
         account_type: String(body.account_type ?? 'CONSUMER'),
+        staff_role: body.staff_role ? String(body.staff_role) : undefined,
       };
       this.cache.set(userId, { ...state, expiresAt: Date.now() + CACHE_TTL_MS });
       return state;

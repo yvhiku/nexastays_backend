@@ -28,6 +28,7 @@ export class InternalUsersController {
     authz_version: number;
     status: string;
     account_type: string;
+    staff_role: string;
   }> {
     const user = await this.usersService.findById(userId);
     if (!user) {
@@ -37,6 +38,7 @@ export class InternalUsersController {
       authz_version: Number(user.authz_version ?? 1),
       status: user.status,
       account_type: user.account_type,
+      staff_role: user.staff_role || 'ADMIN',
     };
   }
 

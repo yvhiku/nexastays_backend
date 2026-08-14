@@ -24,6 +24,17 @@ export const ACCOUNT_TYPES = [
 ] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
+export const STAFF_ROLES = ['ADMIN', 'SUPPORT_AGENT'] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
+
+export function staffJwtClaims(
+  staffRole: string | null | undefined,
+): { role: StaffRole; roles: [StaffRole] } {
+  const role: StaffRole =
+    staffRole === 'SUPPORT_AGENT' ? 'SUPPORT_AGENT' : 'ADMIN';
+  return { role, roles: [role] };
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -78,6 +89,18 @@ export class User {
     default: 'CONSUMER',
   })
   account_type: AccountType;
+
+  /**
+   * Dashboard staff authorization. Only meaningful when account_type = ADMIN.
+   * ADMIN = Super Admin. SUPPORT_AGENT never appears together with ADMIN in JWT roles[].
+   */
+  @Column({
+    type: 'varchar',
+    length: 32,
+    name: 'staff_role',
+    default: 'ADMIN',
+  })
+  staff_role: StaffRole;
 
   /**
    * @deprecated Use getConsumerForIdentity(unified_identity_id) for payout resolution.
