@@ -55,6 +55,7 @@ describe('HostOnboardingService', () => {
       { create: jest.fn((x) => x), save: jest.fn() } as never,
       dataSource as never,
       kycPolicy as never,
+      { resolveFirstExisting: jest.fn() } as never,
     );
   });
 
@@ -197,5 +198,34 @@ describe('HostOnboardingService', () => {
     const frozen = await service.getHostMe(consumerUser);
     expect(frozen.can_create_listing).toBe(false);
     expect(frozen.can_publish_listing).toBe(false);
+  });
+
+  it('listForAdmin omits document_number_hash and sumsub_applicant_id', async () => {
+    const qb = {
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([
+        [
+          {
+            ...existingProfile,
+            document_number_hash: 'should-not-leak',
+            sumsub_applicant_id: 'sumsub-secret',
+            document_front_asset_id: 'asset-front',
+          },
+        ],
+        1,
+      ]),
+    };
+    hostProfileRepo.createQueryBuilder.mockReturnValue(qb);
+
+    const result = await service.listForAdmin();
+    expect(result.total).toBe(1);
+    expect(result.items[0]).not.toHaveProperty('document_number_hash');
+    expect(result.items[0]).not.toHaveProperty('sumsub_applicant_id');
+    expect(result.items[0].user_id).toBe('consumer-1');
+    expect(result.items[0].document_front_asset_id).toBe('asset-front');
   });
 });

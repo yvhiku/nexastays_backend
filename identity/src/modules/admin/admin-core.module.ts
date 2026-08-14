@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { AuthzModule } from '../authz/authz.module';
 import { User } from '../users/entities/user.entity';
+import { UnifiedIdentity } from '../users/entities/unified-identity.entity';
+import { IdentityPhoneNumber } from '../users/entities/identity-phone-number.entity';
 import { KycProfile } from '../compliance/entities/kyc-profile.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import { FraudEvent } from '../fraud/entities/fraud-event.entity';
@@ -42,6 +44,8 @@ import { IdentitySnapshotModule } from '../identity-snapshot/identity-snapshot.m
     IdentitySnapshotModule,
     TypeOrmModule.forFeature([
       User,
+      UnifiedIdentity,
+      IdentityPhoneNumber,
       KycProfile,
       AuditLog,
       FraudEvent,

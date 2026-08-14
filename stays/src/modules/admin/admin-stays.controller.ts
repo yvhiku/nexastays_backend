@@ -90,12 +90,14 @@ export class AdminStaysController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
     @Query('sort') sort?: string,
+    @Query('hostUserId') hostUserId?: string,
   ) {
     return this.adminStaysService.getListings({
       status,
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
       sort: sort === 'newest' || sort === 'oldest' || sort === 'priority' ? sort : undefined,
+      hostUserId: hostUserId || undefined,
     });
   }
 
@@ -216,16 +218,25 @@ export class AdminStaysController {
     });
   }
 
+  @Get('people/:userId')
+  getPersonOverview(@Param('userId', ParseUUIDPipe) userId: string) {
+    return this.adminStaysService.getPersonOverview(userId);
+  }
+
   @Get('bookings')
   getBookings(
     @Query('status') status?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('guestUserId') guestUserId?: string,
+    @Query('hostUserId') hostUserId?: string,
   ) {
     return this.adminStaysService.getBookings({
       status,
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
+      guestUserId: guestUserId || undefined,
+      hostUserId: hostUserId || undefined,
     });
   }
 
@@ -272,6 +283,8 @@ export class AdminStaysController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
     @Query('status') status?: string,
+    @Query('guestUserId') guestUserId?: string,
+    @Query('hostUserId') hostUserId?: string,
   ) {
     const normalized =
       status === 'PUBLISHED' || status === 'HIDDEN' || status === 'REMOVED'
@@ -281,6 +294,8 @@ export class AdminStaysController {
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
       status: normalized,
+      guestUserId: guestUserId || undefined,
+      hostUserId: hostUserId || undefined,
     });
   }
 
@@ -303,10 +318,14 @@ export class AdminStaysController {
   getAuditLogs(
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('actorUserId') actorUserId?: string,
+    @Query('entityId') entityId?: string,
   ) {
     return this.adminStaysService.getAuditLogs({
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
+      actorUserId: actorUserId || undefined,
+      entityId: entityId || undefined,
     });
   }
 

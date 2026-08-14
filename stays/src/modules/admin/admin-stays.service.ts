@@ -10,10 +10,13 @@ import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysHostProfile } from '../stays/entities/stays-host-profile.entity';
 import { StaysAuditLog } from '../stays/entities/stays-audit-log.entity';
 import { StaysListingReview } from '../stays/entities/stays-listing-review.entity';
-import { HostOnboardingService } from '../stays/hosts/host-onboarding.service';
+import { HostOnboardingService, toAdminHostProfileDto } from '../stays/hosts/host-onboarding.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { StaysService } from '../stays/stays.service';
 import { StaysBookingOccupant } from '../stays/entities/stays-booking-occupant.entity';
+import { StaysSupportTicket } from '../support/entities/stays-support-ticket.entity';
+import { StaysConversationReport } from '../support/entities/stays-conversation-report.entity';
+import { StaysSafetyIssue } from '../support/entities/stays-safety-issue.entity';
 import { DomainEventsService } from '../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import { SeoFreshnessEngineService } from '../seo/seo-freshness-engine.service';
@@ -23,6 +26,26 @@ import { MediaStorageService } from '../../common/media/media-storage.module';
 @Injectable()
 export class AdminStaysService {
   private static readonly PHOTO_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
+  private static readonly PERSON_ITEMS_LIMIT = 10;
+  private static readonly OPEN_TICKET_STATUSES = [
+    'OPEN',
+    'IN_PROGRESS',
+    'WAITING_FOR_CUSTOMER',
+    'WAITING_FOR_HOST',
+    'ESCALATED',
+  ] as const;
+  private static readonly BOOKING_UPCOMING = [
+    'INITIATED',
+    'PAYMENT_PENDING',
+    'CONFIRMED',
+    'CHECKED_IN',
+  ] as const;
+  private static readonly BOOKING_COMPLETED = ['COMPLETED'] as const;
+  private static readonly BOOKING_CANCELLED = [
+    'CANCELLED_BY_GUEST',
+    'CANCELLED_BY_HOST',
+    'EXPIRED',
+  ] as const;
 
   constructor(
     @InjectRepository(StaysListing)
@@ -40,6 +63,12 @@ export class AdminStaysService {
     private readonly staysService: StaysService,
     @InjectRepository(StaysBookingOccupant)
     private readonly occupantRepo: Repository<StaysBookingOccupant>,
+    @InjectRepository(StaysSupportTicket)
+    private readonly ticketRepo: Repository<StaysSupportTicket>,
+    @InjectRepository(StaysConversationReport)
+    private readonly reportRepo: Repository<StaysConversationReport>,
+    @InjectRepository(StaysSafetyIssue)
+    private readonly safetyRepo: Repository<StaysSafetyIssue>,
     private readonly domainEvents: DomainEventsService,
     private readonly seoFreshness: SeoFreshnessEngineService,
     private readonly mediaStorage: MediaStorageService,
@@ -638,6 +667,7 @@ export class AdminStaysService {
     offset?: number;
     /** oldest = queue wait time (default for pending); newest; priority reserved */
     sort?: 'oldest' | 'newest' | 'priority';
+    hostUserId?: string;
   }) {
     const rawLimit = params?.limit ?? 50;
     const limit = Math.min(Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 50), 100);
@@ -655,6 +685,11 @@ export class AdminStaysService {
 
     if (status && status !== 'all') {
       qb.andWhere('l.status = :status', { status: status.toUpperCase() });
+    }
+    if (params?.hostUserId) {
+      qb.andWhere('l.host_user_id = :hostUserId', {
+        hostUserId: params.hostUserId,
+      });
     }
 
     // Explicit ORDER BY — never rely on implicit ordering
@@ -686,7 +721,9 @@ export class AdminStaysService {
     return {
       items: items.map((l) => ({
         ...l,
-        host_profile: hostByUserId.get(l.host_user_id) ?? null,
+        host_profile: hostByUserId.get(l.host_user_id)
+          ? toAdminHostProfileDto(hostByUserId.get(l.host_user_id)!)
+          : null,
       })),
       total,
       limit,
@@ -705,7 +742,10 @@ export class AdminStaysService {
     const host_profile = await this.hostProfileRepo.findOne({
       where: { user_id: listing.host_user_id },
     });
-    return { ...listing, host_profile };
+    return {
+      ...listing,
+      host_profile: host_profile ? toAdminHostProfileDto(host_profile) : null,
+    };
   }
 
   async getListingMediaPath(listingId: string, assetId: string): Promise<string> {
@@ -752,7 +792,13 @@ export class AdminStaysService {
     });
   }
 
-  async getBookings(params?: { status?: string; limit?: number; offset?: number }) {
+  async getBookings(params?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+    guestUserId?: string;
+    hostUserId?: string;
+  }) {
     const { status, limit = 50, offset = 0 } = params || {};
     const qb = this.bookingRepo
       .createQueryBuilder('b')
@@ -763,6 +809,16 @@ export class AdminStaysService {
 
     if (status && status !== 'all') {
       qb.andWhere('b.status = :status', { status: status.toUpperCase() });
+    }
+    if (params?.guestUserId) {
+      qb.andWhere('b.guest_user_id = :guestUserId', {
+        guestUserId: params.guestUserId,
+      });
+    }
+    if (params?.hostUserId) {
+      qb.andWhere('listing.host_user_id = :hostUserId', {
+        hostUserId: params.hostUserId,
+      });
     }
 
     const [items, total] = await qb.getManyAndCount();
@@ -829,15 +885,261 @@ export class AdminStaysService {
     return { items, total };
   }
 
-  async getAuditLogs(params?: { limit?: number; offset?: number }) {
+  async getAuditLogs(params?: {
+    limit?: number;
+    offset?: number;
+    actorUserId?: string;
+    entityId?: string;
+  }) {
     const limit = Math.min(params?.limit ?? 100, 500);
     const offset = params?.offset ?? 0;
-    const [items, total] = await this.auditRepo.findAndCount({
-      order: { created_at: 'DESC' },
-      take: limit,
-      skip: offset,
-    });
+    const qb = this.auditRepo
+      .createQueryBuilder('a')
+      .orderBy('a.created_at', 'DESC')
+      .take(limit)
+      .skip(offset);
+    if (params?.actorUserId) {
+      qb.andWhere('a.actor_user_id = :actorUserId', {
+        actorUserId: params.actorUserId,
+      });
+    }
+    if (params?.entityId) {
+      qb.andWhere('a.entity_id = :entityId', { entityId: params.entityId });
+    }
+    const [items, total] = await qb.getManyAndCount();
     return { items, total };
+  }
+
+  async getPersonOverview(userId: string) {
+    const itemLimit = AdminStaysService.PERSON_ITEMS_LIMIT;
+    const openTicketStatuses = [...AdminStaysService.OPEN_TICKET_STATUSES];
+    const upcomingStatuses = AdminStaysService.BOOKING_UPCOMING;
+    const completedStatuses = AdminStaysService.BOOKING_COMPLETED;
+    const cancelledStatuses = AdminStaysService.BOOKING_CANCELLED;
+
+    const [
+      hostRow,
+      listingStatusRows,
+      latestListings,
+      hostBookingRows,
+      guestBookingRows,
+      hostBookingItems,
+      guestBookingItems,
+      reviewsWritten,
+      hostReviewAgg,
+      reportsMade,
+      reportsAgainst,
+      safetyIssuesMade,
+      safetyIssuesAgainst,
+      ticketsTotal,
+      ticketsOpen,
+      ticketItems,
+    ] = await Promise.all([
+      this.hostProfileRepo.findOne({ where: { user_id: userId } }),
+      this.listingRepo
+        .createQueryBuilder('l')
+        .select('l.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .where('l.host_user_id = :userId', { userId })
+        .groupBy('l.status')
+        .getRawMany<{ status: string; count: string }>(),
+      this.listingRepo
+        .createQueryBuilder('l')
+        .leftJoinAndSelect('l.rate_plan', 'rate_plan')
+        .where('l.host_user_id = :userId', { userId })
+        .orderBy('l.created_at', 'DESC')
+        .take(itemLimit)
+        .getMany(),
+      this.bookingRepo
+        .createQueryBuilder('b')
+        .innerJoin('b.listing', 'l')
+        .select('b.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .addSelect('COALESCE(SUM(b.payout_amount), 0)', 'amount')
+        .where('l.host_user_id = :userId', { userId })
+        .groupBy('b.status')
+        .getRawMany<{ status: string; count: string; amount: string }>(),
+      this.bookingRepo
+        .createQueryBuilder('b')
+        .select('b.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .addSelect('COALESCE(SUM(b.total_paid), 0)', 'amount')
+        .where('b.guest_user_id = :userId', { userId })
+        .groupBy('b.status')
+        .getRawMany<{ status: string; count: string; amount: string }>(),
+      this.bookingRepo
+        .createQueryBuilder('b')
+        .innerJoin('b.listing', 'l')
+        .where('l.host_user_id = :userId', { userId })
+        .orderBy('b.created_at', 'DESC')
+        .take(itemLimit)
+        .getMany(),
+      this.bookingRepo.find({
+        where: { guest_user_id: userId },
+        order: { created_at: 'DESC' },
+        take: itemLimit,
+      }),
+      this.reviewRepo
+        .createQueryBuilder('r')
+        .where('r.guest_user_id = :userId', { userId })
+        .andWhere("r.status <> 'REMOVED'")
+        .getCount(),
+      this.reviewRepo
+        .createQueryBuilder('r')
+        .leftJoin('r.listing', 'l')
+        .select('COUNT(*)', 'received')
+        .addSelect('AVG(r.rating)', 'average')
+        .where(
+          '(r.host_user_id = :userId OR (r.host_user_id IS NULL AND l.host_user_id = :userId))',
+          { userId },
+        )
+        .andWhere('r.status = :published', { published: 'PUBLISHED' })
+        .getRawOne<{ received: string; average: string | null }>(),
+      this.reportRepo.count({ where: { reporter_user_id: userId } }),
+      this.reportRepo.count({ where: { reported_user_id: userId } }),
+      this.safetyRepo.count({ where: { reporter_user_id: userId } }),
+      this.safetyRepo.count({ where: { reported_user_id: userId } }),
+      this.ticketRepo.count({ where: { requester_user_id: userId } }),
+      this.ticketRepo
+        .createQueryBuilder('t')
+        .where('t.requester_user_id = :userId', { userId })
+        .andWhere('t.status IN (:...statuses)', {
+          statuses: openTicketStatuses,
+        })
+        .getCount(),
+      this.ticketRepo.find({
+        where: { requester_user_id: userId },
+        order: { created_at: 'DESC' },
+        take: itemLimit,
+      }),
+    ]);
+
+    const listingIds = latestListings.map((l) => l.id);
+    const bookingCountRows =
+      listingIds.length > 0
+        ? await this.bookingRepo
+            .createQueryBuilder('b')
+            .select('b.listing_id', 'listing_id')
+            .addSelect('COUNT(*)', 'count')
+            .where('b.listing_id IN (:...listingIds)', { listingIds })
+            .groupBy('b.listing_id')
+            .getRawMany<{ listing_id: string; count: string }>()
+        : [];
+    const bookingCountByListing = new Map(
+      bookingCountRows.map((r) => [r.listing_id, Number(r.count) || 0]),
+    );
+
+    const listingsByStatus: Record<string, number> = {};
+    let listingsTotal = 0;
+    for (const row of listingStatusRows) {
+      const n = Number(row.count) || 0;
+      listingsByStatus[row.status] = n;
+      listingsTotal += n;
+    }
+
+    const hostBookings = this.summarizeBookings(
+      hostBookingRows,
+      upcomingStatuses,
+      completedStatuses,
+      cancelledStatuses,
+    );
+    const guestBookings = this.summarizeBookings(
+      guestBookingRows,
+      upcomingStatuses,
+      completedStatuses,
+      cancelledStatuses,
+    );
+
+    const received = Number(hostReviewAgg?.received ?? 0) || 0;
+    const avgRaw = hostReviewAgg?.average;
+    const averageRating =
+      avgRaw == null || avgRaw === ''
+        ? null
+        : Number(Number(avgRaw).toFixed(2));
+
+    return {
+      userId,
+      hostProfile: hostRow
+        ? {
+            id: hostRow.id,
+            userId: hostRow.user_id,
+            applicationStatus: hostRow.application_status,
+            hostVerificationStatus: hostRow.host_verification_status,
+            identityStatus: hostRow.identity_status,
+            city: hostRow.city,
+            listingFrozen: hostRow.listing_frozen,
+            documentType: hostRow.document_type,
+            documentFrontAssetId: hostRow.document_front_asset_id,
+            documentBackAssetId: hostRow.document_back_asset_id,
+            selfieAssetId: hostRow.selfie_asset_id,
+            submittedAt: hostRow.submitted_at,
+            reviewedAt: hostRow.reviewed_at,
+            rejectionReason: hostRow.rejection_reason,
+          }
+        : null,
+      listings: {
+        total: listingsTotal,
+        byStatus: listingsByStatus,
+        items: latestListings.map((l) => ({
+          id: l.id,
+          title: l.title,
+          status: l.status,
+          city: l.city,
+          price: this.toMoney(l.rate_plan?.base_price),
+          bookingCount: bookingCountByListing.get(l.id) ?? 0,
+          rating: l.avg_rating != null ? this.toMoney(l.avg_rating) : null,
+        })),
+      },
+      bookingsAsHost: {
+        total: hostBookings.total,
+        upcoming: hostBookings.upcoming,
+        completed: hostBookings.completed,
+        cancelled: hostBookings.cancelled,
+        totalPayout: hostBookings.amount,
+        items: hostBookingItems.map((b) =>
+          this.toCompactBooking(b, this.toMoney(b.payout_amount)),
+        ),
+      },
+      bookingsAsGuest: {
+        total: guestBookings.total,
+        upcoming: guestBookings.upcoming,
+        completed: guestBookings.completed,
+        cancelled: guestBookings.cancelled,
+        totalPaid: guestBookings.amount,
+        items: guestBookingItems.map((b) =>
+          this.toCompactBooking(b, this.toMoney(b.total_paid)),
+        ),
+      },
+      reviews: {
+        asGuest: { written: reviewsWritten },
+        asHost: {
+          received,
+          averageRating: Number.isFinite(averageRating as number)
+            ? averageRating
+            : null,
+        },
+      },
+      trust: {
+        reportsMade,
+        reportsAgainst,
+        safetyIssuesMade,
+        safetyIssuesAgainst,
+      },
+      tickets: {
+        total: ticketsTotal,
+        open: ticketsOpen,
+        items: ticketItems.map((t) => ({
+          id: t.id,
+          ticketNumber: t.ticket_number,
+          status: t.status,
+          subject: t.subject,
+          createdAt:
+            t.created_at instanceof Date
+              ? t.created_at.toISOString()
+              : String(t.created_at),
+        })),
+      },
+    };
   }
 
   async approveHost(
@@ -1014,5 +1316,56 @@ export class AdminStaysService {
     } catch {
       return { status: 'degraded', db: 'disconnected' };
     }
+  }
+
+  private toMoney(value: unknown): number {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  private toIsoDate(value: Date | string | null | undefined): string | null {
+    if (value == null) return null;
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    return String(value).slice(0, 10);
+  }
+
+  private summarizeBookings(
+    rows: Array<{ status: string; count: string; amount: string }>,
+    upcoming: readonly string[],
+    completed: readonly string[],
+    cancelled: readonly string[],
+  ) {
+    let total = 0;
+    let upcomingCount = 0;
+    let completedCount = 0;
+    let cancelledCount = 0;
+    let amount = 0;
+    for (const row of rows) {
+      const n = Number(row.count) || 0;
+      total += n;
+      amount += this.toMoney(row.amount);
+      if (upcoming.includes(row.status)) upcomingCount += n;
+      else if (completed.includes(row.status)) completedCount += n;
+      else if (cancelled.includes(row.status)) cancelledCount += n;
+    }
+    return {
+      total,
+      upcoming: upcomingCount,
+      completed: completedCount,
+      cancelled: cancelledCount,
+      amount,
+    };
+  }
+
+  private toCompactBooking(booking: StaysBooking, amount: number) {
+    return {
+      id: booking.id,
+      reference: booking.booking_reference,
+      status: booking.status,
+      checkinDate: this.toIsoDate(booking.checkin_date),
+      checkoutDate: this.toIsoDate(booking.checkout_date),
+      listingId: booking.listing_id,
+      amount,
+    };
   }
 }

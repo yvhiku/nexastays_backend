@@ -352,6 +352,12 @@ export class AdminListReportsQueryDto {
   @MaxLength(128)
   reportedUserId?: string;
 
+  /** Reporter or reported — conversation reports and safety issues stay separately filterable via kind. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  userId?: string;
+
   @IsOptional()
   @IsUUID('4')
   bookingId?: string;

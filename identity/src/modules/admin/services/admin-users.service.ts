@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { IdentityPhoneNumber } from '../../users/entities/identity-phone-number.entity';
 import { Wallet } from '../../wallets/entities/wallet.entity';
 import { KycProfile } from '../../compliance/entities/kyc-profile.entity';
 import { RefreshToken } from '../../auth/entities/refresh-token.entity';
@@ -21,6 +22,8 @@ export class AdminUsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(IdentityPhoneNumber)
+    private readonly phoneNumbersRepository: Repository<IdentityPhoneNumber>,
     @InjectRepository(Wallet)
     private readonly walletsRepository: Repository<Wallet>,
     @InjectRepository(KycProfile)
@@ -249,6 +252,7 @@ export class AdminUsersService {
       .createQueryBuilder('u')
       .leftJoin('u.kyc_profile', 'k')
       .leftJoin('u.linked_user', 'lu')
+      .leftJoin('u.unified_identity', 'ui')
       .select([
         'u.id as id',
         'u.phone_number as phone_number',
@@ -259,10 +263,18 @@ export class AdminUsersService {
         'u.nationality as nationality',
         'u.account_type as account_type',
         'u.linked_user_id as linked_user_id',
+        'u.unified_identity_id as unified_identity_id',
         'u.status as account_status',
         'u.risk_score as risk_score',
         'u.created_at as created_at',
         'u.last_login_at as last_login_at',
+        'u.profile_photo_url as profile_photo_url',
+        'u.deletion_status as deletion_status',
+        'u.deletion_requested_at as deletion_requested_at',
+        'u.deletion_scheduled_for as deletion_scheduled_for',
+        'u.pii_anonymized_at as pii_anonymized_at',
+        'ui.address as address',
+        'ui.profile_photo_url as identity_profile_photo_url',
         "COALESCE(k.status, u.kyc_status, 'UNVERIFIED') as kyc_status",
         'lu.id as linked_id',
         'lu.full_name as linked_full_name',
@@ -292,13 +304,33 @@ export class AdminUsersService {
           ? String(dob).slice(0, 10)
           : null;
 
+    const profilePhotoUrl =
+      row.profile_photo_url || row.identity_profile_photo_url || null;
+
+    const phones = row.unified_identity_id
+      ? (
+          await this.phoneNumbersRepository.find({
+            where: { identity_id: row.unified_identity_id },
+            order: { is_primary: 'DESC', created_at: 'ASC' },
+          })
+        ).map((p) => ({
+          phone_number: p.phone_number,
+          is_primary: p.is_primary,
+          is_verified: p.is_verified,
+          verified_at: p.verified_at,
+        }))
+      : [];
+
     return {
       id: row.id,
       phone_number: row.phone_number,
       full_name: row.full_name,
       email: row.email,
+      city: row.city ?? null,
       date_of_birth: dobStr,
       nationality: row.nationality ?? null,
+      address: row.address ?? null,
+      phones,
       account_type: row.account_type || 'CONSUMER',
       linked_user_id: row.linked_user_id ?? null,
       linked_user,
@@ -307,8 +339,13 @@ export class AdminUsersService {
       balance: 0,
       risk_score: Number(row.risk_score || 0),
       account_status: row.account_status,
+      deletion_status: row.deletion_status ?? 'NONE',
+      deletion_requested_at: row.deletion_requested_at ?? null,
+      deletion_scheduled_for: row.deletion_scheduled_for ?? null,
+      pii_anonymized_at: row.pii_anonymized_at ?? null,
       created_at: row.created_at,
       last_login_at: row.last_login_at,
+      ...(profilePhotoUrl ? { profile_photo_url: profilePhotoUrl } : {}),
     };
   }
 

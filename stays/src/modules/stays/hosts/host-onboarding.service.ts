@@ -22,6 +22,37 @@ import { MediaStorageService } from '../../../common/media/media-storage.module'
 
 const VERIFY_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
 
+/** Admin-safe host profile: never document_number_hash or sumsub_applicant_id. */
+export function toAdminHostProfileDto(profile: StaysHostProfile) {
+  return {
+    id: profile.id,
+    user_id: profile.user_id,
+    host_verification_status: profile.host_verification_status,
+    application_status: profile.application_status,
+    identity_status: profile.identity_status,
+    source: profile.source,
+    submitted_from: profile.submitted_from,
+    full_name: profile.full_name,
+    email: profile.email,
+    phone: profile.phone,
+    city: profile.city,
+    host_type: profile.host_type,
+    hosting_policies_accepted_at: profile.hosting_policies_accepted_at,
+    identity_reused: profile.identity_reused,
+    listing_frozen: profile.listing_frozen,
+    document_type: profile.document_type,
+    document_front_asset_id: profile.document_front_asset_id,
+    document_back_asset_id: profile.document_back_asset_id,
+    selfie_asset_id: profile.selfie_asset_id,
+    submitted_at: profile.submitted_at,
+    reviewed_at: profile.reviewed_at,
+    reviewed_by: profile.reviewed_by,
+    rejection_reason: profile.rejection_reason,
+    created_at: profile.created_at,
+    updated_at: profile.updated_at,
+  };
+}
+
 export type SubmitHostOnboardingContext = {
   source: HostOnboardingSource;
   submitted_from: string;
@@ -250,7 +281,7 @@ export class HostOnboardingService {
     }
 
     const [items, total] = await qb.getManyAndCount();
-    return { items, total };
+    return { items: items.map(toAdminHostProfileDto), total };
   }
 
   async approve(

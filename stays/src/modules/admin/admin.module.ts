@@ -13,6 +13,9 @@ import {
   StaysListingReview,
   StaysBookingOccupant,
 } from '../stays/entities';
+import { StaysSupportTicket } from '../support/entities/stays-support-ticket.entity';
+import { StaysConversationReport } from '../support/entities/stays-conversation-report.entity';
+import { StaysSafetyIssue } from '../support/entities/stays-safety-issue.entity';
 
 @Module({
   imports: [
@@ -26,6 +29,9 @@ import {
       StaysAuditLog,
       StaysListingReview,
       StaysBookingOccupant,
+      StaysSupportTicket,
+      StaysConversationReport,
+      StaysSafetyIssue,
     ]),
   ],
   controllers: [AdminStaysController],

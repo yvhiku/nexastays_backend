@@ -430,17 +430,33 @@ export class StaysReviewsService {
     limit?: number;
     offset?: number;
     status?: ReviewStatus;
+    guestUserId?: string;
+    hostUserId?: string;
   }) {
     const limit = Math.min(params?.limit ?? 50, 200);
     const offset = params?.offset ?? 0;
-    const where = params?.status ? { status: params.status } : {};
-    const [items, total] = await this.reviewRepo.findAndCount({
-      where,
-      relations: ['listing', 'media'],
-      order: { created_at: 'DESC' },
-      take: limit,
-      skip: offset,
-    });
+    const qb = this.reviewRepo
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.listing', 'listing')
+      .leftJoinAndSelect('r.media', 'media')
+      .orderBy('r.created_at', 'DESC')
+      .take(limit)
+      .skip(offset);
+    if (params?.status) {
+      qb.andWhere('r.status = :status', { status: params.status });
+    }
+    if (params?.guestUserId) {
+      qb.andWhere('r.guest_user_id = :guestUserId', {
+        guestUserId: params.guestUserId,
+      });
+    }
+    if (params?.hostUserId) {
+      qb.andWhere(
+        '(r.host_user_id = :hostUserId OR (r.host_user_id IS NULL AND listing.host_user_id = :hostUserId))',
+        { hostUserId: params.hostUserId },
+      );
+    }
+    const [items, total] = await qb.getManyAndCount();
     return {
       items: items.map((r) => this.toReviewResponse(r)),
       total,

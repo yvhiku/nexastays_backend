@@ -1067,6 +1067,12 @@ export class SupportTicketsService {
       if (query.reportedUserId) {
         parts.push(`${alias}.reported_user_id = ${push(query.reportedUserId)}`);
       }
+      if (query.userId) {
+        const uid = push(query.userId);
+        parts.push(
+          `(${alias}.reporter_user_id = ${uid} OR ${alias}.reported_user_id = ${uid})`,
+        );
+      }
       if (query.bookingId) {
         parts.push(`${alias}.booking_id = ${push(query.bookingId)}`);
       }
@@ -2284,6 +2290,7 @@ export class SupportTicketsService {
       closed_at: ticket.closed_at?.toISOString() ?? null,
       first_admin_response_at:
         ticket.first_admin_response_at?.toISOString() ?? null,
+      requester_user_id: ticket.requester_user_id,
       booking_id: ticket.booking_id,
       booking_reference: bookingRef,
       listing_id: ticket.listing_id,
