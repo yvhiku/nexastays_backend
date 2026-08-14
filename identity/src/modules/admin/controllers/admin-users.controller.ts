@@ -37,6 +37,15 @@ export class AdminUsersController {
   }
 
   /**
+   * Support Agent roster for Super Admin assignment. Includes frozen agents.
+   * IMPORTANT: This must come BEFORE @Get(':id') to avoid route conflicts.
+   */
+  @Get('support-agents')
+  listSupportAgents() {
+    return this.adminUsersService.listSupportAgents();
+  }
+
+  /**
    * Check driver and courier accounts for linked consumer accounts
    * GET /admin/users/check-driver-courier-consumer
    * IMPORTANT: This must come BEFORE @Get(':id') to avoid route conflicts

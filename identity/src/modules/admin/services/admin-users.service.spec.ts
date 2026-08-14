@@ -103,3 +103,86 @@ describe('AdminUsersService.updateStaffRole', () => {
     expect(authzVersions.bump).toHaveBeenCalledWith('u2');
   });
 });
+
+describe('AdminUsersService.listSupportAgents', () => {
+  const usersRepository = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+  };
+  const refreshTokenRepository = {
+    createQueryBuilder: jest.fn(),
+  };
+  const authzVersions = { bump: jest.fn() };
+  const auditService = { logAction: jest.fn() };
+
+  const service = new AdminUsersService(
+    usersRepository as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    refreshTokenRepository as any,
+    {} as any,
+    {} as any,
+    auditService as any,
+    authzVersions as any,
+  );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns SUPPORT_AGENT staff including frozen, without secrets', async () => {
+    usersRepository.find.mockResolvedValue([
+      {
+        id: 'agent-frozen',
+        full_name: 'Frozen Agent',
+        email: 'frozen@nexa.test',
+        profile_photo_url: null,
+        status: 'FROZEN',
+        staff_role: 'SUPPORT_AGENT',
+        pin_hash: 'secret',
+      },
+      {
+        id: 'agent-1',
+        full_name: 'Sarah Ahmed',
+        email: 'sarah@nexa.test',
+        profile_photo_url: 'https://cdn/sarah.jpg',
+        status: 'ACTIVE',
+        staff_role: 'SUPPORT_AGENT',
+        pin_hash: 'secret',
+      },
+    ]);
+
+    await expect(service.listSupportAgents()).resolves.toEqual({
+      items: [
+        {
+          id: 'agent-frozen',
+          full_name: 'Frozen Agent',
+          email: 'frozen@nexa.test',
+          profile_photo_url: null,
+          status: 'FROZEN',
+          staff_role: 'SUPPORT_AGENT',
+        },
+        {
+          id: 'agent-1',
+          full_name: 'Sarah Ahmed',
+          email: 'sarah@nexa.test',
+          profile_photo_url: 'https://cdn/sarah.jpg',
+          status: 'ACTIVE',
+          staff_role: 'SUPPORT_AGENT',
+        },
+      ],
+    });
+    expect(usersRepository.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { account_type: 'ADMIN', staff_role: 'SUPPORT_AGENT' },
+      }),
+    );
+  });
+
+  it('returns an empty roster when no support agents exist', async () => {
+    usersRepository.find.mockResolvedValue([]);
+    await expect(service.listSupportAgents()).resolves.toEqual({ items: [] });
+  });
+});

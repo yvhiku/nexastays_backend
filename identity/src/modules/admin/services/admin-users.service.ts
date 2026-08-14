@@ -136,6 +136,31 @@ export class AdminUsersService {
     };
   }
 
+  async listSupportAgents() {
+    const rows = await this.usersRepository.find({
+      where: { account_type: 'ADMIN', staff_role: 'SUPPORT_AGENT' },
+      select: [
+        'id',
+        'full_name',
+        'email',
+        'profile_photo_url',
+        'status',
+        'staff_role',
+      ],
+      order: { full_name: 'ASC', email: 'ASC' },
+    });
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        full_name: row.full_name ?? null,
+        email: row.email ?? null,
+        profile_photo_url: row.profile_photo_url ?? null,
+        status: row.status,
+        staff_role: row.staff_role || 'SUPPORT_AGENT',
+      })),
+    };
+  }
+
   async inviteAdmin(email: string, role: string) {
     if (!email || !email.trim()) {
       throw new BadRequestException('Email is required');
