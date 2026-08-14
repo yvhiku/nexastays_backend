@@ -455,12 +455,16 @@ export class OperationalIntelligenceService {
     if (!row) throw new NotFoundException('Signal not found');
     if (isSupportAgentActor(actor)) {
       if (!row.ticket_id) {
-        throw new NotFoundException('Ticket not found');
+        throw new NotFoundException('Signal not found');
       }
       const ticket = await this.ticketRepo.findOne({
         where: { id: row.ticket_id },
       });
-      assertCanAccessTicket(ticket, actor);
+      try {
+        assertCanAccessTicket(ticket, actor);
+      } catch {
+        throw new NotFoundException('Signal not found');
+      }
     }
     const from = row.status;
     const allowed =
@@ -603,6 +607,15 @@ export class OperationalIntelligenceService {
     );
 
     return [...best.values()]
+      .filter(({ ticket: sibling }) => {
+        if (!isSupportAgentActor(actor)) return true;
+        try {
+          assertCanAccessTicket(sibling, actor);
+          return true;
+        } catch {
+          return false;
+        }
+      })
       .sort(
         (a, b) =>
           RELATIONSHIP_RANK[a.relationship] - RELATIONSHIP_RANK[b.relationship],

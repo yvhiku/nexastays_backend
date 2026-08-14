@@ -70,6 +70,13 @@ export class RolesGuard implements CanActivate {
       ) {
         throw new ForbiddenException('Administrator privilege revoked');
       }
+      if (
+        state.staff_role &&
+        isStaffRole(state.staff_role) &&
+        !userRoles.includes(state.staff_role)
+      ) {
+        throw new ForbiddenException('Administrator privilege revoked');
+      }
     }
 
     return true;

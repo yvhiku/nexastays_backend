@@ -5,6 +5,7 @@ import { validate } from 'class-validator';
 import { SupportTicketsService } from './support-tickets.service';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
 import { StaysSupportTicket } from './entities/stays-support-ticket.entity';
+import { StaysSupportTicketNote } from './entities/stays-support-ticket-note.entity';
 import { StaysConversationReport } from './entities/stays-conversation-report.entity';
 import { StaysSafetyIssue } from './entities/stays-safety-issue.entity';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
@@ -161,6 +162,7 @@ describe('SupportTicketsService', () => {
         if (entity === StaysSafetyIssue) return safetyRepo;
         if (entity === StaysBooking) return bookingRepo;
         if (entity === StaysListing) return listingRepo;
+        if (entity === StaysSupportTicketNote) return noteRepo;
         return ticketRepo;
       }),
     };
@@ -1140,6 +1142,7 @@ describe('SupportTicketsService', () => {
       'ticket-1',
       expect.objectContaining({
         first_admin_response_at: expect.any(Date),
+        assigned_admin_id: 'admin-1',
       }),
     );
     expect(timelineSeeder.insertMessage).toHaveBeenCalledWith(
@@ -1593,7 +1596,25 @@ describe('SupportTicketsService', () => {
       ).toBe(false);
     });
 
-    it('GET own ticket 200, foreign and unassigned 404', async () => {
+    it('cannot expand the queue with requesterUserId', async () => {
+      const { service, ticketQb } = buildService();
+      ticketQb.getCount.mockResolvedValue(0);
+      ticketQb.getMany.mockResolvedValue([]);
+      await service.listForAdmin(
+        { requesterUserId: 'guest-other' },
+        agentA,
+      );
+      expect(ticketQb.andWhere).toHaveBeenCalledWith(
+        't.assigned_admin_id = :assignedAdminId',
+        { assignedAdminId: 'agent-a' },
+      );
+      expect(ticketQb.andWhere).toHaveBeenCalledWith(
+        't.requester_user_id = :requesterUserId',
+        { requesterUserId: 'guest-other' },
+      );
+    });
+
+    it('GET own ticket 200, foreign unassigned and guessed UUID 404', async () => {
       const { service, ticketRepo } = buildService();
       ticketRepo.findOne.mockResolvedValue(ticketRow());
       const own = await service.getForAdmin('ticket-a', agentA);
@@ -1602,19 +1623,24 @@ describe('SupportTicketsService', () => {
       ticketRepo.findOne.mockResolvedValue(
         ticketRow({ id: 'ticket-b', assigned_admin_id: 'agent-b' }),
       );
-      await expect(service.getForAdmin('ticket-b', agentA)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(service.getForAdmin('ticket-b', agentA)).rejects.toMatchObject({
+        message: 'Ticket not found',
+      });
 
       ticketRepo.findOne.mockResolvedValue(
         ticketRow({ id: 'ticket-u', assigned_admin_id: null }),
       );
+      await expect(service.getForAdmin('ticket-u', agentA)).rejects.toMatchObject({
+        message: 'Ticket not found',
+      });
+
+      ticketRepo.findOne.mockResolvedValue(null);
       await expect(
-        service.getForAdmin('ticket-u', agentA),
-      ).rejects.toBeInstanceOf(NotFoundException);
+        service.getForAdmin('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', agentA),
+      ).rejects.toMatchObject({ message: 'Ticket not found' });
     });
 
-    it('messages and notes follow the same ownership 404', async () => {
+    it('messages notes and activity follow the same ownership 404', async () => {
       const { service, ticketRepo, messageRepo } = buildService();
       ticketRepo.findOne.mockResolvedValue(ticketRow());
       messageRepo.find.mockResolvedValue([]);
@@ -1624,6 +1650,12 @@ describe('SupportTicketsService', () => {
       await expect(
         service.listNotesForAdmin('ticket-a', 100, agentA),
       ).resolves.toEqual({ items: [] });
+      await expect(
+        service.listTicketActivity('ticket-a', 50, 0, agentA),
+      ).resolves.toEqual(expect.objectContaining({ items: [] }));
+      await expect(
+        service.createNoteForAdmin('ticket-a', 'agent-a', 'note', agentA),
+      ).resolves.toEqual(expect.objectContaining({ body: 'note' }));
 
       ticketRepo.findOne.mockResolvedValue(
         ticketRow({ id: 'ticket-b', assigned_admin_id: 'agent-b' }),
@@ -1635,7 +1667,26 @@ describe('SupportTicketsService', () => {
         service.listNotesForAdmin('ticket-b', 100, agentA),
       ).rejects.toBeInstanceOf(NotFoundException);
       await expect(
+        service.listTicketActivity('ticket-b', 50, 0, agentA),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
         service.createNoteForAdmin('ticket-b', 'agent-a', 'note', agentA),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      ticketRepo.findOne.mockResolvedValue(
+        ticketRow({ id: 'ticket-u', assigned_admin_id: null }),
+      );
+      await expect(
+        service.listMessagesForAdmin('ticket-u', agentA),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.listNotesForAdmin('ticket-u', 100, agentA),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.createNoteForAdmin('ticket-u', 'agent-a', 'note', agentA),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.listTicketActivity('ticket-u', 50, 0, agentA),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
@@ -1663,7 +1714,7 @@ describe('SupportTicketsService', () => {
       expect(ticketUpdate).not.toHaveBeenCalled();
     });
 
-    it('PATCH own status allowed; priority and assignment 403; foreign 404', async () => {
+    it('PATCH own status allowed; priority and assignment 403; foreign 404 not 403', async () => {
       const { service, ticketRepo } = buildService();
       ticketRepo.findOne.mockResolvedValue(ticketRow({ status: 'OPEN' }));
       ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
@@ -1703,7 +1754,37 @@ describe('SupportTicketsService', () => {
           'agent-a',
           agentA,
         ),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      ).rejects.toMatchObject({ message: 'Ticket not found' });
+      await expect(
+        service.patchForAdmin(
+          'ticket-b',
+          { priority: 'HIGH' },
+          'agent-a',
+          agentA,
+        ),
+      ).rejects.toMatchObject({ message: 'Ticket not found' });
+      await expect(
+        service.patchForAdmin(
+          'ticket-b',
+          { assigned_admin_id: 'agent-a' },
+          'agent-a',
+          agentA,
+        ),
+      ).rejects.toMatchObject({ message: 'Ticket not found' });
+    });
+
+    it('allows notes on CLOSED tickets and never inserts a customer message', async () => {
+      const { service, ticketRepo, timelineSeeder, messageRepo } = buildService();
+      ticketRepo.findOne.mockResolvedValue(ticketRow({ status: 'CLOSED' }));
+      const note = await service.createNoteForAdmin(
+        'ticket-a',
+        'agent-a',
+        'Internal after close',
+        agentA,
+      );
+      expect(note.body).toBe('Internal after close');
+      expect(timelineSeeder.insertMessage).not.toHaveBeenCalled();
+      expect(messageRepo.find).not.toHaveBeenCalled();
     });
   });
 });

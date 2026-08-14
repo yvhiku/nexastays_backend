@@ -96,4 +96,32 @@ describe('Stays RolesGuard SEC-003', () => {
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
+
+  it('denies JWT ADMIN when live staff_role is SUPPORT_AGENT', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['ADMIN', 'SUPPORT_AGENT']);
+    authzClient.getAuthzState.mockResolvedValue({
+      authz_version: 4,
+      status: 'ACTIVE',
+      account_type: 'ADMIN',
+      staff_role: 'SUPPORT_AGENT',
+    });
+    await expect(
+      guard.canActivate(ctx({ userId: 'a1', roles: ['ADMIN'], av: 4 })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('denies JWT SUPPORT_AGENT when live staff_role is ADMIN', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['ADMIN', 'SUPPORT_AGENT']);
+    authzClient.getAuthzState.mockResolvedValue({
+      authz_version: 4,
+      status: 'ACTIVE',
+      account_type: 'ADMIN',
+      staff_role: 'ADMIN',
+    });
+    await expect(
+      guard.canActivate(
+        ctx({ userId: 'agent-1', roles: ['SUPPORT_AGENT'], av: 4 }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
 });

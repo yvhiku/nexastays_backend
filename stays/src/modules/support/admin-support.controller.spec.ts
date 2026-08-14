@@ -23,17 +23,26 @@ describe('AdminSupportController roles', () => {
   });
 
   it('keeps ticket isolation methods open to SUPPORT_AGENT', () => {
-    expect(
-      Reflect.getMetadata(
-        ROLES_KEY,
-        AdminSupportController.prototype.listTickets,
-      ),
-    ).toEqual(['ADMIN', 'SUPPORT_AGENT']);
-    expect(
-      Reflect.getMetadata(
-        ROLES_KEY,
-        AdminSupportController.prototype.getTicket,
-      ),
-    ).toEqual(['ADMIN', 'SUPPORT_AGENT']);
+    for (const method of [
+      'listTickets',
+      'getTicket',
+      'listMessages',
+      'sendMessage',
+      'listNotes',
+      'createNote',
+      'ticketActivity',
+      'relatedTickets',
+      'ticketSignals',
+      'patchTicket',
+      'patchSignal',
+      'listCannedReplies',
+    ] as const) {
+      expect(
+        Reflect.getMetadata(
+          ROLES_KEY,
+          AdminSupportController.prototype[method],
+        ),
+      ).toEqual(['ADMIN', 'SUPPORT_AGENT']);
+    }
   });
 });

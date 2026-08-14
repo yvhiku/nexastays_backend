@@ -860,65 +860,55 @@ export class SupportTicketsService {
     const auditUserId =
       typeof actorUserId === 'string' ? actorUserId : actor.userId || 'system';
 
-    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
-    if (!ticket) throw new NotFoundException('Ticket not found');
-    assertCanAccessTicket(ticket, actor);
-
-    if (isSupportAgentActor(actor) && patch.assigned_admin_id !== undefined) {
-      throw new ForbiddenException(
-        'Support agents cannot change ticket assignment',
-      );
-    }
-    if (isSupportAgentActor(actor) && patch.priority !== undefined) {
-      throw new ForbiddenException(
-        'Support agents cannot change ticket priority',
-      );
-    }
-
     if (patch.assigned_admin_id) {
       await this.assertEligibleAssignee(patch.assigned_admin_id);
     }
 
-    const fromStatus = ticket.status;
-    const fromPriority = ticket.priority;
-    let fromAdminId = ticket.assigned_admin_id;
-    let saved = ticket;
+    const committed = await this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(StaysSupportTicket);
+      const locked = await repo
+        .createQueryBuilder('t')
+        .setLock('pessimistic_write')
+        .where('t.id = :id', { id: ticketId })
+        .getOne();
+      if (!locked) throw new NotFoundException('Ticket not found');
+      assertCanAccessTicket(locked, actor);
 
-    if (patch.assigned_admin_id !== undefined) {
-      saved = await this.dataSource.transaction(async (manager) => {
-        const repo = manager.getRepository(StaysSupportTicket);
-        const locked = await repo
-          .createQueryBuilder('t')
-          .setLock('pessimistic_write')
-          .where('t.id = :id', { id: ticketId })
-          .getOne();
-        if (!locked) throw new NotFoundException('Ticket not found');
-        fromAdminId = locked.assigned_admin_id;
-        locked.assigned_admin_id = patch.assigned_admin_id ?? null;
-        locked.updated_at = new Date();
-        return repo.save(locked);
-      });
-    }
-
-    if (patch.status !== undefined) {
-      saved.status = patch.status as SupportTicketStatus;
-      if (patch.status === 'RESOLVED') {
-        saved.resolved_at = saved.resolved_at ?? new Date();
-      } else if (patch.status === 'CLOSED') {
-        saved.closed_at = saved.closed_at ?? new Date();
-        saved.resolved_at = saved.resolved_at ?? new Date();
+      if (isSupportAgentActor(actor) && patch.assigned_admin_id !== undefined) {
+        throw new ForbiddenException(
+          'Support agents cannot change ticket assignment',
+        );
       }
-    }
-    if (patch.priority !== undefined) {
-      saved.priority = patch.priority as SupportTicketPriority;
-    }
-    if (patch.status !== undefined || patch.priority !== undefined) {
-      saved.updated_at = new Date();
-      saved = await this.ticketRepo.save(saved);
-    } else if (patch.assigned_admin_id === undefined) {
-      saved.updated_at = new Date();
-      saved = await this.ticketRepo.save(saved);
-    }
+      if (isSupportAgentActor(actor) && patch.priority !== undefined) {
+        throw new ForbiddenException(
+          'Support agents cannot change ticket priority',
+        );
+      }
+
+      const fromStatus = locked.status;
+      const fromPriority = locked.priority;
+      const fromAdminId = locked.assigned_admin_id;
+
+      if (patch.assigned_admin_id !== undefined) {
+        locked.assigned_admin_id = patch.assigned_admin_id ?? null;
+      }
+      if (patch.status !== undefined) {
+        locked.status = patch.status as SupportTicketStatus;
+        if (patch.status === 'RESOLVED') {
+          locked.resolved_at = locked.resolved_at ?? new Date();
+        } else if (patch.status === 'CLOSED') {
+          locked.closed_at = locked.closed_at ?? new Date();
+          locked.resolved_at = locked.resolved_at ?? new Date();
+        }
+      }
+      if (patch.priority !== undefined) {
+        locked.priority = patch.priority as SupportTicketPriority;
+      }
+      locked.updated_at = new Date();
+      const saved = await repo.save(locked);
+      return { saved, fromStatus, fromPriority, fromAdminId };
+    });
+    const { saved, fromStatus, fromPriority, fromAdminId } = committed;
 
     if (patch.assigned_admin_id !== undefined) {
       await this.staysAudit.log({
@@ -1363,17 +1353,25 @@ export class SupportTicketsService {
     if (trimmed.length > 5000) {
       throw new BadRequestException('Note body too long');
     }
-    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
-    if (!ticket) throw new NotFoundException('Ticket not found');
-    assertCanAccessTicket(ticket, actor);
+    const note = await this.dataSource.transaction(async (manager) => {
+      const ticket = await manager
+        .getRepository(StaysSupportTicket)
+        .createQueryBuilder('t')
+        .setLock('pessimistic_write')
+        .where('t.id = :id', { id: ticketId })
+        .getOne();
+      if (!ticket) throw new NotFoundException('Ticket not found');
+      assertCanAccessTicket(ticket, actor);
 
-    const note = await this.noteRepo.save(
-      this.noteRepo.create({
-        ticket_id: ticketId,
-        author_admin_id: authorAdminId,
-        body: trimmed,
-      }),
-    );
+      const notes = manager.getRepository(StaysSupportTicketNote);
+      return notes.save(
+        notes.create({
+          ticket_id: ticketId,
+          author_admin_id: authorAdminId,
+          body: trimmed,
+        }),
+      );
+    });
     await this.staysAudit.log({
       actorUserId: authorAdminId,
       actorRole: 'ADMIN',

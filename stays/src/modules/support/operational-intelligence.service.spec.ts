@@ -411,6 +411,41 @@ describe('OperationalIntelligenceService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
+    it('omits foreign sibling tickets from an agent related list', async () => {
+      const { service, ticketRepo } = build();
+      const agentA = { userId: 'agent-a', role: 'SUPPORT_AGENT' as const };
+      const parent = ticket({
+        id: 'ticket-1',
+        assigned_admin_id: 'agent-a',
+        booking_id: 'booking-1',
+        requester_user_id: 'guest-1',
+      });
+      ticketRepo.findOne.mockResolvedValue(parent);
+      ticketRepo.find.mockImplementation(async (opts: { where?: Record<string, unknown> }) => {
+        const where = opts?.where ?? {};
+        if (where.booking_id === 'booking-1') {
+          return [
+            parent,
+            ticket({
+              id: 'ticket-own',
+              ticket_number: 'SUP-2026-000010',
+              booking_id: 'booking-1',
+              assigned_admin_id: 'agent-a',
+            }),
+            ticket({
+              id: 'ticket-foreign',
+              ticket_number: 'SUP-2026-000011',
+              booking_id: 'booking-1',
+              assigned_admin_id: 'agent-b',
+            }),
+          ];
+        }
+        return [];
+      });
+      const related = await service.findRelatedTickets('ticket-1', agentA);
+      expect(related.map((row) => row.id)).toEqual(['ticket-own']);
+    });
+
     it('ticket-scoped signals follow parent ownership', async () => {
       const { service, ticketRepo, signalRepo } = build();
       const agentA = { userId: 'agent-a', role: 'SUPPORT_AGENT' as const };
@@ -529,7 +564,7 @@ describe('OperationalIntelligenceService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('agent ACK on owned ticket; 404 for foreign or unscoped signal', async () => {
+    it('agent ACK on owned ticket; missing and foreign signals share Signal not found', async () => {
       const { service, signalRepo, ticketRepo, staysAudit } = build();
       const agentA = { userId: 'agent-a', role: 'SUPPORT_AGENT' as const };
       signalRepo.findOne.mockResolvedValue({
@@ -552,7 +587,7 @@ describe('OperationalIntelligenceService', () => {
       );
       await expect(
         service.patchSignal('sig-1', 'ACKNOWLEDGED', 'agent-a', agentA),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      ).rejects.toMatchObject({ message: 'Signal not found' });
 
       signalRepo.findOne.mockResolvedValue({
         id: 'sig-2',
@@ -561,7 +596,12 @@ describe('OperationalIntelligenceService', () => {
       });
       await expect(
         service.patchSignal('sig-2', 'ACKNOWLEDGED', 'agent-a', agentA),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      ).rejects.toMatchObject({ message: 'Signal not found' });
+
+      signalRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.patchSignal('missing', 'ACKNOWLEDGED', 'agent-a', agentA),
+      ).rejects.toMatchObject({ message: 'Signal not found' });
     });
   });
 
