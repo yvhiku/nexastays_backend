@@ -511,10 +511,7 @@ export class AuthController {
   @Post('admin/login')
   @Public()
   @UseGuards(BotProtectionGuard)
-  @Throttle({
-    short: { limit: 2, ttl: 1000 },
-    default: { limit: 5, ttl: 60000 },
-  })
+  @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   async adminLogin(@Body() body: AdminLoginDto, @Req() req: express.Request) {
     const ip =
