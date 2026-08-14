@@ -824,6 +824,8 @@ describe('SupportTicketsService', () => {
           resolved: 0,
           closed: 0,
           escalated: 0,
+          assigned: 0,
+          unassigned: 0,
           avg_first_response_seconds: null,
           median_first_response_seconds: null,
           avg_first_resolution_seconds: null,
@@ -845,6 +847,8 @@ describe('SupportTicketsService', () => {
         },
       ])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     const analytics = await service.getAnalyticsForAdmin({
       from: '2026-01-01T00:00:00.000Z',
@@ -853,11 +857,88 @@ describe('SupportTicketsService', () => {
     expect(analytics.tickets.created).toBe(0);
     expect(analytics.response.averageFirstResponseSeconds).toBeNull();
     expect(analytics.csat.responses).toBe(0);
+    expect(analytics.assignment).toEqual({ assigned: 0, unassigned: 0 });
+    expect(analytics.statusDistribution).toEqual([]);
+    expect(analytics.volume).toEqual([]);
     expect(analytics.sla.firstResponse).toEqual({
       onTrack: 0,
       atRisk: 0,
       breached: 0,
     });
+    expect(JSON.stringify(analytics)).not.toMatch(/body|message/);
+  });
+
+  it('rejects invalid analytics dates and ranges over 90 days', async () => {
+    const { service, dataSource } = buildService();
+    await expect(
+      service.getAnalyticsForAdmin({ from: 'not-a-date', to: '2026-02-01' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.getAnalyticsForAdmin({
+        from: '2026-03-01T00:00:00.000Z',
+        to: '2026-02-01T00:00:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.getAnalyticsForAdmin({
+        from: '2026-01-01T00:00:00.000Z',
+        to: '2026-05-02T00:00:00.000Z',
+      }),
+    ).rejects.toThrow('Date range must be 90 days or less');
+    expect(dataSource.query).not.toHaveBeenCalled();
+  });
+
+  it('aggregates analytics volume, status distribution, and assignment', async () => {
+    const { service, dataSource } = buildService();
+    dataSource.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('AS created') && sql.includes('AS assigned')) {
+        return [
+          {
+            created: 3,
+            open: 1,
+            resolved: 1,
+            closed: 1,
+            escalated: 0,
+            assigned: 2,
+            unassigned: 1,
+          },
+        ];
+      }
+      if (sql.includes('fr_state')) return [];
+      if (sql.includes('stays_support_ticket_csat')) {
+        return [{ responses: 0, average_rating: null, r1: 0, r2: 0, r3: 0, r4: 0, r5: 0 }];
+      }
+      if (sql.includes('t.category AS category')) return [];
+      if (sql.includes('t.priority AS priority')) return [];
+      if (sql.includes('t.status AS status')) {
+        return [
+          { status: 'OPEN', count: 1 },
+          { status: 'CLOSED', count: 1 },
+          { status: 'RESOLVED', count: 1 },
+        ];
+      }
+      if (sql.includes('generate_series')) {
+        return [
+          { date: '2026-01-01', created: 2, closed: 0 },
+          { date: '2026-01-02', created: 1, closed: 1 },
+        ];
+      }
+      return [];
+    });
+    const analytics = await service.getAnalyticsForAdmin({
+      from: '2026-01-01T00:00:00.000Z',
+      to: '2026-01-03T00:00:00.000Z',
+    });
+    expect(analytics.statusDistribution.map((row) => row.status)).toEqual([
+      'OPEN',
+      'CLOSED',
+      'RESOLVED',
+    ]);
+    expect(analytics.assignment).toEqual({ assigned: 2, unassigned: 1 });
+    expect(analytics.volume).toEqual([
+      { date: '2026-01-01', created: 2, closed: 0 },
+      { date: '2026-01-02', created: 1, closed: 1 },
+    ]);
   });
 
   it('creates and lists internal notes without body in audit', async () => {

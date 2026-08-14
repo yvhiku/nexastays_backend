@@ -650,6 +650,26 @@ export class OperationalIntelligenceService {
             AND t.priority = 'URGENT'
         )::int AS urgent_tickets,
         COUNT(*) FILTER (
+          WHERE t.status = 'OPEN'
+        )::int AS open_tickets,
+        COUNT(*) FILTER (
+          WHERE t.status = 'IN_PROGRESS'
+        )::int AS in_progress_tickets,
+        COUNT(*) FILTER (
+          WHERE t.status IN ('WAITING_FOR_CUSTOMER','WAITING_FOR_HOST')
+        )::int AS waiting_tickets,
+        COUNT(*) FILTER (
+          WHERE t.status = 'ESCALATED'
+        )::int AS escalated_tickets,
+        COUNT(*) FILTER (
+          WHERE t.status IN ('OPEN','IN_PROGRESS','WAITING_FOR_CUSTOMER','WAITING_FOR_HOST','ESCALATED')
+            AND t.priority IN ('HIGH','URGENT')
+        )::int AS high_priority_tickets,
+        COUNT(*) FILTER (
+          WHERE t.status IN ('OPEN','IN_PROGRESS','WAITING_FOR_CUSTOMER','WAITING_FOR_HOST','ESCALATED')
+            AND ${sla.combined} = 'ON_TRACK'
+        )::int AS sla_on_track,
+        COUNT(*) FILTER (
           WHERE t.status IN ('OPEN','IN_PROGRESS','WAITING_FOR_CUSTOMER','WAITING_FOR_HOST','ESCALATED')
             AND ${sla.combined} = 'AT_RISK'
         )::int AS sla_at_risk,
@@ -669,16 +689,23 @@ export class OperationalIntelligenceService {
       FROM stays_support_operational_signals
       `,
     );
-    const workload = await this.queryAssignedAgentWorkload();
+    const workload = await this.queryAssignedAgentWorkload(now);
     return {
       activeTickets: Number(counts?.active_tickets ?? 0),
+      openTickets: Number(counts?.open_tickets ?? 0),
+      inProgressTickets: Number(counts?.in_progress_tickets ?? 0),
+      waitingTickets: Number(counts?.waiting_tickets ?? 0),
+      escalatedTickets: Number(counts?.escalated_tickets ?? 0),
       unassignedTickets: Number(counts?.unassigned_tickets ?? 0),
+      highPriorityTickets: Number(counts?.high_priority_tickets ?? 0),
       highPriorityUnassigned: Number(counts?.high_priority_unassigned ?? 0),
       urgentTickets: Number(counts?.urgent_tickets ?? 0),
+      slaOnTrack: Number(counts?.sla_on_track ?? 0),
       slaAtRisk: Number(counts?.sla_at_risk ?? 0),
       slaBreached: Number(counts?.sla_breached ?? 0),
       activeSignals: Number(signalCounts?.active_signals ?? 0),
       acknowledgedSignals: Number(signalCounts?.acknowledged_signals ?? 0),
+      generatedAt: now.toISOString(),
       agentWorkload: workload.map((row) => ({
         adminId: row.agentId,
         openTickets: row.assigned,
@@ -688,8 +715,105 @@ export class OperationalIntelligenceService {
     };
   }
 
-  async listAgentWorkload() {
-    const rows = await this.queryAssignedAgentWorkload();
+  async listAttention(
+    query: { limit?: number; offset?: number } = {},
+    now: Date = new Date(),
+  ) {
+    const limit = Math.min(Math.max(query.limit ?? 20, 1), 50);
+    const offset = Math.max(query.offset ?? 0, 0);
+    const sla = this.liveSlaStateSql('t', 1, 2, 3, 4, 5, 6, 7, 8, 9);
+    const slaParams = [
+      SUPPORT_SLA.LOW.firstResponseHours,
+      SUPPORT_SLA.NORMAL.firstResponseHours,
+      SUPPORT_SLA.HIGH.firstResponseHours,
+      SUPPORT_SLA.URGENT.firstResponseHours,
+      SUPPORT_SLA.LOW.resolutionHours,
+      SUPPORT_SLA.NORMAL.resolutionHours,
+      SUPPORT_SLA.HIGH.resolutionHours,
+      SUPPORT_SLA.URGENT.resolutionHours,
+      now.toISOString(),
+    ];
+    const activeSql = `t.status IN ('OPEN','IN_PROGRESS','WAITING_FOR_CUSTOMER','WAITING_FOR_HOST','ESCALATED')`;
+    const hasSignalSql = `EXISTS (
+      SELECT 1 FROM stays_support_operational_signals s
+      WHERE s.ticket_id = t.id AND s.status = 'ACTIVE'
+    )`;
+    const qualify = `
+      ${activeSql}
+      AND (
+        t.assigned_admin_id IS NULL
+        OR t.priority IN ('HIGH','URGENT')
+        OR ${sla.combined} IN ('AT_RISK','BREACHED')
+        OR ${hasSignalSql}
+      )
+    `;
+    const [countRow] = await this.dataSource.query(
+      `SELECT COUNT(*)::int AS total FROM stays_support_tickets t WHERE ${qualify}`,
+      slaParams,
+    );
+    const rows = await this.dataSource.query(
+      `
+      SELECT
+        t.id,
+        t.ticket_number,
+        t.subject,
+        t.status,
+        t.priority,
+        t.assigned_admin_id,
+        t.created_at,
+        ${sla.combined} AS sla_state,
+        ${hasSignalSql} AS has_active_signal
+      FROM stays_support_tickets t
+      WHERE ${qualify}
+      ORDER BY
+        CASE WHEN ${sla.combined} = 'BREACHED' THEN 0 ELSE 1 END,
+        CASE WHEN ${sla.combined} = 'AT_RISK' THEN 0 ELSE 1 END,
+        CASE WHEN t.priority = 'URGENT' THEN 0 ELSE 1 END,
+        CASE WHEN t.priority = 'HIGH' THEN 0 ELSE 1 END,
+        CASE WHEN t.assigned_admin_id IS NULL THEN 0 ELSE 1 END,
+        t.created_at ASC,
+        t.id ASC
+      LIMIT $10 OFFSET $11
+      `,
+      [...slaParams, limit, offset],
+    );
+    const total = Number(countRow?.total ?? 0);
+    const items = (
+      rows as {
+        id: string;
+        ticket_number: string;
+        subject: string;
+        status: string;
+        priority: string;
+        assigned_admin_id: string | null;
+        created_at: Date | string;
+        sla_state: string;
+        has_active_signal: boolean | number | string;
+      }[]
+    ).map((row) => ({
+      ticketId: row.id,
+      ticketNumber: row.ticket_number,
+      subject: row.subject,
+      status: row.status,
+      priority: row.priority,
+      assignedAdminId: row.assigned_admin_id,
+      createdAt:
+        row.created_at instanceof Date
+          ? row.created_at.toISOString()
+          : String(row.created_at),
+      attentionReasons: attentionReasonsFor(row),
+    }));
+    return {
+      items,
+      total,
+      limit,
+      offset,
+      hasMore: offset + items.length < total,
+    };
+  }
+
+  async listAgentWorkload(now: Date = new Date()) {
+    const rows = await this.queryAssignedAgentWorkload(now);
     return {
       items: rows.map((row) => ({
         agentId: row.agentId,
@@ -697,11 +821,15 @@ export class OperationalIntelligenceService {
         open: row.open,
         inProgress: row.inProgress,
         waiting: row.waiting,
+        atRisk: row.atRisk,
+        breached: row.breached,
+        oldestActiveTicketAt: row.oldestActiveTicketAt,
       })),
+      generatedAt: now.toISOString(),
     };
   }
 
-  private async queryAssignedAgentWorkload(): Promise<
+  private async queryAssignedAgentWorkload(now: Date = new Date()): Promise<
     {
       agentId: string;
       assigned: number;
@@ -709,8 +837,23 @@ export class OperationalIntelligenceService {
       inProgress: number;
       waiting: number;
       highPriority: number;
+      atRisk: number;
+      breached: number;
+      oldestActiveTicketAt: string | null;
     }[]
   > {
+    const sla = this.liveSlaStateSql('t', 1, 2, 3, 4, 5, 6, 7, 8, 9);
+    const slaParams = [
+      SUPPORT_SLA.LOW.firstResponseHours,
+      SUPPORT_SLA.NORMAL.firstResponseHours,
+      SUPPORT_SLA.HIGH.firstResponseHours,
+      SUPPORT_SLA.URGENT.firstResponseHours,
+      SUPPORT_SLA.LOW.resolutionHours,
+      SUPPORT_SLA.NORMAL.resolutionHours,
+      SUPPORT_SLA.HIGH.resolutionHours,
+      SUPPORT_SLA.URGENT.resolutionHours,
+      now.toISOString(),
+    ];
     const workload = await this.dataSource.query(
       `
       SELECT
@@ -721,13 +864,17 @@ export class OperationalIntelligenceService {
         COUNT(*) FILTER (
           WHERE t.status IN ('WAITING_FOR_CUSTOMER','WAITING_FOR_HOST')
         )::int AS waiting,
-        COUNT(*) FILTER (WHERE t.priority IN ('HIGH','URGENT'))::int AS high_priority
+        COUNT(*) FILTER (WHERE t.priority IN ('HIGH','URGENT'))::int AS high_priority,
+        COUNT(*) FILTER (WHERE ${sla.combined} = 'AT_RISK')::int AS at_risk,
+        COUNT(*) FILTER (WHERE ${sla.combined} = 'BREACHED')::int AS breached,
+        MIN(t.created_at) AS oldest_active_ticket_at
       FROM stays_support_tickets t
       WHERE t.assigned_admin_id IS NOT NULL
         AND t.status IN ('OPEN','IN_PROGRESS','WAITING_FOR_CUSTOMER','WAITING_FOR_HOST','ESCALATED')
       GROUP BY t.assigned_admin_id
       ORDER BY assigned DESC, t.assigned_admin_id ASC
       `,
+      slaParams,
     );
     return (
       workload as {
@@ -737,6 +884,9 @@ export class OperationalIntelligenceService {
         in_progress: number;
         waiting: number;
         high_priority: number;
+        at_risk: number;
+        breached: number;
+        oldest_active_ticket_at: Date | string | null;
       }[]
     ).map((row) => ({
       agentId: row.agent_id,
@@ -745,6 +895,11 @@ export class OperationalIntelligenceService {
       inProgress: Number(row.in_progress),
       waiting: Number(row.waiting),
       highPriority: Number(row.high_priority),
+      atRisk: Number(row.at_risk ?? 0),
+      breached: Number(row.breached ?? 0),
+      oldestActiveTicketAt: row.oldest_active_ticket_at
+        ? new Date(row.oldest_active_ticket_at).toISOString()
+        : null,
     }));
   }
 
@@ -1099,6 +1254,27 @@ export class OperationalIntelligenceService {
 
 function daysAgo(days: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
+function attentionReasonsFor(row: {
+  sla_state: string;
+  priority: string;
+  assigned_admin_id: string | null;
+  has_active_signal: boolean | number | string;
+}): string[] {
+  const reasons: string[] = [];
+  if (row.sla_state === 'BREACHED') reasons.push('SLA_BREACHED');
+  if (row.sla_state === 'AT_RISK') reasons.push('SLA_AT_RISK');
+  if (row.priority === 'URGENT') reasons.push('URGENT');
+  else if (row.priority === 'HIGH') reasons.push('HIGH_PRIORITY');
+  if (!row.assigned_admin_id) reasons.push('UNASSIGNED');
+  const hasSignal =
+    row.has_active_signal === true ||
+    row.has_active_signal === 1 ||
+    row.has_active_signal === 't' ||
+    row.has_active_signal === 'true';
+  if (hasSignal) reasons.push('ACTIVE_SIGNAL');
+  return reasons;
 }
 
 function slaLegSql(

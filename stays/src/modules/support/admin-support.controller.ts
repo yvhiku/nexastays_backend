@@ -35,7 +35,7 @@ import {
   SendSupportTicketMessageDto,
   TRUST_REPORT_KINDS,
 } from './dto/support-ticket.dto';
-import { AdminSupportAnalyticsQueryDto } from './dto/support-analytics.dto';
+import { AdminSupportAnalyticsQueryDto, AdminSupportAttentionQueryDto } from './dto/support-analytics.dto';
 import {
   AdminListSignalsQueryDto,
   PatchOperationalSignalDto,
@@ -78,6 +78,11 @@ export class AdminSupportController {
   @Get('support/operations/overview')
   operationsOverview() {
     return this.ops.getOperationsOverview();
+  }
+
+  @Get('support/operations/attention')
+  operationsAttention(@Query() query: AdminSupportAttentionQueryDto) {
+    return this.ops.listAttention(query);
   }
 
   @Get('support/agents/workload')

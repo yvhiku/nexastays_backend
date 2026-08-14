@@ -626,22 +626,104 @@ describe('OperationalIntelligenceService', () => {
         in_progress: 2,
         waiting: 1,
         high_priority: 3,
+        at_risk: 1,
+        breached: 0,
+        oldest_active_ticket_at: '2026-08-01T00:00:00.000Z',
       },
     ]);
-    await expect(service.listAgentWorkload()).resolves.toEqual({
-      items: [
-        {
-          agentId: 'agent-1',
-          assigned: 4,
-          open: 1,
-          inProgress: 2,
-          waiting: 1,
-        },
-      ],
-    });
-    expect(dataSource.query.mock.calls[0][0]).toContain('assigned_admin_id');
-    expect(JSON.stringify(await service.listAgentWorkload())).not.toContain(
-      'highPriority',
+    const result = await service.listAgentWorkload(
+      new Date('2026-08-14T12:00:00.000Z'),
     );
+    expect(result.items).toEqual([
+      {
+        agentId: 'agent-1',
+        assigned: 4,
+        open: 1,
+        inProgress: 2,
+        waiting: 1,
+        atRisk: 1,
+        breached: 0,
+        oldestActiveTicketAt: '2026-08-01T00:00:00.000Z',
+      },
+    ]);
+    expect(result.generatedAt).toBe('2026-08-14T12:00:00.000Z');
+    expect(dataSource.query.mock.calls[0][0]).toContain('assigned_admin_id');
+    expect(JSON.stringify(result)).not.toContain('highPriority');
+  });
+
+  it('returns queue health splits and on-track SLA from overview SQL', async () => {
+    const { service, dataSource } = build();
+    dataSource.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('open_tickets')) {
+        return [
+          {
+            active_tickets: 5,
+            open_tickets: 2,
+            in_progress_tickets: 1,
+            waiting_tickets: 1,
+            escalated_tickets: 1,
+            unassigned_tickets: 2,
+            high_priority_tickets: 3,
+            high_priority_unassigned: 1,
+            urgent_tickets: 1,
+            sla_on_track: 3,
+            sla_at_risk: 1,
+            sla_breached: 1,
+          },
+        ];
+      }
+      if (sql.includes('active_signals')) {
+        return [{ active_signals: 2, acknowledged_signals: 1 }];
+      }
+      return [];
+    });
+    const overview = await service.getOperationsOverview(
+      new Date('2026-08-14T12:00:00.000Z'),
+    );
+    expect(overview.openTickets).toBe(2);
+    expect(overview.inProgressTickets).toBe(1);
+    expect(overview.waitingTickets).toBe(1);
+    expect(overview.unassignedTickets).toBe(2);
+    expect(overview.slaOnTrack).toBe(3);
+    expect(overview.slaAtRisk).toBe(1);
+    expect(overview.slaBreached).toBe(1);
+    expect(overview.generatedAt).toBe('2026-08-14T12:00:00.000Z');
+  });
+
+  it('lists attention tickets once with union reasons and excludes closed', async () => {
+    const { service, dataSource } = build();
+    dataSource.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('COUNT(*)::int AS total')) {
+        return [{ total: 1 }];
+      }
+      return [
+        {
+          id: 'ticket-1',
+          ticket_number: 'SUP-2026-000001',
+          subject: 'Help',
+          status: 'OPEN',
+          priority: 'URGENT',
+          assigned_admin_id: null,
+          created_at: '2026-08-01T00:00:00.000Z',
+          sla_state: 'BREACHED',
+          has_active_signal: true,
+        },
+      ];
+    });
+    const page = await service.listAttention({ limit: 80, offset: 0 });
+    expect(page.limit).toBe(50);
+    expect(page.total).toBe(1);
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0].ticketId).toBe('ticket-1');
+    expect(page.items[0].attentionReasons).toEqual([
+      'SLA_BREACHED',
+      'URGENT',
+      'UNASSIGNED',
+      'ACTIVE_SIGNAL',
+    ]);
+    expect(dataSource.query.mock.calls[0][0]).toContain(
+      "'OPEN','IN_PROGRESS','WAITING_FOR_CUSTOMER','WAITING_FOR_HOST','ESCALATED'",
+    );
+    expect(dataSource.query.mock.calls[1][0]).not.toContain("'CLOSED'");
   });
 });

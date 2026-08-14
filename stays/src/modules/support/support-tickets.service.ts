@@ -1572,13 +1572,20 @@ export class SupportTicketsService {
    */
   async getAnalyticsForAdmin(query: { from?: string; to?: string } = {}) {
     const now = new Date();
-    let from = query.from ? new Date(query.from) : new Date(0);
-    let toExclusive = query.to ? new Date(query.to) : new Date(now.getTime() + 1);
+    const defaultFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    let from = query.from ? new Date(query.from) : defaultFrom;
+    let toExclusive = query.to
+      ? new Date(query.to)
+      : new Date(now.getTime() + 1);
     if (Number.isNaN(from.getTime()) || Number.isNaN(toExclusive.getTime())) {
       throw new BadRequestException('Invalid from/to date');
     }
     if (from >= toExclusive) {
       throw new BadRequestException('from must be before to');
+    }
+    const maxRangeMs = 90 * 24 * 60 * 60 * 1000;
+    if (toExclusive.getTime() - from.getTime() > maxRangeMs) {
+      throw new BadRequestException('Date range must be 90 days or less');
     }
 
     const frLow = SUPPORT_SLA.LOW.firstResponseHours;
@@ -1653,6 +1660,8 @@ export class SupportTicketsService {
         COUNT(*) FILTER (WHERE t.status = 'RESOLVED')::int AS resolved,
         COUNT(*) FILTER (WHERE t.status = 'CLOSED')::int AS closed,
         COUNT(*) FILTER (WHERE t.status = 'ESCALATED')::int AS escalated,
+        COUNT(*) FILTER (WHERE t.assigned_admin_id IS NOT NULL)::int AS assigned,
+        COUNT(*) FILTER (WHERE t.assigned_admin_id IS NULL)::int AS unassigned,
         AVG(EXTRACT(EPOCH FROM (t.first_admin_response_at - t.created_at)))
           FILTER (WHERE t.first_admin_response_at IS NOT NULL) AS avg_first_response_seconds,
         PERCENTILE_CONT(0.5) WITHIN GROUP (
@@ -1748,6 +1757,48 @@ export class SupportTicketsService {
       params.slice(0, 2),
     );
 
+    const statusDistribution = await this.dataSource.query(
+      `
+      SELECT t.status AS status, COUNT(*)::int AS count
+      FROM stays_support_tickets t
+      WHERE t.created_at >= $1::timestamptz
+        AND t.created_at < $2::timestamptz
+      GROUP BY t.status
+      ORDER BY count DESC, t.status ASC
+      `,
+      params.slice(0, 2),
+    );
+
+    const volume = await this.dataSource.query(
+      `
+      SELECT
+        d.day::text AS date,
+        COALESCE(c.created, 0)::int AS created,
+        COALESCE(x.closed, 0)::int AS closed
+      FROM generate_series(
+        ($1::timestamptz AT TIME ZONE 'UTC')::date,
+        (($2::timestamptz - INTERVAL '1 millisecond') AT TIME ZONE 'UTC')::date,
+        INTERVAL '1 day'
+      ) AS d(day)
+      LEFT JOIN (
+        SELECT (t.created_at AT TIME ZONE 'UTC')::date AS day, COUNT(*)::int AS created
+        FROM stays_support_tickets t
+        WHERE t.created_at >= $1::timestamptz
+          AND t.created_at < $2::timestamptz
+        GROUP BY 1
+      ) c ON c.day = d.day
+      LEFT JOIN (
+        SELECT (t.closed_at AT TIME ZONE 'UTC')::date AS day, COUNT(*)::int AS closed
+        FROM stays_support_tickets t
+        WHERE t.closed_at >= $1::timestamptz
+          AND t.closed_at < $2::timestamptz
+        GROUP BY 1
+      ) x ON x.day = d.day
+      ORDER BY d.day ASC
+      `,
+      params.slice(0, 2),
+    );
+
     const num = (v: unknown) =>
       v == null || v === '' ? null : Number(v);
 
@@ -1794,6 +1845,20 @@ export class SupportTicketsService {
       priorities: (priorities as { priority: string; count: number }[]).map(
         (r) => ({ priority: r.priority, count: Number(r.count) }),
       ),
+      statusDistribution: (
+        statusDistribution as { status: string; count: number }[]
+      ).map((r) => ({ status: r.status, count: Number(r.count) })),
+      assignment: {
+        assigned: Number(summary?.assigned ?? 0),
+        unassigned: Number(summary?.unassigned ?? 0),
+      },
+      volume: (
+        volume as { date: string; created: number; closed: number }[]
+      ).map((r) => ({
+        date: String(r.date),
+        created: Number(r.created),
+        closed: Number(r.closed),
+      })),
     };
   }
 
