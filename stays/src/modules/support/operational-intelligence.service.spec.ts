@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
 import { signalDedupeKey } from './operational-signals.constants';
 import { StaysSupportTicket } from './entities/stays-support-ticket.entity';
@@ -426,6 +427,24 @@ describe('OperationalIntelligenceService', () => {
       await service.evaluateRepeatReports('host-1');
       expect(saved[0]).toEqual(expect.objectContaining({ status: 'ACTIVE' }));
     });
+
+    it('retries as an update after UNIQUE(dedupe_key) 23505', async () => {
+      const { service, reportRepo, signalRepo, saved } = build();
+      reportRepo.find.mockResolvedValue([{ id: 'r1' }, { id: 'r2' }, { id: 'r3' }]);
+      const existing = {
+        dedupe_key: signalDedupeKey('REPEAT_REPORT', 'USER', 'host-1'),
+        status: 'ACTIVE',
+      };
+      signalRepo.find
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([existing]);
+      const err = new QueryFailedError('INSERT', [], new Error('duplicate'));
+      Object.assign(err, { driverError: { code: '23505' } });
+      signalRepo.save.mockRejectedValueOnce(err);
+      await service.evaluateRepeatReports('host-1');
+      expect(saved).toHaveLength(1);
+      expect(saved[0]).toBe(existing);
+    });
   });
 
   describe('signal lifecycle API', () => {
@@ -504,5 +523,22 @@ describe('OperationalIntelligenceService', () => {
         throw new Error('db down');
       }),
     ).resolves.toBeUndefined();
+  });
+
+  it('slaState filter SQL casts named hour params to int', () => {
+    const { service } = build();
+    const sql: string[] = [];
+    service.applySlaStateFilter(
+      {
+        andWhere: (fragment: string) => {
+          sql.push(fragment);
+        },
+      },
+      't',
+      'AT_RISK',
+    );
+    expect(sql.join(' ')).toContain('CAST(:slaFrLow AS int)');
+    expect(sql.join(' ')).toContain('CAST(:slaResNormal AS int)');
+    expect(sql.join(' ')).not.toMatch(/THEN :slaFrLow\s/);
   });
 });

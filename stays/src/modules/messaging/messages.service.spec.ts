@@ -26,6 +26,10 @@ describe('MessagesService', () => {
   let outbox: { enqueue: jest.Mock };
   let timelineSeeder: { insertMessage: jest.Mock };
   let realtime: { stream: jest.Mock; publish: jest.Mock };
+  let participants: {
+    resolveGuestDisplayName: jest.Mock;
+    resolveHostDisplayName: jest.Mock;
+  };
   let supportTickets: {
     lockTicketForCustomerSend: jest.Mock;
     applyCustomerSupportMessageEffects: jest.Mock;
@@ -197,10 +201,10 @@ describe('MessagesService', () => {
         },
         {
           provide: ParticipantPresentationService,
-          useValue: {
+          useValue: (participants = {
             resolveGuestDisplayName: jest.fn().mockResolvedValue('Guest Name'),
             resolveHostDisplayName: jest.fn().mockResolvedValue('Host Name'),
-          },
+          }),
         },
         { provide: MessagingRealtimeService, useValue: realtime },
         {
@@ -261,6 +265,19 @@ describe('MessagesService', () => {
       'Need help',
     );
     expect(timelineSeeder.insertMessage).toHaveBeenCalled();
+  });
+
+  it('sends on SUPPORT contact threads when booking_id is null', async () => {
+    convRepo.findOne.mockResolvedValue({
+      ...conversation,
+      type: 'SUPPORT',
+      host_user_id: null,
+      booking_id: null,
+    });
+    await service.sendText(convId, guestId, 'Contact follow-up');
+    expect(participants.resolveGuestDisplayName).not.toHaveBeenCalled();
+    expect(timelineSeeder.insertMessage).toHaveBeenCalled();
+    expect(supportTickets.applyCustomerSupportMessageEffects).toHaveBeenCalled();
   });
 
   it('rejects CLOSED support send before inserting a message', async () => {

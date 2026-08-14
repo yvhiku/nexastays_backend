@@ -204,9 +204,6 @@ export class MessagesService {
     if (conv.type === 'SUPPORT') {
       void this.supportTickets.safeEvaluateConversation(conv.id);
     }
-    if (conv.type === 'SUPPORT') {
-      void this.supportTickets.safeEvaluateConversation(conv.id);
-    }
 
     return this.toDto(saved, userId, []);
   }
@@ -479,8 +476,7 @@ export class MessagesService {
 
     const senderName =
       userId === conv.guest_user_id
-        ? (await this.participants.resolveGuestDisplayName(conv.booking_id ?? '', userId)) ??
-          'Guest'
+        ? (await this.guestDisplayName(conv, userId))
         : conv.host_user_id
           ? (await this.participants.resolveHostDisplayName(conv.host_user_id)) ?? 'Host'
           : 'Host';
@@ -518,6 +514,17 @@ export class MessagesService {
       .where('id = :id', { id: conv.id })
       .andWhere(`${visField} = 'ARCHIVED'`)
       .execute();
+  }
+
+  private async guestDisplayName(
+    conv: StaysConversation,
+    userId: string,
+  ): Promise<string> {
+    if (!conv.booking_id) return 'Guest';
+    return (
+      (await this.participants.resolveGuestDisplayName(conv.booking_id, userId)) ??
+      'Guest'
+    );
   }
 
   private async getParticipantConversation(
@@ -571,10 +578,7 @@ export class MessagesService {
     userId: string,
   ): Promise<string> {
     if (conv.guest_user_id === userId) {
-      return (
-        (await this.participants.resolveGuestDisplayName(conv.booking_id ?? '', userId)) ??
-        'Guest'
-      );
+      return this.guestDisplayName(conv, userId);
     }
     if (conv.host_user_id) {
       return (

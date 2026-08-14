@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, MoreThanOrEqual, Repository } from 'typeorm';
+import { DataSource, In, MoreThanOrEqual, QueryFailedError, Repository } from 'typeorm';
 import { StaysAuditService } from '../stays/services/stays-audit.service';
 import {
   computeSupportSla,
@@ -50,6 +50,18 @@ const OPEN_TICKET_STATUSES: SupportTicketStatus[] = [
   'WAITING_FOR_HOST',
   'ESCALATED',
 ];
+
+function isUniqueViolation(err: unknown): boolean {
+  if (err instanceof QueryFailedError) {
+    const driver = err.driverError as { code?: string };
+    return driver?.code === '23505';
+  }
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { code?: string }).code === '23505'
+  );
+}
 
 const RELATED_LIMIT = 10;
 
@@ -849,6 +861,7 @@ export class OperationalIntelligenceService {
   private async applyDesires(
     upserts: DesiredSignal[],
     resolveKeys: string[],
+    retried = false,
   ): Promise<void> {
     const keys = [
       ...upserts.map((d) =>
@@ -921,7 +934,15 @@ export class OperationalIntelligenceService {
       toSave.push(row);
     }
 
-    if (toSave.length) await this.signalRepo.save(toSave);
+    if (toSave.length) {
+      try {
+        await this.signalRepo.save(toSave);
+      } catch (err) {
+        if (!isUniqueViolation(err) || retried) throw err;
+        // Concurrent insert lost UNIQUE(dedupe_key). Reload and apply as updates.
+        await this.applyDesires(upserts, resolveKeys, true);
+      }
+    }
   }
 
   private liveSlaStateSql(
@@ -976,18 +997,18 @@ export class OperationalIntelligenceService {
   private liveSlaStateSqlNamed(alias: string) {
     const frHours = `
       CASE ${alias}.priority
-        WHEN 'LOW' THEN :slaFrLow
-        WHEN 'HIGH' THEN :slaFrHigh
-        WHEN 'URGENT' THEN :slaFrUrgent
-        ELSE :slaFrNormal
+        WHEN 'LOW' THEN CAST(:slaFrLow AS int)
+        WHEN 'HIGH' THEN CAST(:slaFrHigh AS int)
+        WHEN 'URGENT' THEN CAST(:slaFrUrgent AS int)
+        ELSE CAST(:slaFrNormal AS int)
       END
     `;
     const resHours = `
       CASE ${alias}.priority
-        WHEN 'LOW' THEN :slaResLow
-        WHEN 'HIGH' THEN :slaResHigh
-        WHEN 'URGENT' THEN :slaResUrgent
-        ELSE :slaResNormal
+        WHEN 'LOW' THEN CAST(:slaResLow AS int)
+        WHEN 'HIGH' THEN CAST(:slaResHigh AS int)
+        WHEN 'URGENT' THEN CAST(:slaResUrgent AS int)
+        ELSE CAST(:slaResNormal AS int)
       END
     `;
     const fr = slaLegSql(

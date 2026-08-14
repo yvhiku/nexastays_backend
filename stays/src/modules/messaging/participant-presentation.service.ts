@@ -35,6 +35,10 @@ export class ParticipantPresentationService {
     bookingId: string,
     guestUserId?: string | null,
   ): Promise<string | null> {
+    if (!bookingId) {
+      if (guestUserId) return this.identityUsers.getDisplayName(guestUserId);
+      return null;
+    }
     const occupants = await this.occupantRepo.find({
       where: { booking_id: bookingId },
       order: { is_primary: 'DESC', created_at: 'ASC' },
