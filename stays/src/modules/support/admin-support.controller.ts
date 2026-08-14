@@ -19,6 +19,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupportTicketsService } from './support-tickets.service';
 import { SupportCannedRepliesService } from './support-canned-replies.service';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
+import { staffActorFromUser } from './support-staff-access';
 import {
   AdminListTicketsQueryDto,
   AdminListReportsQueryDto,
@@ -85,20 +86,27 @@ export class AdminSupportController {
   }
 
   @Patch('support/signals/:id')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
   patchSignal(
-    @CurrentUser() user: { userId: string },
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: PatchOperationalSignalDto,
   ) {
-    return this.ops.patchSignal(id, body.status, user.userId);
+    const actor = staffActorFromUser(user);
+    return this.ops.patchSignal(id, body.status, user.userId, actor);
   }
 
   @Get('support/tickets')
-  listTickets(@Query() query: AdminListTicketsQueryDto) {
-    return this.supportTickets.listForAdmin(query);
+  @Roles('ADMIN', 'SUPPORT_AGENT')
+  listTickets(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
+    @Query() query: AdminListTicketsQueryDto,
+  ) {
+    return this.supportTickets.listForAdmin(query, staffActorFromUser(user));
   }
 
   @Get('support/canned-replies')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
   listCannedReplies(@Query() query: ListCannedRepliesQueryDto) {
     return this.cannedReplies.list(query.includeInactive === true);
   }
@@ -136,66 +144,114 @@ export class AdminSupportController {
   }
 
   @Get('support/tickets/:id')
-  getTicket(@Param('id', ParseUUIDPipe) id: string) {
-    return this.supportTickets.getForAdmin(id);
+  @Roles('ADMIN', 'SUPPORT_AGENT')
+  getTicket(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.supportTickets.getForAdmin(id, staffActorFromUser(user));
   }
 
   @Get('support/tickets/:id/signals')
-  ticketSignals(@Param('id', ParseUUIDPipe) id: string) {
-    return this.ops.listSignalsForTicket(id);
+  @Roles('ADMIN', 'SUPPORT_AGENT')
+  ticketSignals(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.ops.listSignalsForTicket(id, false, staffActorFromUser(user));
   }
 
   @Get('support/tickets/:id/related')
-  relatedTickets(@Param('id', ParseUUIDPipe) id: string) {
-    return this.ops.findRelatedTickets(id).then((items) => ({ items }));
+  @Roles('ADMIN', 'SUPPORT_AGENT')
+  relatedTickets(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.ops
+      .findRelatedTickets(id, staffActorFromUser(user))
+      .then((items) => ({ items }));
   }
 
   @Patch('support/tickets/:id')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
   patchTicket(
-    @CurrentUser() user: { userId: string },
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: PatchSupportTicketDto,
   ) {
-    return this.supportTickets.patchForAdmin(id, body, user.userId);
+    const actor = staffActorFromUser(user);
+    return this.supportTickets.patchForAdmin(id, body, user.userId, actor);
   }
 
   @Get('support/tickets/:id/messages')
-  listMessages(@Param('id', ParseUUIDPipe) id: string) {
-    return this.supportTickets.listMessagesForAdmin(id);
+  @Roles('ADMIN', 'SUPPORT_AGENT')
+  listMessages(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.supportTickets.listMessagesForAdmin(
+      id,
+      staffActorFromUser(user),
+    );
   }
 
   @Post('support/tickets/:id/messages')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
   sendMessage(
-    @CurrentUser() user: { userId: string },
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: SendSupportTicketMessageDto,
   ) {
-    return this.supportTickets.sendAdminMessage(id, user.userId, body.body);
+    return this.supportTickets.sendAdminMessage(
+      id,
+      user.userId,
+      body.body,
+      staffActorFromUser(user),
+    );
   }
 
   @Get('support/tickets/:id/notes')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
   listNotes(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: ListSupportTicketNotesQueryDto,
   ) {
-    return this.supportTickets.listNotesForAdmin(id, query.limit);
+    return this.supportTickets.listNotesForAdmin(
+      id,
+      query.limit,
+      staffActorFromUser(user),
+    );
   }
 
   @Post('support/tickets/:id/notes')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
   createNote(
-    @CurrentUser() user: { userId: string },
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: CreateSupportTicketNoteDto,
   ) {
-    return this.supportTickets.createNoteForAdmin(id, user.userId, body.body);
+    return this.supportTickets.createNoteForAdmin(
+      id,
+      user.userId,
+      body.body,
+      staffActorFromUser(user),
+    );
   }
 
   @Get('support/tickets/:id/activity')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
   ticketActivity(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: ListActivityQueryDto,
   ) {
-    return this.supportTickets.listTicketActivity(id, query.limit, query.offset);
+    return this.supportTickets.listTicketActivity(
+      id,
+      query.limit,
+      query.offset,
+      staffActorFromUser(user),
+    );
   }
 
   @Get('reports')

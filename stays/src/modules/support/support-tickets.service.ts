@@ -5,6 +5,7 @@ import {
   ConflictException,
   InternalServerErrorException,
   UnprocessableEntityException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, QueryFailedError, Repository } from 'typeorm';
@@ -52,6 +53,12 @@ import {
   TRUST_REPORT_KINDS,
   TRUST_REPORT_STATUSES,
 } from './dto/support-ticket.dto';
+import {
+  DEFAULT_ADMIN_ACTOR,
+  assertCanAccessTicket,
+  isSupportAgentActor,
+  type SupportStaffActor,
+} from './support-staff-access';
 
 const OPEN_TICKET_STATUSES: SupportTicketStatus[] = [
   'OPEN',
@@ -631,8 +638,15 @@ export class SupportTicketsService {
     return this.toListRow(ticket);
   }
 
-  async listForAdmin(query: AdminListTicketsQueryDto = {}) {
-    if (query.unassigned === true && query.assignedAdminId) {
+  async listForAdmin(
+    query: AdminListTicketsQueryDto = {},
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
+    if (
+      !isSupportAgentActor(actor) &&
+      query.unassigned === true &&
+      query.assignedAdminId
+    ) {
       throw new BadRequestException(
         'Cannot combine unassigned=true with assignedAdminId',
       );
@@ -659,7 +673,11 @@ export class SupportTicketsService {
     if (query.category) {
       qb.andWhere('t.category = :category', { category: query.category });
     }
-    if (query.unassigned === true) {
+    if (isSupportAgentActor(actor)) {
+      qb.andWhere('t.assigned_admin_id = :assignedAdminId', {
+        assignedAdminId: actor.userId,
+      });
+    } else if (query.unassigned === true) {
       qb.andWhere('t.assigned_admin_id IS NULL');
     } else if (query.assignedAdminId) {
       qb.andWhere('t.assigned_admin_id = :assignedAdminId', {
@@ -728,9 +746,20 @@ export class SupportTicketsService {
       .getCount();
   }
 
-  async getForAdmin(ticketId: string) {
+  private async requireAccessibleTicket(
+    ticketId: string,
+    actor: SupportStaffActor,
+  ): Promise<StaysSupportTicket> {
     const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
-    if (!ticket) throw new NotFoundException('Ticket not found');
+    assertCanAccessTicket(ticket, actor);
+    return ticket;
+  }
+
+  async getForAdmin(
+    ticketId: string,
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
+    const ticket = await this.requireAccessibleTicket(ticketId, actor);
 
     const bookingRefs = ticket.booking_id
       ? await this.loadBookingRefs([ticket.booking_id])
@@ -779,8 +808,10 @@ export class SupportTicketsService {
     await this.ops.safeEvaluate(() => this.ops.evaluateTicket(ticket.id));
     const [csat, signals, relatedTickets] = await Promise.all([
       this.loadCsatForTicket(ticket.id),
-      this.ops.listSignalsForTicket(ticket.id).catch(() => ({ items: [] })),
-      this.ops.findRelatedTickets(ticket.id).catch(() => []),
+      this.ops
+        .listSignalsForTicket(ticket.id, false, actor)
+        .catch(() => ({ items: [] })),
+      this.ops.findRelatedTickets(ticket.id, actor).catch(() => []),
     ]);
 
     return {
@@ -798,8 +829,36 @@ export class SupportTicketsService {
   async patchForAdmin(
     ticketId: string,
     patch: PatchSupportTicketDto,
-    actorUserId?: string,
+    actorUserId?: string | SupportStaffActor,
+    actorArg?: SupportStaffActor,
   ) {
+    const actor: SupportStaffActor =
+      actorArg ??
+      (typeof actorUserId === 'object' && actorUserId
+        ? actorUserId
+        : {
+            userId:
+              typeof actorUserId === 'string' ? actorUserId : 'system',
+            role: 'ADMIN',
+          });
+    const auditUserId =
+      typeof actorUserId === 'string' ? actorUserId : actor.userId || 'system';
+
+    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    assertCanAccessTicket(ticket, actor);
+
+    if (isSupportAgentActor(actor) && patch.assigned_admin_id !== undefined) {
+      throw new ForbiddenException(
+        'Support agents cannot change ticket assignment',
+      );
+    }
+    if (isSupportAgentActor(actor) && patch.priority !== undefined) {
+      throw new ForbiddenException(
+        'Support agents cannot change ticket priority',
+      );
+    }
+
     if (patch.assigned_admin_id) {
       const authz = await this.identityUsers.getAuthz(patch.assigned_admin_id);
       if (!authz) {
@@ -810,10 +869,10 @@ export class SupportTicketsService {
           'Assignee must be an ADMIN account',
         );
       }
+      if (authz.status === 'FROZEN') {
+        throw new UnprocessableEntityException('Assignee account is frozen');
+      }
     }
-
-    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
-    if (!ticket) throw new NotFoundException('Ticket not found');
 
     const fromStatus = ticket.status;
     const fromPriority = ticket.priority;
@@ -839,10 +898,9 @@ export class SupportTicketsService {
     ticket.updated_at = new Date();
     const saved = await this.ticketRepo.save(ticket);
 
-    const actor = actorUserId ?? 'system';
     if (patch.assigned_admin_id !== undefined) {
       await this.staysAudit.log({
-        actorUserId: actor,
+        actorUserId: auditUserId,
         actorRole: 'ADMIN',
         entityType: 'support_ticket',
         entityId: saved.id,
@@ -855,7 +913,7 @@ export class SupportTicketsService {
     }
     if (patch.status !== undefined && patch.status !== fromStatus) {
       await this.staysAudit.log({
-        actorUserId: actor,
+        actorUserId: auditUserId,
         actorRole: 'ADMIN',
         entityType: 'support_ticket',
         entityId: saved.id,
@@ -865,7 +923,7 @@ export class SupportTicketsService {
     }
     if (patch.priority !== undefined && patch.priority !== fromPriority) {
       await this.staysAudit.log({
-        actorUserId: actor,
+        actorUserId: auditUserId,
         actorRole: 'ADMIN',
         entityType: 'support_ticket',
         entityId: saved.id,
@@ -878,9 +936,11 @@ export class SupportTicketsService {
     return this.toListRow(saved);
   }
 
-  async listMessagesForAdmin(ticketId: string) {
-    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
-    if (!ticket) throw new NotFoundException('Ticket not found');
+  async listMessagesForAdmin(
+    ticketId: string,
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
+    const ticket = await this.requireAccessibleTicket(ticketId, actor);
 
     if (ticket.unread_for_support) {
       await this.ticketRepo.update(ticket.id, {
@@ -908,7 +968,15 @@ export class SupportTicketsService {
     };
   }
 
-  async sendAdminMessage(ticketId: string, adminUserId: string, body: string) {
+  async sendAdminMessage(
+    ticketId: string,
+    adminUserId: string,
+    body: string,
+    actor: SupportStaffActor = {
+      userId: adminUserId,
+      role: 'ADMIN',
+    },
+  ) {
     const trimmed = body.trim();
     if (!trimmed) throw new BadRequestException('Message body required');
 
@@ -920,6 +988,7 @@ export class SupportTicketsService {
         .where('t.id = :id', { id: ticketId })
         .getOne();
       if (!ticket) throw new NotFoundException('Ticket not found');
+      assertCanAccessTicket(ticket, actor);
       if (ticket.status === 'CLOSED') {
         throw new ConflictException(CLOSED_SUPPORT_TICKET_MESSAGE);
       }
@@ -1235,9 +1304,12 @@ export class SupportTicketsService {
     });
   }
 
-  async listNotesForAdmin(ticketId: string, limit = 100) {
-    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
-    if (!ticket) throw new NotFoundException('Ticket not found');
+  async listNotesForAdmin(
+    ticketId: string,
+    limit = 100,
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
+    await this.requireAccessibleTicket(ticketId, actor);
     const take = Math.min(Math.max(limit, 1), 200);
     const rows = await this.noteRepo.find({
       where: { ticket_id: ticketId },
@@ -1259,6 +1331,10 @@ export class SupportTicketsService {
     ticketId: string,
     authorAdminId: string,
     body: string,
+    actor: SupportStaffActor = {
+      userId: authorAdminId,
+      role: 'ADMIN',
+    },
   ) {
     const trimmed = body.trim();
     if (!trimmed) throw new BadRequestException('Note body required');
@@ -1267,6 +1343,7 @@ export class SupportTicketsService {
     }
     const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
     if (!ticket) throw new NotFoundException('Ticket not found');
+    assertCanAccessTicket(ticket, actor);
 
     const note = await this.noteRepo.save(
       this.noteRepo.create({
@@ -1457,9 +1534,13 @@ export class SupportTicketsService {
     };
   }
 
-  async listTicketActivity(ticketId: string, limit = 50, offset = 0) {
-    const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
-    if (!ticket) throw new NotFoundException('Ticket not found');
+  async listTicketActivity(
+    ticketId: string,
+    limit = 50,
+    offset = 0,
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
+    await this.requireAccessibleTicket(ticketId, actor);
     return this.listActivityForEntity('support_ticket', ticketId, limit, offset);
   }
 

@@ -3,6 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import {
+  DEFAULT_ADMIN_ACTOR,
+  assertCanAccessTicket,
+  isSupportAgentActor,
+  type SupportStaffActor,
+} from './support-staff-access';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, MoreThanOrEqual, QueryFailedError, Repository } from 'typeorm';
 import { StaysAuditService } from '../stays/services/stays-audit.service';
@@ -383,9 +389,13 @@ export class OperationalIntelligenceService {
     };
   }
 
-  async listSignalsForTicket(ticketId: string, includeResolved = false) {
+  async listSignalsForTicket(
+    ticketId: string,
+    includeResolved = false,
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
     const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
-    if (!ticket) throw new NotFoundException('Ticket not found');
+    assertCanAccessTicket(ticket, actor);
     const statuses: OperationalSignalStatus[] = includeResolved
       ? ['ACTIVE', 'ACKNOWLEDGED', 'RESOLVED']
       : ['ACTIVE', 'ACKNOWLEDGED'];
@@ -433,12 +443,25 @@ export class OperationalIntelligenceService {
     signalId: string,
     nextStatus: OperationalSignalStatus,
     adminUserId: string,
+    actor: SupportStaffActor = {
+      userId: adminUserId,
+      role: 'ADMIN',
+    },
   ) {
     if (nextStatus !== 'ACKNOWLEDGED' && nextStatus !== 'RESOLVED') {
       throw new BadRequestException('Invalid status');
     }
     const row = await this.signalRepo.findOne({ where: { id: signalId } });
     if (!row) throw new NotFoundException('Signal not found');
+    if (isSupportAgentActor(actor)) {
+      if (!row.ticket_id) {
+        throw new NotFoundException('Ticket not found');
+      }
+      const ticket = await this.ticketRepo.findOne({
+        where: { id: row.ticket_id },
+      });
+      assertCanAccessTicket(ticket, actor);
+    }
     const from = row.status;
     const allowed =
       (from === 'ACTIVE' &&
@@ -479,9 +502,12 @@ export class OperationalIntelligenceService {
     return this.toSignalPayload(saved);
   }
 
-  async findRelatedTickets(ticketId: string) {
+  async findRelatedTickets(
+    ticketId: string,
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
     const ticket = await this.ticketRepo.findOne({ where: { id: ticketId } });
-    if (!ticket) throw new NotFoundException('Ticket not found');
+    assertCanAccessTicket(ticket, actor);
 
     const best = new Map<
       string,

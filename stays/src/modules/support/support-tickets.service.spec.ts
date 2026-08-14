@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, InternalServerErrorException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, InternalServerErrorException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -593,7 +593,13 @@ describe('SupportTicketsService', () => {
   });
 
   it('rejects non-ADMIN assignee with 422', async () => {
-    const { service, identityUsers } = buildService();
+    const { service, ticketRepo, identityUsers } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'OPEN',
+      priority: 'NORMAL',
+      assigned_admin_id: null,
+    });
     identityUsers.getAuthz.mockResolvedValue({
       account_type: 'GUEST',
       status: 'ACTIVE',
@@ -604,8 +610,32 @@ describe('SupportTicketsService', () => {
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
+  it('rejects frozen assignee with 422', async () => {
+    const { service, ticketRepo, identityUsers } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'OPEN',
+      priority: 'NORMAL',
+      assigned_admin_id: null,
+    });
+    identityUsers.getAuthz.mockResolvedValue({
+      account_type: 'ADMIN',
+      status: 'FROZEN',
+      authz_version: 1,
+    });
+    await expect(
+      service.patchForAdmin('ticket-1', { assigned_admin_id: 'frozen-1' }, 'admin-1'),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+
   it('rejects unknown assignee with 404', async () => {
-    const { service, identityUsers } = buildService();
+    const { service, ticketRepo, identityUsers } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'OPEN',
+      priority: 'NORMAL',
+      assigned_admin_id: null,
+    });
     identityUsers.getAuthz.mockResolvedValue(null);
     await expect(
       service.patchForAdmin('ticket-1', { assigned_admin_id: 'missing' }, 'admin-1'),
@@ -1319,5 +1349,173 @@ describe('SupportTicketsService', () => {
     expect(report.status).toBe('REVIEWED');
     expect(reportRepo.save).not.toHaveBeenCalled();
     expect(staysAudit.log).not.toHaveBeenCalled();
+  });
+
+  describe('ticket isolation for SUPPORT_AGENT', () => {
+    const agentA = { userId: 'agent-a', role: 'SUPPORT_AGENT' as const };
+
+    function ticketRow(
+      overrides: Record<string, unknown> = {},
+    ): Record<string, unknown> {
+      const now = new Date('2026-01-01T00:00:00.000Z');
+      return {
+        id: 'ticket-a',
+        ticket_number: 'SUP-2026-000001',
+        subject: 'Help',
+        category: 'OTHER',
+        customer_name: null,
+        party: 'GUEST',
+        assigned_admin_id: 'agent-a',
+        status: 'OPEN',
+        priority: 'NORMAL',
+        created_at: now,
+        updated_at: now,
+        resolved_at: null,
+        closed_at: null,
+        first_admin_response_at: null,
+        requester_user_id: 'guest-1',
+        booking_id: null,
+        listing_id: null,
+        report_id: null,
+        safety_issue_id: null,
+        unread_for_support: false,
+        last_message_preview: null,
+        requester_email: null,
+        conversation_id: 'conv-1',
+        ...overrides,
+      };
+    }
+
+    it('lists only the agent queue and ignores assignedAdminId / unassigned', async () => {
+      const { service, ticketQb } = buildService();
+      ticketQb.getCount.mockResolvedValue(0);
+      ticketQb.getMany.mockResolvedValue([]);
+      await service.listForAdmin(
+        { assignedAdminId: 'agent-b', unassigned: true },
+        agentA,
+      );
+      expect(ticketQb.andWhere).toHaveBeenCalledWith(
+        't.assigned_admin_id = :assignedAdminId',
+        { assignedAdminId: 'agent-a' },
+      );
+      expect(
+        ticketQb.andWhere.mock.calls.some((call: unknown[]) =>
+          String(call[0]).includes('IS NULL'),
+        ),
+      ).toBe(false);
+    });
+
+    it('GET own ticket 200, foreign and unassigned 404', async () => {
+      const { service, ticketRepo } = buildService();
+      ticketRepo.findOne.mockResolvedValue(ticketRow());
+      const own = await service.getForAdmin('ticket-a', agentA);
+      expect(own.id).toBe('ticket-a');
+
+      ticketRepo.findOne.mockResolvedValue(
+        ticketRow({ id: 'ticket-b', assigned_admin_id: 'agent-b' }),
+      );
+      await expect(service.getForAdmin('ticket-b', agentA)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+
+      ticketRepo.findOne.mockResolvedValue(
+        ticketRow({ id: 'ticket-u', assigned_admin_id: null }),
+      );
+      await expect(
+        service.getForAdmin('ticket-u', agentA),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('messages and notes follow the same ownership 404', async () => {
+      const { service, ticketRepo, messageRepo } = buildService();
+      ticketRepo.findOne.mockResolvedValue(ticketRow());
+      messageRepo.find.mockResolvedValue([]);
+      await expect(
+        service.listMessagesForAdmin('ticket-a', agentA),
+      ).resolves.toEqual({ items: [] });
+      await expect(
+        service.listNotesForAdmin('ticket-a', 100, agentA),
+      ).resolves.toEqual({ items: [] });
+
+      ticketRepo.findOne.mockResolvedValue(
+        ticketRow({ id: 'ticket-b', assigned_admin_id: 'agent-b' }),
+      );
+      await expect(
+        service.listMessagesForAdmin('ticket-b', agentA),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.listNotesForAdmin('ticket-b', 100, agentA),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.createNoteForAdmin('ticket-b', 'agent-a', 'note', agentA),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('POST message to unassigned 404s and does not auto-claim', async () => {
+      const { service, timelineSeeder, dataSource } = buildService();
+      const ticketUpdate = jest.fn();
+      dataSource.transaction = jest.fn(async (fn: (m: unknown) => unknown) =>
+        fn({
+          getRepository: jest.fn(() => ({
+            createQueryBuilder: jest.fn(() => ({
+              setLock: jest.fn().mockReturnThis(),
+              where: jest.fn().mockReturnThis(),
+              getOne: jest.fn().mockResolvedValue(
+                ticketRow({ assigned_admin_id: null }),
+              ),
+            })),
+            update: ticketUpdate,
+          })),
+        }),
+      );
+      await expect(
+        service.sendAdminMessage('ticket-a', 'agent-a', 'Hello', agentA),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(timelineSeeder.insertMessage).not.toHaveBeenCalled();
+      expect(ticketUpdate).not.toHaveBeenCalled();
+    });
+
+    it('PATCH own status allowed; priority and assignment 403; foreign 404', async () => {
+      const { service, ticketRepo } = buildService();
+      ticketRepo.findOne.mockResolvedValue(ticketRow({ status: 'OPEN' }));
+      ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+      const row = await service.patchForAdmin(
+        'ticket-a',
+        { status: 'IN_PROGRESS' },
+        'agent-a',
+        agentA,
+      );
+      expect(row.status).toBe('IN_PROGRESS');
+
+      ticketRepo.findOne.mockResolvedValue(ticketRow());
+      await expect(
+        service.patchForAdmin(
+          'ticket-a',
+          { priority: 'HIGH' },
+          'agent-a',
+          agentA,
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        service.patchForAdmin(
+          'ticket-a',
+          { assigned_admin_id: 'agent-b' },
+          'agent-a',
+          agentA,
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+
+      ticketRepo.findOne.mockResolvedValue(
+        ticketRow({ id: 'ticket-b', assigned_admin_id: 'agent-b' }),
+      );
+      await expect(
+        service.patchForAdmin(
+          'ticket-b',
+          { status: 'IN_PROGRESS' },
+          'agent-a',
+          agentA,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 });
