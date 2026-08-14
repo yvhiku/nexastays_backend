@@ -25,6 +25,7 @@ import { StaysHostProfile } from '../stays/entities/stays-host-profile.entity';
 import { StaysAuditService } from '../stays/services/stays-audit.service';
 import { IdentityUserClient } from '../../common/identity/identity-user.client';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
+import { SupportAssignmentService } from './support-assignment.service';
 import {
   computeSupportSla,
   suggestRouting,
@@ -125,6 +126,7 @@ export class SupportTicketsService {
     private readonly identityUsers: IdentityUserClient,
     private readonly staysAudit: StaysAuditService,
     private readonly ops: OperationalIntelligenceService,
+    private readonly assignment: SupportAssignmentService,
   ) {}
 
   async createReport(
@@ -229,6 +231,7 @@ export class SupportTicketsService {
     await this.ops.safeEvaluate(() =>
       this.ops.evaluateReport('conversation_reported', result.report.id),
     );
+    await this.scheduleAutoAssignment(result.ticket.id);
     return result;
   }
 
@@ -278,6 +281,7 @@ export class SupportTicketsService {
     await this.ops.safeEvaluate(() =>
       this.ops.evaluateReport('safety_issue', result.safety.id),
     );
+    await this.scheduleAutoAssignment(result.ticket.id);
     return result;
   }
 
@@ -615,6 +619,7 @@ export class SupportTicketsService {
         reason: 'MESSAGE_CREATED',
       });
       await this.ops.safeEvaluate(() => this.ops.evaluateTicket(created.id));
+      await this.scheduleAutoAssignment(created.id);
     }
 
     return toCreatedDto(created);
@@ -2106,12 +2111,14 @@ export class SupportTicketsService {
 
     // ESCALATED: ensure ticket before status change in one TX so failure
     // cannot leave the canonical row escalated without a ticket.
-    const ticketId = await this.dataSource.transaction(async (manager) => {
+    const { ticketId, createdTicket } = await this.dataSource.transaction(
+      async (manager) => {
       const ticketRepo = manager.getRepository(StaysSupportTicket);
       const convRepo = manager.getRepository(StaysConversation);
       const reportRepo = manager.getRepository(StaysConversationReport);
       const safetyRepo = manager.getRepository(StaysSafetyIssue);
 
+      let createdTicket = false;
       let ticket: StaysSupportTicket | null =
         input.kind === 'conversation_reported'
           ? await ticketRepo.findOne({
@@ -2140,6 +2147,7 @@ export class SupportTicketsService {
                 sourceConversation: conv,
                 manager,
               });
+        createdTicket = true;
       }
 
       if (ticket.priority !== 'URGENT') {
@@ -2158,7 +2166,7 @@ export class SupportTicketsService {
         await safetyRepo.save(input.row as StaysSafetyIssue);
       }
 
-      return ticket.id;
+      return { ticketId: ticket.id, createdTicket };
     });
 
     await this.staysAudit.log({
@@ -2177,7 +2185,20 @@ export class SupportTicketsService {
       },
     });
 
+    if (createdTicket) {
+      await this.scheduleAutoAssignment(ticketId);
+    }
+
     return this.getReportForAdmin(input.row.id, input.kind);
+  }
+
+  /** Post-commit routing. Create/report/safety must still succeed if this fails. */
+  private async scheduleAutoAssignment(ticketId: string) {
+    try {
+      await this.assignment.attemptAutoAssignment(ticketId);
+    } catch {
+      // Fail-soft: ticket stays unassigned and surfaces in Operations Attention.
+    }
   }
 
   private async buildEvidence(attachmentIds: string[]) {

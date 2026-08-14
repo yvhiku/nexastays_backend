@@ -24,6 +24,7 @@ import { SupportCannedRepliesService } from './support-canned-replies.service';
 import { SupportTicketsController } from './support-tickets.controller';
 import { AdminSupportController } from './admin-support.controller';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
+import { SupportAssignmentService } from './support-assignment.service';
 
 @Module({
   imports: [
@@ -52,11 +53,13 @@ import { OperationalIntelligenceService } from './operational-intelligence.servi
     SupportTicketsService,
     SupportCannedRepliesService,
     OperationalIntelligenceService,
+    SupportAssignmentService,
   ],
   exports: [
     SupportTicketsService,
     SupportCannedRepliesService,
     OperationalIntelligenceService,
+    SupportAssignmentService,
   ],
 })
 export class SupportModule {}

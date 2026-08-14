@@ -842,7 +842,7 @@ export class OperationalIntelligenceService {
     };
   }
 
-  private async queryAssignedAgentWorkload(now: Date = new Date()): Promise<
+  async queryAssignedAgentWorkload(now: Date = new Date()): Promise<
     {
       agentId: string;
       assigned: number;

@@ -14,6 +14,12 @@ export type IdentityAuthz = {
   staff_role?: string;
 };
 
+export type IdentitySupportAgentRosterItem = {
+  id: string;
+  status: string;
+  staff_role: string;
+};
+
 @Injectable()
 export class IdentityUserClient {
   private readonly logger = new Logger(IdentityUserClient.name);
@@ -36,6 +42,35 @@ export class IdentityUserClient {
   async getDisplayName(userId: string): Promise<string | null> {
     const summary = await this.getProfileSummary(userId);
     return summary?.fullName ?? null;
+  }
+
+  /**
+   * S2S roster of ACTIVE SUPPORT_AGENT accounts for auto-assignment.
+   * Returns [] when Identity is unavailable so routing can fail soft.
+   */
+  async listActiveSupportAgents(): Promise<IdentitySupportAgentRosterItem[]> {
+    try {
+      const res = await fetch(`${this.baseUrl()}/internal/users/support-agents`, {
+        headers: this.internalHeaders(),
+      });
+      if (!res.ok) {
+        this.logger.warn(`support-agent roster failed: ${res.status}`);
+        return [];
+      }
+      const data = (await res.json()) as {
+        items?: Array<{ id?: string; status?: string; staff_role?: string }>;
+      };
+      return (data.items ?? [])
+        .filter((row) => !!row.id)
+        .map((row) => ({
+          id: String(row.id),
+          status: String(row.status ?? ''),
+          staff_role: String(row.staff_role ?? ''),
+        }));
+    } catch (err) {
+      this.logger.warn(`support-agent roster error: ${err}`);
+      return [];
+    }
   }
 
   /**

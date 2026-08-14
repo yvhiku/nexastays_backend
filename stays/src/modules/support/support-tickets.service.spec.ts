@@ -217,6 +217,10 @@ describe('SupportTicketsService', () => {
       })),
     };
 
+    const assignment = {
+      attemptAutoAssignment: jest.fn().mockResolvedValue(undefined),
+    };
+
     const service = new SupportTicketsService(
       dataSource as never,
       ticketRepo as never,
@@ -237,6 +241,7 @@ describe('SupportTicketsService', () => {
       identityUsers as never,
       staysAudit as never,
       ops as never,
+      assignment as never,
     );
 
     return {
@@ -261,6 +266,7 @@ describe('SupportTicketsService', () => {
       csatRepo,
       auditLogRepo,
       ops,
+      assignment,
     };
   }
 
@@ -281,6 +287,32 @@ describe('SupportTicketsService', () => {
       'guest-1',
       expect.objectContaining({ conversationId: 'conv-1' }),
     );
+  });
+
+  it('auto-assigns after a standalone ticket create commits', async () => {
+    const { service, assignment } = buildService();
+
+    const result = await service.createTicketForUser('guest-1', {
+      category: 'BOOKING',
+      subject: 'Help with booking',
+      message: 'I need help',
+    });
+
+    expect(assignment.attemptAutoAssignment).toHaveBeenCalledWith(result.id);
+  });
+
+  it('still creates the ticket when auto-assign throws', async () => {
+    const { service, assignment } = buildService();
+    assignment.attemptAutoAssignment.mockRejectedValue(new Error('router down'));
+
+    const result = await service.createTicketForUser('guest-1', {
+      category: 'BOOKING',
+      subject: 'Help with booking',
+      message: 'I need help',
+    });
+
+    expect(result.id).toBe('ticket-1');
+    expect(assignment.attemptAutoAssignment).toHaveBeenCalled();
   });
 
   it('returns 404 obfuscation when booking is not owned', async () => {
@@ -491,7 +523,7 @@ describe('SupportTicketsService', () => {
   });
 
   it('dismissed reports remain listed and escalation does not downgrade URGENT', async () => {
-    const { service, reportRepo, ticketRepo, staysAudit, convRepo, dataSource } =
+    const { service, reportRepo, ticketRepo, staysAudit, convRepo, dataSource, assignment } =
       buildService();
     const report = {
       id: 'report-1',
@@ -525,6 +557,7 @@ describe('SupportTicketsService', () => {
     );
     expect(ticketRepo.save).not.toHaveBeenCalled();
     expect(ticketRepo.update).not.toHaveBeenCalled();
+    expect(assignment.attemptAutoAssignment).not.toHaveBeenCalled();
     expect(staysAudit.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'status_changed',
@@ -546,6 +579,44 @@ describe('SupportTicketsService', () => {
     expect(listed.items.some((item) => item.status === 'DISMISSED')).toBe(true);
     expect(listed.total).toBe(1);
     expect(listed.hasMore).toBe(false);
+  });
+
+  it('auto-assigns when escalation first creates a ticket', async () => {
+    const { service, reportRepo, ticketRepo, convRepo, assignment } =
+      buildService();
+    const report = {
+      id: 'report-1',
+      status: 'OPEN',
+      conversation_id: 'conv-src',
+      reporter_user_id: 'guest-1',
+      reported_user_id: 'host-1',
+      booking_id: null,
+      listing_id: null,
+      reason: 'spam',
+      attachment_ids: [],
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+    };
+    reportRepo.findOne.mockResolvedValue(report);
+    ticketRepo.findOne.mockResolvedValue(null);
+    convRepo.findOne.mockResolvedValue({
+      id: 'conv-src',
+      guest_user_id: 'guest-1',
+      host_user_id: 'host-1',
+    });
+    jest.spyOn(service, 'ensureTicketForReport').mockResolvedValue({
+      id: 'ticket-new',
+      priority: 'NORMAL',
+    } as never);
+    jest.spyOn(service, 'getReportForAdmin').mockResolvedValue({} as never);
+
+    await service.patchReportForAdmin(
+      'report-1',
+      { kind: 'conversation_reported', status: 'ESCALATED' },
+      'admin-1',
+    );
+
+    expect(assignment.attemptAutoAssignment).toHaveBeenCalledWith('ticket-new');
   });
 
   it('paginates admin reports with default limit and empty page', async () => {
