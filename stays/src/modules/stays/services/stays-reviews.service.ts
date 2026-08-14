@@ -464,13 +464,27 @@ export class StaysReviewsService {
   }
 
   async getReviewMediaPath(assetId: string): Promise<string> {
+    return this.resolveReviewMediaPath(assetId, { publishedOnly: true });
+  }
+
+  async getAdminReviewMediaPath(reviewId: string, assetId: string): Promise<string> {
+    return this.resolveReviewMediaPath(assetId, { publishedOnly: false, reviewId });
+  }
+
+  private async resolveReviewMediaPath(
+    assetId: string,
+    opts: { publishedOnly: boolean; reviewId?: string },
+  ): Promise<string> {
     const media = await this.reviewMediaRepo.findOne({
       where: { asset_id: assetId },
       relations: ['review'],
     });
     if (!media) throw new NotFoundException('Media not found');
     const review = media.review as StaysListingReview;
-    if (review.status !== PUBLISHED) {
+    if (opts.reviewId && review.id !== opts.reviewId) {
+      throw new NotFoundException('Media not found');
+    }
+    if (opts.publishedOnly && review.status !== PUBLISHED) {
       throw new NotFoundException('Media not found');
     }
 
@@ -645,6 +659,8 @@ export class StaysReviewsService {
     return {
       ...publicFields,
       booking_id: review.booking_id,
+      listing_title: review.listing?.title ?? null,
+      host_user_id: review.host_user_id ?? review.listing?.host_user_id ?? null,
       status: review.status,
       can_edit: editable,
     };

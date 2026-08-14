@@ -299,6 +299,36 @@ export class AdminStaysController {
     });
   }
 
+  @Get('reviews/:id/media/:assetId')
+  async getReviewMedia(
+    @Param('id') id: string,
+    @Param('assetId') assetId: string,
+    @Res() res: Response,
+  ) {
+    const fullPath = await this.staysReviewsService.getAdminReviewMediaPath(
+      id,
+      assetId,
+    );
+    if (/^https?:\/\//i.test(fullPath)) {
+      res.redirect(fullPath);
+      return;
+    }
+    const ext = fullPath.includes('.')
+      ? fullPath.split('.').pop()?.toLowerCase()
+      : '';
+    const contentType =
+      ext === 'png'
+        ? 'image/png'
+        : ext === 'webp'
+          ? 'image/webp'
+          : ext === 'jpg' || ext === 'jpeg'
+            ? 'image/jpeg'
+            : 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    createReadStream(fullPath).pipe(res);
+  }
+
   @Patch('reviews/:id/hide')
   hideReview(@Param('id') id: string) {
     return this.staysReviewsService.adminSetReviewStatus(id, 'HIDDEN');
