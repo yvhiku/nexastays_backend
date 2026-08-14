@@ -46,6 +46,9 @@ describe('AuthService.adminLogin', () => {
       sign: jest.fn((payload) => `jwt:${JSON.stringify(payload)}`),
       verify: jest.fn(),
     };
+    const refreshTokenRepository = {
+      save: jest.fn().mockResolvedValue({}),
+    };
     unifiedIdentityService = {
       ensureIdentityForAdminUser: jest.fn().mockResolvedValue('identity-1'),
     };
@@ -63,7 +66,7 @@ describe('AuthService.adminLogin', () => {
       userRepository as never,
       {} as never,
       {} as never,
-      {} as never,
+      refreshTokenRepository as never,
       {} as never,
       otpLockoutService as never,
       {} as never,
@@ -141,6 +144,7 @@ describe('AuthService.adminLogin', () => {
     expect(result?.user.roles).toEqual(['ADMIN']);
     expect(result?.user.role).toBe('ADMIN');
     expect(result?.user.staff_role).toBe('ADMIN');
+    expect(result?.refresh_token).toEqual(expect.any(String));
     expect(jwtService.sign).toHaveBeenCalledWith(
       expect.objectContaining({ roles: ['ADMIN'], role: 'ADMIN' }),
       expect.any(Object),
@@ -158,6 +162,7 @@ describe('AuthService.adminLogin', () => {
     expect(result?.user.roles).toEqual(['SUPPORT_AGENT']);
     expect(result?.user.role).toBe('SUPPORT_AGENT');
     expect(result?.user.staff_role).toBe('SUPPORT_AGENT');
+    expect(result?.refresh_token).toEqual(expect.any(String));
     expect(jwtService.sign).toHaveBeenCalledWith(
       expect.objectContaining({
         roles: ['SUPPORT_AGENT'],

@@ -1180,7 +1180,7 @@ export class AuthService {
     email: string,
     password: string,
     ip: string = '0.0.0.0',
-  ): Promise<{ access_token: string; user: any } | null> {
+  ): Promise<{ access_token: string; refresh_token: string; user: any } | null> {
     const normalizedEmail = (email || '').trim().toLowerCase();
     const allowedEmails = appConfig.adminEmails;
     const isAdminEmail =
@@ -1255,7 +1255,7 @@ export class AuthService {
       await this.userRepository.save(user);
     }
 
-    return this.issueAdminDashboardSession(user, adminEmail, now);
+    return this.issueAdminDashboardSession(user, adminEmail, now, { ip });
   }
 
   /**
@@ -1267,7 +1267,7 @@ export class AuthService {
     password: string,
     lockKey: string,
     ip: string,
-  ): Promise<{ access_token: string; user: any } | null> {
+  ): Promise<{ access_token: string; refresh_token: string; user: any } | null> {
     const user = await this.userRepository.findOne({
       where: { email: normalizedEmail },
     });
@@ -1290,14 +1290,17 @@ export class AuthService {
     }
 
     await this.otpLockoutService.recordSuccess(lockKey, ip);
-    return this.issueAdminDashboardSession(user, normalizedEmail, new Date());
+    return this.issueAdminDashboardSession(user, normalizedEmail, new Date(), {
+      ip,
+    });
   }
 
   private async issueAdminDashboardSession(
     user: User,
     email: string,
     now: Date,
-  ): Promise<{ access_token: string; user: any }> {
+    ctx: RefreshTokenContext = { ip: '0.0.0.0' },
+  ): Promise<{ access_token: string; refresh_token: string; user: any }> {
     await this.unifiedIdentityService.ensureIdentityForAdminUser(user.id);
     await this.ensureAdminVerifiedKycRow(user.id, email);
 
@@ -1320,8 +1323,11 @@ export class AuthService {
       },
     );
 
+    const { refresh_token } = await this.issueRefreshToken(user.id, ctx);
+
     return {
       access_token: token,
+      refresh_token,
       user: {
         id: user.id,
         email: user.email,
