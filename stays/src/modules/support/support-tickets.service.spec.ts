@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, InternalServerErrorException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -31,6 +31,8 @@ describe('SupportTicketsService', () => {
       clone: jest.fn(),
       getCount: jest.fn().mockResolvedValue(0),
       getMany: jest.fn().mockResolvedValue([]),
+      setLock: jest.fn().mockReturnThis(),
+      getOne: jest.fn(),
     };
     ticketQb.clone.mockReturnValue(ticketQb);
 
@@ -47,6 +49,7 @@ describe('SupportTicketsService', () => {
       update: jest.fn(),
       createQueryBuilder: jest.fn(() => ticketQb),
     };
+    ticketQb.getOne.mockImplementation(async () => ticketRepo.findOne());
     const reportRepo = {
       create: jest.fn((row: unknown) => row),
       save: jest.fn(async (row: Record<string, unknown>) => ({
@@ -117,6 +120,7 @@ describe('SupportTicketsService', () => {
         authz_version: 1,
         status: 'ACTIVE',
         account_type: 'ADMIN',
+        staff_role: 'SUPPORT_AGENT',
       }),
     };
     const staysAudit = { log: jest.fn().mockResolvedValue(undefined) };
@@ -554,8 +558,9 @@ describe('SupportTicketsService', () => {
     expect(listed.hasMore).toBe(false);
   });
 
-  it('assigns verified ADMIN and audits assignment', async () => {
-    const { service, ticketRepo, identityUsers, staysAudit } = buildService();
+  it('assigns eligible SUPPORT_AGENT and audits assignment', async () => {
+    const { service, ticketRepo, ticketQb, identityUsers, staysAudit } =
+      buildService();
     ticketRepo.findOne.mockResolvedValue({
       id: 'ticket-1',
       status: 'OPEN',
@@ -574,25 +579,27 @@ describe('SupportTicketsService', () => {
     });
     ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
 
-    await service.patchForAdmin(
+    const row = await service.patchForAdmin(
       'ticket-1',
-      { assigned_admin_id: 'admin-2' },
+      { assigned_admin_id: 'agent-2' },
       'admin-1',
     );
-    expect(identityUsers.getAuthz).toHaveBeenCalledWith('admin-2');
+    expect(row.status).toBe('OPEN');
+    expect(identityUsers.getAuthz).toHaveBeenCalledWith('agent-2');
+    expect(ticketQb.setLock).toHaveBeenCalledWith('pessimistic_write');
     expect(staysAudit.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'support_ticket_assigned',
         entityType: 'support_ticket',
         metadata: expect.objectContaining({
           fromAdminId: null,
-          toAdminId: 'admin-2',
+          toAdminId: 'agent-2',
         }),
       }),
     );
   });
 
-  it('rejects non-ADMIN assignee with 422', async () => {
+  it('rejects GUEST assignee with 422', async () => {
     const { service, ticketRepo, identityUsers } = buildService();
     ticketRepo.findOne.mockResolvedValue({
       id: 'ticket-1',
@@ -603,11 +610,31 @@ describe('SupportTicketsService', () => {
     identityUsers.getAuthz.mockResolvedValue({
       account_type: 'GUEST',
       status: 'ACTIVE',
+      staff_role: 'SUPPORT_AGENT',
       authz_version: 1,
     });
     await expect(
       service.patchForAdmin('ticket-1', { assigned_admin_id: 'guest-1' }, 'admin-1'),
-    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    ).rejects.toThrow('Support agent is not eligible for assignment');
+  });
+
+  it('rejects Super Admin assignee with 422', async () => {
+    const { service, ticketRepo, identityUsers } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'OPEN',
+      priority: 'NORMAL',
+      assigned_admin_id: null,
+    });
+    identityUsers.getAuthz.mockResolvedValue({
+      account_type: 'ADMIN',
+      status: 'ACTIVE',
+      staff_role: 'ADMIN',
+      authz_version: 1,
+    });
+    await expect(
+      service.patchForAdmin('ticket-1', { assigned_admin_id: 'admin-2' }, 'admin-1'),
+    ).rejects.toThrow('Support agent is not eligible for assignment');
   });
 
   it('rejects frozen assignee with 422', async () => {
@@ -621,11 +648,91 @@ describe('SupportTicketsService', () => {
     identityUsers.getAuthz.mockResolvedValue({
       account_type: 'ADMIN',
       status: 'FROZEN',
+      staff_role: 'SUPPORT_AGENT',
       authz_version: 1,
     });
     await expect(
       service.patchForAdmin('ticket-1', { assigned_admin_id: 'frozen-1' }, 'admin-1'),
-    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    ).rejects.toThrow('Support agent is not eligible for assignment');
+  });
+
+  it('reassigns and unassigns with audit metadata and does not mutate status', async () => {
+    const { service, ticketRepo, identityUsers, staysAudit } = buildService();
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'WAITING_FOR_CUSTOMER',
+      priority: 'NORMAL',
+      assigned_admin_id: 'agent-a',
+      resolved_at: null,
+      closed_at: null,
+      first_admin_response_at: null,
+      ticket_number: 'SUP-2026-000001',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: now,
+      updated_at: now,
+    });
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+
+    const reassigned = await service.patchForAdmin(
+      'ticket-1',
+      { assigned_admin_id: 'agent-b' },
+      'admin-1',
+    );
+    expect(reassigned.status).toBe('WAITING_FOR_CUSTOMER');
+    expect(reassigned.assigned_admin_id).toBe('agent-b');
+    expect(staysAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'support_ticket_assigned',
+        metadata: expect.objectContaining({
+          fromAdminId: 'agent-a',
+          toAdminId: 'agent-b',
+        }),
+      }),
+    );
+
+    staysAudit.log.mockClear();
+    identityUsers.getAuthz.mockClear();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'WAITING_FOR_CUSTOMER',
+      priority: 'NORMAL',
+      assigned_admin_id: 'agent-b',
+      resolved_at: null,
+      closed_at: null,
+      first_admin_response_at: null,
+      ticket_number: 'SUP-2026-000001',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: now,
+      updated_at: now,
+    });
+    const unassigned = await service.patchForAdmin(
+      'ticket-1',
+      { assigned_admin_id: null },
+      'admin-1',
+    );
+    expect(identityUsers.getAuthz).not.toHaveBeenCalled();
+    expect(unassigned.status).toBe('WAITING_FOR_CUSTOMER');
+    expect(unassigned.assigned_admin_id).toBeNull();
+    expect(staysAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'support_ticket_assigned',
+        metadata: expect.objectContaining({
+          fromAdminId: 'agent-b',
+          toAdminId: null,
+        }),
+      }),
+    );
   });
 
   it('rejects unknown assignee with 404', async () => {

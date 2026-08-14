@@ -755,6 +755,22 @@ export class SupportTicketsService {
     return ticket;
   }
 
+  private async assertEligibleAssignee(userId: string) {
+    const authz = await this.identityUsers.getAuthz(userId);
+    if (!authz) {
+      throw new NotFoundException('Admin user not found');
+    }
+    if (
+      authz.account_type !== 'ADMIN' ||
+      authz.staff_role !== 'SUPPORT_AGENT' ||
+      authz.status !== 'ACTIVE'
+    ) {
+      throw new UnprocessableEntityException(
+        'Support agent is not eligible for assignment',
+      );
+    }
+  }
+
   async getForAdmin(
     ticketId: string,
     actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
@@ -860,43 +876,49 @@ export class SupportTicketsService {
     }
 
     if (patch.assigned_admin_id) {
-      const authz = await this.identityUsers.getAuthz(patch.assigned_admin_id);
-      if (!authz) {
-        throw new NotFoundException('Admin user not found');
-      }
-      if (authz.account_type !== 'ADMIN') {
-        throw new UnprocessableEntityException(
-          'Assignee must be an ADMIN account',
-        );
-      }
-      if (authz.status === 'FROZEN') {
-        throw new UnprocessableEntityException('Assignee account is frozen');
-      }
+      await this.assertEligibleAssignee(patch.assigned_admin_id);
     }
 
     const fromStatus = ticket.status;
     const fromPriority = ticket.priority;
-    const fromAdminId = ticket.assigned_admin_id;
+    let fromAdminId = ticket.assigned_admin_id;
+    let saved = ticket;
+
+    if (patch.assigned_admin_id !== undefined) {
+      saved = await this.dataSource.transaction(async (manager) => {
+        const repo = manager.getRepository(StaysSupportTicket);
+        const locked = await repo
+          .createQueryBuilder('t')
+          .setLock('pessimistic_write')
+          .where('t.id = :id', { id: ticketId })
+          .getOne();
+        if (!locked) throw new NotFoundException('Ticket not found');
+        fromAdminId = locked.assigned_admin_id;
+        locked.assigned_admin_id = patch.assigned_admin_id ?? null;
+        locked.updated_at = new Date();
+        return repo.save(locked);
+      });
+    }
 
     if (patch.status !== undefined) {
-      ticket.status = patch.status as SupportTicketStatus;
+      saved.status = patch.status as SupportTicketStatus;
       if (patch.status === 'RESOLVED') {
-        ticket.resolved_at = ticket.resolved_at ?? new Date();
+        saved.resolved_at = saved.resolved_at ?? new Date();
       } else if (patch.status === 'CLOSED') {
-        ticket.closed_at = ticket.closed_at ?? new Date();
-        // Keep first resolved_at; set if closing without prior resolve.
-        ticket.resolved_at = ticket.resolved_at ?? new Date();
+        saved.closed_at = saved.closed_at ?? new Date();
+        saved.resolved_at = saved.resolved_at ?? new Date();
       }
-      // Do not clear resolved_at / closed_at on reopen or other transitions.
     }
     if (patch.priority !== undefined) {
-      ticket.priority = patch.priority as SupportTicketPriority;
+      saved.priority = patch.priority as SupportTicketPriority;
     }
-    if (patch.assigned_admin_id !== undefined) {
-      ticket.assigned_admin_id = patch.assigned_admin_id;
+    if (patch.status !== undefined || patch.priority !== undefined) {
+      saved.updated_at = new Date();
+      saved = await this.ticketRepo.save(saved);
+    } else if (patch.assigned_admin_id === undefined) {
+      saved.updated_at = new Date();
+      saved = await this.ticketRepo.save(saved);
     }
-    ticket.updated_at = new Date();
-    const saved = await this.ticketRepo.save(ticket);
 
     if (patch.assigned_admin_id !== undefined) {
       await this.staysAudit.log({

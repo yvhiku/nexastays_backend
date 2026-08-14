@@ -101,6 +101,7 @@ describe('OperationalIntelligenceService', () => {
       csatRepo,
       staysAudit,
       saved,
+      dataSource,
     };
   }
 
@@ -613,5 +614,34 @@ describe('OperationalIntelligenceService', () => {
     expect(sql.join(' ')).toContain('CAST(:slaFrLow AS int)');
     expect(sql.join(' ')).toContain('CAST(:slaResNormal AS int)');
     expect(sql.join(' ')).not.toMatch(/THEN :slaFrLow\s/);
+  });
+
+  it('lists agent workload without closed tickets or overview totals', async () => {
+    const { service, dataSource } = build();
+    dataSource.query.mockResolvedValue([
+      {
+        agent_id: 'agent-1',
+        assigned: 4,
+        open: 1,
+        in_progress: 2,
+        waiting: 1,
+        high_priority: 3,
+      },
+    ]);
+    await expect(service.listAgentWorkload()).resolves.toEqual({
+      items: [
+        {
+          agentId: 'agent-1',
+          assigned: 4,
+          open: 1,
+          inProgress: 2,
+          waiting: 1,
+        },
+      ],
+    });
+    expect(dataSource.query.mock.calls[0][0]).toContain('assigned_admin_id');
+    expect(JSON.stringify(await service.listAgentWorkload())).not.toContain(
+      'highPriority',
+    );
   });
 });

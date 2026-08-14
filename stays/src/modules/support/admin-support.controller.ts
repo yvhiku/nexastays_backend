@@ -80,6 +80,11 @@ export class AdminSupportController {
     return this.ops.getOperationsOverview();
   }
 
+  @Get('support/agents/workload')
+  agentWorkload() {
+    return this.ops.listAgentWorkload();
+  }
+
   @Get('support/signals')
   listSignals(@Query() query: AdminListSignalsQueryDto) {
     return this.ops.listSignals(query);

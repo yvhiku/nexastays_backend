@@ -11,6 +11,7 @@ export type IdentityAuthz = {
   authz_version: number;
   status: string;
   account_type: string;
+  staff_role?: string;
 };
 
 @Injectable()
@@ -58,6 +59,7 @@ export class IdentityUserClient {
         authz_version: Number(data.authz_version ?? 1),
         status: String(data.status ?? ''),
         account_type: String(data.account_type ?? ''),
+        staff_role: data.staff_role ? String(data.staff_role) : undefined,
       };
     } catch (err) {
       this.logger.warn(`authz lookup error for ${userId}: ${err}`);

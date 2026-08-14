@@ -669,22 +669,7 @@ export class OperationalIntelligenceService {
       FROM stays_support_operational_signals
       `,
     );
-    const workload = await this.dataSource.query(
-      `
-      SELECT
-        t.assigned_admin_id AS admin_id,
-        COUNT(*)::int AS open_tickets,
-        COUNT(*) FILTER (WHERE t.priority IN ('HIGH','URGENT'))::int AS high_priority_tickets,
-        COUNT(*) FILTER (
-          WHERE t.status IN ('WAITING_FOR_CUSTOMER','WAITING_FOR_HOST')
-        )::int AS waiting_tickets
-      FROM stays_support_tickets t
-      WHERE t.assigned_admin_id IS NOT NULL
-        AND t.status IN ('OPEN','IN_PROGRESS','WAITING_FOR_CUSTOMER','WAITING_FOR_HOST','ESCALATED')
-      GROUP BY t.assigned_admin_id
-      ORDER BY open_tickets DESC, t.assigned_admin_id ASC
-      `,
-    );
+    const workload = await this.queryAssignedAgentWorkload();
     return {
       activeTickets: Number(counts?.active_tickets ?? 0),
       unassignedTickets: Number(counts?.unassigned_tickets ?? 0),
@@ -694,20 +679,73 @@ export class OperationalIntelligenceService {
       slaBreached: Number(counts?.sla_breached ?? 0),
       activeSignals: Number(signalCounts?.active_signals ?? 0),
       acknowledgedSignals: Number(signalCounts?.acknowledged_signals ?? 0),
-      agentWorkload: (
-        workload as {
-          admin_id: string;
-          open_tickets: number;
-          high_priority_tickets: number;
-          waiting_tickets: number;
-        }[]
-      ).map((row) => ({
-        adminId: row.admin_id,
-        openTickets: Number(row.open_tickets),
-        highPriorityTickets: Number(row.high_priority_tickets),
-        waitingTickets: Number(row.waiting_tickets),
+      agentWorkload: workload.map((row) => ({
+        adminId: row.agentId,
+        openTickets: row.assigned,
+        highPriorityTickets: row.highPriority,
+        waitingTickets: row.waiting,
       })),
     };
+  }
+
+  async listAgentWorkload() {
+    const rows = await this.queryAssignedAgentWorkload();
+    return {
+      items: rows.map((row) => ({
+        agentId: row.agentId,
+        assigned: row.assigned,
+        open: row.open,
+        inProgress: row.inProgress,
+        waiting: row.waiting,
+      })),
+    };
+  }
+
+  private async queryAssignedAgentWorkload(): Promise<
+    {
+      agentId: string;
+      assigned: number;
+      open: number;
+      inProgress: number;
+      waiting: number;
+      highPriority: number;
+    }[]
+  > {
+    const workload = await this.dataSource.query(
+      `
+      SELECT
+        t.assigned_admin_id AS agent_id,
+        COUNT(*)::int AS assigned,
+        COUNT(*) FILTER (WHERE t.status = 'OPEN')::int AS open,
+        COUNT(*) FILTER (WHERE t.status = 'IN_PROGRESS')::int AS in_progress,
+        COUNT(*) FILTER (
+          WHERE t.status IN ('WAITING_FOR_CUSTOMER','WAITING_FOR_HOST')
+        )::int AS waiting,
+        COUNT(*) FILTER (WHERE t.priority IN ('HIGH','URGENT'))::int AS high_priority
+      FROM stays_support_tickets t
+      WHERE t.assigned_admin_id IS NOT NULL
+        AND t.status IN ('OPEN','IN_PROGRESS','WAITING_FOR_CUSTOMER','WAITING_FOR_HOST','ESCALATED')
+      GROUP BY t.assigned_admin_id
+      ORDER BY assigned DESC, t.assigned_admin_id ASC
+      `,
+    );
+    return (
+      workload as {
+        agent_id: string;
+        assigned: number;
+        open: number;
+        in_progress: number;
+        waiting: number;
+        high_priority: number;
+      }[]
+    ).map((row) => ({
+      agentId: row.agent_id,
+      assigned: Number(row.assigned),
+      open: Number(row.open),
+      inProgress: Number(row.in_progress),
+      waiting: Number(row.waiting),
+      highPriority: Number(row.high_priority),
+    }));
   }
 
   applySlaStateFilter(
