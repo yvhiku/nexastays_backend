@@ -787,16 +787,52 @@ export class SupportTicketsService {
       : new Map<string, string>();
 
     let listing: Record<string, unknown> | null = null;
+    let listingHostId: string | null = null;
     if (ticket.listing_id) {
-      const row = await this.listingRepo.findOne({ where: { id: ticket.listing_id } });
+      const row = await this.listingRepo.findOne({
+        where: { id: ticket.listing_id },
+        relations: ['check_in_contact'],
+      });
       if (row) {
+        listingHostId = row.host_user_id;
         listing = {
           id: row.id,
           title: row.title,
           host_user_id: row.host_user_id,
           city: row.city,
+          address: row.address_encrypted?.trim() || null,
         };
+        if (row.check_in_contact) {
+          listing.check_in_contact = {
+            name: row.check_in_contact.full_name,
+            phone: row.check_in_contact.phone_encrypted,
+            role: row.check_in_contact.role,
+          };
+        }
       }
+    }
+
+    let guestUserId: string | null = null;
+    if (ticket.booking_id) {
+      const booking = await this.bookingRepo.findOne({
+        where: { id: ticket.booking_id },
+      });
+      guestUserId = booking?.guest_user_id ?? null;
+    }
+
+    const contacts = await this.resolveSupportContacts([
+      listingHostId,
+      guestUserId,
+      ticket.requester_user_id,
+    ]);
+    const emptyContact = (id: string) => ({
+      id,
+      name: null,
+      email: null,
+      phone: null,
+    });
+    if (listing && listingHostId) {
+      listing.host = contacts.get(listingHostId) ?? emptyContact(listingHostId);
     }
 
     let report: Record<string, unknown> | null = null;
@@ -839,6 +875,16 @@ export class SupportTicketsService {
       ...this.toListRow(ticket, bookingRefs.get(ticket.booking_id ?? '') ?? null),
       conversation_id: ticket.conversation_id,
       listing,
+      host: listingHostId
+        ? (contacts.get(listingHostId) ?? emptyContact(listingHostId))
+        : null,
+      guest: guestUserId
+        ? (contacts.get(guestUserId) ?? emptyContact(guestUserId))
+        : null,
+      reporter: ticket.requester_user_id
+        ? (contacts.get(ticket.requester_user_id) ??
+          emptyContact(ticket.requester_user_id))
+        : null,
       report,
       safety_issue,
       csat,
@@ -2223,6 +2269,33 @@ export class SupportTicketsService {
           createdAt: row.created_at.toISOString(),
         };
       });
+  }
+
+  private async resolveSupportContacts(userIds: Array<string | null | undefined>) {
+    const unique = [...new Set(userIds.filter((id): id is string => !!id))];
+    const contacts = new Map<
+      string,
+      { id: string; name: string | null; email: string | null; phone: string | null }
+    >();
+    if (unique.length === 0) return contacts;
+
+    const [identities, hostProfiles] = await Promise.all([
+      this.loadIdentities(unique),
+      this.hostProfileRepo.find({ where: { user_id: In(unique) } }),
+    ]);
+    const profiles = new Map(hostProfiles.map((row) => [row.user_id, row]));
+
+    for (const id of unique) {
+      const identity = identities.get(id);
+      const profile = profiles.get(id);
+      contacts.set(id, {
+        id,
+        name: identity?.fullName?.trim() || profile?.full_name?.trim() || null,
+        email: identity?.email?.trim() || profile?.email?.trim() || null,
+        phone: identity?.phone?.trim() || profile?.phone?.trim() || null,
+      });
+    }
+    return contacts;
   }
 
   private async loadIdentities(userIds: string[]) {

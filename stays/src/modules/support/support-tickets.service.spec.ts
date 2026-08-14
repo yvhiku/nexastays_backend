@@ -99,7 +99,7 @@ describe('SupportTicketsService', () => {
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
     };
-    const hostProfileRepo = { findOne: jest.fn().mockResolvedValue(null) };
+    const hostProfileRepo = { findOne: jest.fn().mockResolvedValue(null), find: jest.fn().mockResolvedValue([]) };
     const timelineSeeder = {
       insertMessage: jest.fn().mockResolvedValue({
         id: 'msg-1',
@@ -267,6 +267,7 @@ describe('SupportTicketsService', () => {
       auditLogRepo,
       ops,
       assignment,
+      hostProfileRepo,
     };
   }
 
@@ -1709,6 +1710,60 @@ describe('SupportTicketsService', () => {
       await expect(
         service.getForAdmin('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', agentA),
       ).rejects.toMatchObject({ message: 'Ticket not found' });
+    });
+
+    it('returns host name email and phone on ticket detail', async () => {
+      const { service, ticketRepo, listingRepo, identityUsers, hostProfileRepo } =
+        buildService();
+      ticketRepo.findOne.mockResolvedValue(
+        ticketRow({ listing_id: 'listing-1' }),
+      );
+      listingRepo.findOne.mockResolvedValue({
+        id: 'listing-1',
+        title: 'sunny loft on maarif',
+        host_user_id: 'host-1',
+        city: 'Casablanca',
+        address_encrypted: '12 Rue Maarif',
+        check_in_contact: {
+          full_name: 'On-site manager',
+          phone_encrypted: '+212600000001',
+          role: 'AGENT',
+        },
+      });
+      identityUsers.getProfileSummary.mockResolvedValue({
+        fullName: 'Mohamed Fikri',
+        email: 'fikri@nexa.ma',
+        phone: '+212693211350',
+        verified: true,
+      });
+      hostProfileRepo.find.mockResolvedValue([]);
+
+      const row = await service.getForAdmin('ticket-a', agentA);
+      expect(row.host).toEqual({
+        id: 'host-1',
+        name: 'Mohamed Fikri',
+        email: 'fikri@nexa.ma',
+        phone: '+212693211350',
+      });
+      expect(row.listing).toEqual(
+        expect.objectContaining({
+          id: 'listing-1',
+          title: 'sunny loft on maarif',
+          city: 'Casablanca',
+          address: '12 Rue Maarif',
+          host: {
+            id: 'host-1',
+            name: 'Mohamed Fikri',
+            email: 'fikri@nexa.ma',
+            phone: '+212693211350',
+          },
+          check_in_contact: {
+            name: 'On-site manager',
+            phone: '+212600000001',
+            role: 'AGENT',
+          },
+        }),
+      );
     });
 
     it('messages notes and activity follow the same ownership 404', async () => {

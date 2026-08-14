@@ -4,6 +4,7 @@ import { getInternalServiceKey } from '../security/secrets';
 export type IdentityProfileSummary = {
   fullName: string | null;
   email: string | null;
+  phone: string | null;
   verified: boolean;
 };
 
@@ -123,11 +124,13 @@ export class IdentityUserClient {
       const data = (await res.json()) as {
         fullName?: string | null;
         email?: string | null;
+        phone?: string | null;
         verified?: boolean;
       };
       const summary: IdentityProfileSummary = {
         fullName: data.fullName?.trim() || null,
         email: data.email?.trim() || null,
+        phone: data.phone?.trim() || null,
         verified: !!data.verified,
       };
       this.summaryCache.set(userId, {
