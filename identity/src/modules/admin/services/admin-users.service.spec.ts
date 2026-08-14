@@ -2,8 +2,15 @@ import {
   ForbiddenException,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { AdminUsersService } from './admin-users.service';
+import { hashPassword, hashPin } from '../../../common/security/secret-crypto';
+
+jest.mock('../../../common/security/secret-crypto', () => ({
+  hashPassword: jest.fn(async () => 'argon2-staff-hash'),
+  hashPin: jest.fn(async () => 'pin-hash'),
+}));
 
 describe('AdminUsersService.updateStaffRole', () => {
   const usersRepository = {
@@ -34,6 +41,7 @@ describe('AdminUsersService.updateStaffRole', () => {
     {} as any,
     auditService as any,
     authzVersions as any,
+    {} as any,
   );
 
   beforeEach(() => {
@@ -126,6 +134,7 @@ describe('AdminUsersService.listSupportAgents', () => {
     {} as any,
     auditService as any,
     authzVersions as any,
+    {} as any,
   );
 
   beforeEach(() => {
@@ -184,5 +193,135 @@ describe('AdminUsersService.listSupportAgents', () => {
   it('returns an empty roster when no support agents exist', async () => {
     usersRepository.find.mockResolvedValue([]);
     await expect(service.listSupportAgents()).resolves.toEqual({ items: [] });
+  });
+});
+
+describe('AdminUsersService.createSupportAgent', () => {
+  const usersRepository = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+  };
+  const auditService = { logAction: jest.fn() };
+  const unifiedIdentityService = {
+    ensureIdentityForAdminUser: jest.fn(),
+  };
+
+  const service = new AdminUsersService(
+    usersRepository as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    auditService as any,
+    { bump: jest.fn() } as any,
+    unifiedIdentityService as any,
+  );
+
+  const previousAdminEmails = process.env.ADMIN_EMAILS;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.ADMIN_EMAILS = 'super@nexa.test';
+    usersRepository.save.mockImplementation(async (row) => ({
+      id: 'agent-new',
+      ...row,
+    }));
+    unifiedIdentityService.ensureIdentityForAdminUser.mockResolvedValue(
+      'identity-agent',
+    );
+  });
+
+  afterEach(() => {
+    if (previousAdminEmails === undefined) {
+      delete process.env.ADMIN_EMAILS;
+    } else {
+      process.env.ADMIN_EMAILS = previousAdminEmails;
+    }
+  });
+
+  it('creates a SUPPORT_AGENT with hashed staff password and no password in the audit', async () => {
+    usersRepository.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.createSupportAgent(
+        {
+          email: 'Agent@Nexa.test',
+          fullName: 'Sarah Ahmed',
+          password: 'agent-secret-password',
+        },
+        { userId: 'admin-1', email: 'super@nexa.test' },
+      ),
+    ).resolves.toEqual({
+      id: 'agent-new',
+      email: 'agent@nexa.test',
+      fullName: 'Sarah Ahmed',
+      staffRole: 'SUPPORT_AGENT',
+    });
+
+    expect(hashPassword).toHaveBeenCalledWith('agent-secret-password');
+    expect(hashPin).toHaveBeenCalled();
+    expect(usersRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'agent@nexa.test',
+        full_name: 'Sarah Ahmed',
+        account_type: 'ADMIN',
+        staff_role: 'SUPPORT_AGENT',
+        status: 'ACTIVE',
+        kyc_status: 'APPROVED',
+        staff_password_hash: 'argon2-staff-hash',
+        pin_hash: 'pin-hash',
+        phone_number: null,
+      }),
+    );
+    expect(
+      unifiedIdentityService.ensureIdentityForAdminUser,
+    ).toHaveBeenCalledWith('agent-new');
+    expect(auditService.logAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'SUPPORT_AGENT_CREATED',
+        metadata: { email: 'agent@nexa.test', userId: 'agent-new' },
+      }),
+    );
+    const auditArg = auditService.logAction.mock.calls[0][0];
+    expect(JSON.stringify(auditArg)).not.toContain('agent-secret-password');
+    expect(JSON.stringify(auditArg)).not.toContain('password');
+  });
+
+  it('rejects duplicate emails', async () => {
+    usersRepository.findOne.mockResolvedValue({ id: 'existing' });
+    await expect(
+      service.createSupportAgent({
+        email: 'taken@nexa.test',
+        fullName: 'Taken',
+        password: 'agent-secret-password',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(usersRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects Super Admin bootstrap allowlist emails', async () => {
+    await expect(
+      service.createSupportAgent({
+        email: 'super@nexa.test',
+        fullName: 'Nope',
+        password: 'agent-secret-password',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(usersRepository.findOne).not.toHaveBeenCalled();
+    expect(usersRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects passwords shorter than 10 characters', async () => {
+    await expect(
+      service.createSupportAgent({
+        email: 'agent@nexa.test',
+        fullName: 'Sarah',
+        password: 'short',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(usersRepository.save).not.toHaveBeenCalled();
   });
 });

@@ -119,6 +119,13 @@ export class User {
   @Column({ type: 'text' })
   pin_hash: string;
 
+  /**
+   * Argon2id hash for provisioned dashboard staff. Super Admin bootstrap
+   * still uses ADMIN_EMAILS + env password. Never select in list APIs.
+   */
+  @Column({ type: 'text', name: 'staff_password_hash', nullable: true })
+  staff_password_hash: string | null;
+
   @Column({ type: 'varchar', length: 20, default: 'ACTIVE' })
   status: string;
 

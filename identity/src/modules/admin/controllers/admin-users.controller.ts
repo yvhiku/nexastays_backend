@@ -17,6 +17,7 @@ import { AdminUsersService } from '../services/admin-users.service';
 import { AdminUsersQueryDto } from '../dto/admin-users.query.dto';
 import { UpdateUserStatusDto } from '../dto/update-user-status.dto';
 import { UpdateStaffRoleDto } from '../dto/update-staff-role.dto';
+import { CreateSupportAgentDto } from '../dto/create-support-agent.dto';
 import type { AdminRequest } from '../types/admin-request';
 
 @ApiTags('Pay Admin')
@@ -43,6 +44,14 @@ export class AdminUsersController {
   @Get('support-agents')
   listSupportAgents() {
     return this.adminUsersService.listSupportAgents();
+  }
+
+  @Post('support-agents')
+  createSupportAgent(
+    @Body() body: CreateSupportAgentDto,
+    @Req() req: AdminRequest,
+  ) {
+    return this.adminUsersService.createSupportAgent(body, req.user);
   }
 
   /**

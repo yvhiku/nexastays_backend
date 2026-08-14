@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
+import * as crypto from 'crypto';
 import { User, type StaffRole } from '../../users/entities/user.entity';
 import { IdentityPhoneNumber } from '../../users/entities/identity-phone-number.entity';
 import { Wallet } from '../../wallets/entities/wallet.entity';
@@ -9,8 +10,12 @@ import { RefreshToken } from '../../auth/entities/refresh-token.entity';
 import { TrustedDevice } from '../../auth/entities/trusted-device.entity';
 import { RiskAlert } from '../entities/risk-alert.entity';
 import { AdminUsersQueryDto } from '../dto/admin-users.query.dto';
+import { CreateSupportAgentDto } from '../dto/create-support-agent.dto';
 import { AdminAuditService } from './admin-audit.service';
 import { AuthzVersionService } from '../../auth/authz-version.service';
+import { UnifiedIdentityService } from '../../users/unified-identity.service';
+import { appConfig } from '../../../common/config/app.config';
+import { hashPassword, hashPin } from '../../../common/security/secret-crypto';
 
 interface RequestUser {
   userId?: string;
@@ -36,6 +41,7 @@ export class AdminUsersService {
     private readonly riskAlertRepository: Repository<RiskAlert>,
     private readonly auditService: AdminAuditService,
     private readonly authzVersions: AuthzVersionService,
+    private readonly unifiedIdentityService: UnifiedIdentityService,
   ) {}
 
   private applyUsersListFilters(
@@ -158,6 +164,62 @@ export class AdminUsersService {
         status: row.status,
         staff_role: row.staff_role || 'SUPPORT_AGENT',
       })),
+    };
+  }
+
+  async createSupportAgent(input: CreateSupportAgentDto, adminUser?: RequestUser) {
+    const email = (input.email || '').trim().toLowerCase();
+    const fullName = (input.fullName || '').trim();
+    const password = input.password ?? '';
+
+    if (!email) {
+      throw new BadRequestException('Email is required');
+    }
+    if (!fullName) {
+      throw new BadRequestException('Full name is required');
+    }
+    if (password.length < 10) {
+      throw new BadRequestException('Password must be at least 10 characters');
+    }
+    if (appConfig.adminEmails.includes(email)) {
+      throw new BadRequestException(
+        'This email is reserved for Super Admin bootstrap',
+      );
+    }
+
+    const existing = await this.usersRepository.findOne({ where: { email } });
+    if (existing) {
+      throw new ConflictException('Email already in use');
+    }
+
+    const user = await this.usersRepository.save({
+      phone_number: null,
+      email,
+      full_name: fullName,
+      pin_hash: await hashPin(crypto.randomUUID()),
+      staff_password_hash: await hashPassword(password),
+      status: 'ACTIVE',
+      kyc_status: 'APPROVED',
+      account_type: 'ADMIN',
+      staff_role: 'SUPPORT_AGENT',
+    });
+
+    await this.unifiedIdentityService.ensureIdentityForAdminUser(user.id);
+
+    await this.auditService.logAction({
+      action: 'SUPPORT_AGENT_CREATED',
+      entityType: 'user',
+      entityId: user.id,
+      userId: user.id,
+      metadata: { email, userId: user.id },
+      adminUser,
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.full_name,
+      staffRole: 'SUPPORT_AGENT' as const,
     };
   }
 

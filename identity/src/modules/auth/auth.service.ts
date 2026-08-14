@@ -1197,8 +1197,7 @@ export class AuthService {
     }
 
     if (!isAdminEmail) {
-      await this.otpLockoutService.recordFailure(lockKey, ip);
-      return null;
+      return this.loginProvisionedStaff(normalizedEmail, password, lockKey, ip);
     }
 
     const passwordHash = appConfig.adminPasswordHash;
@@ -1256,9 +1255,51 @@ export class AuthService {
       await this.userRepository.save(user);
     }
 
-    await this.unifiedIdentityService.ensureIdentityForAdminUser(user.id);
+    return this.issueAdminDashboardSession(user, adminEmail, now);
+  }
 
-    await this.ensureAdminVerifiedKycRow(user.id, adminEmail);
+  /**
+   * Provisioned staff (Support Agents): email is not on ADMIN_EMAILS, account is
+   * ADMIN, and a per-user staff_password_hash is set. JWT roles come from live staff_role.
+   */
+  private async loginProvisionedStaff(
+    normalizedEmail: string,
+    password: string,
+    lockKey: string,
+    ip: string,
+  ): Promise<{ access_token: string; user: any } | null> {
+    const user = await this.userRepository.findOne({
+      where: { email: normalizedEmail },
+    });
+    if (
+      !user ||
+      user.account_type !== 'ADMIN' ||
+      !user.staff_password_hash
+    ) {
+      await this.otpLockoutService.recordFailure(lockKey, ip);
+      return null;
+    }
+
+    const validPassword = await verifyPasswordSecret(
+      password,
+      user.staff_password_hash,
+    );
+    if (!validPassword) {
+      await this.otpLockoutService.recordFailure(lockKey, ip);
+      return null;
+    }
+
+    await this.otpLockoutService.recordSuccess(lockKey, ip);
+    return this.issueAdminDashboardSession(user, normalizedEmail, new Date());
+  }
+
+  private async issueAdminDashboardSession(
+    user: User,
+    email: string,
+    now: Date,
+  ): Promise<{ access_token: string; user: any }> {
+    await this.unifiedIdentityService.ensureIdentityForAdminUser(user.id);
+    await this.ensureAdminVerifiedKycRow(user.id, email);
 
     user.last_login_at = now;
     await this.userRepository.save(user);
