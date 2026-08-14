@@ -23,6 +23,7 @@ import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysHostProfile } from '../stays/entities/stays-host-profile.entity';
 import { StaysAuditService } from '../stays/services/stays-audit.service';
 import { IdentityUserClient } from '../../common/identity/identity-user.client';
+import { OperationalIntelligenceService } from './operational-intelligence.service';
 import {
   computeSupportSla,
   suggestRouting,
@@ -116,6 +117,7 @@ export class SupportTicketsService {
     private readonly media: MessagingMediaService,
     private readonly identityUsers: IdentityUserClient,
     private readonly staysAudit: StaysAuditService,
+    private readonly ops: OperationalIntelligenceService,
   ) {}
 
   async createReport(
@@ -217,6 +219,9 @@ export class SupportTicketsService {
       conversationId: result.ticket.conversation_id,
       reason: 'MESSAGE_CREATED',
     });
+    await this.ops.safeEvaluate(() =>
+      this.ops.evaluateReport('conversation_reported', result.report.id),
+    );
     return result;
   }
 
@@ -263,6 +268,9 @@ export class SupportTicketsService {
       conversationId: result.ticket.conversation_id,
       reason: 'MESSAGE_CREATED',
     });
+    await this.ops.safeEvaluate(() =>
+      this.ops.evaluateReport('safety_issue', result.safety.id),
+    );
     return result;
   }
 
@@ -599,6 +607,7 @@ export class SupportTicketsService {
         conversationId: created.conversation_id,
         reason: 'MESSAGE_CREATED',
       });
+      await this.ops.safeEvaluate(() => this.ops.evaluateTicket(created.id));
     }
 
     return toCreatedDto(created);
@@ -668,6 +677,9 @@ export class SupportTicketsService {
     if (query.listingId) {
       qb.andWhere('t.listing_id = :listingId', { listingId: query.listingId });
     }
+    if (query.slaState === 'AT_RISK' || query.slaState === 'BREACHED') {
+      this.ops.applySlaStateFilter(qb, 't', query.slaState);
+    }
     const search = query.search?.trim();
     if (search) {
       const q = `%${search.replace(/[%_]/g, '\\$&')}%`;
@@ -690,13 +702,18 @@ export class SupportTicketsService {
       .getMany();
 
     await this.hydrateTicketIdentities(rows);
+    await this.ops.safeEvaluate(() => this.ops.evaluateListedTickets(rows));
     const bookingRefs = await this.loadBookingRefs(
       rows.map((r) => r.booking_id).filter(Boolean) as string[],
     );
+    const signalTypes = await this.ops.activeTypesByTicketIds(
+      rows.map((r) => r.id),
+    );
     return {
-      items: rows.map((row) =>
-        this.toListRow(row, bookingRefs.get(row.booking_id ?? '') ?? null),
-      ),
+      items: rows.map((row) => ({
+        ...this.toListRow(row, bookingRefs.get(row.booking_id ?? '') ?? null),
+        operational_signal_types: signalTypes.get(row.id) ?? [],
+      })),
       total,
       limit,
       offset,
@@ -759,13 +776,22 @@ export class SupportTicketsService {
       }
     }
 
+    await this.ops.safeEvaluate(() => this.ops.evaluateTicket(ticket.id));
+    const [csat, signals, relatedTickets] = await Promise.all([
+      this.loadCsatForTicket(ticket.id),
+      this.ops.listSignalsForTicket(ticket.id).catch(() => ({ items: [] })),
+      this.ops.findRelatedTickets(ticket.id).catch(() => []),
+    ]);
+
     return {
       ...this.toListRow(ticket, bookingRefs.get(ticket.booking_id ?? '') ?? null),
       conversation_id: ticket.conversation_id,
       listing,
       report,
       safety_issue,
-      csat: await this.loadCsatForTicket(ticket.id),
+      csat,
+      signals: signals.items,
+      related_tickets: relatedTickets,
     };
   }
 
@@ -848,6 +874,7 @@ export class SupportTicketsService {
       });
     }
 
+    await this.ops.safeEvaluate(() => this.ops.evaluateTicket(saved.id));
     return this.toListRow(saved);
   }
 
@@ -948,6 +975,8 @@ export class SupportTicketsService {
       messageId: saved.message.id,
     });
 
+    await this.ops.safeEvaluate(() => this.ops.evaluateTicket(ticketId));
+
     return {
       id: saved.message.id,
       sender_type: 'SUPPORT_AGENT',
@@ -998,6 +1027,14 @@ export class SupportTicketsService {
       updated_at: new Date(),
     };
     await manager.getRepository(StaysSupportTicket).update(ticket.id, patch);
+  }
+
+  async safeEvaluateConversation(conversationId: string): Promise<void> {
+    const ticket = await this.ticketRepo.findOne({
+      where: { conversation_id: conversationId },
+    });
+    if (!ticket) return;
+    await this.ops.safeEvaluate(() => this.ops.evaluateTicket(ticket.id));
   }
 
   async listReportsForAdmin(query: AdminListReportsQueryDto = {}) {
@@ -1153,12 +1190,18 @@ export class SupportTicketsService {
       const row = await this.reportRepo.findOne({ where: { id } });
       if (!row) throw new NotFoundException('Report not found');
       const [item] = await this.composeTrustRecords([row], [], true);
-      return item;
+      const signals = await this.ops
+        .listSignalsForReportedUser(row.reported_user_id)
+        .catch(() => ({ items: [] }));
+      return { ...item, operational_signals: signals.items };
     }
     const row = await this.safetyRepo.findOne({ where: { id } });
     if (!row) throw new NotFoundException('Report not found');
     const [item] = await this.composeTrustRecords([], [row], true);
-    return item;
+    const signals = await this.ops
+      .listSignalsForReportedUser(row.reported_user_id)
+      .catch(() => ({ items: [] }));
+    return { ...item, operational_signals: signals.items };
   }
 
   async patchReportForAdmin(
@@ -1304,6 +1347,9 @@ export class SupportTicketsService {
           rating,
           comment,
         }),
+      );
+      await this.ops.safeEvaluate(() =>
+        this.ops.evaluateCsatForAdmin(ticket.assigned_admin_id),
       );
       return {
         submitted: true as const,

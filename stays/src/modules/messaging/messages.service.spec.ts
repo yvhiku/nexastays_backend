@@ -29,6 +29,7 @@ describe('MessagesService', () => {
   let supportTickets: {
     lockTicketForCustomerSend: jest.Mock;
     applyCustomerSupportMessageEffects: jest.Mock;
+    safeEvaluateConversation: jest.Mock;
   };
   let transactionManager: {
     getRepository: jest.Mock;
@@ -144,6 +145,7 @@ describe('MessagesService', () => {
         party: 'GUEST',
       }),
       applyCustomerSupportMessageEffects: jest.fn(),
+      safeEvaluateConversation: jest.fn().mockResolvedValue(undefined),
     };
 
     transactionManager = {

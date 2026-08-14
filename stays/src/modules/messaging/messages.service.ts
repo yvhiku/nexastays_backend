@@ -201,6 +201,12 @@ export class MessagesService {
     });
 
     this.publishMessageCreated(conv, userId, saved.id);
+    if (conv.type === 'SUPPORT') {
+      void this.supportTickets.safeEvaluateConversation(conv.id);
+    }
+    if (conv.type === 'SUPPORT') {
+      void this.supportTickets.safeEvaluateConversation(conv.id);
+    }
 
     return this.toDto(saved, userId, []);
   }
@@ -273,6 +279,9 @@ export class MessagesService {
     });
 
     this.publishMessageCreated(conv, userId, saved.id);
+    if (conv.type === 'SUPPORT') {
+      void this.supportTickets.safeEvaluateConversation(conv.id);
+    }
 
     const atts = await this.attachments.loadForMessages([
       { id: saved.id, metadata: saved.metadata ?? {} },
@@ -356,6 +365,9 @@ export class MessagesService {
     });
 
     this.publishMessageCreated(conv, userId, saved.id);
+    if (conv.type === 'SUPPORT') {
+      void this.supportTickets.safeEvaluateConversation(conv.id);
+    }
 
     const atts = await this.attachments.loadForMessages([
       { id: saved.id, metadata: saved.metadata ?? {} },

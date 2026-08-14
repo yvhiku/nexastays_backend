@@ -18,6 +18,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupportTicketsService } from './support-tickets.service';
 import { SupportCannedRepliesService } from './support-canned-replies.service';
+import { OperationalIntelligenceService } from './operational-intelligence.service';
 import {
   AdminListTicketsQueryDto,
   AdminListReportsQueryDto,
@@ -34,6 +35,10 @@ import {
   TRUST_REPORT_KINDS,
 } from './dto/support-ticket.dto';
 import { AdminSupportAnalyticsQueryDto } from './dto/support-analytics.dto';
+import {
+  AdminListSignalsQueryDto,
+  PatchOperationalSignalDto,
+} from './dto/operational-signals.dto';
 import { IsIn, IsString } from 'class-validator';
 
 class GetTrustReportQueryDto {
@@ -61,11 +66,31 @@ export class AdminSupportController {
   constructor(
     private readonly supportTickets: SupportTicketsService,
     private readonly cannedReplies: SupportCannedRepliesService,
+    private readonly ops: OperationalIntelligenceService,
   ) {}
 
   @Get('support/analytics')
   supportAnalytics(@Query() query: AdminSupportAnalyticsQueryDto) {
     return this.supportTickets.getAnalyticsForAdmin(query);
+  }
+
+  @Get('support/operations/overview')
+  operationsOverview() {
+    return this.ops.getOperationsOverview();
+  }
+
+  @Get('support/signals')
+  listSignals(@Query() query: AdminListSignalsQueryDto) {
+    return this.ops.listSignals(query);
+  }
+
+  @Patch('support/signals/:id')
+  patchSignal(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: PatchOperationalSignalDto,
+  ) {
+    return this.ops.patchSignal(id, body.status, user.userId);
   }
 
   @Get('support/tickets')
@@ -113,6 +138,16 @@ export class AdminSupportController {
   @Get('support/tickets/:id')
   getTicket(@Param('id', ParseUUIDPipe) id: string) {
     return this.supportTickets.getForAdmin(id);
+  }
+
+  @Get('support/tickets/:id/signals')
+  ticketSignals(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ops.listSignalsForTicket(id);
+  }
+
+  @Get('support/tickets/:id/related')
+  relatedTickets(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ops.findRelatedTickets(id).then((items) => ({ items }));
   }
 
   @Patch('support/tickets/:id')

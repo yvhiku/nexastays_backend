@@ -120,6 +120,24 @@ describe('SupportTicketsService', () => {
       }),
     };
     const staysAudit = { log: jest.fn().mockResolvedValue(undefined) };
+    const ops = {
+      safeEvaluate: jest.fn(async (fn: () => Promise<unknown>) => {
+        try {
+          await fn();
+        } catch {
+          /* fail-soft */
+        }
+      }),
+      evaluateTicket: jest.fn().mockResolvedValue(undefined),
+      evaluateReport: jest.fn().mockResolvedValue(undefined),
+      evaluateListedTickets: jest.fn().mockResolvedValue(undefined),
+      evaluateCsatForAdmin: jest.fn().mockResolvedValue(undefined),
+      applySlaStateFilter: jest.fn(),
+      activeTypesByTicketIds: jest.fn().mockResolvedValue(new Map()),
+      listSignalsForTicket: jest.fn().mockResolvedValue({ items: [] }),
+      findRelatedTickets: jest.fn().mockResolvedValue([]),
+      listSignalsForReportedUser: jest.fn().mockResolvedValue({ items: [] }),
+    };
 
     const manager = {
       query: jest.fn().mockImplementation(async (sql: string) => {
@@ -212,6 +230,7 @@ describe('SupportTicketsService', () => {
       media as never,
       identityUsers as never,
       staysAudit as never,
+      ops as never,
     );
 
     return {
@@ -235,6 +254,7 @@ describe('SupportTicketsService', () => {
       noteRepo,
       csatRepo,
       auditLogRepo,
+      ops,
     };
   }
 

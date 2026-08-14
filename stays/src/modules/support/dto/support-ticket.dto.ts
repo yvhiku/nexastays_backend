@@ -306,6 +306,11 @@ export class AdminListTicketsQueryDto {
   @IsString()
   @MaxLength(200)
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['AT_RISK', 'BREACHED'])
+  slaState?: 'AT_RISK' | 'BREACHED';
 }
 
 export class AdminListReportsQueryDto {
