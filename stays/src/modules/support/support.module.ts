@@ -28,6 +28,7 @@ import { AdminSupportController } from './admin-support.controller';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
 import { SupportAssignmentService } from './support-assignment.service';
 import { SupportAgentSkillsService } from './support-agent-skills.service';
+import { SupportAgentMetricsService } from './support-agent-metrics.service';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { SupportAgentSkillsService } from './support-agent-skills.service';
     OperationalIntelligenceService,
     SupportAssignmentService,
     SupportAgentSkillsService,
+    SupportAgentMetricsService,
   ],
   exports: [
     SupportTicketsService,
@@ -67,6 +69,7 @@ import { SupportAgentSkillsService } from './support-agent-skills.service';
     OperationalIntelligenceService,
     SupportAssignmentService,
     SupportAgentSkillsService,
+    SupportAgentMetricsService,
   ],
 })
 export class SupportModule {}

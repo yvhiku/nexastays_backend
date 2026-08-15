@@ -21,6 +21,7 @@ import { SupportTicketsService } from './support-tickets.service';
 import { SupportCannedRepliesService } from './support-canned-replies.service';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
 import { SupportAgentSkillsService } from './support-agent-skills.service';
+import { SupportAgentMetricsService } from './support-agent-metrics.service';
 import { staffActorFromUser } from './support-staff-access';
 import {
   AdminListTicketsQueryDto,
@@ -37,6 +38,8 @@ import {
   PatchTrustReportDto,
   PutSupportAgentSkillsDto,
   ReopenSupportTicketDto,
+  RenderCannedReplyDto,
+  HeartbeatPresenceDto,
   SendSupportTicketMessageDto,
   TRUST_REPORT_KINDS,
 } from './dto/support-ticket.dto';
@@ -74,6 +77,7 @@ export class AdminSupportController {
     private readonly cannedReplies: SupportCannedRepliesService,
     private readonly ops: OperationalIntelligenceService,
     private readonly agentSkills: SupportAgentSkillsService,
+    private readonly agentMetrics: SupportAgentMetricsService,
   ) {}
 
   @Get('support/analytics')
@@ -94,6 +98,20 @@ export class AdminSupportController {
   @Get('support/agents/workload')
   agentWorkload() {
     return this.ops.listAgentWorkload();
+  }
+
+  @Get('support/agents/metrics')
+  listAgentMetrics(@Query() query: AdminSupportAnalyticsQueryDto) {
+    return this.agentMetrics.listForAdmin(query);
+  }
+
+  @Get('support/me/metrics')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
+  myMetrics(
+    @CurrentUser() user: { userId: string },
+    @Query() query: AdminSupportAnalyticsQueryDto,
+  ) {
+    return this.agentMetrics.forAgent(user.userId, query);
   }
 
   @Get('support/agents/:id/skills')
@@ -148,8 +166,14 @@ export class AdminSupportController {
 
   @Get('support/canned-replies')
   @Roles('ADMIN', 'SUPPORT_AGENT')
-  listCannedReplies(@Query() query: ListCannedRepliesQueryDto) {
-    return this.cannedReplies.list(query.includeInactive === true);
+  listCannedReplies(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
+    @Query() query: ListCannedRepliesQueryDto,
+  ) {
+    const actor = staffActorFromUser(user);
+    return this.cannedReplies.list(
+      actor.role === 'ADMIN' && query.includeInactive === true,
+    );
   }
 
   @Post('support/canned-replies')
@@ -175,6 +199,21 @@ export class AdminSupportController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.cannedReplies.deactivate(id, user.userId);
+  }
+
+  @Post('support/canned-replies/:id/render')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
+  renderCannedReply(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: RenderCannedReplyDto,
+  ) {
+    return this.supportTickets.renderCannedReplyForAdmin(
+      id,
+      body.ticketId,
+      user.userId,
+      staffActorFromUser(user),
+    );
   }
 
   @Get('support/tickets/open-count')
@@ -243,11 +282,13 @@ export class AdminSupportController {
   heartbeatPresence(
     @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: HeartbeatPresenceDto = {},
   ) {
     return this.supportTickets.heartbeatPresence(
       id,
       user.userId,
       staffActorFromUser(user),
+      body.handling === true,
     );
   }
 

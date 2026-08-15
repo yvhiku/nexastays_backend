@@ -101,6 +101,30 @@ export class PatchSupportTicketDto {
   @IsString()
   @MaxLength(128)
   assigned_admin_id?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @IsIn([
+    'ISSUE_FIXED',
+    'INFORMATION_PROVIDED',
+    'PAYMENT_RESOLVED',
+    'BOOKING_UPDATED',
+    'POLICY_EXPLAINED',
+    'DUPLICATE',
+    'NO_ACTION_POSSIBLE',
+    'OTHER',
+  ])
+  resolutionType?:
+    | 'ISSUE_FIXED'
+    | 'INFORMATION_PROVIDED'
+    | 'PAYMENT_RESOLVED'
+    | 'BOOKING_UPDATED'
+    | 'POLICY_EXPLAINED'
+    | 'DUPLICATE'
+    | 'NO_ACTION_POSSIBLE'
+    | 'OTHER'
+    | null;
 }
 
 export class SendSupportTicketMessageDto {
@@ -150,9 +174,16 @@ export class CreateCannedReplyDto {
   body!: string;
 
   @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== '')
   @IsString()
-  @MaxLength(32)
-  category?: string;
+  @IsIn([...SUPPORT_TICKET_CATEGORIES])
+  category?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== '')
+  @IsString()
+  @IsIn(['ar', 'fr', 'en'])
+  language?: string | null;
 }
 
 export class PatchCannedReplyDto {
@@ -169,9 +200,16 @@ export class PatchCannedReplyDto {
   body?: string;
 
   @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== '')
   @IsString()
-  @MaxLength(32)
+  @IsIn([...SUPPORT_TICKET_CATEGORIES])
   category?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== '')
+  @IsString()
+  @IsIn(['ar', 'fr', 'en'])
+  language?: string | null;
 
   @IsOptional()
   @Transform(({ value }) => {
@@ -181,6 +219,22 @@ export class PatchCannedReplyDto {
   })
   @IsBoolean()
   is_active?: boolean;
+}
+
+export class RenderCannedReplyDto {
+  @IsUUID('4')
+  ticketId!: string;
+}
+
+export class HeartbeatPresenceDto {
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === true || value === 'true' || value === '1') return true;
+    if (value === false || value === 'false' || value === '0') return false;
+    return value;
+  })
+  @IsBoolean()
+  handling?: boolean;
 }
 
 export class ListCannedRepliesQueryDto {
@@ -423,6 +477,10 @@ export class AdminListReportsQueryDto {
 
 export const SUPPORT_REOPEN_REASONS = [
   'CUSTOMER_UNRESOLVED',
+  'INCORRECT_RESOLUTION',
+  'ADDITIONAL_INFORMATION',
+  'NEW_RELATED_ISSUE',
+  'ADMIN_REVIEW',
   'ADMIN_FOLLOW_UP',
   'OTHER',
 ] as const;

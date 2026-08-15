@@ -10,6 +10,7 @@ describe('AdminSupportController roles', () => {
       'operationsOverview',
       'operationsAttention',
       'agentWorkload',
+      'listAgentMetrics',
       'supportAnalytics',
       'listSignals',
     ] as const) {
@@ -37,6 +38,8 @@ describe('AdminSupportController roles', () => {
       'patchTicket',
       'patchSignal',
       'listCannedReplies',
+      'renderCannedReply',
+      'myMetrics',
     ] as const) {
       expect(
         Reflect.getMetadata(

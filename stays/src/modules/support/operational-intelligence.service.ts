@@ -989,6 +989,9 @@ export class OperationalIntelligenceService {
         open: row.open,
         inProgress: row.inProgress,
         waiting: row.waiting,
+        waitingForCustomer: row.waitingForCustomer,
+        waitingForHost: row.waitingForHost,
+        escalated: row.escalated,
         atRisk: row.atRisk,
         breached: row.breached,
         oldestActiveTicketAt: row.oldestActiveTicketAt,
@@ -1003,6 +1006,9 @@ export class OperationalIntelligenceService {
         open: 0,
         inProgress: 0,
         waiting: 0,
+        waitingForCustomer: 0,
+        waitingForHost: 0,
+        escalated: 0,
         atRisk: 0,
         breached: 0,
         oldestActiveTicketAt: null,
@@ -1022,6 +1028,9 @@ export class OperationalIntelligenceService {
       open: number;
       inProgress: number;
       waiting: number;
+      waitingForCustomer: number;
+      waitingForHost: number;
+      escalated: number;
       highPriority: number;
       atRisk: number;
       breached: number;
@@ -1050,6 +1059,9 @@ export class OperationalIntelligenceService {
         COUNT(*) FILTER (
           WHERE t.status IN ('WAITING_FOR_CUSTOMER','WAITING_FOR_HOST')
         )::int AS waiting,
+        COUNT(*) FILTER (WHERE t.status = 'WAITING_FOR_CUSTOMER')::int AS waiting_for_customer,
+        COUNT(*) FILTER (WHERE t.status = 'WAITING_FOR_HOST')::int AS waiting_for_host,
+        COUNT(*) FILTER (WHERE t.status = 'ESCALATED')::int AS escalated,
         COUNT(*) FILTER (WHERE t.priority IN ('HIGH','URGENT'))::int AS high_priority,
         COUNT(*) FILTER (WHERE ${sla.combined} = 'AT_RISK')::int AS at_risk,
         COUNT(*) FILTER (WHERE ${sla.combined} = 'BREACHED')::int AS breached,
@@ -1069,6 +1081,9 @@ export class OperationalIntelligenceService {
         open: number;
         in_progress: number;
         waiting: number;
+        waiting_for_customer: number;
+        waiting_for_host: number;
+        escalated: number;
         high_priority: number;
         at_risk: number;
         breached: number;
@@ -1080,6 +1095,9 @@ export class OperationalIntelligenceService {
       open: Number(row.open),
       inProgress: Number(row.in_progress),
       waiting: Number(row.waiting),
+      waitingForCustomer: Number(row.waiting_for_customer ?? 0),
+      waitingForHost: Number(row.waiting_for_host ?? 0),
+      escalated: Number(row.escalated ?? 0),
       highPriority: Number(row.high_priority),
       atRisk: Number(row.at_risk ?? 0),
       breached: Number(row.breached ?? 0),

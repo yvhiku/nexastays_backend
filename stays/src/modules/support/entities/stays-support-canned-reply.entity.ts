@@ -17,8 +17,13 @@ export class StaysSupportCannedReply {
   @Column({ type: 'text' })
   body: string;
 
+  /** Ticket category, or null = GENERAL. */
   @Column({ type: 'varchar', length: 32, nullable: true })
   category: string | null;
+
+  /** ar | fr | en, or null = GENERAL. */
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  language: string | null;
 
   @Column({ type: 'varchar', length: 128, name: 'created_by_admin_id' })
   created_by_admin_id: string;

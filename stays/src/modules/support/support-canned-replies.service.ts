@@ -7,6 +7,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StaysSupportCannedReply } from './entities/stays-support-canned-reply.entity';
 import { StaysAuditService } from '../stays/services/stays-audit.service';
+import {
+  canonicalizeAgentCategories,
+  canonicalizeRequesterLanguage,
+} from './support-language';
 
 @Injectable()
 export class SupportCannedRepliesService {
@@ -22,12 +26,23 @@ export class SupportCannedRepliesService {
       title: row.title,
       body: row.body,
       category: row.category,
+      language: row.language ?? null,
       created_by_admin_id: row.created_by_admin_id,
       updated_by_admin_id: row.updated_by_admin_id,
       created_at: row.created_at.toISOString(),
       updated_at: row.updated_at.toISOString(),
       is_active: row.is_active,
     };
+  }
+
+  private canonicalCategory(raw: string | null | undefined): string | null {
+    if (raw == null || String(raw).trim() === '') return null;
+    return canonicalizeAgentCategories([raw])[0] ?? null;
+  }
+
+  private canonicalLanguage(raw: string | null | undefined): string | null {
+    if (raw == null || String(raw).trim() === '') return null;
+    return canonicalizeRequesterLanguage(raw);
   }
 
   async list(includeInactive = false) {
@@ -43,7 +58,12 @@ export class SupportCannedRepliesService {
 
   async create(
     adminId: string,
-    input: { title: string; body: string; category?: string | null },
+    input: {
+      title: string;
+      body: string;
+      category?: string | null;
+      language?: string | null;
+    },
   ) {
     const title = input.title.trim();
     const body = input.body.trim();
@@ -53,12 +73,12 @@ export class SupportCannedRepliesService {
     if (!body || body.length > 5000) {
       throw new BadRequestException('Invalid body');
     }
-    const category = input.category?.trim() || null;
     const saved = await this.repo.save(
       this.repo.create({
         title,
         body,
-        category,
+        category: this.canonicalCategory(input.category),
+        language: this.canonicalLanguage(input.language),
         created_by_admin_id: adminId,
         updated_by_admin_id: adminId,
         is_active: true,
@@ -82,6 +102,7 @@ export class SupportCannedRepliesService {
       title?: string;
       body?: string;
       category?: string | null;
+      language?: string | null;
       is_active?: boolean;
     },
   ) {
@@ -102,7 +123,10 @@ export class SupportCannedRepliesService {
       row.body = body;
     }
     if (patch.category !== undefined) {
-      row.category = patch.category?.trim() || null;
+      row.category = this.canonicalCategory(patch.category);
+    }
+    if (patch.language !== undefined) {
+      row.language = this.canonicalLanguage(patch.language);
     }
     if (patch.is_active !== undefined) {
       row.is_active = patch.is_active;

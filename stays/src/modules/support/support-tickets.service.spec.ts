@@ -2860,5 +2860,164 @@ describe('SupportTicketsService', () => {
     expect(String(dataSource.query.mock.calls[0][0])).toContain(
       'stays_support_ticket_viewers',
     );
+    expect(String(dataSource.query.mock.calls[0][0])).toContain('activity_state');
+  });
+
+  it('sets optional resolution_type, audits, and preserves it on reopen', async () => {
+    const { service, ticketRepo, staysAudit } = buildService();
+    const ticket = {
+      id: 'ticket-1',
+      status: 'IN_PROGRESS',
+      priority: 'NORMAL',
+      assigned_admin_id: 'admin-1',
+      closed_at: null,
+      conversation_id: 'conv-1',
+      requester_user_id: 'guest-1',
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'PAYMENT',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+      first_admin_response_at: new Date('2026-01-01T01:00:00.000Z'),
+      resolved_at: null,
+      report_id: null,
+      safety_issue_id: null,
+      review_agent_id: null,
+      review_agent_name: null,
+      resolution_type: null,
+    };
+    ticketRepo.findOne.mockResolvedValue(ticket);
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => {
+      Object.assign(ticket, row);
+      return ticket;
+    });
+    const resolved = await service.patchForAdmin(
+      'ticket-1',
+      { status: 'RESOLVED', resolutionType: 'PAYMENT_RESOLVED' },
+      'admin-1',
+    );
+    expect(resolved.resolution_type).toBe('PAYMENT_RESOLVED');
+    expect(staysAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'support_ticket_resolution_changed',
+        metadata: {
+          previousResolutionType: null,
+          newResolutionType: 'PAYMENT_RESOLVED',
+        },
+      }),
+    );
+    ticket.status = 'CLOSED';
+    ticket.closed_at = new Date();
+    const reopened = await service.reopenForAdmin(
+      'ticket-1',
+      'admin-1',
+      'INCORRECT_RESOLUTION',
+    );
+    expect(reopened.status).toBe('IN_PROGRESS');
+    expect(reopened.resolution_type).toBe('PAYMENT_RESOLVED');
+    expect(staysAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'support_ticket_reopened',
+        metadata: expect.objectContaining({ reason: 'INCORRECT_RESOLUTION' }),
+      }),
+    );
+  });
+
+  it('renders allowlisted canned variables after ticket access', async () => {
+    const { service, ticketRepo, bookingRepo, listingRepo, dataSource } =
+      buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'OPEN',
+      assigned_admin_id: 'admin-1',
+      customer_name: 'Mohamed',
+      ticket_number: 'SUP-9',
+      booking_id: 'book-1',
+      listing_id: 'list-1',
+    });
+    bookingRepo.findOne.mockResolvedValue({ booking_reference: 'NX-1' });
+    listingRepo.findOne.mockResolvedValue({ title: 'Riad' });
+    dataSource.getRepository = jest.fn(() => ({
+      findOne: jest.fn().mockResolvedValue({
+        id: 'r1',
+        title: 'Payment pending',
+        body: 'Hi {{customer_name}} {{booking_reference}} {{listing_name}} {{ticket.anything}}',
+        is_active: true,
+      }),
+    }));
+    const rendered = await service.renderCannedReplyForAdmin(
+      'r1',
+      'ticket-1',
+      'admin-1',
+    );
+    expect(rendered.body).toBe('Hi Mohamed NX-1 Riad ');
+  });
+
+  it('does not render inactive canned replies', async () => {
+    const { service, ticketRepo, dataSource } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'OPEN',
+      assigned_admin_id: 'admin-1',
+    });
+    dataSource.getRepository = jest.fn(() => ({
+      findOne: jest.fn().mockResolvedValue({
+        id: 'r1',
+        title: 'Hidden',
+        body: 'Hi',
+        is_active: false,
+      }),
+    }));
+    await expect(
+      service.renderCannedReplyForAdmin('r1', 'ticket-1', 'admin-1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('allows resolution_type on CLOSED without leaving CLOSED', async () => {
+    const { service, ticketRepo, staysAudit } = buildService();
+    const ticket = {
+      id: 'ticket-1',
+      status: 'CLOSED',
+      priority: 'NORMAL',
+      assigned_admin_id: 'admin-1',
+      closed_at: new Date(),
+      conversation_id: 'conv-1',
+      requester_user_id: 'guest-1',
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'PAYMENT',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+      first_admin_response_at: new Date('2026-01-01T01:00:00.000Z'),
+      resolved_at: new Date(),
+      report_id: null,
+      safety_issue_id: null,
+      review_agent_id: 'admin-1',
+      review_agent_name: 'Sarah',
+      resolution_type: null,
+    };
+    ticketRepo.findOne.mockResolvedValue(ticket);
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => {
+      Object.assign(ticket, row);
+      return ticket;
+    });
+    const patched = await service.patchForAdmin(
+      'ticket-1',
+      { resolutionType: 'DUPLICATE' },
+      'admin-1',
+    );
+    expect(patched.status).toBe('CLOSED');
+    expect(patched.resolution_type).toBe('DUPLICATE');
+    expect(staysAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'support_ticket_resolution_changed' }),
+    );
   });
 });

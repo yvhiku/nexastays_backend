@@ -64,6 +64,10 @@ export class StaysSupportTicket {
   @Column({ type: 'varchar', length: 16, default: 'NORMAL' })
   priority: SupportTicketPriority;
 
+  /** Optional structured outcome. Not required on RESOLVED/CLOSED. Preserved on reopen. */
+  @Column({ type: 'varchar', length: 32, name: 'resolution_type', nullable: true })
+  resolution_type: string | null;
+
   @Column({ type: 'varchar', length: 128, name: 'assigned_admin_id', nullable: true })
   assigned_admin_id: string | null;
 

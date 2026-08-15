@@ -49,7 +49,11 @@ describe('SupportCannedRepliesService', () => {
     const created = await service.create('admin-1', {
       title: 'Greeting',
       body: 'Thanks for contacting us',
+      category: 'PAYMENT',
+      language: 'fr-FR',
     });
+    expect(created.category).toBe('PAYMENT');
+    expect(created.language).toBe('fr');
     expect(created.title).toBe('Greeting');
     expect(staysAudit.log).toHaveBeenCalledWith(
       expect.objectContaining({

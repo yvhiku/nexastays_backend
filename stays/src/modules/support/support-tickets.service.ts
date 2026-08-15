@@ -48,6 +48,8 @@ import { StaysSupportTicketRefCounter } from './entities/stays-support-ticket-re
 import { StaysSupportTicketNote } from './entities/stays-support-ticket-note.entity';
 import { StaysSupportTicketCsat } from './entities/stays-support-ticket-csat.entity';
 import { canonicalizeRequesterLanguage } from './support-language';
+import { interpolateCannedBody } from './support-canned-render';
+import { StaysSupportCannedReply } from './entities/stays-support-canned-reply.entity';
 import { StaysAuditLog } from '../stays/entities/stays-audit-log.entity';
 import {
   AdminListTicketsQueryDto,
@@ -1041,6 +1043,7 @@ export class SupportTicketsService {
       const fromStatus = locked.status;
       const fromPriority = locked.priority;
       const fromAdminId = locked.assigned_admin_id;
+      const fromResolutionType = locked.resolution_type;
       let firstClose = false;
 
       if (patch.assigned_admin_id !== undefined) {
@@ -1091,6 +1094,9 @@ export class SupportTicketsService {
       if (patch.priority !== undefined) {
         locked.priority = patch.priority as SupportTicketPriority;
       }
+      if (patch.resolutionType !== undefined) {
+        locked.resolution_type = patch.resolutionType ?? null;
+      }
       locked.updated_at = new Date();
       const saved = await repo.save(locked);
       return {
@@ -1098,11 +1104,18 @@ export class SupportTicketsService {
         fromStatus,
         fromPriority,
         fromAdminId,
+        fromResolutionType,
         firstClose,
       };
     });
-    const { saved, fromStatus, fromPriority, fromAdminId, firstClose } =
-      committed;
+    const {
+      saved,
+      fromStatus,
+      fromPriority,
+      fromAdminId,
+      fromResolutionType,
+      firstClose,
+    } = committed;
 
     if (firstClose && saved.requester_user_id && saved.conversation_id) {
       this.realtime.publish(saved.requester_user_id, {
@@ -1142,6 +1155,22 @@ export class SupportTicketsService {
         entityId: saved.id,
         action: 'ticket_priority_changed',
         metadata: { from: fromPriority, to: saved.priority },
+      });
+    }
+    if (
+      patch.resolutionType !== undefined &&
+      (patch.resolutionType ?? null) !== (fromResolutionType ?? null)
+    ) {
+      await this.staysAudit.log({
+        actorUserId: auditUserId,
+        actorRole: 'ADMIN',
+        entityType: 'support_ticket',
+        entityId: saved.id,
+        action: 'support_ticket_resolution_changed',
+        metadata: {
+          previousResolutionType: fromResolutionType,
+          newResolutionType: saved.resolution_type,
+        },
       });
     }
 
@@ -1227,18 +1256,43 @@ export class SupportTicketsService {
     ticketId: string,
     viewerId: string,
     actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+    handling = false,
   ) {
     await this.requireAccessibleTicket(ticketId, actor);
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SUPPORT_PRESENCE_TTL_MS);
+    const activityState = handling ? 'HANDLING' : 'VIEWING';
     await this.dataSource.query(
       `
-      INSERT INTO stays_support_ticket_viewers (ticket_id, viewer_id, last_seen_at, expires_at)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO stays_support_ticket_viewers (
+        ticket_id, viewer_id, last_seen_at, expires_at, last_activity_at, activity_state
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT (ticket_id, viewer_id)
-      DO UPDATE SET last_seen_at = EXCLUDED.last_seen_at, expires_at = EXCLUDED.expires_at
+      DO UPDATE SET
+        last_seen_at = EXCLUDED.last_seen_at,
+        expires_at = EXCLUDED.expires_at,
+        last_activity_at = CASE
+          WHEN EXCLUDED.activity_state = 'HANDLING' THEN EXCLUDED.last_activity_at
+          ELSE stays_support_ticket_viewers.last_activity_at
+        END,
+        activity_state = CASE
+          WHEN EXCLUDED.activity_state = 'HANDLING' THEN 'HANDLING'
+          WHEN stays_support_ticket_viewers.expires_at > now()
+            AND stays_support_ticket_viewers.activity_state = 'HANDLING'
+            AND stays_support_ticket_viewers.last_activity_at > now() - interval '60 seconds'
+          THEN 'HANDLING'
+          ELSE 'VIEWING'
+        END
       `,
-      [ticketId, viewerId, now.toISOString(), expiresAt.toISOString()],
+      [
+        ticketId,
+        viewerId,
+        now.toISOString(),
+        expiresAt.toISOString(),
+        handling ? now.toISOString() : null,
+        activityState,
+      ],
     );
     return { ok: true as const, viewers: await this.listActiveViewers(ticketId) };
   }
@@ -1246,7 +1300,7 @@ export class SupportTicketsService {
   async listActiveViewers(ticketId: string) {
     const rows = (await this.dataSource.query(
       `
-      SELECT viewer_id, last_seen_at, expires_at
+      SELECT viewer_id, last_seen_at, expires_at, last_activity_at, activity_state
       FROM stays_support_ticket_viewers
       WHERE ticket_id = $1 AND expires_at > now()
       ORDER BY last_seen_at DESC
@@ -1256,6 +1310,8 @@ export class SupportTicketsService {
       viewer_id: string;
       last_seen_at: Date | string;
       expires_at: Date | string;
+      last_activity_at: Date | string | null;
+      activity_state: string | null;
     }[];
     return rows.map((row) => ({
       viewerId: row.viewer_id,
@@ -1267,7 +1323,58 @@ export class SupportTicketsService {
         row.expires_at instanceof Date
           ? row.expires_at.toISOString()
           : String(row.expires_at),
+      lastActivityAt: row.last_activity_at
+        ? row.last_activity_at instanceof Date
+          ? row.last_activity_at.toISOString()
+          : String(row.last_activity_at)
+        : null,
+        activityState:
+        row.activity_state === 'HANDLING' ? 'HANDLING' : 'VIEWING',
     }));
+  }
+
+  async renderCannedReplyForAdmin(
+    replyId: string,
+    ticketId: string,
+    actorUserId: string,
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
+    const ticket = await this.requireAccessibleTicket(ticketId, actor);
+    const reply = await this.dataSource
+      .getRepository(StaysSupportCannedReply)
+      .findOne({ where: { id: replyId } });
+    if (!reply || !reply.is_active) {
+      throw new NotFoundException('Canned reply not found');
+    }
+    let bookingReference = '';
+    if (ticket.booking_id) {
+      const booking = await this.bookingRepo.findOne({
+        where: { id: ticket.booking_id },
+      });
+      bookingReference = booking?.booking_reference ?? '';
+    }
+    let listingName = '';
+    if (ticket.listing_id) {
+      const listing = await this.listingRepo.findOne({
+        where: { id: ticket.listing_id },
+      });
+      listingName = listing?.title ?? '';
+    }
+    const body = interpolateCannedBody(reply.body, {
+      customer_name: ticket.customer_name?.trim() || '',
+      ticket_number: ticket.ticket_number,
+      booking_reference: bookingReference,
+      listing_name: listingName,
+    });
+    await this.staysAudit.log({
+      actorUserId,
+      actorRole: 'ADMIN',
+      entityType: 'support_canned_reply',
+      entityId: reply.id,
+      action: 'support_canned_reply_used',
+      metadata: { replyId: reply.id, ticketId: ticket.id },
+    });
+    return { id: reply.id, title: reply.title, body };
   }
 
   async listMessagesForAdmin(
@@ -2965,6 +3072,7 @@ export class SupportTicketsService {
       review_agent_name: ticket.review_agent_name,
       status: ticket.status,
       priority: ticket.priority,
+      resolution_type: ticket.resolution_type ?? null,
       created_at: ticket.created_at.toISOString(),
       updated_at: ticket.updated_at.toISOString(),
       resolved_at: ticket.resolved_at?.toISOString() ?? null,
@@ -2972,6 +3080,7 @@ export class SupportTicketsService {
       first_admin_response_at:
         ticket.first_admin_response_at?.toISOString() ?? null,
       requester_user_id: ticket.requester_user_id,
+      requester_language: ticket.requester_language ?? null,
       booking_id: ticket.booking_id,
       booking_reference: bookingRef,
       listing_id: ticket.listing_id,
