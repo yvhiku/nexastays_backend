@@ -113,6 +113,9 @@ export class CreateSupportTicketNoteDto {
 }
 
 export class CreateSupportTicketCsatDto {
+  @IsBoolean()
+  problemSolved!: boolean;
+
   @Type(() => Number)
   @IsInt()
   @Min(1)

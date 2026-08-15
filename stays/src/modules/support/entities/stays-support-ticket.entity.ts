@@ -108,6 +108,10 @@ export class StaysSupportTicket {
   @Column({ type: 'varchar', length: 128, name: 'review_agent_id', nullable: true })
   review_agent_id: string | null;
 
+  /** Display name snapshotted with review_agent_id on first CLOSED. */
+  @Column({ type: 'varchar', length: 256, name: 'review_agent_name', nullable: true })
+  review_agent_name: string | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;
 

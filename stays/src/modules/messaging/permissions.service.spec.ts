@@ -23,11 +23,15 @@ describe('MessagingPermissionsService', () => {
     expect(service.resolve(conv, 'host-1').notificationLevel).toBe('MUTED');
   });
 
-  it('denies send when conversation is locked', () => {
+  it('denies send when a SUPPORT ticket is closed even if still ACTIVE', () => {
     const conv = baseConversation();
-    conv.messaging_state = 'LOCKED';
-    expect(service.resolve(conv, 'guest-1').canSend).toBe(false);
-    expect(service.resolve(conv, 'guest-1').isReadOnly).toBe(true);
+    conv.type = 'SUPPORT';
+    expect(
+      service.resolve(conv, 'guest-1', { ticketClosed: true }).canSend,
+    ).toBe(false);
+    expect(
+      service.resolve(conv, 'guest-1', { ticketClosed: true }).isReadOnly,
+    ).toBe(true);
   });
 
   it('returns visibility per participant', () => {

@@ -101,6 +101,7 @@ export class ConversationsService {
       qb.andWhere('c.type = :t', { t: 'BOOKING' });
     } else if (filter === 'support') {
       qb.andWhere('c.type = :t', { t: 'SUPPORT' });
+      qb.andWhere("c.messaging_state != 'ARCHIVED'");
     }
 
     if (q?.trim()) {
@@ -166,10 +167,18 @@ export class ConversationsService {
       ? await this.messageRepo.find({ where: { id: In(lastMessageIds) } })
       : [];
     const lastMessageById = new Map(lastMessages.map((m) => [m.id, m]));
+    const closedIds = await this.supportTickets.closedConversationIds(
+      filtered.filter((c) => c.type === 'SUPPORT').map((c) => c.id),
+    );
 
     return Promise.all(
       filtered.map(async (c) =>
-        this.toListResponse(c, userId, lastMessageById.get(c.last_message_id ?? '')),
+        this.toListResponse(
+          c,
+          userId,
+          lastMessageById.get(c.last_message_id ?? ''),
+          closedIds.has(c.id),
+        ),
       ),
     );
   }
@@ -243,7 +252,11 @@ export class ConversationsService {
       bookingStatus = booking?.status ?? null;
     }
 
-    const list = await this.toListResponse(conv, userId, await this.loadLastMessage(conv.last_message_id));
+    const list = await this.toListResponse(
+      conv,
+      userId,
+      await this.loadLastMessage(conv.last_message_id),
+    );
     return {
       conversation: list.conversation,
       presentation: list.presentation,
@@ -459,6 +472,7 @@ export class ConversationsService {
     conv: StaysConversation,
     userId: string,
     lastMessage?: StaysMessage,
+    ticketClosedKnown?: boolean,
   ): Promise<ConversationListResponse> {
     const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
     let status: string | null = null;
@@ -481,7 +495,14 @@ export class ConversationsService {
         })
       : null;
 
-    const perms = this.permissions.resolve(conv, userId);
+    const ticketClosed =
+      ticketClosedKnown ??
+      (conv.type === 'SUPPORT'
+        ? (await this.supportTickets.closedConversationIds([conv.id])).has(
+            conv.id,
+          )
+        : false);
+    const perms = this.permissions.resolve(conv, userId, { ticketClosed });
 
     const preview = lastMessage
       ? formatInboxPreview({

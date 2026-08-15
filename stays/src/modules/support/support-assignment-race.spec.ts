@@ -115,6 +115,7 @@ describe('Support assignment races', () => {
       staysAudit as never,
       ops as never,
       { attemptAutoAssignment: jest.fn() } as never,
+      { enqueueDirect: jest.fn() } as never,
     );
     return { service, ticketRepo, ticketQb, timelineSeeder, staysAudit, dataSource };
   }

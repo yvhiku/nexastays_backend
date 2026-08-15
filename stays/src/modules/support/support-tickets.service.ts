@@ -19,6 +19,8 @@ import { StaysMessageAttachment } from '../messaging/entities/stays-message-atta
 import { TimelineSeederService } from '../messaging/timeline-seeder.service';
 import { MessagingRealtimeService } from '../messaging/messaging-realtime.service';
 import { MessagingMediaService } from '../messaging/messaging-media.service';
+import { MessagingOutboxService } from '../messaging/outbox.service';
+import { EVENTS } from '@nexa/event-bus';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysHostProfile } from '../stays/entities/stays-host-profile.entity';
@@ -127,6 +129,7 @@ export class SupportTicketsService {
     private readonly staysAudit: StaysAuditService,
     private readonly ops: OperationalIntelligenceService,
     private readonly assignment: SupportAssignmentService,
+    private readonly outbox: MessagingOutboxService,
   ) {}
 
   async createReport(
@@ -643,6 +646,15 @@ export class SupportTicketsService {
     return this.toListRow(ticket);
   }
 
+  async closedConversationIds(conversationIds: string[]): Promise<Set<string>> {
+    if (!conversationIds.length) return new Set();
+    const rows = await this.ticketRepo.find({
+      where: { conversation_id: In(conversationIds), status: 'CLOSED' },
+      select: ['conversation_id'],
+    });
+    return new Set(rows.map((row) => row.conversation_id));
+  }
+
   async listForAdmin(
     query: AdminListTicketsQueryDto = {},
     actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
@@ -939,6 +951,7 @@ export class SupportTicketsService {
       const fromStatus = locked.status;
       const fromPriority = locked.priority;
       const fromAdminId = locked.assigned_admin_id;
+      let firstClose = false;
 
       if (patch.assigned_admin_id !== undefined) {
         locked.assigned_admin_id = patch.assigned_admin_id ?? null;
@@ -948,11 +961,18 @@ export class SupportTicketsService {
         if (patch.status === 'RESOLVED') {
           locked.resolved_at = locked.resolved_at ?? new Date();
         } else if (patch.status === 'CLOSED') {
-          const firstClose = !locked.closed_at;
+          firstClose = !locked.closed_at;
           locked.closed_at = locked.closed_at ?? new Date();
           locked.resolved_at = locked.resolved_at ?? new Date();
           if (firstClose && locked.review_agent_id == null) {
             locked.review_agent_id = locked.assigned_admin_id;
+            if (locked.assigned_admin_id) {
+              const summary = await this.identityUsers.getProfileSummary(
+                locked.assigned_admin_id,
+              );
+              locked.review_agent_name =
+                summary?.fullName?.trim() || locked.review_agent_name || null;
+            }
           }
           if (firstClose && locked.conversation_id) {
             const convRepo = manager.getRepository(StaysConversation);
@@ -976,9 +996,23 @@ export class SupportTicketsService {
       }
       locked.updated_at = new Date();
       const saved = await repo.save(locked);
-      return { saved, fromStatus, fromPriority, fromAdminId };
+      return {
+        saved,
+        fromStatus,
+        fromPriority,
+        fromAdminId,
+        firstClose,
+      };
     });
-    const { saved, fromStatus, fromPriority, fromAdminId } = committed;
+    const { saved, fromStatus, fromPriority, fromAdminId, firstClose } =
+      committed;
+
+    if (firstClose && saved.requester_user_id && saved.conversation_id) {
+      this.realtime.publish(saved.requester_user_id, {
+        conversationId: saved.conversation_id,
+        reason: 'MESSAGE_READ',
+      });
+    }
 
     if (patch.assigned_admin_id !== undefined) {
       await this.staysAudit.log({
@@ -1023,11 +1057,36 @@ export class SupportTicketsService {
     actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
   ) {
     const ticket = await this.requireAccessibleTicket(ticketId, actor);
+    const now = new Date();
+    const receiptChanges = await this.dataSource.transaction(async (manager) => {
+      if (ticket.unread_for_support) {
+        await manager.getRepository(StaysSupportTicket).update(ticket.id, {
+          unread_for_support: false,
+          updated_at: now,
+        });
+      }
+      if (!ticket.requester_user_id || !ticket.conversation_id) return 0;
+      const updated = await manager
+        .getRepository(StaysMessage)
+        .createQueryBuilder()
+        .update(StaysMessage)
+        .set({
+          status: 'READ',
+          read_at: now,
+          delivered_at: () => 'COALESCE(delivered_at, NOW())',
+        })
+        .where('conversation_id = :cid', { cid: ticket.conversation_id })
+        .andWhere('sender_id = :uid', { uid: ticket.requester_user_id })
+        .andWhere("status IN ('PERSISTED', 'SENT', 'DELIVERED')")
+        .andWhere('read_at IS NULL')
+        .execute();
+      return Number(updated.affected ?? 0);
+    });
 
-    if (ticket.unread_for_support) {
-      await this.ticketRepo.update(ticket.id, {
-        unread_for_support: false,
-        updated_at: new Date(),
+    if (receiptChanges > 0 && ticket.requester_user_id) {
+      this.realtime.publish(ticket.requester_user_id, {
+        conversationId: ticket.conversation_id,
+        reason: 'MESSAGE_READ',
       });
     }
 
@@ -1117,8 +1176,26 @@ export class SupportTicketsService {
         message,
         requesterUserId: ticket.requester_user_id,
         conversationId: conv.id,
+        conversationVersion: (conv.conversation_version ?? 0) + 1,
+        bookingId: conv.booking_id,
       };
     });
+
+    if (saved.requesterUserId) {
+      await this.outbox.enqueueDirect(EVENTS.MESSAGE_RECEIVED, {
+        messageId: saved.message.id,
+        conversationId: saved.conversationId,
+        recipientUserId: saved.requesterUserId,
+        senderUserId: adminUserId,
+        senderName: 'Support',
+        preview: trimmed.slice(0, 120),
+        bookingId: saved.bookingId,
+        conversationVersion: saved.conversationVersion,
+        lastMessageId: saved.message.id,
+        lastMessageSequence: Number(saved.message.conversation_sequence),
+        listingTitle: '',
+      });
+    }
 
     this.realtime.publish(saved.requesterUserId, {
       conversationId: saved.conversationId,
@@ -1465,16 +1542,20 @@ export class SupportTicketsService {
       comment: row.comment,
       agent_rating: row.agent_rating ?? null,
       agent_id: row.agent_id ?? null,
+      problem_solved: row.problem_solved ?? null,
       submitted_at: row.submitted_at.toISOString(),
     };
   }
 
-  private async reviewAgentPayload(reviewAgentId: string | null | undefined) {
+  private async reviewAgentPayload(
+    reviewAgentId: string | null | undefined,
+    reviewAgentName?: string | null,
+  ) {
     if (!reviewAgentId) return null;
     const summary = await this.identityUsers.getProfileSummary(reviewAgentId);
     return {
       id: reviewAgentId,
-      fullName: summary?.fullName ?? null,
+      fullName: reviewAgentName?.trim() || summary?.fullName || null,
       profilePhotoUrl: null as string | null,
     };
   }
@@ -1496,7 +1577,10 @@ export class SupportTicketsService {
       alreadyReviewed,
       canReview: ticket.status === 'CLOSED' && !alreadyReviewed,
       ticketStatus: ticket.status,
-      agent: await this.reviewAgentPayload(ticket.review_agent_id),
+      agent: await this.reviewAgentPayload(
+        ticket.review_agent_id,
+        ticket.review_agent_name,
+      ),
       csat: row ? this.mapCsatRow(row) : null,
     };
   }
@@ -1504,8 +1588,16 @@ export class SupportTicketsService {
   async submitCsatForUser(
     userId: string,
     ticketId: string,
-    input: { rating: number; comment?: string; agentRating?: number },
+    input: {
+      rating: number;
+      comment?: string;
+      agentRating?: number;
+      problemSolved: boolean;
+    },
   ) {
+    if (typeof input.problemSolved !== 'boolean') {
+      throw new BadRequestException('problemSolved is required');
+    }
     const rating = Number(input.rating);
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       throw new BadRequestException('Rating must be an integer from 1 to 5');
@@ -1554,6 +1646,7 @@ export class SupportTicketsService {
           comment,
           agent_id: snapshotAgentId,
           agent_rating: agentRating,
+          problem_solved: input.problemSolved,
         }),
       );
       await this.ops.safeEvaluate(() =>
@@ -1564,7 +1657,10 @@ export class SupportTicketsService {
         alreadyReviewed: true as const,
         canReview: false as const,
         ticketStatus: ticket.status,
-        agent: await this.reviewAgentPayload(snapshotAgentId),
+        agent: await this.reviewAgentPayload(
+          snapshotAgentId,
+          ticket.review_agent_name,
+        ),
         csat: this.mapCsatRow(saved),
       };
     } catch (err) {
@@ -2601,6 +2697,7 @@ export class SupportTicketsService {
       party_type: ticket.party,
       assigned_admin_id: ticket.assigned_admin_id,
       review_agent_id: ticket.review_agent_id,
+      review_agent_name: ticket.review_agent_name,
       status: ticket.status,
       priority: ticket.priority,
       created_at: ticket.created_at.toISOString(),

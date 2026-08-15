@@ -22,6 +22,10 @@ export class StaysSupportTicketCsat {
   @Column({ type: 'varchar', length: 128, name: 'agent_id', nullable: true })
   agent_id: string | null;
 
+  /** Null on rows submitted before this field existed. New POSTs always set true/false. */
+  @Column({ type: 'boolean', name: 'problem_solved', nullable: true })
+  problem_solved: boolean | null;
+
   @Column({ type: 'text', nullable: true })
   comment: string | null;
 

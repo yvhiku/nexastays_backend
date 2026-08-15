@@ -92,6 +92,7 @@ import { SupportModule } from '../support/support.module';
     MessagingRealtimeService,
     MessagingPermissionsService,
     MessagingMediaService,
+    MessagingOutboxService,
   ],
 })
 export class MessagingModule {}

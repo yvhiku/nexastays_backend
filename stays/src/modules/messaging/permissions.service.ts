@@ -5,6 +5,8 @@ import type { ConversationPermissions } from './messaging.types';
 export type MessagingAccessOptions = {
   /** ADMIN JWT may read/send SUPPORT conversations only — never occupies guest/host ids. */
   isAdmin?: boolean;
+  /** SUPPORT ticket CLOSED — force read-only even if archive lagged. */
+  ticketClosed?: boolean;
 };
 
 @Injectable()
@@ -27,7 +29,8 @@ export class MessagingPermissionsService {
       const readOnlyState =
         conversation.messaging_state === 'READ_ONLY' ||
         conversation.messaging_state === 'ARCHIVED' ||
-        conversation.messaging_state === 'LOCKED';
+        conversation.messaging_state === 'LOCKED' ||
+        Boolean(options.ticketClosed);
       return {
         canSend: !readOnlyState,
         canUpload: !readOnlyState,
@@ -49,7 +52,8 @@ export class MessagingPermissionsService {
     const readOnlyState =
       conversation.messaging_state === 'READ_ONLY' ||
       conversation.messaging_state === 'ARCHIVED' ||
-      conversation.messaging_state === 'LOCKED';
+      conversation.messaging_state === 'LOCKED' ||
+      Boolean(options.ticketClosed);
     const isReadOnly = readOnlyState || blocked;
 
     const notificationLevel = isGuest

@@ -382,6 +382,7 @@ export class MessagesService {
       ? await this.messageRepo.findOne({ where: { id: conv.last_message_id } })
       : null;
 
+    let changedMessages = 0;
     await this.dataSource.transaction(async (manager) => {
       const convRepo = manager.getRepository(StaysConversation);
       const msgRepo = manager.getRepository(StaysMessage);
@@ -402,7 +403,7 @@ export class MessagesService {
         });
       }
 
-      await msgRepo
+      const updated = await msgRepo
         .createQueryBuilder()
         .update(StaysMessage)
         .set({ status: 'READ', read_at: now })
@@ -411,6 +412,7 @@ export class MessagesService {
         .andWhere('sender_id != :uid', { uid: userId })
         .andWhere('read_at IS NULL')
         .execute();
+      changedMessages = Number(updated.affected ?? 0);
 
       await this.outbox.enqueue(manager, EVENTS.MESSAGE_READ, {
         conversationId: conv.id,
@@ -418,13 +420,23 @@ export class MessagesService {
       });
     });
 
-    const senderUserId =
-      userId === conv.guest_user_id ? conv.host_user_id : conv.guest_user_id;
-    this.realtime.publish(senderUserId, {
-      conversationId: conv.id,
-      reason: 'MESSAGE_READ',
-      messageId: lastMsg?.id,
-    });
+    const unreadWas = isGuest ? conv.unread_guest ?? 0 : conv.unread_host ?? 0;
+    if (unreadWas > 0 || changedMessages > 0) {
+      const counterpartUserId =
+        userId === conv.guest_user_id ? conv.host_user_id : conv.guest_user_id;
+      this.realtime.publish(userId, {
+        conversationId: conv.id,
+        reason: 'MESSAGE_READ',
+        messageId: lastMsg?.id,
+      });
+      if (counterpartUserId) {
+        this.realtime.publish(counterpartUserId, {
+          conversationId: conv.id,
+          reason: 'MESSAGE_READ',
+          messageId: lastMsg?.id,
+        });
+      }
+    }
 
     return { conversationVersion: nextVersion };
   }

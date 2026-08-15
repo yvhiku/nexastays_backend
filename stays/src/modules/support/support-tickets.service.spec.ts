@@ -4,6 +4,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { SupportTicketsService } from './support-tickets.service';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
+import { StaysMessage } from '../messaging/entities/stays-message.entity';
 import { StaysSupportTicket } from './entities/stays-support-ticket.entity';
 import { StaysSupportTicketNote } from './entities/stays-support-ticket-note.entity';
 import { StaysConversationReport } from './entities/stays-conversation-report.entity';
@@ -12,6 +13,7 @@ import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { PatchTrustReportDto } from './dto/support-ticket.dto';
 import { CLOSED_SUPPORT_TICKET_MESSAGE } from './support-ticket-state';
+import { EVENTS } from '@nexa/event-bus';
 
 describe('SupportTicketsService', () => {
   function uniqueViolation() {
@@ -84,7 +86,16 @@ describe('SupportTicketsService', () => {
       })),
       update: jest.fn(),
     };
-    const messageRepo = { find: jest.fn().mockResolvedValue([]) };
+    const messageRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      createQueryBuilder: jest.fn(() => ({
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: 0 }),
+      })),
+    };
     const attachmentRepo = { find: jest.fn().mockResolvedValue([]) };
     const bookingRepo = {
       find: jest.fn().mockResolvedValue([]),
@@ -103,11 +114,13 @@ describe('SupportTicketsService', () => {
     const timelineSeeder = {
       insertMessage: jest.fn().mockResolvedValue({
         id: 'msg-1',
+        conversation_sequence: '3',
         sent_at: new Date(),
         created_at: new Date(),
       }),
     };
     const realtime = { publish: jest.fn() };
+    const outbox = { enqueueDirect: jest.fn().mockResolvedValue(undefined) };
     const media = {
       resolveAttachment: jest.fn().mockReturnValue({ url: 'https://signed/img' }),
     };
@@ -163,6 +176,7 @@ describe('SupportTicketsService', () => {
         if (entity === StaysBooking) return bookingRepo;
         if (entity === StaysListing) return listingRepo;
         if (entity === StaysSupportTicketNote) return noteRepo;
+        if (entity === StaysMessage) return messageRepo;
         return ticketRepo;
       }),
     };
@@ -242,6 +256,7 @@ describe('SupportTicketsService', () => {
       staysAudit as never,
       ops as never,
       assignment as never,
+      outbox as never,
     );
 
     return {
@@ -268,6 +283,7 @@ describe('SupportTicketsService', () => {
       ops,
       assignment,
       hostProfileRepo,
+      outbox,
     };
   }
 
@@ -844,15 +860,30 @@ describe('SupportTicketsService', () => {
       review_agent_id: 'admin-1',
     });
     await expect(
-      service.submitCsatForUser('guest-1', 'ticket-1', { rating: 5 }),
+      service.submitCsatForUser('guest-1', 'ticket-1', {
+        rating: 5,
+      } as { rating: number; problemSolved: boolean }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(
+      service.submitCsatForUser('guest-1', 'ticket-1', {
+        rating: 5,
+        problemSolved: true,
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     const submitted = await service.submitCsatForUser('guest-1', 'ticket-1', {
       rating: 5,
       agentRating: 4,
       comment: 'Great',
+      problemSolved: true,
       agentId: 'spoof-agent',
-    } as { rating: number; comment?: string; agentRating?: number });
+    } as {
+      rating: number;
+      comment?: string;
+      agentRating?: number;
+      problemSolved: boolean;
+    });
     expect(submitted.submitted).toBe(true);
     expect(submitted.canReview).toBe(false);
     expect(submitted.csat?.rating).toBe(5);
@@ -869,6 +900,7 @@ describe('SupportTicketsService', () => {
         ticket_id: 'ticket-1',
         agent_id: 'admin-1',
         agent_rating: 4,
+        problem_solved: true,
       }),
     );
 
@@ -879,7 +911,10 @@ describe('SupportTicketsService', () => {
       review_agent_id: null,
     });
     await expect(
-      service.submitCsatForUser('guest-1', 'ticket-1', { rating: 4 }),
+      service.submitCsatForUser('guest-1', 'ticket-1', {
+        rating: 4,
+        problemSolved: true,
+      }),
     ).rejects.toBeInstanceOf(ConflictException);
 
     ticketRepo.findOne.mockResolvedValue({
@@ -892,6 +927,7 @@ describe('SupportTicketsService', () => {
       service.submitCsatForUser('guest-1', 'ticket-1', {
         rating: 5,
         agentRating: 5,
+        problemSolved: true,
       }),
     ).rejects.toMatchObject({ message: 'Ticket is not closed' });
 
@@ -912,12 +948,16 @@ describe('SupportTicketsService', () => {
       service.submitCsatForUser('guest-1', 'ticket-1', {
         rating: 3,
         agentRating: 3,
+        problemSolved: false,
       }),
     ).rejects.toBeInstanceOf(ConflictException);
 
     ticketRepo.findOne.mockResolvedValue(null);
     await expect(
-      service.submitCsatForUser('other', 'ticket-1', { rating: 5 }),
+      service.submitCsatForUser('other', 'ticket-1', {
+        rating: 5,
+        problemSolved: true,
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.getCsatForUser('other', 'ticket-1')).rejects.toBeInstanceOf(
       NotFoundException,
@@ -935,6 +975,7 @@ describe('SupportTicketsService', () => {
     const submitted = await service.submitCsatForUser('guest-1', 'ticket-1', {
       rating: 5,
       comment: 'Fine',
+      problemSolved: false,
     });
     expect(submitted.csat?.agent_id).toBeNull();
     expect(submitted.csat?.agent_rating).toBeNull();
@@ -944,6 +985,7 @@ describe('SupportTicketsService', () => {
       expect.objectContaining({
         agent_id: null,
         agent_rating: null,
+        problem_solved: false,
       }),
     );
 
@@ -951,6 +993,7 @@ describe('SupportTicketsService', () => {
       service.submitCsatForUser('guest-1', 'ticket-1', {
         rating: 5,
         agentRating: 4,
+        problemSolved: true,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -982,6 +1025,7 @@ describe('SupportTicketsService', () => {
       requester_user_id: 'guest-1',
       status: 'CLOSED',
       review_agent_id: 'admin-1',
+      review_agent_name: 'Sarah Support',
     });
     await expect(service.getCsatForUser('guest-1', 'ticket-1')).resolves.toEqual({
       submitted: false,
@@ -990,7 +1034,7 @@ describe('SupportTicketsService', () => {
       ticketStatus: 'CLOSED',
       agent: {
         id: 'admin-1',
-        fullName: 'Alex Agent',
+        fullName: 'Sarah Support',
         profilePhotoUrl: null,
       },
       csat: null,
@@ -1260,10 +1304,11 @@ describe('SupportTicketsService', () => {
   });
 
   it('clears unread_for_support when admin lists messages', async () => {
-    const { service, ticketRepo, messageRepo } = buildService();
+    const { service, ticketRepo, messageRepo, realtime } = buildService();
     ticketRepo.findOne.mockResolvedValue({
       id: 'ticket-1',
       conversation_id: 'conv-1',
+      requester_user_id: 'guest-1',
       unread_for_support: true,
     });
     messageRepo.find.mockResolvedValue([]);
@@ -1272,10 +1317,75 @@ describe('SupportTicketsService', () => {
       'ticket-1',
       expect.objectContaining({ unread_for_support: false }),
     );
+    expect(realtime.publish).not.toHaveBeenCalled();
+  });
+
+  it('stamps unread requester messages READ when admin opens the ticket', async () => {
+    const { service, ticketRepo, messageRepo, realtime } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      conversation_id: 'conv-1',
+      requester_user_id: 'guest-1',
+      unread_for_support: false,
+    });
+    const execute = jest.fn().mockResolvedValue({ affected: 2 });
+    messageRepo.createQueryBuilder.mockReturnValue({
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute,
+    });
+    messageRepo.find.mockResolvedValue([]);
+    await service.listMessagesForAdmin('ticket-1');
+    expect(execute).toHaveBeenCalled();
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'guest-1',
+      expect.objectContaining({
+        conversationId: 'conv-1',
+        reason: 'MESSAGE_READ',
+      }),
+    );
+  });
+
+  it('does not rewrite already READ requester messages or republish on reopen', async () => {
+    const { service, ticketRepo, messageRepo, realtime } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      conversation_id: 'conv-1',
+      requester_user_id: 'guest-1',
+      unread_for_support: false,
+    });
+    const andWhere = jest.fn().mockReturnThis();
+    messageRepo.createQueryBuilder.mockReturnValue({
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere,
+      execute: jest.fn().mockResolvedValue({ affected: 0 }),
+    });
+    messageRepo.find.mockResolvedValue([]);
+    await service.listMessagesForAdmin('ticket-1');
+    expect(andWhere).toHaveBeenCalledWith('sender_id = :uid', { uid: 'guest-1' });
+    expect(andWhere).toHaveBeenCalledWith(
+      "status IN ('PERSISTED', 'SENT', 'DELIVERED')",
+    );
+    expect(andWhere).toHaveBeenCalledWith('read_at IS NULL');
+    expect(realtime.publish).not.toHaveBeenCalled();
+  });
+
+  it('does not enqueue delivery when admin send rolls back', async () => {
+    const { service, dataSource, outbox, realtime } = buildService();
+    dataSource.transaction.mockRejectedValue(new Error('db down'));
+    await expect(
+      service.sendAdminMessage('ticket-1', 'admin-1', 'We can help'),
+    ).rejects.toThrow('db down');
+    expect(outbox.enqueueDirect).not.toHaveBeenCalled();
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it('maps admin messages as SUPPORT_AGENT', async () => {
-    const { service, ticketRepo, convRepo, timelineSeeder, realtime, dataSource } =
+    const { service, ticketRepo, convRepo, timelineSeeder, realtime, dataSource, outbox } =
       buildService();
     const lockedTicket = {
       id: 'ticket-1',
@@ -1330,6 +1440,15 @@ describe('SupportTicketsService', () => {
       expect.anything(),
       expect.anything(),
       expect.objectContaining({ senderId: 'admin-1' }),
+    );
+    expect(outbox.enqueueDirect).toHaveBeenCalledWith(
+      EVENTS.MESSAGE_RECEIVED,
+      expect.objectContaining({
+        recipientUserId: 'guest-1',
+        senderUserId: 'admin-1',
+        conversationId: 'conv-1',
+        messageId: 'msg-1',
+      }),
     );
     expect(realtime.publish).toHaveBeenCalledWith(
       'guest-1',
@@ -1420,7 +1539,13 @@ describe('SupportTicketsService', () => {
   });
 
   it('snapshots review_agent_id and archives the SUPPORT conversation on first CLOSED', async () => {
-    const { service, ticketRepo, convRepo } = buildService();
+    const { service, ticketRepo, convRepo, realtime, identityUsers } =
+      buildService();
+    identityUsers.getProfileSummary.mockResolvedValue({
+      fullName: 'Sarah Support',
+      email: 'sarah@example.com',
+      verified: true,
+    });
     const resolvedAt = new Date('2026-01-01T00:00:00.000Z');
     ticketRepo.findOne.mockResolvedValue({
       id: 'ticket-1',
@@ -1428,6 +1553,8 @@ describe('SupportTicketsService', () => {
       priority: 'NORMAL',
       assigned_admin_id: 'admin-1',
       review_agent_id: null,
+      review_agent_name: null,
+      requester_user_id: 'guest-1',
       conversation_id: 'conv-1',
       resolved_at: resolvedAt,
       closed_at: null,
@@ -1458,6 +1585,7 @@ describe('SupportTicketsService', () => {
       'admin-1',
     );
     expect(row.review_agent_id).toBe('admin-1');
+    expect(row.review_agent_name).toBe('Sarah Support');
     expect(row.closed_at).toBeTruthy();
     expect(convRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1466,6 +1594,62 @@ describe('SupportTicketsService', () => {
         conversation_version: 2,
       }),
     );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'guest-1',
+      expect.objectContaining({
+        conversationId: 'conv-1',
+        reason: 'MESSAGE_READ',
+      }),
+    );
+  });
+
+  it('does not publish realtime when the close transaction fails', async () => {
+    const { service, dataSource, realtime } = buildService();
+    dataSource.transaction.mockRejectedValue(new Error('db down'));
+    await expect(
+      service.patchForAdmin('ticket-1', { status: 'CLOSED' }, 'admin-1'),
+    ).rejects.toThrow('db down');
+    expect(realtime.publish).not.toHaveBeenCalled();
+  });
+
+  it('does not re-archive or republish on a second CLOSED patch', async () => {
+    const { service, ticketRepo, convRepo, realtime } = buildService();
+    const closedAt = new Date('2026-01-02T00:00:00.000Z');
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'CLOSED',
+      priority: 'NORMAL',
+      assigned_admin_id: 'admin-2',
+      review_agent_id: 'admin-1',
+      review_agent_name: 'Sarah Support',
+      requester_user_id: 'guest-1',
+      conversation_id: 'conv-1',
+      resolved_at: closedAt,
+      closed_at: closedAt,
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+      first_admin_response_at: new Date('2026-01-01T01:00:00.000Z'),
+      report_id: null,
+      safety_issue_id: null,
+    });
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+    const row = await service.patchForAdmin(
+      'ticket-1',
+      { status: 'CLOSED' },
+      'admin-1',
+    );
+    expect(row.review_agent_id).toBe('admin-1');
+    expect(row.review_agent_name).toBe('Sarah Support');
+    expect(convRepo.findOne).not.toHaveBeenCalled();
+    expect(convRepo.save).not.toHaveBeenCalled();
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it('does not overwrite review_agent_id on later reassignment', async () => {

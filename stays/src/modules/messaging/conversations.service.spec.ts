@@ -148,6 +148,7 @@ describe('ConversationsService', () => {
                 conversation_id: 'support-conv-2',
               },
             }),
+            closedConversationIds: jest.fn().mockResolvedValue(new Set()),
           },
         },
       ],
@@ -185,6 +186,15 @@ describe('ConversationsService', () => {
     await service.listConversations(guestId, 'archived');
     const qb = convRepo.createQueryBuilder.mock.results[0].value;
     expect(qb.andWhere).toHaveBeenCalled();
+  });
+
+  it('excludes archived SUPPORT from the support filter', async () => {
+    await service.listConversations(guestId, 'support');
+    const qb = convRepo.createQueryBuilder.mock.results[0].value;
+    expect(qb.andWhere).toHaveBeenCalledWith('c.type = :t', { t: 'SUPPORT' });
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "c.messaging_state != 'ARCHIVED'",
+    );
   });
 
   it('increments conversation_version on visibility archive', async () => {

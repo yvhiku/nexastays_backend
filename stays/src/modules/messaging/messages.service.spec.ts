@@ -308,7 +308,7 @@ describe('MessagesService', () => {
           set: jest.fn().mockReturnThis(),
           where: jest.fn().mockReturnThis(),
           andWhere: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue(undefined),
+          execute: jest.fn().mockResolvedValue({ affected: 1 }),
         })),
       };
     });
@@ -319,10 +319,106 @@ describe('MessagesService', () => {
       convId,
       expect.objectContaining({ conversation_version: 4, unread_guest: 0 }),
     );
+    expect(realtime.publish).toHaveBeenCalledWith(guestId, {
+      conversationId: convId,
+      reason: 'MESSAGE_READ',
+      messageId: 'msg-last',
+    });
     expect(realtime.publish).toHaveBeenCalledWith(hostId, {
       conversationId: convId,
       reason: 'MESSAGE_READ',
       messageId: 'msg-last',
     });
+  });
+
+  it('does not publish MESSAGE_READ when reopen finds no unread rows', async () => {
+    convRepo.findOne.mockResolvedValue({
+      ...conversation,
+      type: 'SUPPORT',
+      host_user_id: null,
+      unread_guest: 0,
+    });
+    messageRepo.findOne.mockResolvedValue({ id: 'msg-last' });
+    transactionManager.getRepository = jest.fn((entity) => {
+      if (entity === StaysConversation) {
+        return { update: jest.fn() };
+      }
+      return {
+        createQueryBuilder: jest.fn(() => ({
+          update: jest.fn().mockReturnThis(),
+          set: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockReturnThis(),
+          execute: jest.fn().mockResolvedValue({ affected: 0 }),
+        })),
+      };
+    });
+
+    await service.markRead(convId, guestId);
+    expect(realtime.publish).not.toHaveBeenCalled();
+  });
+
+  it('stamps only counterpart SUPPORT messages delivered on customer open', async () => {
+    convRepo.findOne.mockResolvedValue({
+      ...conversation,
+      type: 'SUPPORT',
+      host_user_id: null,
+    });
+    const selectQb = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([
+        {
+          id: 'agent-msg',
+          conversation_id: convId,
+          conversation_sequence: '2',
+          sender_id: 'admin-1',
+          type: 'TEXT',
+          body: 'Hi',
+          metadata: {},
+          status: 'PERSISTED',
+          sent_at: new Date(),
+          delivered_at: null,
+          read_at: null,
+          is_system: false,
+          client_message_id: null,
+          created_at: new Date(),
+        },
+        {
+          id: 'guest-msg',
+          conversation_id: convId,
+          conversation_sequence: '1',
+          sender_id: guestId,
+          type: 'TEXT',
+          body: 'Help',
+          metadata: {},
+          status: 'PERSISTED',
+          sent_at: new Date(),
+          delivered_at: null,
+          read_at: null,
+          is_system: false,
+          client_message_id: null,
+          created_at: new Date(),
+        },
+      ]),
+    };
+    const updateQb = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    messageRepo.createQueryBuilder
+      .mockReturnValueOnce(selectQb)
+      .mockReturnValueOnce(updateQb);
+
+    await service.listMessages(convId, guestId, 30);
+    expect(updateQb.where).toHaveBeenCalledWith('id IN (:...ids)', {
+      ids: ['agent-msg'],
+    });
+    expect(updateQb.andWhere).toHaveBeenCalledWith("status = 'PERSISTED'");
   });
 });
