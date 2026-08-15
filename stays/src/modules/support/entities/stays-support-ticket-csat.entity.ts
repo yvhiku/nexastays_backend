@@ -13,10 +13,10 @@ export class StaysSupportTicketCsat {
   @Column({ type: 'uuid', name: 'ticket_id', unique: true })
   ticket_id: string;
 
-  @Column({ type: 'smallint' })
+  @Column({ type: 'numeric', precision: 2, scale: 1 })
   rating: number;
 
-  @Column({ type: 'smallint', name: 'agent_rating', nullable: true })
+  @Column({ type: 'numeric', precision: 2, scale: 1, name: 'agent_rating', nullable: true })
   agent_rating: number | null;
 
   @Column({ type: 'varchar', length: 128, name: 'agent_id', nullable: true })

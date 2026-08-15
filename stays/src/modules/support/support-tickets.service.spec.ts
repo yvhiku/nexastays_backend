@@ -998,6 +998,37 @@ describe('SupportTicketsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('accepts half-star CSAT ratings', async () => {
+    const { service, ticketRepo, csatRepo } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      requester_user_id: 'guest-1',
+      status: 'CLOSED',
+      review_agent_id: 'admin-1',
+    });
+    const submitted = await service.submitCsatForUser('guest-1', 'ticket-1', {
+      rating: 4.5,
+      agentRating: 3.5,
+      problemSolved: true,
+    });
+    expect(submitted.csat?.rating).toBe(4.5);
+    expect(submitted.csat?.agent_rating).toBe(3.5);
+    expect(csatRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rating: 4.5,
+        agent_rating: 3.5,
+      }),
+    );
+
+    await expect(
+      service.submitCsatForUser('guest-1', 'ticket-1', {
+        rating: 0,
+        agentRating: 5,
+        problemSolved: true,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('GET CSAT returns canReview only when CLOSED and not yet submitted', async () => {
     const { service, ticketRepo, identityUsers } = buildService();
     ticketRepo.findOne.mockResolvedValue({

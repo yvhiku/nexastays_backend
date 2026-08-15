@@ -53,6 +53,7 @@ import {
   PatchSupportTicketDto,
   PatchTrustReportDto,
   SUPPORT_TICKET_STATUSES,
+  SUPPORT_CSAT_RATINGS,
   TRUST_REPORT_KINDS,
   TRUST_REPORT_STATUSES,
 } from './dto/support-ticket.dto';
@@ -70,6 +71,16 @@ const OPEN_TICKET_STATUSES: SupportTicketStatus[] = [
   'WAITING_FOR_HOST',
   'ESCALATED',
 ];
+
+function parseCsatRating(raw: unknown, label: string): number {
+  const n = Math.round(Number(raw) * 2) / 2;
+  if (!(SUPPORT_CSAT_RATINGS as readonly number[]).includes(n)) {
+    throw new BadRequestException(
+      `${label} must be in 0.5 increments from 0.5 to 5`,
+    );
+  }
+  return n;
+}
 
 function isUniqueViolation(err: unknown): boolean {
   if (err instanceof QueryFailedError) {
@@ -1538,9 +1549,10 @@ export class SupportTicketsService {
 
   private mapCsatRow(row: StaysSupportTicketCsat) {
     return {
-      rating: row.rating,
+      rating: Number(row.rating),
       comment: row.comment,
-      agent_rating: row.agent_rating ?? null,
+      agent_rating:
+        row.agent_rating == null ? null : Number(row.agent_rating),
       agent_id: row.agent_id ?? null,
       problem_solved: row.problem_solved ?? null,
       submitted_at: row.submitted_at.toISOString(),
@@ -1598,10 +1610,7 @@ export class SupportTicketsService {
     if (typeof input.problemSolved !== 'boolean') {
       throw new BadRequestException('problemSolved is required');
     }
-    const rating = Number(input.rating);
-    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-      throw new BadRequestException('Rating must be an integer from 1 to 5');
-    }
+    const rating = parseCsatRating(input.rating, 'Rating');
     const comment = input.comment?.trim() || null;
     if (comment && comment.length > 2000) {
       throw new BadRequestException('Comment too long');
@@ -1618,13 +1627,7 @@ export class SupportTicketsService {
     const snapshotAgentId = ticket.review_agent_id;
     let agentRating: number | null = null;
     if (snapshotAgentId) {
-      const raw = Number(input.agentRating);
-      if (!Number.isInteger(raw) || raw < 1 || raw > 5) {
-        throw new BadRequestException(
-          'Agent rating must be an integer from 1 to 5',
-        );
-      }
-      agentRating = raw;
+      agentRating = parseCsatRating(input.agentRating, 'Agent rating');
     } else if (input.agentRating !== undefined && input.agentRating !== null) {
       throw new BadRequestException(
         'Agent rating is not available for this ticket',
@@ -1923,11 +1926,11 @@ export class SupportTicketsService {
       SELECT
         COUNT(*)::int AS responses,
         AVG(c.rating)::float AS average_rating,
-        COUNT(*) FILTER (WHERE c.rating = 1)::int AS r1,
-        COUNT(*) FILTER (WHERE c.rating = 2)::int AS r2,
-        COUNT(*) FILTER (WHERE c.rating = 3)::int AS r3,
-        COUNT(*) FILTER (WHERE c.rating = 4)::int AS r4,
-        COUNT(*) FILTER (WHERE c.rating = 5)::int AS r5
+        COUNT(*) FILTER (WHERE ROUND(c.rating::numeric) = 1)::int AS r1,
+        COUNT(*) FILTER (WHERE ROUND(c.rating::numeric) = 2)::int AS r2,
+        COUNT(*) FILTER (WHERE ROUND(c.rating::numeric) = 3)::int AS r3,
+        COUNT(*) FILTER (WHERE ROUND(c.rating::numeric) = 4)::int AS r4,
+        COUNT(*) FILTER (WHERE ROUND(c.rating::numeric) = 5)::int AS r5
       FROM stays_support_ticket_csat c
       INNER JOIN stays_support_tickets t ON t.id = c.ticket_id
       WHERE t.created_at >= $1::timestamptz

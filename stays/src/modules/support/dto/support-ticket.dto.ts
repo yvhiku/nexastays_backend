@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -42,6 +43,10 @@ export const SUPPORT_TICKET_PRIORITIES = [
   'NORMAL',
   'HIGH',
   'URGENT',
+] as const;
+
+export const SUPPORT_CSAT_RATINGS = [
+  0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5,
 ] as const;
 
 export class CreateSupportTicketDto {
@@ -117,16 +122,14 @@ export class CreateSupportTicketCsatDto {
   problemSolved!: boolean;
 
   @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(5)
+  @IsNumber()
+  @IsIn([...SUPPORT_CSAT_RATINGS])
   rating!: number;
 
   @IsOptional()
   @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(5)
+  @IsNumber()
+  @IsIn([...SUPPORT_CSAT_RATINGS])
   agentRating?: number;
 
   @IsOptional()

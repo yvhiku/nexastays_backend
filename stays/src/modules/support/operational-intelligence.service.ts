@@ -825,11 +825,11 @@ export class OperationalIntelligenceService {
         c.agent_id,
         COUNT(*)::int AS review_count,
         AVG(c.agent_rating)::float AS average_agent_rating,
-        COUNT(*) FILTER (WHERE c.agent_rating = 1)::int AS r1,
-        COUNT(*) FILTER (WHERE c.agent_rating = 2)::int AS r2,
-        COUNT(*) FILTER (WHERE c.agent_rating = 3)::int AS r3,
-        COUNT(*) FILTER (WHERE c.agent_rating = 4)::int AS r4,
-        COUNT(*) FILTER (WHERE c.agent_rating = 5)::int AS r5
+        COUNT(*) FILTER (WHERE ROUND(c.agent_rating::numeric) = 1)::int AS r1,
+        COUNT(*) FILTER (WHERE ROUND(c.agent_rating::numeric) = 2)::int AS r2,
+        COUNT(*) FILTER (WHERE ROUND(c.agent_rating::numeric) = 3)::int AS r3,
+        COUNT(*) FILTER (WHERE ROUND(c.agent_rating::numeric) = 4)::int AS r4,
+        COUNT(*) FILTER (WHERE ROUND(c.agent_rating::numeric) = 5)::int AS r5
       FROM stays_support_ticket_csat c
       WHERE c.agent_id IS NOT NULL
       GROUP BY c.agent_id
