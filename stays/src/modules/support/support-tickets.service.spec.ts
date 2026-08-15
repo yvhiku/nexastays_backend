@@ -12,7 +12,7 @@ import { StaysSafetyIssue } from './entities/stays-safety-issue.entity';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { PatchTrustReportDto } from './dto/support-ticket.dto';
-import { CLOSED_SUPPORT_TICKET_MESSAGE } from './support-ticket-state';
+import { CLOSED_SUPPORT_TICKET_MESSAGE, TICKET_IS_NOT_CLOSED_MESSAGE, TICKET_MUST_BE_REOPENED_MESSAGE } from './support-ticket-state';
 import { EVENTS } from '@nexa/event-bus';
 
 describe('SupportTicketsService', () => {
@@ -150,6 +150,8 @@ describe('SupportTicketsService', () => {
       evaluateReport: jest.fn().mockResolvedValue(undefined),
       evaluateListedTickets: jest.fn().mockResolvedValue(undefined),
       evaluateCsatForAdmin: jest.fn().mockResolvedValue(undefined),
+      upsertFollowUpRequired: jest.fn().mockResolvedValue(undefined),
+      resolveActiveFollowUpRequired: jest.fn().mockResolvedValue(undefined),
       applySlaStateFilter: jest.fn(),
       activeTypesByTicketIds: jest.fn().mockResolvedValue(new Map()),
       listSignalsForTicket: jest.fn().mockResolvedValue({ items: [] }),
@@ -319,6 +321,39 @@ describe('SupportTicketsService', () => {
     expect(realtime.publish).toHaveBeenCalledWith(
       'guest-1',
       expect.objectContaining({ conversationId: 'conv-1' }),
+    );
+  });
+
+  it('snapshots requester_language at create and ignores unsupported locales', async () => {
+    const { service, ticketRepo, identityUsers } = buildService();
+    identityUsers.getProfileSummary.mockResolvedValue({
+      fullName: 'Ada Guest',
+      email: 'ada@example.com',
+      verified: false,
+      preferredLanguage: 'fr-FR',
+    });
+    await service.createTicketForUser('guest-1', {
+      category: 'BOOKING',
+      subject: 'Help with booking',
+      message: 'I need help',
+    });
+    expect(ticketRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ requester_language: 'fr' }),
+    );
+
+    identityUsers.getProfileSummary.mockResolvedValue({
+      fullName: 'Ada Guest',
+      email: 'ada@example.com',
+      verified: false,
+      preferredLanguage: 'zh-CN',
+    });
+    await service.createTicketForUser('guest-1', {
+      category: 'BOOKING',
+      subject: 'Help with booking',
+      message: 'I need help',
+    });
+    expect(ticketRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ requester_language: null }),
     );
   });
 
@@ -1950,6 +1985,31 @@ describe('SupportTicketsService', () => {
     expect(update.mock.calls[0][1].resolved_at).toBeUndefined();
   });
 
+  it('applies customer message effects: WAITING_FOR_CUSTOMER becomes IN_PROGRESS', async () => {
+    const { service } = buildService();
+    const update = jest.fn();
+    const manager = {
+      getRepository: jest.fn(() => ({ update })),
+    };
+    await service.applyCustomerSupportMessageEffects(
+      manager as never,
+      {
+        id: 'ticket-1',
+        status: 'WAITING_FOR_CUSTOMER',
+        party: 'GUEST',
+      } as never,
+      'Here is the booking reference',
+    );
+    expect(update).toHaveBeenCalledWith(
+      'ticket-1',
+      expect.objectContaining({
+        status: 'IN_PROGRESS',
+        unread_for_support: true,
+        last_message_preview: 'Here is the booking reference',
+      }),
+    );
+  });
+
   it('preserves WAITING_FOR_HOST for GUEST party and does not clear resolved_at', async () => {
     const { service } = buildService();
     const update = jest.fn();
@@ -2496,5 +2556,309 @@ describe('SupportTicketsService', () => {
       expect(timelineSeeder.insertMessage).not.toHaveBeenCalled();
       expect(messageRepo.find).not.toHaveBeenCalled();
     });
+  });
+
+  it('rejects generic PATCH status out of CLOSED and keeps the conversation archived', async () => {
+    const { service, ticketRepo, convRepo } = buildService();
+    const archived = {
+      id: 'conv-1',
+      messaging_state: 'ARCHIVED',
+      archived_at: new Date('2026-01-02T00:00:00.000Z'),
+    };
+    convRepo.findOne.mockResolvedValue(archived);
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'CLOSED',
+      priority: 'NORMAL',
+      assigned_admin_id: 'admin-1',
+      closed_at: new Date('2026-01-02T00:00:00.000Z'),
+      conversation_id: 'conv-1',
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-02T00:00:00.000Z'),
+      first_admin_response_at: new Date('2026-01-01T01:00:00.000Z'),
+      resolved_at: new Date('2026-01-02T00:00:00.000Z'),
+      report_id: null,
+      safety_issue_id: null,
+      review_agent_id: 'admin-1',
+      review_agent_name: 'Sarah',
+    });
+    await expect(
+      service.patchForAdmin('ticket-1', { status: 'OPEN' }, 'admin-1'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.patchForAdmin('ticket-1', { status: 'OPEN' }, 'admin-1'),
+    ).rejects.toMatchObject({ message: TICKET_MUST_BE_REOPENED_MESSAGE });
+    expect(archived.messaging_state).toBe('ARCHIVED');
+  });
+
+  it('reopens CLOSED tickets, unarchives, preserves CSAT, and evaluates SLA', async () => {
+    const { service, ticketRepo, convRepo, ops, staysAudit, realtime } =
+      buildService();
+    const conv = {
+      id: 'conv-1',
+      messaging_state: 'ARCHIVED',
+      archived_at: new Date(),
+      read_only_at: new Date(),
+      archive_reason: 'SUPPORT',
+      conversation_version: 3,
+    };
+    convRepo.findOne.mockResolvedValue(conv);
+    convRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'CLOSED',
+      priority: 'NORMAL',
+      assigned_admin_id: 'admin-1',
+      closed_at: new Date('2026-01-02T00:00:00.000Z'),
+      conversation_id: 'conv-1',
+      requester_user_id: 'guest-1',
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-02T00:00:00.000Z'),
+      first_admin_response_at: new Date('2026-01-01T01:00:00.000Z'),
+      resolved_at: new Date('2026-01-02T00:00:00.000Z'),
+      report_id: null,
+      safety_issue_id: null,
+      review_agent_id: 'admin-1',
+      review_agent_name: 'Sarah',
+    });
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+    const row = await service.reopenForAdmin('ticket-1', 'admin-1');
+    expect(row.status).toBe('IN_PROGRESS');
+    expect(row.closed_at).toBeNull();
+    expect(row.review_agent_id).toBe('admin-1');
+    expect(conv.messaging_state).toBe('ACTIVE');
+    expect(ops.resolveActiveFollowUpRequired).toHaveBeenCalledWith(
+      'ticket-1',
+      'admin-1',
+      'REOPENED',
+    );
+    expect(ops.evaluateTicket).toHaveBeenCalledWith('ticket-1');
+    expect(staysAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'support_ticket_reopened' }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'guest-1',
+      expect.objectContaining({ reason: 'MESSAGE_READ' }),
+    );
+  });
+
+  it('returns 409 when reopen is called on a ticket that is not closed', async () => {
+    const { service, ticketRepo, staysAudit } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'IN_PROGRESS',
+      assigned_admin_id: 'admin-1',
+    });
+    await expect(
+      service.reopenForAdmin('ticket-1', 'admin-1'),
+    ).rejects.toMatchObject({ message: TICKET_IS_NOT_CLOSED_MESSAGE });
+    expect(staysAudit.log).not.toHaveBeenCalled();
+  });
+
+  it('does not reopen CSAT after close → review → reopen → close', async () => {
+    const { service, ticketRepo, csatRepo, identityUsers } = buildService();
+    identityUsers.getProfileSummary.mockResolvedValue({
+      fullName: 'Sarah Support',
+      email: 'sarah@example.com',
+      verified: true,
+    });
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      requester_user_id: 'guest-1',
+      status: 'CLOSED',
+      review_agent_id: 'admin-1',
+      review_agent_name: 'Sarah Support',
+    });
+    csatRepo.findOne.mockResolvedValue({
+      id: 'csat-1',
+      ticket_id: 'ticket-1',
+      rating: 2,
+      agent_rating: 5,
+      problem_solved: false,
+      submitted_at: new Date(),
+    });
+    const csat = await service.getCsatForUser('guest-1', 'ticket-1');
+    expect(csat.alreadyReviewed).toBe(true);
+    expect(csat.canReview).toBe(false);
+    await expect(
+      service.submitCsatForUser('guest-1', 'ticket-1', {
+        rating: 5,
+        agentRating: 5,
+        problemSolved: true,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('creates FOLLOW_UP_REQUIRED after unsolved CSAT', async () => {
+    const { service, ticketRepo, ops } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      requester_user_id: 'guest-1',
+      status: 'CLOSED',
+      review_agent_id: 'admin-1',
+      review_agent_name: 'Sarah',
+    });
+    await service.submitCsatForUser('guest-1', 'ticket-1', {
+      rating: 2,
+      agentRating: 4,
+      problemSolved: false,
+    });
+    expect(ops.upsertFollowUpRequired).toHaveBeenCalledWith({
+      ticketId: 'ticket-1',
+      problemSolved: false,
+      overallRating: 2,
+      agentRating: 4,
+    });
+  });
+
+  it('makes concurrent reopen idempotent: one success, one 409, one audit', async () => {
+    const { service, ticketRepo, convRepo, staysAudit, dataSource, manager } =
+      buildService();
+    const ticket = {
+      id: 'ticket-1',
+      status: 'CLOSED',
+      priority: 'NORMAL',
+      assigned_admin_id: 'admin-1',
+      closed_at: new Date('2026-01-02T00:00:00.000Z'),
+      conversation_id: 'conv-1',
+      requester_user_id: 'guest-1',
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-02T00:00:00.000Z'),
+      first_admin_response_at: new Date('2026-01-01T01:00:00.000Z'),
+      resolved_at: new Date('2026-01-02T00:00:00.000Z'),
+      report_id: null,
+      safety_issue_id: null,
+      review_agent_id: 'admin-1',
+      review_agent_name: 'Sarah',
+    };
+    ticketRepo.findOne.mockImplementation(async () => ticket);
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => {
+      Object.assign(ticket, row);
+      return ticket;
+    });
+    convRepo.findOne.mockResolvedValue({
+      id: 'conv-1',
+      messaging_state: 'ARCHIVED',
+      conversation_version: 1,
+    });
+    convRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+    let mutex = Promise.resolve();
+    dataSource.transaction.mockImplementation(
+      async (fn: (m: typeof manager) => unknown) => {
+        const previous = mutex;
+        let release!: () => void;
+        mutex = new Promise((resolve) => {
+          release = resolve;
+        });
+        await previous;
+        try {
+          return await fn(manager);
+        } finally {
+          release();
+        }
+      },
+    );
+
+    const results = await Promise.allSettled([
+      service.reopenForAdmin('ticket-1', 'admin-1'),
+      service.reopenForAdmin('ticket-1', 'admin-1'),
+    ]);
+    const fulfilled = results.filter((row) => row.status === 'fulfilled');
+    const rejected = results.filter((row) => row.status === 'rejected');
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
+      message: TICKET_IS_NOT_CLOSED_MESSAGE,
+    });
+    expect(
+      staysAudit.log.mock.calls.filter(
+        (call) => call[0]?.action === 'support_ticket_reopened',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('reopens an unassigned CLOSED ticket to OPEN', async () => {
+    const { service, ticketRepo } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'CLOSED',
+      assigned_admin_id: null,
+      closed_at: new Date(),
+      conversation_id: null,
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date(),
+      updated_at: new Date(),
+      first_admin_response_at: null,
+      resolved_at: new Date(),
+      report_id: null,
+      safety_issue_id: null,
+      review_agent_id: null,
+      review_agent_name: null,
+    });
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+    const row = await service.reopenForAdmin('ticket-1', 'admin-1');
+    expect(row.status).toBe('OPEN');
+  });
+
+  it('forbids support agents from reopening tickets', async () => {
+    const { service, ticketRepo } = buildService();
+    ticketRepo.findOne.mockResolvedValue({ id: 'ticket-1', status: 'CLOSED' });
+    await expect(
+      service.reopenForAdmin('ticket-1', 'agent-a', 'CUSTOMER_UNRESOLVED', {
+        userId: 'agent-a',
+        role: 'SUPPORT_AGENT',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('heartbeats presence independently of ticket data', async () => {
+    const { service, ticketRepo, dataSource } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'OPEN',
+      assigned_admin_id: 'admin-1',
+    });
+    dataSource.query
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce([
+        {
+          viewer_id: 'admin-1',
+          last_seen_at: new Date('2026-08-15T00:00:00.000Z'),
+          expires_at: new Date('2026-08-15T00:01:00.000Z'),
+        },
+      ]);
+    const result = await service.heartbeatPresence('ticket-1', 'admin-1');
+    expect(result.ok).toBe(true);
+    expect(result.viewers[0].viewerId).toBe('admin-1');
+    expect(String(dataSource.query.mock.calls[0][0])).toContain(
+      'stays_support_ticket_viewers',
+    );
   });
 });

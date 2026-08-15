@@ -7,6 +7,7 @@ describe('InternalUsersController.listActiveSupportAgents', () => {
   const usersService = {
     listActiveSupportAgents: jest.fn(),
     findById: jest.fn(),
+    getPreferredLanguageForUser: jest.fn(),
   };
   const controller = new InternalUsersController(
     usersService as unknown as UsersService,
@@ -39,11 +40,14 @@ describe('InternalUsersController.listActiveSupportAgents', () => {
       kyc_status: 'VERIFIED',
     });
 
+    usersService.getPreferredLanguageForUser.mockResolvedValue('fr');
+
     await expect(controller.profileSummary('host-1')).resolves.toEqual({
       fullName: 'Mohamed Fikri',
       email: 'fikri@nexa.ma',
       phone: '+212693211350',
       verified: true,
+      preferredLanguage: 'fr',
     });
   });
 });

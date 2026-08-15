@@ -6,6 +6,7 @@ export type IdentityProfileSummary = {
   email: string | null;
   phone: string | null;
   verified: boolean;
+  preferredLanguage: string | null;
 };
 
 export type IdentityAuthz = {
@@ -126,12 +127,14 @@ export class IdentityUserClient {
         email?: string | null;
         phone?: string | null;
         verified?: boolean;
+        preferredLanguage?: string | null;
       };
       const summary: IdentityProfileSummary = {
         fullName: data.fullName?.trim() || null,
         email: data.email?.trim() || null,
         phone: data.phone?.trim() || null,
         verified: !!data.verified,
+        preferredLanguage: data.preferredLanguage?.trim() || null,
       };
       this.summaryCache.set(userId, {
         summary,

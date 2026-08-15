@@ -7,19 +7,19 @@ describe('nextStatusAfterCustomerMessage', () => {
     ).toBe('OPEN');
   });
 
-  it('moves WAITING_FOR_CUSTOMER to OPEN for guest or host party', () => {
+  it('moves WAITING_FOR_CUSTOMER to IN_PROGRESS for guest or host party', () => {
     expect(
       nextStatusAfterCustomerMessage({
         status: 'WAITING_FOR_CUSTOMER',
         party: 'GUEST',
       }),
-    ).toBe('OPEN');
+    ).toBe('IN_PROGRESS');
     expect(
       nextStatusAfterCustomerMessage({
         status: 'WAITING_FOR_CUSTOMER',
         party: 'HOST',
       }),
-    ).toBe('OPEN');
+    ).toBe('IN_PROGRESS');
   });
 
   it('moves WAITING_FOR_HOST to OPEN only for HOST party', () => {

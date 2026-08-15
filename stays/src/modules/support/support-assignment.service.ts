@@ -1,18 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { IdentityUserClient } from '../../common/identity/identity-user.client';
 import { StaysAuditService } from '../stays/services/stays-audit.service';
 import {
   StaysSupportTicket,
   SupportTicketPriority,
 } from './entities/stays-support-ticket.entity';
+import { StaysSupportAgentSkills } from './entities/stays-support-agent-skills.entity';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
 import {
   SUPPORT_ROUTING_ADVISORY_LOCK,
+  calculateRoutingScore,
+  capacityEligibleAgentIds,
   emptyWorkload,
   isSupportAutoAssignEnabled,
   maxActiveTicketsPerAgent,
+  pickSkillTier,
   selectBestAgent,
+  type RoutingAgentSkills,
   type RoutingAgentWorkload,
 } from './support-routing.config';
 
@@ -87,14 +92,38 @@ export class SupportAssignmentService {
         manager,
         eligibleIds,
       );
-      const ineligible = new Set<string>();
       const maxActive = maxActiveTicketsPerAgent();
       const priority = ticket.priority as SupportTicketPriority;
+      const remaining = capacityEligibleAgentIds({
+        agentIds: eligibleIds,
+        workloads,
+        priority,
+        maxActive,
+      });
+      if (remaining.length === 0) return false;
 
+      const skillRows = await manager.getRepository(StaysSupportAgentSkills).find({
+        where: { agent_user_id: In(remaining) },
+      });
+      const skills = new Map<string, RoutingAgentSkills>();
+      for (const row of skillRows) {
+        skills.set(row.agent_user_id, {
+          languages: row.languages ?? [],
+          categories: row.categories ?? [],
+        });
+      }
+      const tier = pickSkillTier({
+        agentIds: remaining,
+        skills,
+        category: ticket.category,
+        language: ticket.requester_language ?? null,
+      });
+
+      const ineligible = new Set<string>();
       let picked: string | null = null;
       while (!picked) {
         const candidate = selectBestAgent({
-          agentIds: eligibleIds.filter((id) => !ineligible.has(id)),
+          agentIds: tier.agentIds.filter((id) => !ineligible.has(id)),
           workloads,
           lastAssignedAt,
           priority,
@@ -119,6 +148,7 @@ export class SupportAssignmentService {
       ticket.updated_at = new Date();
       await repo.save(ticket);
 
+      const pickedWorkload = workloads.get(picked) ?? emptyWorkload(picked);
       await this.staysAudit.log({
         actorUserId: 'system',
         actorRole: 'SYSTEM',
@@ -129,6 +159,13 @@ export class SupportAssignmentService {
           fromAdminId,
           toAdminId: picked,
           source: 'AUTO',
+          reason: 'LOWEST_ROUTING_SCORE',
+          skillTier: tier.skillTier,
+          categoryMatch: tier.categoryMatch,
+          languageMatch: tier.languageMatch,
+          language: ticket.requester_language ?? null,
+          routingScore: calculateRoutingScore(pickedWorkload),
+          eligibleAgents: tier.agentIds.length,
         },
       });
       return true;

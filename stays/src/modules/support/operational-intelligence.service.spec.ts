@@ -79,7 +79,10 @@ describe('OperationalIntelligenceService', () => {
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
     };
-    const csatRepo = { find: jest.fn().mockResolvedValue([]) };
+    const csatRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+    };
     const staysAudit = { log: jest.fn().mockResolvedValue(undefined) };
     const dataSource = { query: jest.fn().mockResolvedValue([{}]) };
 
@@ -605,6 +608,124 @@ describe('OperationalIntelligenceService', () => {
     });
   });
 
+  describe('FOLLOW_UP_REQUIRED', () => {
+    it('upserts an active signal for unsolved CSAT and is race-safe', async () => {
+      const { service, signalRepo, saved } = build();
+      await service.upsertFollowUpRequired({
+        ticketId: 'ticket-1',
+        problemSolved: false,
+        overallRating: 2,
+        agentRating: 5,
+      });
+      expect(saved[0]).toEqual(
+        expect.objectContaining({
+          signal_type: 'FOLLOW_UP_REQUIRED',
+          status: 'ACTIVE',
+          severity: 'HIGH',
+          dedupe_key: signalDedupeKey(
+            'FOLLOW_UP_REQUIRED',
+            'TICKET',
+            'ticket-1',
+          ),
+          metadata: expect.objectContaining({
+            code: 'CUSTOMER_REPORTED_UNRESOLVED',
+            problemSolved: false,
+            overallRating: 2,
+            agentRating: 5,
+          }),
+        }),
+      );
+
+      const existing = {
+        dedupe_key: signalDedupeKey('FOLLOW_UP_REQUIRED', 'TICKET', 'ticket-1'),
+        status: 'ACTIVE',
+        metadata: {},
+      };
+      signalRepo.find
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([existing]);
+      const err = new QueryFailedError('INSERT', [], new Error('duplicate'));
+      Object.assign(err, { driverError: { code: '23505' } });
+      signalRepo.save.mockRejectedValueOnce(err);
+      saved.length = 0;
+      await service.upsertFollowUpRequired({
+        ticketId: 'ticket-1',
+        problemSolved: false,
+        overallRating: 2,
+        agentRating: 5,
+      });
+      expect(saved).toHaveLength(1);
+      expect(saved[0]).toBe(existing);
+    });
+
+    it('does not reactivate a historically resolved follow-up', async () => {
+      const { service, signalRepo, saved } = build();
+      signalRepo.find.mockResolvedValue([
+        {
+          dedupe_key: signalDedupeKey('FOLLOW_UP_REQUIRED', 'TICKET', 'ticket-1'),
+          status: 'RESOLVED',
+          metadata: {},
+        },
+      ]);
+      await service.upsertFollowUpRequired({
+        ticketId: 'ticket-1',
+        problemSolved: false,
+        overallRating: 1,
+        agentRating: 1,
+      });
+      expect(saved).toHaveLength(0);
+      expect(signalRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('resolves only the active follow-up row', async () => {
+      const { service, signalRepo } = build();
+      const active = {
+        ticket_id: 'ticket-1',
+        signal_type: 'FOLLOW_UP_REQUIRED',
+        status: 'ACTIVE',
+        metadata: { code: 'CUSTOMER_REPORTED_UNRESOLVED' },
+      };
+      signalRepo.findOne.mockResolvedValue(active);
+      await service.resolveActiveFollowUpRequired('ticket-1', 'admin-1', 'REOPENED');
+      expect(active.status).toBe('RESOLVED');
+      expect(active.metadata).toEqual(
+        expect.objectContaining({ resolution: 'REOPENED' }),
+      );
+      expect(signalRepo.save).toHaveBeenCalledWith(active);
+    });
+
+    it('rejects ACKNOWLEDGE on FOLLOW_UP_REQUIRED', async () => {
+      const { service, signalRepo } = build();
+      signalRepo.findOne.mockResolvedValue({
+        id: 'sig-1',
+        status: 'ACTIVE',
+        signal_type: 'FOLLOW_UP_REQUIRED',
+      });
+      await expect(
+        service.patchSignal('sig-1', 'ACKNOWLEDGED', 'admin-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('mark reviewed resolves follow-up with actor metadata', async () => {
+      const { service, signalRepo } = build();
+      const row = {
+        id: 'sig-1',
+        status: 'ACTIVE',
+        ticket_id: 'ticket-1',
+        signal_type: 'FOLLOW_UP_REQUIRED',
+        metadata: { code: 'CUSTOMER_REPORTED_UNRESOLVED' },
+        first_detected_at: new Date(),
+        last_detected_at: new Date(),
+      };
+      signalRepo.findOne.mockResolvedValue(row);
+      await service.patchSignal('sig-1', 'RESOLVED', 'admin-1');
+      expect(row.status).toBe('RESOLVED');
+      expect(row.metadata).toEqual(
+        expect.objectContaining({ resolution: 'MARK_REVIEWED' }),
+      );
+    });
+  });
+
   describe('low CSAT', () => {
     it('requires 5 responses and 2 low ratings', async () => {
       const { service, ticketRepo, csatRepo, saved } = build();
@@ -757,7 +878,7 @@ describe('OperationalIntelligenceService', () => {
     expect(overview.generatedAt).toBe('2026-08-14T12:00:00.000Z');
   });
 
-  it('lists attention tickets once with union reasons and excludes closed', async () => {
+  it('lists attention tickets once with union reasons', async () => {
     const { service, dataSource } = build();
     dataSource.query.mockImplementation(async (sql: string) => {
       if (sql.includes('COUNT(*)::int AS total')) {
@@ -774,6 +895,10 @@ describe('OperationalIntelligenceService', () => {
           created_at: '2026-08-01T00:00:00.000Z',
           sla_state: 'BREACHED',
           has_active_signal: true,
+          has_follow_up: false,
+          overall_rating: null,
+          agent_rating: null,
+          problem_solved: null,
         },
       ];
     });
@@ -791,6 +916,43 @@ describe('OperationalIntelligenceService', () => {
     expect(dataSource.query.mock.calls[0][0]).toContain(
       "'OPEN','IN_PROGRESS','WAITING_FOR_CUSTOMER','WAITING_FOR_HOST','ESCALATED'",
     );
-    expect(dataSource.query.mock.calls[1][0]).not.toContain("'CLOSED'");
+    expect(dataSource.query.mock.calls[1][0]).toContain('FOLLOW_UP_REQUIRED');
+  });
+
+  it('includes CLOSED tickets with an active follow-up signal and CSAT ratings', async () => {
+    const { service, dataSource } = build();
+    dataSource.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('COUNT(*)::int AS total')) {
+        return [{ total: 1 }];
+      }
+      return [
+        {
+          id: 'ticket-closed',
+          ticket_number: 'SUP-2026-000002',
+          subject: 'Payment',
+          status: 'CLOSED',
+          priority: 'NORMAL',
+          assigned_admin_id: 'agent-a',
+          created_at: '2026-08-01T00:00:00.000Z',
+          sla_state: 'ON_TRACK',
+          has_active_signal: true,
+          has_follow_up: true,
+          follow_up_signal_id: 'sig-1',
+          overall_rating: 2,
+          agent_rating: 4,
+          problem_solved: false,
+        },
+      ];
+    });
+    const page = await service.listAttention({ limit: 20, offset: 0 });
+    expect(page.items[0]).toEqual(
+      expect.objectContaining({
+        ticketId: 'ticket-closed',
+        attentionReasons: ['FOLLOW_UP_REQUIRED'],
+        overallRating: 2,
+        agentRating: 4,
+        problemSolved: false,
+      }),
+    );
   });
 });

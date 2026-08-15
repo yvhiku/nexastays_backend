@@ -455,6 +455,14 @@ export class UsersService {
     };
   }
 
+  async getPreferredLanguageForUser(
+    unifiedIdentityId: string | null | undefined,
+  ): Promise<string | null> {
+    if (!unifiedIdentityId) return null;
+    const identity = await this.unifiedIdentityService.findById(unifiedIdentityId);
+    return identity?.preferred_language ?? null;
+  }
+
   /**
    * Get CONSUMER account for an identity (for payouts, wallet operations).
    * Returns null if identity has no CONSUMER account.

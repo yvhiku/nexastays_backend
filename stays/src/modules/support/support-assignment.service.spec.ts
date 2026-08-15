@@ -1,5 +1,6 @@
 import { SupportAssignmentService } from './support-assignment.service';
 import { StaysSupportTicket } from './entities/stays-support-ticket.entity';
+import { StaysSupportAgentSkills } from './entities/stays-support-agent-skills.entity';
 import { SUPPORT_ROUTING_ADVISORY_LOCK } from './support-routing.config';
 
 describe('SupportAssignmentService', () => {
@@ -42,6 +43,8 @@ describe('SupportAssignmentService', () => {
       atRisk: number;
       breached: number;
     }[];
+    lastAssignedAt?: Map<string, number>;
+    skills?: { agent_user_id: string; languages: string[]; categories: string[] }[];
   }) {
     const stored = options?.ticket ?? ticketRow();
     const ticketQb = {
@@ -56,10 +59,14 @@ describe('SupportAssignmentService', () => {
         return { ...stored };
       }),
     };
+    const skillsRepo = {
+      find: jest.fn().mockResolvedValue(options?.skills ?? []),
+    };
     const manager = {
       query: jest.fn().mockResolvedValue([]),
       getRepository: jest.fn((entity: unknown) => {
         if (entity === StaysSupportTicket) return ticketRepo;
+        if (entity === StaysSupportAgentSkills) return skillsRepo;
         return ticketRepo;
       }),
     };
@@ -290,9 +297,13 @@ describe('SupportAssignmentService', () => {
         return { ...tickets[current] };
       }),
     };
+    const skillsRepo = { find: jest.fn().mockResolvedValue([]) };
     const manager = {
       query: jest.fn().mockResolvedValue([]),
-      getRepository: jest.fn(() => ticketRepo),
+      getRepository: jest.fn((entity: unknown) => {
+        if (entity === StaysSupportAgentSkills) return skillsRepo;
+        return ticketRepo;
+      }),
     };
     const dataSource = {
       transaction: jest.fn(async (fn: (m: typeof manager) => unknown) =>
@@ -332,5 +343,69 @@ describe('SupportAssignmentService', () => {
 
     expect(identityUsers.listActiveSupportAgents).not.toHaveBeenCalled();
     expect(ticketRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('prefers a category+language specialist over a lower-score generalist', async () => {
+    const { service, stored, staysAudit } = buildService({
+      ticket: ticketRow({ category: 'KYC', requester_language: 'fr' }),
+      skills: [
+        { agent_user_id: 'agent-a', languages: ['fr'], categories: ['KYC'] },
+      ],
+    });
+
+    await service.attemptAutoAssignment('ticket-1');
+
+    expect(stored.assigned_admin_id).toBe('agent-a');
+    expect(staysAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          source: 'AUTO',
+          reason: 'LOWEST_ROUTING_SCORE',
+          skillTier: 'CATEGORY_AND_LANGUAGE',
+          categoryMatch: true,
+          languageMatch: true,
+          language: 'fr',
+        }),
+      }),
+    );
+  });
+
+  it('skips a perfect skill match that is at capacity', async () => {
+    const { service, stored } = buildService({
+      ticket: ticketRow({ category: 'KYC', requester_language: 'fr' }),
+      skills: [
+        { agent_user_id: 'agent-a', languages: ['fr'], categories: ['KYC'] },
+        { agent_user_id: 'agent-b', languages: ['en'], categories: ['KYC'] },
+      ],
+      workloads: [
+        {
+          agentId: 'agent-a',
+          assigned: 20,
+          inProgress: 0,
+          waiting: 0,
+          atRisk: 0,
+          breached: 0,
+        },
+        {
+          agentId: 'agent-b',
+          assigned: 1,
+          inProgress: 0,
+          waiting: 0,
+          atRisk: 0,
+          breached: 0,
+        },
+        {
+          agentId: 'agent-c',
+          assigned: 1,
+          inProgress: 0,
+          waiting: 0,
+          atRisk: 0,
+          breached: 0,
+        },
+      ],
+    });
+
+    await service.attemptAutoAssignment('ticket-1');
+    expect(stored.assigned_admin_id).toBe('agent-b');
   });
 });

@@ -420,3 +420,24 @@ export class AdminListReportsQueryDto {
   @MaxLength(200)
   search?: string;
 }
+
+export const SUPPORT_REOPEN_REASONS = [
+  'CUSTOMER_UNRESOLVED',
+  'ADMIN_FOLLOW_UP',
+  'OTHER',
+] as const;
+
+export class ReopenSupportTicketDto {
+  @IsOptional()
+  @IsString()
+  @IsIn([...SUPPORT_REOPEN_REASONS])
+  reason?: (typeof SUPPORT_REOPEN_REASONS)[number];
+}
+
+export class PutSupportAgentSkillsDto {
+  @IsOptional()
+  languages?: string[];
+
+  @IsOptional()
+  categories?: string[];
+}

@@ -51,6 +51,10 @@ export class StaysSupportTicket {
   @Column({ type: 'varchar', length: 32 })
   category: SupportTicketCategory;
 
+  /** Immutable snapshot at create. ar | fr | en, or null if unknown/unsupported. */
+  @Column({ type: 'varchar', length: 10, name: 'requester_language', nullable: true })
+  requester_language: string | null;
+
   @Column({ type: 'text' })
   subject: string;
 
@@ -97,7 +101,7 @@ export class StaysSupportTicket {
   @Column({ type: 'timestamptz', name: 'first_admin_response_at', nullable: true })
   first_admin_response_at: Date | null;
 
-  /** Set once when entering CLOSED (never cleared). */
+  /** Set on CLOSED. Cleared on reopen so a later close is a real second close. */
   @Column({ type: 'timestamptz', name: 'closed_at', nullable: true })
   closed_at: Date | null;
 

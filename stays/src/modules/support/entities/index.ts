@@ -6,3 +6,5 @@ export * from './stays-support-ticket-note.entity';
 export * from './stays-support-ticket-csat.entity';
 export * from './stays-support-canned-reply.entity';
 export * from './stays-support-operational-signal.entity';
+export * from './stays-support-agent-skills.entity';
+export * from './stays-support-ticket-viewer.entity';

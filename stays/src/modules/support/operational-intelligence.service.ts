@@ -97,6 +97,8 @@ type DesiredSignal = {
   reportId?: string | null;
   safetyIssueId?: string | null;
   metadata: Record<string, unknown> & { code: SignalReasonCode };
+  /** When false, never mutate a historical RESOLVED row (FOLLOW_UP_REQUIRED). */
+  reactivateResolved?: boolean;
 };
 
 @Injectable()
@@ -183,6 +185,63 @@ export class OperationalIntelligenceService {
   async evaluateCsatForAdmin(assignedAdminId: string | null | undefined) {
     if (!assignedAdminId) return;
     await this.evaluateLowCsatPattern(assignedAdminId);
+  }
+
+  /**
+   * Upsert FOLLOW_UP_REQUIRED when CSAT says the problem was not solved.
+   * Race-safe via UNIQUE(dedupe_key); never reactivates a historical RESOLVED row.
+   */
+  async upsertFollowUpRequired(input: {
+    ticketId: string;
+    problemSolved: boolean;
+    overallRating: number;
+    agentRating: number | null;
+  }): Promise<void> {
+    if (input.problemSolved !== false) return;
+    await this.applyDesires(
+      [
+        {
+          type: 'FOLLOW_UP_REQUIRED',
+          severity: input.overallRating <= 3 ? 'HIGH' : 'MEDIUM',
+          subjectType: 'TICKET',
+          subjectId: input.ticketId,
+          ticketId: input.ticketId,
+          reactivateResolved: false,
+          metadata: {
+            code: 'CUSTOMER_REPORTED_UNRESOLVED',
+            problemSolved: false,
+            overallRating: input.overallRating,
+            agentRating: input.agentRating,
+          },
+        },
+      ],
+      [],
+    );
+  }
+
+  /** Resolve only the ACTIVE follow-up row. Historical RESOLVED rows stay untouched. */
+  async resolveActiveFollowUpRequired(
+    ticketId: string,
+    adminUserId: string | null,
+    resolution: 'REOPENED' | 'MARK_REVIEWED' = 'REOPENED',
+  ): Promise<void> {
+    const row = await this.signalRepo.findOne({
+      where: {
+        ticket_id: ticketId,
+        signal_type: 'FOLLOW_UP_REQUIRED',
+        status: 'ACTIVE',
+      },
+    });
+    if (!row) return;
+    const now = new Date();
+    row.status = 'RESOLVED';
+    row.resolved_at = now;
+    row.resolved_by_admin_id = adminUserId;
+    row.metadata = {
+      ...(row.metadata ?? {}),
+      resolution,
+    };
+    await this.signalRepo.save(row);
   }
 
   async evaluateRepeatReports(reportedUserId: string): Promise<void> {
@@ -445,6 +504,14 @@ export class OperationalIntelligenceService {
     }
     const row = await this.signalRepo.findOne({ where: { id: signalId } });
     if (!row) throw new NotFoundException('Signal not found');
+    if (
+      row.signal_type === 'FOLLOW_UP_REQUIRED' &&
+      nextStatus === 'ACKNOWLEDGED'
+    ) {
+      throw new BadRequestException(
+        'Follow-up signals must be resolved, not acknowledged',
+      );
+    }
     if (isSupportAgentActor(actor)) {
       if (!row.ticket_id) {
         throw new NotFoundException('Signal not found');
@@ -476,6 +543,12 @@ export class OperationalIntelligenceService {
     } else {
       row.resolved_at = now;
       row.resolved_by_admin_id = adminUserId;
+      if (row.signal_type === 'FOLLOW_UP_REQUIRED') {
+        row.metadata = {
+          ...(row.metadata ?? {}),
+          resolution: 'MARK_REVIEWED',
+        };
+      }
     }
     const saved = await this.signalRepo.save(row);
     await this.staysAudit.log({
@@ -743,13 +816,24 @@ export class OperationalIntelligenceService {
       SELECT 1 FROM stays_support_operational_signals s
       WHERE s.ticket_id = t.id AND s.status = 'ACTIVE'
     )`;
+    const followUpSql = `EXISTS (
+      SELECT 1 FROM stays_support_operational_signals s
+      WHERE s.ticket_id = t.id
+        AND s.status = 'ACTIVE'
+        AND s.signal_type = 'FOLLOW_UP_REQUIRED'
+    )`;
     const qualify = `
-      ${activeSql}
-      AND (
-        t.assigned_admin_id IS NULL
-        OR t.priority IN ('HIGH','URGENT')
-        OR ${sla.combined} IN ('AT_RISK','BREACHED')
-        OR ${hasSignalSql}
+      (
+        (
+          ${activeSql}
+          AND (
+            t.assigned_admin_id IS NULL
+            OR t.priority IN ('HIGH','URGENT')
+            OR ${sla.combined} IN ('AT_RISK','BREACHED')
+            OR ${hasSignalSql}
+          )
+        )
+        OR (t.status = 'CLOSED' AND ${followUpSql})
       )
     `;
     const [countRow] = await this.dataSource.query(
@@ -767,8 +851,20 @@ export class OperationalIntelligenceService {
         t.assigned_admin_id,
         t.created_at,
         ${sla.combined} AS sla_state,
-        ${hasSignalSql} AS has_active_signal
+        ${hasSignalSql} AS has_active_signal,
+        ${followUpSql} AS has_follow_up,
+        (
+          SELECT s.id FROM stays_support_operational_signals s
+          WHERE s.ticket_id = t.id
+            AND s.status = 'ACTIVE'
+            AND s.signal_type = 'FOLLOW_UP_REQUIRED'
+          LIMIT 1
+        ) AS follow_up_signal_id,
+        c.rating AS overall_rating,
+        c.agent_rating AS agent_rating,
+        c.problem_solved AS problem_solved
       FROM stays_support_tickets t
+      LEFT JOIN stays_support_ticket_csat c ON c.ticket_id = t.id
       WHERE ${qualify}
       ORDER BY
         CASE WHEN ${sla.combined} = 'BREACHED' THEN 0 ELSE 1 END,
@@ -794,6 +890,11 @@ export class OperationalIntelligenceService {
         created_at: Date | string;
         sla_state: string;
         has_active_signal: boolean | number | string;
+        has_follow_up: boolean | number | string;
+        follow_up_signal_id: string | null;
+        overall_rating: number | string | null;
+        agent_rating: number | string | null;
+        problem_solved: boolean | number | string | null;
       }[]
     ).map((row) => ({
       ticketId: row.id,
@@ -807,6 +908,16 @@ export class OperationalIntelligenceService {
           ? row.created_at.toISOString()
           : String(row.created_at),
       attentionReasons: attentionReasonsFor(row),
+      followUpSignalId: row.follow_up_signal_id
+        ? String(row.follow_up_signal_id)
+        : null,
+      overallRating: row.overall_rating == null ? null : Number(row.overall_rating),
+      agentRating: row.agent_rating == null ? null : Number(row.agent_rating),
+      problemSolved: truthyFlag(row.problem_solved)
+        ? true
+        : row.problem_solved == null
+          ? null
+          : false,
     }));
     return {
       items,
@@ -1202,6 +1313,9 @@ export class OperationalIntelligenceService {
         );
         continue;
       }
+      if (row.status === 'RESOLVED' && desire.reactivateResolved === false) {
+        continue;
+      }
       row.severity = desire.severity;
       row.metadata = desire.metadata;
       row.last_detected_at = now;
@@ -1331,24 +1445,29 @@ function daysAgo(days: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
+function truthyFlag(value: boolean | number | string | null | undefined): boolean {
+  return (
+    value === true || value === 1 || value === 't' || value === 'true'
+  );
+}
+
 function attentionReasonsFor(row: {
   sla_state: string;
   priority: string;
   assigned_admin_id: string | null;
   has_active_signal: boolean | number | string;
+  has_follow_up?: boolean | number | string;
 }): string[] {
   const reasons: string[] = [];
+  if (truthyFlag(row.has_follow_up)) reasons.push('FOLLOW_UP_REQUIRED');
   if (row.sla_state === 'BREACHED') reasons.push('SLA_BREACHED');
   if (row.sla_state === 'AT_RISK') reasons.push('SLA_AT_RISK');
   if (row.priority === 'URGENT') reasons.push('URGENT');
   else if (row.priority === 'HIGH') reasons.push('HIGH_PRIORITY');
   if (!row.assigned_admin_id) reasons.push('UNASSIGNED');
-  const hasSignal =
-    row.has_active_signal === true ||
-    row.has_active_signal === 1 ||
-    row.has_active_signal === 't' ||
-    row.has_active_signal === 'true';
-  if (hasSignal) reasons.push('ACTIVE_SIGNAL');
+  if (truthyFlag(row.has_active_signal) && !truthyFlag(row.has_follow_up)) {
+    reasons.push('ACTIVE_SIGNAL');
+  }
   return reasons;
 }
 

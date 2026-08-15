@@ -8,6 +8,7 @@ import type {
  * Documented for Phase 1.1 — do not drift without an explicit product change.
  *
  * WAITING_FOR_HOST advances only when the ticket party is HOST.
+ * WAITING_FOR_CUSTOMER → IN_PROGRESS (customer reply reactivates work).
  * RESOLVED → OPEN (first resolved_at is preserved by the caller — Phase 3).
  * CLOSED is rejected before this runs (409).
  */
@@ -17,8 +18,9 @@ export function nextStatusAfterCustomerMessage(input: {
 }): SupportTicketStatus {
   switch (input.status) {
     case 'RESOLVED':
-    case 'WAITING_FOR_CUSTOMER':
       return 'OPEN';
+    case 'WAITING_FOR_CUSTOMER':
+      return 'IN_PROGRESS';
     case 'WAITING_FOR_HOST':
       return input.party === 'HOST' ? 'OPEN' : 'WAITING_FOR_HOST';
     case 'OPEN':
@@ -33,3 +35,8 @@ export function nextStatusAfterCustomerMessage(input: {
 
 export const CLOSED_SUPPORT_TICKET_MESSAGE =
   'This support ticket is closed.';
+
+export const TICKET_MUST_BE_REOPENED_MESSAGE =
+  'Ticket must be reopened using the reopen action';
+
+export const TICKET_IS_NOT_CLOSED_MESSAGE = 'Ticket is not closed';

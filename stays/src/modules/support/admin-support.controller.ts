@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupportTicketsService } from './support-tickets.service';
 import { SupportCannedRepliesService } from './support-canned-replies.service';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
+import { SupportAgentSkillsService } from './support-agent-skills.service';
 import { staffActorFromUser } from './support-staff-access';
 import {
   AdminListTicketsQueryDto,
@@ -33,6 +35,8 @@ import {
   PatchCannedReplyDto,
   PatchSupportTicketDto,
   PatchTrustReportDto,
+  PutSupportAgentSkillsDto,
+  ReopenSupportTicketDto,
   SendSupportTicketMessageDto,
   TRUST_REPORT_KINDS,
 } from './dto/support-ticket.dto';
@@ -69,6 +73,7 @@ export class AdminSupportController {
     private readonly supportTickets: SupportTicketsService,
     private readonly cannedReplies: SupportCannedRepliesService,
     private readonly ops: OperationalIntelligenceService,
+    private readonly agentSkills: SupportAgentSkillsService,
   ) {}
 
   @Get('support/analytics')
@@ -89,6 +94,19 @@ export class AdminSupportController {
   @Get('support/agents/workload')
   agentWorkload() {
     return this.ops.listAgentWorkload();
+  }
+
+  @Get('support/agents/:id/skills')
+  getAgentSkills(@Param('id') id: string) {
+    return this.agentSkills.getForAgent(id);
+  }
+
+  @Put('support/agents/:id/skills')
+  putAgentSkills(
+    @Param('id') id: string,
+    @Body() body: PutSupportAgentSkillsDto,
+  ) {
+    return this.agentSkills.putForAgent(id, body);
   }
 
   @Get('support/signals')
@@ -204,6 +222,33 @@ export class AdminSupportController {
   ) {
     const actor = staffActorFromUser(user);
     return this.supportTickets.patchForAdmin(id, body, user.userId, actor);
+  }
+
+  @Post('support/tickets/:id/reopen')
+  reopenTicket(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ReopenSupportTicketDto,
+  ) {
+    return this.supportTickets.reopenForAdmin(
+      id,
+      user.userId,
+      body.reason ?? 'CUSTOMER_UNRESOLVED',
+      staffActorFromUser(user),
+    );
+  }
+
+  @Put('support/tickets/:id/presence')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
+  heartbeatPresence(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.supportTickets.heartbeatPresence(
+      id,
+      user.userId,
+      staffActorFromUser(user),
+    );
   }
 
   @Get('support/tickets/:id/messages')

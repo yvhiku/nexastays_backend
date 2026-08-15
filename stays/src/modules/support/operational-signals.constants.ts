@@ -6,6 +6,7 @@ export const OPERATIONAL_SIGNAL_TYPES = [
   'SLA_BREACHED',
   'UNASSIGNED_HIGH_PRIORITY',
   'LOW_CSAT_PATTERN',
+  'FOLLOW_UP_REQUIRED',
 ] as const;
 
 export type OperationalSignalType = (typeof OPERATIONAL_SIGNAL_TYPES)[number];
@@ -76,7 +77,8 @@ export type SignalReasonCode =
   | 'FIRST_RESPONSE_BREACHED'
   | 'FIRST_RESOLUTION_BREACHED'
   | 'UNASSIGNED_HIGH_PRIORITY'
-  | 'LOW_CSAT_PATTERN';
+  | 'LOW_CSAT_PATTERN'
+  | 'CUSTOMER_REPORTED_UNRESOLVED';
 
 export function explanationForReason(
   code: SignalReasonCode,
@@ -105,6 +107,8 @@ export function explanationForReason(
       return 'High-priority ticket is unassigned.';
     case 'LOW_CSAT_PATTERN':
       return `${count} low CSAT ratings (≤2) within ${windowDays} days.`;
+    case 'CUSTOMER_REPORTED_UNRESOLVED':
+      return 'Customer says issue was not solved.';
     default:
       return 'Operational signal.';
   }

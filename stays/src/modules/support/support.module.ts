@@ -9,6 +9,8 @@ import {
   StaysSupportTicketCsat,
   StaysSupportCannedReply,
   StaysSupportOperationalSignal,
+  StaysSupportAgentSkills,
+  StaysSupportTicketViewer,
 } from './entities';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
 import { StaysMessage } from '../messaging/entities/stays-message.entity';
@@ -25,6 +27,7 @@ import { SupportTicketsController } from './support-tickets.controller';
 import { AdminSupportController } from './admin-support.controller';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
 import { SupportAssignmentService } from './support-assignment.service';
+import { SupportAgentSkillsService } from './support-agent-skills.service';
 
 @Module({
   imports: [
@@ -39,6 +42,8 @@ import { SupportAssignmentService } from './support-assignment.service';
       StaysSupportTicketCsat,
       StaysSupportCannedReply,
       StaysSupportOperationalSignal,
+      StaysSupportAgentSkills,
+      StaysSupportTicketViewer,
       StaysConversation,
       StaysMessage,
       StaysMessageAttachment,
@@ -54,12 +59,14 @@ import { SupportAssignmentService } from './support-assignment.service';
     SupportCannedRepliesService,
     OperationalIntelligenceService,
     SupportAssignmentService,
+    SupportAgentSkillsService,
   ],
   exports: [
     SupportTicketsService,
     SupportCannedRepliesService,
     OperationalIntelligenceService,
     SupportAssignmentService,
+    SupportAgentSkillsService,
   ],
 })
 export class SupportModule {}

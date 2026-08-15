@@ -91,6 +91,7 @@ export class InternalUsersController {
     email: string | null;
     phone: string | null;
     verified: boolean;
+    preferredLanguage: string | null;
   }> {
     const user = await this.usersService.findById(userId);
     if (!user) {
@@ -101,6 +102,9 @@ export class InternalUsersController {
       email: user.email?.trim() || null,
       phone: user.phone_number?.trim() || null,
       verified: user.kyc_status === 'VERIFIED',
+      preferredLanguage: await this.usersService.getPreferredLanguageForUser(
+        user.unified_identity_id,
+      ),
     };
   }
 }

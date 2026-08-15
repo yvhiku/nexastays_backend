@@ -11,6 +11,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, QueryFailedError, Repository } from 'typeorm';
 import {
   CLOSED_SUPPORT_TICKET_MESSAGE,
+  TICKET_IS_NOT_CLOSED_MESSAGE,
+  TICKET_MUST_BE_REOPENED_MESSAGE,
   nextStatusAfterCustomerMessage,
 } from './support-ticket-state';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
@@ -45,6 +47,7 @@ import { StaysSafetyIssue } from './entities/stays-safety-issue.entity';
 import { StaysSupportTicketRefCounter } from './entities/stays-support-ticket-ref-counter.entity';
 import { StaysSupportTicketNote } from './entities/stays-support-ticket-note.entity';
 import { StaysSupportTicketCsat } from './entities/stays-support-ticket-csat.entity';
+import { canonicalizeRequesterLanguage } from './support-language';
 import { StaysAuditLog } from '../stays/entities/stays-audit-log.entity';
 import {
   AdminListTicketsQueryDto,
@@ -72,6 +75,8 @@ const OPEN_TICKET_STATUSES: SupportTicketStatus[] = [
   'WAITING_FOR_HOST',
   'ESCALATED',
 ];
+
+const SUPPORT_PRESENCE_TTL_MS = 60_000;
 
 function parseCsatRating(raw: unknown, label: string): number {
   const n = Math.round(Number(raw) * 2) / 2;
@@ -513,6 +518,9 @@ export class SupportTicketsService {
     const identity = await this.identityUsers.getProfileSummary(userId);
     const customerName = options.customerName?.trim() || identity?.fullName || null;
     const requesterEmail = identity?.email || null;
+    const requesterLanguage = canonicalizeRequesterLanguage(
+      identity?.preferredLanguage,
+    );
 
     const insertTicket = async (manager: EntityManager) => {
       const ticketNumber = await this.allocateTicketNumber(manager);
@@ -547,6 +555,7 @@ export class SupportTicketsService {
         last_message_preview: preview,
         customer_name: customerName,
         requester_email: requesterEmail,
+        requester_language: requesterLanguage,
         resolved_at: null,
         first_admin_response_at: null,
         closed_at: null,
@@ -954,12 +963,13 @@ export class SupportTicketsService {
     }
 
     await this.ops.safeEvaluate(() => this.ops.evaluateTicket(ticket.id));
-    const [csat, signals, relatedTickets] = await Promise.all([
+    const [csat, signals, relatedTickets, viewers] = await Promise.all([
       this.loadCsatForTicket(ticket.id),
       this.ops
         .listSignalsForTicket(ticket.id, false, actor)
         .catch(() => ({ items: [] })),
       this.ops.findRelatedTickets(ticket.id, actor).catch(() => []),
+      this.listActiveViewers(ticket.id).catch(() => []),
     ]);
 
     return {
@@ -981,6 +991,7 @@ export class SupportTicketsService {
       csat,
       signals: signals.items,
       related_tickets: relatedTickets,
+      viewers,
     };
   }
 
@@ -1034,6 +1045,13 @@ export class SupportTicketsService {
 
       if (patch.assigned_admin_id !== undefined) {
         locked.assigned_admin_id = patch.assigned_admin_id ?? null;
+      }
+      if (
+        locked.status === 'CLOSED' &&
+        patch.status !== undefined &&
+        patch.status !== 'CLOSED'
+      ) {
+        throw new ConflictException(TICKET_MUST_BE_REOPENED_MESSAGE);
       }
       if (patch.status !== undefined) {
         locked.status = patch.status as SupportTicketStatus;
@@ -1129,6 +1147,127 @@ export class SupportTicketsService {
 
     await this.ops.safeEvaluate(() => this.ops.evaluateTicket(saved.id));
     return this.toListRow(saved);
+  }
+
+  async reopenForAdmin(
+    ticketId: string,
+    actorUserId: string,
+    reason: string = 'CUSTOMER_UNRESOLVED',
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
+    if (isSupportAgentActor(actor)) {
+      throw new ForbiddenException('Support agents cannot reopen tickets');
+    }
+    const committed = await this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(StaysSupportTicket);
+      const locked = await repo
+        .createQueryBuilder('t')
+        .setLock('pessimistic_write')
+        .where('t.id = :id', { id: ticketId })
+        .getOne();
+      if (!locked) throw new NotFoundException('Ticket not found');
+      if (locked.status !== 'CLOSED') {
+        throw new ConflictException(TICKET_IS_NOT_CLOSED_MESSAGE);
+      }
+      const previousStatus = locked.status;
+      const previousAgentId = locked.assigned_admin_id;
+      locked.status = locked.assigned_admin_id ? 'IN_PROGRESS' : 'OPEN';
+      locked.closed_at = null;
+      locked.updated_at = new Date();
+      const saved = await repo.save(locked);
+
+      if (locked.conversation_id) {
+        const convRepo = manager.getRepository(StaysConversation);
+        const conv = await convRepo.findOne({
+          where: { id: locked.conversation_id },
+        });
+        if (conv) {
+          conv.messaging_state = 'ACTIVE';
+          conv.archived_at = null;
+          conv.read_only_at = null;
+          conv.archive_reason = null;
+          conv.conversation_version = (conv.conversation_version ?? 0) + 1;
+          await convRepo.save(conv);
+        }
+      }
+
+      return { saved, previousStatus, previousAgentId };
+    });
+
+    const { saved, previousStatus, previousAgentId } = committed;
+    await this.ops.resolveActiveFollowUpRequired(
+      saved.id,
+      actorUserId,
+      'REOPENED',
+    );
+    await this.staysAudit.log({
+      actorUserId,
+      actorRole: 'ADMIN',
+      entityType: 'support_ticket',
+      entityId: saved.id,
+      action: 'support_ticket_reopened',
+      metadata: {
+        reason,
+        previousStatus,
+        previousAgentId,
+        reopenedBy: 'ADMIN',
+      },
+    });
+    if (saved.requester_user_id && saved.conversation_id) {
+      this.realtime.publish(saved.requester_user_id, {
+        conversationId: saved.conversation_id,
+        reason: 'MESSAGE_READ',
+      });
+    }
+    await this.ops.safeEvaluate(() => this.ops.evaluateTicket(saved.id));
+    return this.toListRow(saved);
+  }
+
+  async heartbeatPresence(
+    ticketId: string,
+    viewerId: string,
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
+    await this.requireAccessibleTicket(ticketId, actor);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + SUPPORT_PRESENCE_TTL_MS);
+    await this.dataSource.query(
+      `
+      INSERT INTO stays_support_ticket_viewers (ticket_id, viewer_id, last_seen_at, expires_at)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (ticket_id, viewer_id)
+      DO UPDATE SET last_seen_at = EXCLUDED.last_seen_at, expires_at = EXCLUDED.expires_at
+      `,
+      [ticketId, viewerId, now.toISOString(), expiresAt.toISOString()],
+    );
+    return { ok: true as const, viewers: await this.listActiveViewers(ticketId) };
+  }
+
+  async listActiveViewers(ticketId: string) {
+    const rows = (await this.dataSource.query(
+      `
+      SELECT viewer_id, last_seen_at, expires_at
+      FROM stays_support_ticket_viewers
+      WHERE ticket_id = $1 AND expires_at > now()
+      ORDER BY last_seen_at DESC
+      `,
+      [ticketId],
+    )) as {
+      viewer_id: string;
+      last_seen_at: Date | string;
+      expires_at: Date | string;
+    }[];
+    return rows.map((row) => ({
+      viewerId: row.viewer_id,
+      lastSeenAt:
+        row.last_seen_at instanceof Date
+          ? row.last_seen_at.toISOString()
+          : String(row.last_seen_at),
+      expiresAt:
+        row.expires_at instanceof Date
+          ? row.expires_at.toISOString()
+          : String(row.expires_at),
+    }));
   }
 
   async listMessagesForAdmin(
@@ -1769,9 +1908,15 @@ export class SupportTicketsService {
           problem_solved: input.problemSolved,
         }),
       );
-      await this.ops.safeEvaluate(() =>
-        this.ops.evaluateCsatForAdmin(snapshotAgentId),
-      );
+      await this.ops.safeEvaluate(async () => {
+        await this.ops.evaluateCsatForAdmin(snapshotAgentId);
+        await this.ops.upsertFollowUpRequired({
+          ticketId,
+          problemSolved: input.problemSolved,
+          overallRating: rating,
+          agentRating,
+        });
+      });
       return {
         submitted: true as const,
         alreadyReviewed: true as const,

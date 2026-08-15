@@ -3,6 +3,7 @@ import {
   emptyWorkload,
   isSupportAutoAssignEnabled,
   maxActiveTicketsPerAgent,
+  pickSkillTier,
   selectBestAgent,
   SUPPORT_MAX_ACTIVE_TICKETS_PER_AGENT_DEFAULT,
   type RoutingAgentWorkload,
@@ -166,5 +167,73 @@ describe('support routing score + selectBestAgent', () => {
         maxActive: 20,
       }),
     ).toBe('agent-a');
+  });
+});
+
+describe('pickSkillTier', () => {
+  const skills = new Map([
+    ['cat-lang', { languages: ['fr'], categories: ['KYC'] }],
+    ['cat-only', { languages: ['en'], categories: ['KYC'] }],
+    ['lang-only', { languages: ['fr'], categories: ['PAYMENT'] }],
+    ['general', { languages: [] as string[], categories: [] as string[] }],
+  ]);
+
+  it('selects category + language when available', () => {
+    expect(
+      pickSkillTier({
+        agentIds: ['cat-lang', 'cat-only', 'lang-only', 'general'],
+        skills,
+        category: 'KYC',
+        language: 'fr',
+      }),
+    ).toEqual({
+      agentIds: ['cat-lang'],
+      skillTier: 'CATEGORY_AND_LANGUAGE',
+      categoryMatch: true,
+      languageMatch: true,
+    });
+  });
+
+  it('falls back to category, then language, then general', () => {
+    expect(
+      pickSkillTier({
+        agentIds: ['cat-only', 'lang-only', 'general'],
+        skills,
+        category: 'KYC',
+        language: 'fr',
+      }).skillTier,
+    ).toBe('CATEGORY');
+    expect(
+      pickSkillTier({
+        agentIds: ['lang-only', 'general'],
+        skills,
+        category: 'KYC',
+        language: 'fr',
+      }).skillTier,
+    ).toBe('LANGUAGE');
+    expect(
+      pickSkillTier({
+        agentIds: ['general'],
+        skills,
+        category: 'KYC',
+        language: 'fr',
+      }),
+    ).toEqual({
+      agentIds: ['general'],
+      skillTier: 'GENERAL',
+      categoryMatch: false,
+      languageMatch: false,
+    });
+  });
+
+  it('does not treat empty arrays as wildcards', () => {
+    const picked = pickSkillTier({
+      agentIds: ['general', 'cat-only'],
+      skills,
+      category: 'KYC',
+      language: 'fr',
+    });
+    expect(picked.agentIds).toEqual(['cat-only']);
+    expect(picked.skillTier).toBe('CATEGORY');
   });
 });
