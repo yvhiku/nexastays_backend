@@ -11,6 +11,8 @@ import {
   StaysSupportOperationalSignal,
   StaysSupportAgentSkills,
   StaysSupportTicketViewer,
+  StaysSupportAgentPerformanceSnapshot,
+  StaysSupportAgentCoachingNote,
 } from './entities';
 import { StaysConversation } from '../messaging/entities/stays-conversation.entity';
 import { StaysMessage } from '../messaging/entities/stays-message.entity';
@@ -29,6 +31,11 @@ import { OperationalIntelligenceService } from './operational-intelligence.servi
 import { SupportAssignmentService } from './support-assignment.service';
 import { SupportAgentSkillsService } from './support-agent-skills.service';
 import { SupportAgentMetricsService } from './support-agent-metrics.service';
+import { SupportPerformanceService } from './support-performance.service';
+import { SupportQualitySignalsService } from './support-quality-signals.service';
+import { SupportPerformanceSnapshotService } from './support-performance-snapshot.service';
+import { SupportPerformanceScheduler } from './support-performance.scheduler';
+import { SupportCoachingNotesService } from './support-coaching-notes.service';
 
 @Module({
   imports: [
@@ -45,6 +52,8 @@ import { SupportAgentMetricsService } from './support-agent-metrics.service';
       StaysSupportOperationalSignal,
       StaysSupportAgentSkills,
       StaysSupportTicketViewer,
+      StaysSupportAgentPerformanceSnapshot,
+      StaysSupportAgentCoachingNote,
       StaysConversation,
       StaysMessage,
       StaysMessageAttachment,
@@ -62,6 +71,11 @@ import { SupportAgentMetricsService } from './support-agent-metrics.service';
     SupportAssignmentService,
     SupportAgentSkillsService,
     SupportAgentMetricsService,
+    SupportPerformanceService,
+    SupportQualitySignalsService,
+    SupportPerformanceSnapshotService,
+    SupportPerformanceScheduler,
+    SupportCoachingNotesService,
   ],
   exports: [
     SupportTicketsService,
@@ -70,6 +84,8 @@ import { SupportAgentMetricsService } from './support-agent-metrics.service';
     SupportAssignmentService,
     SupportAgentSkillsService,
     SupportAgentMetricsService,
+    SupportPerformanceService,
+    SupportQualitySignalsService,
   ],
 })
 export class SupportModule {}

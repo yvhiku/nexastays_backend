@@ -30,6 +30,7 @@ import { StaysAuditService } from '../stays/services/stays-audit.service';
 import { IdentityUserClient } from '../../common/identity/identity-user.client';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
 import { SupportAssignmentService } from './support-assignment.service';
+import { SupportQualitySignalsService } from './support-quality-signals.service';
 import {
   computeSupportSla,
   suggestRouting,
@@ -149,6 +150,7 @@ export class SupportTicketsService {
     private readonly ops: OperationalIntelligenceService,
     private readonly assignment: SupportAssignmentService,
     private readonly outbox: MessagingOutboxService,
+    private readonly quality: SupportQualitySignalsService,
   ) {}
 
   async createReport(
@@ -965,6 +967,9 @@ export class SupportTicketsService {
     }
 
     await this.ops.safeEvaluate(() => this.ops.evaluateTicket(ticket.id));
+    await this.ops.safeEvaluate(() =>
+      this.quality.evaluateAfterLifecycle({ ticketId: ticket.id }),
+    );
     const [csat, signals, relatedTickets, viewers] = await Promise.all([
       this.loadCsatForTicket(ticket.id),
       this.ops
@@ -1175,6 +1180,14 @@ export class SupportTicketsService {
     }
 
     await this.ops.safeEvaluate(() => this.ops.evaluateTicket(saved.id));
+    if (patch.status === 'CLOSED' || saved.status === 'CLOSED') {
+      await this.ops.safeEvaluate(() =>
+        this.quality.evaluateAfterLifecycle({
+          reviewAgentId: saved.review_agent_id,
+          ticketId: saved.id,
+        }),
+      );
+    }
     return this.toListRow(saved);
   }
 
@@ -1249,6 +1262,12 @@ export class SupportTicketsService {
       });
     }
     await this.ops.safeEvaluate(() => this.ops.evaluateTicket(saved.id));
+    await this.ops.safeEvaluate(() =>
+      this.quality.evaluateAfterLifecycle({
+        reviewAgentId: saved.review_agent_id,
+        ticketId: saved.id,
+      }),
+    );
     return this.toListRow(saved);
   }
 
@@ -1529,6 +1548,9 @@ export class SupportTicketsService {
     });
 
     await this.ops.safeEvaluate(() => this.ops.evaluateTicket(ticketId));
+    await this.ops.safeEvaluate(() =>
+      this.quality.evaluateAfterLifecycle({ ticketId }),
+    );
 
     return {
       id: saved.message.id,
@@ -2023,6 +2045,7 @@ export class SupportTicketsService {
           overallRating: rating,
           agentRating,
         });
+        await this.quality.evaluateAfterCsat(snapshotAgentId, ticket.category);
       });
       return {
         submitted: true as const,

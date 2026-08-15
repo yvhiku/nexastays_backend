@@ -7,6 +7,10 @@ export const OPERATIONAL_SIGNAL_TYPES = [
   'UNASSIGNED_HIGH_PRIORITY',
   'LOW_CSAT_PATTERN',
   'FOLLOW_UP_REQUIRED',
+  'AGENT_LOW_CSAT_PATTERN',
+  'AGENT_LOW_SOLVED_RATE',
+  'AGENT_SLA_DECLINE',
+  'CATEGORY_OUTCOME_DECLINE',
 ] as const;
 
 export type OperationalSignalType = (typeof OPERATIONAL_SIGNAL_TYPES)[number];
@@ -37,6 +41,7 @@ export const OPERATIONAL_SIGNAL_SUBJECT_TYPES = [
   'ADMIN',
   'REPORT',
   'SAFETY_ISSUE',
+  'CATEGORY',
 ] as const;
 
 export type OperationalSignalSubjectType =
@@ -78,7 +83,11 @@ export type SignalReasonCode =
   | 'FIRST_RESOLUTION_BREACHED'
   | 'UNASSIGNED_HIGH_PRIORITY'
   | 'LOW_CSAT_PATTERN'
-  | 'CUSTOMER_REPORTED_UNRESOLVED';
+  | 'CUSTOMER_REPORTED_UNRESOLVED'
+  | 'AGENT_LOW_CSAT_PATTERN'
+  | 'AGENT_LOW_SOLVED_RATE'
+  | 'AGENT_SLA_DECLINE'
+  | 'CATEGORY_OUTCOME_DECLINE';
 
 export function explanationForReason(
   code: SignalReasonCode,
@@ -109,6 +118,14 @@ export function explanationForReason(
       return `${count} low CSAT ratings (≤2) within ${windowDays} days.`;
     case 'CUSTOMER_REPORTED_UNRESOLVED':
       return 'Customer says issue was not solved.';
+    case 'AGENT_LOW_CSAT_PATTERN':
+      return `Average agent rating ${metadata.averageAgentRating ?? '—'} across ${count} reviews.`;
+    case 'AGENT_LOW_SOLVED_RATE':
+      return `Problem-solved rate ${metadata.problemSolvedRate ?? '—'} across ${count} reviews.`;
+    case 'AGENT_SLA_DECLINE':
+      return `First-response SLA declined to ${metadata.recentSla ?? '—'} from ${metadata.baselineSla ?? '—'}.`;
+    case 'CATEGORY_OUTCOME_DECLINE':
+      return `Solved rate for ${metadata.category ?? 'category'} declined to ${metadata.solvedRate ?? '—'} from ${metadata.previousSolvedRate ?? '—'}.`;
     default:
       return 'Operational signal.';
   }

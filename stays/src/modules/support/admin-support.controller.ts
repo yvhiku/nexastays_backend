@@ -22,6 +22,8 @@ import { SupportCannedRepliesService } from './support-canned-replies.service';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
 import { SupportAgentSkillsService } from './support-agent-skills.service';
 import { SupportAgentMetricsService } from './support-agent-metrics.service';
+import { SupportPerformanceService } from './support-performance.service';
+import { SupportCoachingNotesService } from './support-coaching-notes.service';
 import { staffActorFromUser } from './support-staff-access';
 import {
   AdminListTicketsQueryDto,
@@ -43,7 +45,7 @@ import {
   SendSupportTicketMessageDto,
   TRUST_REPORT_KINDS,
 } from './dto/support-ticket.dto';
-import { AdminSupportAnalyticsQueryDto, AdminSupportAttentionQueryDto } from './dto/support-analytics.dto';
+import { AdminSupportAnalyticsQueryDto, AdminSupportAttentionQueryDto, AdminSupportPerformanceQueryDto, CreateCoachingNoteDto, PatchCoachingNoteDto } from './dto/support-analytics.dto';
 import {
   AdminListSignalsQueryDto,
   PatchOperationalSignalDto,
@@ -78,6 +80,8 @@ export class AdminSupportController {
     private readonly ops: OperationalIntelligenceService,
     private readonly agentSkills: SupportAgentSkillsService,
     private readonly agentMetrics: SupportAgentMetricsService,
+    private readonly performance: SupportPerformanceService,
+    private readonly coaching: SupportCoachingNotesService,
   ) {}
 
   @Get('support/analytics')
@@ -93,6 +97,32 @@ export class AdminSupportController {
   @Get('support/operations/attention')
   operationsAttention(@Query() query: AdminSupportAttentionQueryDto) {
     return this.ops.listAttention(query);
+  }
+
+  @Get('support/operations/performance')
+  async operationsPerformance(@Query() query: AdminSupportPerformanceQueryDto) {
+    const window = this.performance.parseWindow(query);
+    const [agents, categories, languages, canned, signals] = await Promise.all([
+      this.performance.listAgentPerformance(window),
+      this.performance.categoryBreakdown(window),
+      this.performance.languageBreakdown(window),
+      this.performance.cannedEffectiveness(window),
+      this.ops.listActivePatternSignals(),
+    ]);
+    const categoryFilter = query.category;
+    const languageFilter = query.language;
+    return {
+      ...this.performance.freshnessLive(window),
+      agents,
+      categories: categoryFilter
+        ? categories.filter((row) => row.category === categoryFilter)
+        : categories,
+      languages: languageFilter
+        ? languages.filter((row) => row.language === languageFilter)
+        : languages,
+      cannedReplies: canned,
+      signals,
+    };
   }
 
   @Get('support/agents/workload')
@@ -112,6 +142,68 @@ export class AdminSupportController {
     @Query() query: AdminSupportAnalyticsQueryDto,
   ) {
     return this.agentMetrics.forAgent(user.userId, query);
+  }
+
+  @Get('support/me/performance')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
+  async myPerformance(
+    @CurrentUser() user: { userId: string },
+    @Query() query: AdminSupportPerformanceQueryDto,
+  ) {
+    const window = this.performance.parseWindow(query);
+    const metrics = await this.performance.forAgent(user.userId, window);
+    return {
+      ...this.performance.freshnessLive(window),
+      agentId: user.userId,
+      metrics,
+    };
+  }
+
+  @Get('support/agents/:id/performance')
+  async agentPerformance(
+    @Param('id') id: string,
+    @Query() query: AdminSupportPerformanceQueryDto,
+  ) {
+    const window = this.performance.parseWindow(query);
+    const [metrics, trend, categories, feedback, signals] = await Promise.all([
+      this.performance.forAgent(id, window),
+      this.performance.agentTrend(id, window),
+      this.performance.categoryBreakdown(window, id),
+      this.performance.recentFeedback(id, window),
+      this.ops.listActivePatternSignals(id),
+    ]);
+    return {
+      ...this.performance.freshnessLive(window),
+      agentId: id,
+      metrics,
+      trend,
+      categories,
+      feedback,
+      signals,
+    };
+  }
+
+  @Get('support/agents/:id/coaching-notes')
+  listCoachingNotes(@Param('id') id: string) {
+    return this.coaching.listForAgent(id);
+  }
+
+  @Post('support/agents/:id/coaching-notes')
+  createCoachingNote(
+    @CurrentUser() user: { userId: string },
+    @Param('id') id: string,
+    @Body() body: CreateCoachingNoteDto,
+  ) {
+    return this.coaching.create(id, user.userId, body);
+  }
+
+  @Patch('support/coaching-notes/:noteId')
+  patchCoachingNote(
+    @CurrentUser() user: { userId: string },
+    @Param('noteId', ParseUUIDPipe) noteId: string,
+    @Body() body: PatchCoachingNoteDto,
+  ) {
+    return this.coaching.patch(noteId, user.userId, body);
   }
 
   @Get('support/agents/:id/skills')

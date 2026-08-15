@@ -11,8 +11,13 @@ describe('AdminSupportController roles', () => {
       'operationsAttention',
       'agentWorkload',
       'listAgentMetrics',
+      'operationsPerformance',
+      'agentPerformance',
       'supportAnalytics',
       'listSignals',
+      'listCoachingNotes',
+      'createCoachingNote',
+      'patchCoachingNote',
     ] as const) {
       expect(
         Reflect.getMetadata(
@@ -40,6 +45,7 @@ describe('AdminSupportController roles', () => {
       'listCannedReplies',
       'renderCannedReply',
       'myMetrics',
+      'myPerformance',
     ] as const) {
       expect(
         Reflect.getMetadata(

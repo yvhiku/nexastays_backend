@@ -121,6 +121,10 @@ describe('SupportTicketsService', () => {
     };
     const realtime = { publish: jest.fn() };
     const outbox = { enqueueDirect: jest.fn().mockResolvedValue(undefined) };
+    const quality = {
+      evaluateAfterCsat: jest.fn().mockResolvedValue(undefined),
+      evaluateAfterLifecycle: jest.fn().mockResolvedValue(undefined),
+    };
     const media = {
       resolveAttachment: jest.fn().mockReturnValue({ url: 'https://signed/img' }),
     };
@@ -274,6 +278,7 @@ describe('SupportTicketsService', () => {
       ops as never,
       assignment as never,
       outbox as never,
+      quality as never,
     );
 
     return {

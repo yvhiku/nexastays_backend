@@ -88,7 +88,7 @@ const RELATIONSHIP_RANK: Record<RelatedTicketRelationship, number> = {
   SAME_REQUESTER: 5,
 };
 
-type DesiredSignal = {
+export type DesiredSignal = {
   type: OperationalSignalType;
   severity: OperationalSignalSeverity;
   subjectType: OperationalSignalSubjectType;
@@ -469,6 +469,36 @@ export class OperationalIntelligenceService {
       order: { last_detected_at: 'DESC' },
     });
     return { items: rows.map((row) => this.toSignalPayload(row)) };
+  }
+
+  async listActivePatternSignals(agentId?: string) {
+    const types = [
+      'AGENT_LOW_CSAT_PATTERN',
+      'AGENT_LOW_SOLVED_RATE',
+      'AGENT_SLA_DECLINE',
+      'CATEGORY_OUTCOME_DECLINE',
+    ] as const;
+    const rows = await this.signalRepo.find({
+      where: agentId
+        ? [
+            {
+              status: In(['ACTIVE', 'ACKNOWLEDGED']),
+              signal_type: In([
+                'AGENT_LOW_CSAT_PATTERN',
+                'AGENT_LOW_SOLVED_RATE',
+                'AGENT_SLA_DECLINE',
+              ]),
+              subject_type: 'ADMIN',
+              subject_id: agentId,
+            },
+          ]
+        : {
+            status: In(['ACTIVE', 'ACKNOWLEDGED']),
+            signal_type: In([...types]),
+          },
+      order: { last_detected_at: 'DESC' },
+    });
+    return rows.map((row) => this.toSignalPayload(row));
   }
 
   async activeTypesByTicketIds(ticketIds: string[]) {
@@ -1277,6 +1307,14 @@ export class OperationalIntelligenceService {
     return null;
   }
 
+  async applyPatternDesires(
+    upserts: DesiredSignal[],
+    resolveKeys: string[],
+    resolveMetadata: Record<string, Record<string, unknown>> = {},
+  ) {
+    return this.applyDesires(upserts, resolveKeys, false, resolveMetadata);
+  }
+
   /**
    * For every evaluated rule: upsert/reactivate if true, else resolve the
    * existing ACTIVE/ACKNOWLEDGED row for that exact dedupe_key.
@@ -1285,6 +1323,7 @@ export class OperationalIntelligenceService {
     upserts: DesiredSignal[],
     resolveKeys: string[],
     retried = false,
+    resolveMetadata: Record<string, Record<string, unknown>> = {},
   ): Promise<void> {
     const keys = [
       ...upserts.map((d) =>
@@ -1357,6 +1396,10 @@ export class OperationalIntelligenceService {
       row.status = 'RESOLVED';
       row.resolved_at = now;
       row.resolved_by_admin_id = null;
+      const extra = resolveMetadata[key];
+      if (extra) {
+        row.metadata = { ...(row.metadata ?? {}), ...extra };
+      }
       toSave.push(row);
     }
 
@@ -1366,7 +1409,7 @@ export class OperationalIntelligenceService {
       } catch (err) {
         if (!isUniqueViolation(err) || retried) throw err;
         // Concurrent insert lost UNIQUE(dedupe_key). Reload and apply as updates.
-        await this.applyDesires(upserts, resolveKeys, true);
+        await this.applyDesires(upserts, resolveKeys, true, resolveMetadata);
       }
     }
   }
