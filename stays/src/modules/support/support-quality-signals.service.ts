@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { OperationalIntelligenceService } from './operational-intelligence.service';
+import {
+  OperationalIntelligenceService,
+  type DesiredSignal,
+} from './operational-intelligence.service';
 import { SupportPerformanceService } from './support-performance.service';
 import { SUPPORT_TICKET_CATEGORIES } from './dto/support-ticket.dto';
 import {
@@ -56,7 +59,7 @@ export class SupportQualitySignalsService {
     const min = supportMinReviewsForQualitySignal();
     const csatKey = signalDedupeKey('AGENT_LOW_CSAT_PATTERN', 'ADMIN', agentId);
     const solvedKey = signalDedupeKey('AGENT_LOW_SOLVED_RATE', 'ADMIN', agentId);
-    const upserts = [];
+    const upserts: DesiredSignal[] = [];
     const resolveKeys: string[] = [];
     const resolveMetadata: Record<string, Record<string, unknown>> = {};
 
