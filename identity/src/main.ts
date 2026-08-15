@@ -205,6 +205,7 @@ async function bootstrap() {
       'X-Nexa-Product',
       'X-Internal-Key',
       'X-Auth-Transport',
+      'X-Nexa-Client',
     ],
     exposedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
   });
