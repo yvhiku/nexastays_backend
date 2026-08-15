@@ -9,11 +9,24 @@ import { appConfig } from '../../../common/config/app.config';
  */
 export const ACCESS_COOKIE = 'nexa_access';
 export const REFRESH_COOKIE = 'nexa_refresh';
+export const ADMIN_REFRESH_COOKIE = 'nexa_admin_refresh';
 export const BROWSER_AUTH_HEADER = 'x-auth-transport';
+export const NEXA_CLIENT_HEADER = 'x-nexa-client';
 
 /** Clients use this when the refresh credential should be HttpOnly-set (web/dashboard). */
 export function isBrowserCookieRequest(req: Request): boolean {
   return req.headers[BROWSER_AUTH_HEADER] === 'cookie';
+}
+
+/** Ops dashboard must not share the consumer `nexa_refresh` cookie on localhost. */
+export function isDashboardCookieRequest(req: Request): boolean {
+  return (
+    String(req.headers[NEXA_CLIENT_HEADER] ?? '').toLowerCase() === 'dashboard'
+  );
+}
+
+export function refreshCookieName(req: Request): string {
+  return isDashboardCookieRequest(req) ? ADMIN_REFRESH_COOKIE : REFRESH_COOKIE;
 }
 
 export function readCookie(req: Request, name: string): string | undefined {
@@ -52,6 +65,7 @@ function cookieOptions(maxAge: number) {
 export function setBrowserAuthCookies(
   res: Response,
   tokens: { access_token: string; refresh_token?: string },
+  cookieName: string = REFRESH_COOKIE,
 ): void {
   // Drop legacy ambient access cookie on every successful cookie-transport auth.
   res.clearCookie(ACCESS_COOKIE, cookieOptions(0));
@@ -59,17 +73,20 @@ export function setBrowserAuthCookies(
 
   if (tokens.refresh_token) {
     res.cookie(
-      REFRESH_COOKIE,
+      cookieName,
       tokens.refresh_token,
       cookieOptions(appConfig.refreshTokenExpiresIn * 1000),
     );
   }
 }
 
-export function clearBrowserAuthCookies(res: Response): void {
+export function clearBrowserAuthCookies(
+  res: Response,
+  cookieName: string = REFRESH_COOKIE,
+): void {
   const options = cookieOptions(0);
   res.clearCookie(ACCESS_COOKIE, options);
-  res.clearCookie(REFRESH_COOKIE, options);
+  res.clearCookie(cookieName, options);
 }
 
 /** Production cookie flag contract used by tests/docs (PROD-SEC-001). */

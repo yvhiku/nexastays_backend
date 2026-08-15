@@ -179,6 +179,16 @@ export class AuthService {
           (role) => role === 'ADMIN' || role === 'SUPPORT_AGENT',
         ));
     const authzVersion = Number(profile?.authz_version ?? 1);
+    const staff =
+      accountType === 'ADMIN'
+        ? staffJwtClaims(
+            profile?.role === 'SUPPORT_AGENT' ||
+              (Array.isArray(profile?.roles) &&
+                profile.roles.includes('SUPPORT_AGENT'))
+              ? 'SUPPORT_AGENT'
+              : 'ADMIN',
+          )
+        : null;
     return this.jwtService.sign(
       {
         sub: accountId,
@@ -186,8 +196,8 @@ export class AuthService {
         account_type: accountType,
         session_id: sessionId ?? undefined,
         auth_method: authMethod,
-        role: profile?.role,
-        roles: profile?.roles,
+        role: staff?.role ?? profile?.role,
+        roles: staff?.roles ?? profile?.roles,
         ...(isStaff ? { av: authzVersion } : {}),
       },
       {
@@ -325,7 +335,14 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({
       where: { id: row.user_id },
-      select: ['id', 'account_type', 'unified_identity_id', 'phone_number'],
+      select: [
+        'id',
+        'account_type',
+        'unified_identity_id',
+        'phone_number',
+        'staff_role',
+        'authz_version',
+      ],
     });
     if (!user) {
       throw new UnauthorizedException('User not found');
@@ -353,13 +370,23 @@ export class AuthService {
     if (!identityId) {
       throw new UnauthorizedException('User identity not found');
     }
+    const staff =
+      user.account_type === 'ADMIN'
+        ? staffJwtClaims(user.staff_role)
+        : undefined;
     const access_token = this.issueAccountScopedToken(
       user.id,
       identityId,
       user.account_type ?? 'CONSUMER',
       'otp_pin',
       undefined,
-      await this.tokenProfileForUser(user.id),
+      staff
+        ? {
+            role: staff.role,
+            roles: staff.roles,
+            authz_version: Number(user.authz_version ?? 1),
+          }
+        : await this.tokenProfileForUser(user.id),
     );
     return {
       access_token,

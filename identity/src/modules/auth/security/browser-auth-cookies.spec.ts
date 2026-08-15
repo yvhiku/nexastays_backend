@@ -1,10 +1,13 @@
 import type { Request, Response } from 'express';
 import {
   ACCESS_COOKIE,
+  ADMIN_REFRESH_COOKIE,
   REFRESH_COOKIE,
   getBrowserRefreshCookieSecurityFlags,
   isBrowserCookieRequest,
+  isDashboardCookieRequest,
   readCookie,
+  refreshCookieName,
   setBrowserAuthCookies,
 } from './browser-auth-cookies';
 
@@ -61,5 +64,36 @@ describe('browser authentication cookies PROD-SEC-001', () => {
       secure: true,
       sameSite: 'lax',
     });
+  });
+
+  it('keeps dashboard refresh on a dedicated cookie', () => {
+    const dashboardReq = {
+      headers: { 'x-nexa-client': 'dashboard' },
+    } as unknown as Request;
+    const webReq = {
+      headers: { 'x-auth-transport': 'cookie' },
+    } as unknown as Request;
+    expect(isDashboardCookieRequest(dashboardReq)).toBe(true);
+    expect(refreshCookieName(dashboardReq)).toBe(ADMIN_REFRESH_COOKIE);
+    expect(refreshCookieName(webReq)).toBe(REFRESH_COOKIE);
+
+    const set: Array<{ name: string }> = [];
+    const res = {
+      clearCookie: jest.fn(),
+      cookie: (name: string) => {
+        set.push({ name });
+      },
+    } as unknown as Response;
+    setBrowserAuthCookies(
+      res,
+      { access_token: 'a', refresh_token: 'r' },
+      ADMIN_REFRESH_COOKIE,
+    );
+    expect(set).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: ADMIN_REFRESH_COOKIE }),
+      ]),
+    );
+    expect(set.some((c) => c.name === REFRESH_COOKIE)).toBe(false);
   });
 });

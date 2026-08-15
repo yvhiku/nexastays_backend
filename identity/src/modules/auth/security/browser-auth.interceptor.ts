@@ -8,6 +8,7 @@ import type { Request, Response } from 'express';
 import { map, type Observable } from 'rxjs';
 import {
   isBrowserCookieRequest,
+  refreshCookieName,
   setBrowserAuthCookies,
 } from './browser-auth-cookies';
 
@@ -36,13 +37,17 @@ export class BrowserAuthInterceptor implements NestInterceptor {
         if (!value || typeof value !== 'object') return value;
         const result = value as TokenResponse;
         if (typeof result.access_token !== 'string') return value;
-        setBrowserAuthCookies(response, {
-          access_token: result.access_token,
-          refresh_token:
-            typeof result.refresh_token === 'string'
-              ? result.refresh_token
-              : undefined,
-        });
+        setBrowserAuthCookies(
+          response,
+          {
+            access_token: result.access_token,
+            refresh_token:
+              typeof result.refresh_token === 'string'
+                ? result.refresh_token
+                : undefined,
+          },
+          refreshCookieName(request),
+        );
         const { refresh_token: _refreshToken, ...safeResult } = result;
         return safeResult;
       }),

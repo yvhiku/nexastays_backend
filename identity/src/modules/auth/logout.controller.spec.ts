@@ -42,6 +42,22 @@ describe('AuthController — logout session scope', () => {
     expect(res.clearCookie).toHaveBeenCalled();
   });
 
+  it('revokes the dashboard admin refresh cookie without reading nexa_refresh', async () => {
+    const req = {
+      headers: {
+        cookie: 'nexa_refresh=consumer-session; nexa_admin_refresh=admin-session',
+        'x-auth-transport': 'cookie',
+        'x-nexa-client': 'dashboard',
+      },
+    };
+
+    await controller.logout({}, req as never, res as never);
+
+    expect(authService.revokeRefreshSessionByToken).toHaveBeenCalledWith(
+      'admin-session',
+    );
+  });
+
   it('is idempotent when no refresh cookie and no device_id', async () => {
     const result = await controller.logout({}, { headers: {} } as never, res as never);
 

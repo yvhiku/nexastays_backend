@@ -51,6 +51,7 @@ import {
   clearBrowserAuthCookies,
   isBrowserCookieRequest,
   readCookie,
+  refreshCookieName,
   REFRESH_COOKIE,
 } from './security/browser-auth-cookies';
 import type { Response } from 'express';
@@ -441,7 +442,7 @@ export class AuthController {
     const refreshToken =
       body.refresh_token ??
       (isBrowserCookieRequest(req)
-        ? readCookie(req, REFRESH_COOKIE)
+        ? readCookie(req, refreshCookieName(req))
         : undefined);
     if (!refreshToken) throw new UnauthorizedException('Invalid refresh token');
     const result = await this.authService.refresh(refreshToken, ctx);
@@ -478,7 +479,7 @@ export class AuthController {
   ) {
     const refreshToken =
       body?.refresh_token?.trim() ||
-      (req ? readCookie(req, REFRESH_COOKIE) : undefined);
+      (req ? readCookie(req, refreshCookieName(req)) : undefined);
 
     let actorUserId: string | undefined;
 
@@ -504,7 +505,7 @@ export class AuthController {
         req: req ?? undefined,
       })
       .catch(() => {});
-    if (res) clearBrowserAuthCookies(res);
+    if (res) clearBrowserAuthCookies(res, req ? refreshCookieName(req) : REFRESH_COOKIE);
     return { success: true };
   }
 

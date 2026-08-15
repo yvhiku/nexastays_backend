@@ -152,6 +152,18 @@ describe('AuthService.adminLogin', () => {
     expect(otpLockoutService.recordFailure).not.toHaveBeenCalled();
   });
 
+  it('stamps ADMIN JWT roles for ADMIN account_type even without a profile', () => {
+    service.issueAccountScopedToken('u1', 'id-1', 'ADMIN', 'pin_only');
+    expect(jwtService.sign).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account_type: 'ADMIN',
+        role: 'ADMIN',
+        roles: ['ADMIN'],
+      }),
+      expect.any(Object),
+    );
+  });
+
   it('issues SUPPORT_AGENT roles only for a provisioned agent password', async () => {
     const user = agentUser(agentHash);
     userRepository.findOne.mockResolvedValue(user);
