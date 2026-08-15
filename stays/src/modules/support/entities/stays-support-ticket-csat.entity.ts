@@ -16,6 +16,12 @@ export class StaysSupportTicketCsat {
   @Column({ type: 'smallint' })
   rating: number;
 
+  @Column({ type: 'smallint', name: 'agent_rating', nullable: true })
+  agent_rating: number | null;
+
+  @Column({ type: 'varchar', length: 128, name: 'agent_id', nullable: true })
+  agent_id: string | null;
+
   @Column({ type: 'text', nullable: true })
   comment: string | null;
 

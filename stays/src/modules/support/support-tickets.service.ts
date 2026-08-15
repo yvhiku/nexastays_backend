@@ -948,8 +948,27 @@ export class SupportTicketsService {
         if (patch.status === 'RESOLVED') {
           locked.resolved_at = locked.resolved_at ?? new Date();
         } else if (patch.status === 'CLOSED') {
+          const firstClose = !locked.closed_at;
           locked.closed_at = locked.closed_at ?? new Date();
           locked.resolved_at = locked.resolved_at ?? new Date();
+          if (firstClose && locked.review_agent_id == null) {
+            locked.review_agent_id = locked.assigned_admin_id;
+          }
+          if (firstClose && locked.conversation_id) {
+            const convRepo = manager.getRepository(StaysConversation);
+            const conv = await convRepo.findOne({
+              where: { id: locked.conversation_id },
+            });
+            if (conv && conv.messaging_state !== 'ARCHIVED') {
+              const now = new Date();
+              conv.messaging_state = 'ARCHIVED';
+              conv.archived_at = conv.archived_at ?? now;
+              conv.read_only_at = conv.read_only_at ?? now;
+              conv.archive_reason = 'SUPPORT';
+              conv.conversation_version = (conv.conversation_version ?? 0) + 1;
+              await convRepo.save(conv);
+            }
+          }
         }
       }
       if (patch.priority !== undefined) {
@@ -1444,7 +1463,19 @@ export class SupportTicketsService {
     return {
       rating: row.rating,
       comment: row.comment,
+      agent_rating: row.agent_rating ?? null,
+      agent_id: row.agent_id ?? null,
       submitted_at: row.submitted_at.toISOString(),
+    };
+  }
+
+  private async reviewAgentPayload(reviewAgentId: string | null | undefined) {
+    if (!reviewAgentId) return null;
+    const summary = await this.identityUsers.getProfileSummary(reviewAgentId);
+    return {
+      id: reviewAgentId,
+      fullName: summary?.fullName ?? null,
+      profilePhotoUrl: null as string | null,
     };
   }
 
@@ -1459,14 +1490,21 @@ export class SupportTicketsService {
     });
     if (!ticket) throw new NotFoundException('Ticket not found');
     const row = await this.csatRepo.findOne({ where: { ticket_id: ticketId } });
-    if (!row) return { submitted: false as const, csat: null };
-    return { submitted: true as const, csat: this.mapCsatRow(row) };
+    const alreadyReviewed = Boolean(row);
+    return {
+      submitted: alreadyReviewed,
+      alreadyReviewed,
+      canReview: ticket.status === 'CLOSED' && !alreadyReviewed,
+      ticketStatus: ticket.status,
+      agent: await this.reviewAgentPayload(ticket.review_agent_id),
+      csat: row ? this.mapCsatRow(row) : null,
+    };
   }
 
   async submitCsatForUser(
     userId: string,
     ticketId: string,
-    input: { rating: number; comment?: string },
+    input: { rating: number; comment?: string; agentRating?: number },
   ) {
     const rating = Number(input.rating);
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
@@ -1481,9 +1519,23 @@ export class SupportTicketsService {
       where: { id: ticketId, requester_user_id: userId },
     });
     if (!ticket) throw new NotFoundException('Ticket not found');
-    if (ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED') {
+    if (ticket.status !== 'CLOSED') {
+      throw new ConflictException('Ticket is not closed');
+    }
+
+    const snapshotAgentId = ticket.review_agent_id;
+    let agentRating: number | null = null;
+    if (snapshotAgentId) {
+      const raw = Number(input.agentRating);
+      if (!Number.isInteger(raw) || raw < 1 || raw > 5) {
+        throw new BadRequestException(
+          'Agent rating must be an integer from 1 to 5',
+        );
+      }
+      agentRating = raw;
+    } else if (input.agentRating !== undefined && input.agentRating !== null) {
       throw new BadRequestException(
-        'CSAT is only available for RESOLVED or CLOSED tickets',
+        'Agent rating is not available for this ticket',
       );
     }
 
@@ -1500,13 +1552,19 @@ export class SupportTicketsService {
           ticket_id: ticketId,
           rating,
           comment,
+          agent_id: snapshotAgentId,
+          agent_rating: agentRating,
         }),
       );
       await this.ops.safeEvaluate(() =>
-        this.ops.evaluateCsatForAdmin(ticket.assigned_admin_id),
+        this.ops.evaluateCsatForAdmin(snapshotAgentId),
       );
       return {
         submitted: true as const,
+        alreadyReviewed: true as const,
+        canReview: false as const,
+        ticketStatus: ticket.status,
+        agent: await this.reviewAgentPayload(snapshotAgentId),
         csat: this.mapCsatRow(saved),
       };
     } catch (err) {
@@ -2542,6 +2600,7 @@ export class SupportTicketsService {
       party: ticket.party,
       party_type: ticket.party,
       assigned_admin_id: ticket.assigned_admin_id,
+      review_agent_id: ticket.review_agent_id,
       status: ticket.status,
       priority: ticket.priority,
       created_at: ticket.created_at.toISOString(),

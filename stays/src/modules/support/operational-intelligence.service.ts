@@ -272,18 +272,10 @@ export class OperationalIntelligenceService {
 
   async evaluateLowCsatPattern(assignedAdminId: string): Promise<void> {
     const since = daysAgo(LOW_CSAT_WINDOW_DAYS);
-    const tickets = await this.ticketRepo.find({
-      where: { assigned_admin_id: assignedAdminId },
-      select: ['id'],
-    });
     const key = signalDedupeKey('LOW_CSAT_PATTERN', 'ADMIN', assignedAdminId);
-    if (!tickets.length) {
-      await this.applyDesires([], [key]);
-      return;
-    }
     const ratings = await this.csatRepo.find({
       where: {
-        ticket_id: In(tickets.map((t) => t.id)),
+        agent_id: assignedAdminId,
         submitted_at: MoreThanOrEqual(since),
       },
     });
@@ -827,8 +819,60 @@ export class OperationalIntelligenceService {
 
   async listAgentWorkload(now: Date = new Date()) {
     const rows = await this.queryAssignedAgentWorkload(now);
-    return {
-      items: rows.map((row) => ({
+    const ratingRows = (await this.dataSource.query(
+      `
+      SELECT
+        c.agent_id,
+        COUNT(*)::int AS review_count,
+        AVG(c.agent_rating)::float AS average_agent_rating,
+        COUNT(*) FILTER (WHERE c.agent_rating = 1)::int AS r1,
+        COUNT(*) FILTER (WHERE c.agent_rating = 2)::int AS r2,
+        COUNT(*) FILTER (WHERE c.agent_rating = 3)::int AS r3,
+        COUNT(*) FILTER (WHERE c.agent_rating = 4)::int AS r4,
+        COUNT(*) FILTER (WHERE c.agent_rating = 5)::int AS r5
+      FROM stays_support_ticket_csat c
+      WHERE c.agent_id IS NOT NULL
+      GROUP BY c.agent_id
+      `,
+    )) as {
+      agent_id: string;
+      review_count: number;
+      average_agent_rating: number | string | null;
+      r1: number;
+      r2: number;
+      r3: number;
+      r4: number;
+      r5: number;
+    }[];
+    const emptyRatings = {
+      reviewCount: 0,
+      averageAgentRating: null as number | null,
+      ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    };
+    const ratingsById = new Map(
+      ratingRows.map((row) => [
+        row.agent_id,
+        {
+          reviewCount: Number(row.review_count ?? 0),
+          averageAgentRating:
+            row.average_agent_rating == null
+              ? null
+              : Number(row.average_agent_rating),
+          ratingDistribution: {
+            1: Number(row.r1 ?? 0),
+            2: Number(row.r2 ?? 0),
+            3: Number(row.r3 ?? 0),
+            4: Number(row.r4 ?? 0),
+            5: Number(row.r5 ?? 0),
+          },
+        },
+      ]),
+    );
+    const seen = new Set<string>();
+    const items = rows.map((row) => {
+      seen.add(row.agentId);
+      const ratings = ratingsById.get(row.agentId) ?? emptyRatings;
+      return {
         agentId: row.agentId,
         assigned: row.assigned,
         open: row.open,
@@ -837,7 +881,25 @@ export class OperationalIntelligenceService {
         atRisk: row.atRisk,
         breached: row.breached,
         oldestActiveTicketAt: row.oldestActiveTicketAt,
-      })),
+        ...ratings,
+      };
+    });
+    for (const [agentId, ratings] of ratingsById) {
+      if (seen.has(agentId)) continue;
+      items.push({
+        agentId,
+        assigned: 0,
+        open: 0,
+        inProgress: 0,
+        waiting: 0,
+        atRisk: 0,
+        breached: 0,
+        oldestActiveTicketAt: null,
+        ...ratings,
+      });
+    }
+    return {
+      items,
       generatedAt: now.toISOString(),
     };
   }

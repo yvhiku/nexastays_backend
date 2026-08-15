@@ -608,20 +608,25 @@ describe('OperationalIntelligenceService', () => {
   describe('low CSAT', () => {
     it('requires 5 responses and 2 low ratings', async () => {
       const { service, ticketRepo, csatRepo, saved } = build();
-      ticketRepo.find.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
       csatRepo.find.mockResolvedValue([
-        { ticket_id: 't1', rating: 2 },
-        { ticket_id: 't2', rating: 1 },
+        { ticket_id: 't1', rating: 2, agent_id: 'admin-1' },
+        { ticket_id: 't2', rating: 1, agent_id: 'admin-1' },
       ]);
       await service.evaluateLowCsatPattern('admin-1');
+      expect(ticketRepo.find).not.toHaveBeenCalled();
+      expect(csatRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ agent_id: 'admin-1' }),
+        }),
+      );
       expect(saved).toHaveLength(0);
 
       csatRepo.find.mockResolvedValue([
-        { rating: 1 },
-        { rating: 2 },
-        { rating: 5 },
-        { rating: 5 },
-        { rating: 4 },
+        { rating: 1, agent_id: 'admin-1' },
+        { rating: 2, agent_id: 'admin-1' },
+        { rating: 5, agent_id: 'admin-1' },
+        { rating: 5, agent_id: 'admin-1' },
+        { rating: 4, agent_id: 'admin-1' },
       ]);
       await service.evaluateLowCsatPattern('admin-1');
       expect(saved[0]).toEqual(
@@ -658,19 +663,35 @@ describe('OperationalIntelligenceService', () => {
 
   it('lists agent workload without closed tickets or overview totals', async () => {
     const { service, dataSource } = build();
-    dataSource.query.mockResolvedValue([
-      {
-        agent_id: 'agent-1',
-        assigned: 4,
-        open: 1,
-        in_progress: 2,
-        waiting: 1,
-        high_priority: 3,
-        at_risk: 1,
-        breached: 0,
-        oldest_active_ticket_at: '2026-08-01T00:00:00.000Z',
-      },
-    ]);
+    dataSource.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('stays_support_ticket_csat')) {
+        return [
+          {
+            agent_id: 'agent-1',
+            review_count: 3,
+            average_agent_rating: 4.5,
+            r1: 0,
+            r2: 0,
+            r3: 0,
+            r4: 1,
+            r5: 2,
+          },
+        ];
+      }
+      return [
+        {
+          agent_id: 'agent-1',
+          assigned: 4,
+          open: 1,
+          in_progress: 2,
+          waiting: 1,
+          high_priority: 3,
+          at_risk: 1,
+          breached: 0,
+          oldest_active_ticket_at: '2026-08-01T00:00:00.000Z',
+        },
+      ];
+    });
     const result = await service.listAgentWorkload(
       new Date('2026-08-14T12:00:00.000Z'),
     );
@@ -684,10 +705,16 @@ describe('OperationalIntelligenceService', () => {
         atRisk: 1,
         breached: 0,
         oldestActiveTicketAt: '2026-08-01T00:00:00.000Z',
+        reviewCount: 3,
+        averageAgentRating: 4.5,
+        ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 1, 5: 2 },
       },
     ]);
     expect(result.generatedAt).toBe('2026-08-14T12:00:00.000Z');
     expect(dataSource.query.mock.calls[0][0]).toContain('assigned_admin_id');
+    expect(dataSource.query.mock.calls[1][0]).toContain(
+      'stays_support_ticket_csat',
+    );
     expect(JSON.stringify(result)).not.toContain('highPriority');
   });
 

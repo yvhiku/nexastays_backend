@@ -830,33 +830,76 @@ describe('SupportTicketsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('accepts CSAT for RESOLVED requester and rejects OPEN / duplicate / cross-user', async () => {
-    const { service, ticketRepo, csatRepo } = buildService();
+  it('accepts CSAT for CLOSED requester and rejects OPEN / RESOLVED / duplicate / cross-user', async () => {
+    const { service, ticketRepo, csatRepo, ops, identityUsers } = buildService();
+    identityUsers.getProfileSummary.mockResolvedValue({
+      fullName: 'Alex Agent',
+      email: 'alex@example.com',
+      verified: true,
+    });
     ticketRepo.findOne.mockResolvedValue({
       id: 'ticket-1',
       requester_user_id: 'guest-1',
-      status: 'RESOLVED',
+      status: 'CLOSED',
+      review_agent_id: 'admin-1',
     });
+    await expect(
+      service.submitCsatForUser('guest-1', 'ticket-1', { rating: 5 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
     const submitted = await service.submitCsatForUser('guest-1', 'ticket-1', {
       rating: 5,
+      agentRating: 4,
       comment: 'Great',
-    });
+      agentId: 'spoof-agent',
+    } as { rating: number; comment?: string; agentRating?: number });
     expect(submitted.submitted).toBe(true);
+    expect(submitted.canReview).toBe(false);
     expect(submitted.csat?.rating).toBe(5);
+    expect(submitted.csat?.agent_rating).toBe(4);
+    expect(submitted.csat?.agent_id).toBe('admin-1');
+    expect(submitted.agent).toEqual({
+      id: 'admin-1',
+      fullName: 'Alex Agent',
+      profilePhotoUrl: null,
+    });
+    expect(ops.evaluateCsatForAdmin).toHaveBeenCalledWith('admin-1');
+    expect(csatRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticket_id: 'ticket-1',
+        agent_id: 'admin-1',
+        agent_rating: 4,
+      }),
+    );
 
     ticketRepo.findOne.mockResolvedValue({
       id: 'ticket-1',
       requester_user_id: 'guest-1',
       status: 'OPEN',
+      review_agent_id: null,
     });
     await expect(
       service.submitCsatForUser('guest-1', 'ticket-1', { rating: 4 }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      requester_user_id: 'guest-1',
+      status: 'RESOLVED',
+      review_agent_id: 'admin-1',
+    });
+    await expect(
+      service.submitCsatForUser('guest-1', 'ticket-1', {
+        rating: 5,
+        agentRating: 5,
+      }),
+    ).rejects.toMatchObject({ message: 'Ticket is not closed' });
 
     ticketRepo.findOne.mockResolvedValue({
       id: 'ticket-1',
       requester_user_id: 'guest-1',
       status: 'CLOSED',
+      review_agent_id: 'admin-1',
     });
     csatRepo.findOne.mockResolvedValue({
       id: 'csat-1',
@@ -866,24 +909,90 @@ describe('SupportTicketsService', () => {
       submitted_at: new Date(),
     });
     await expect(
-      service.submitCsatForUser('guest-1', 'ticket-1', { rating: 3 }),
+      service.submitCsatForUser('guest-1', 'ticket-1', {
+        rating: 3,
+        agentRating: 3,
+      }),
     ).rejects.toBeInstanceOf(ConflictException);
 
     ticketRepo.findOne.mockResolvedValue(null);
     await expect(
       service.submitCsatForUser('other', 'ticket-1', { rating: 5 }),
     ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getCsatForUser('other', 'ticket-1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
-  it('GET CSAT returns submitted false when absent', async () => {
-    const { service, ticketRepo } = buildService();
+  it('accepts overall-only CSAT when the close snapshot has no agent', async () => {
+    const { service, ticketRepo, csatRepo, ops } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      requester_user_id: 'guest-1',
+      status: 'CLOSED',
+      review_agent_id: null,
+    });
+    const submitted = await service.submitCsatForUser('guest-1', 'ticket-1', {
+      rating: 5,
+      comment: 'Fine',
+    });
+    expect(submitted.csat?.agent_id).toBeNull();
+    expect(submitted.csat?.agent_rating).toBeNull();
+    expect(submitted.agent).toBeNull();
+    expect(ops.evaluateCsatForAdmin).toHaveBeenCalledWith(null);
+    expect(csatRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent_id: null,
+        agent_rating: null,
+      }),
+    );
+
+    await expect(
+      service.submitCsatForUser('guest-1', 'ticket-1', {
+        rating: 5,
+        agentRating: 4,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('GET CSAT returns canReview only when CLOSED and not yet submitted', async () => {
+    const { service, ticketRepo, identityUsers } = buildService();
     ticketRepo.findOne.mockResolvedValue({
       id: 'ticket-1',
       requester_user_id: 'guest-1',
       status: 'RESOLVED',
+      review_agent_id: null,
     });
     await expect(service.getCsatForUser('guest-1', 'ticket-1')).resolves.toEqual({
       submitted: false,
+      alreadyReviewed: false,
+      canReview: false,
+      ticketStatus: 'RESOLVED',
+      agent: null,
+      csat: null,
+    });
+
+    identityUsers.getProfileSummary.mockResolvedValue({
+      fullName: 'Alex Agent',
+      email: 'alex@example.com',
+      verified: true,
+    });
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      requester_user_id: 'guest-1',
+      status: 'CLOSED',
+      review_agent_id: 'admin-1',
+    });
+    await expect(service.getCsatForUser('guest-1', 'ticket-1')).resolves.toEqual({
+      submitted: false,
+      alreadyReviewed: false,
+      canReview: true,
+      ticketStatus: 'CLOSED',
+      agent: {
+        id: 'admin-1',
+        fullName: 'Alex Agent',
+        profilePhotoUrl: null,
+      },
       csat: null,
     });
   });
@@ -1308,6 +1417,142 @@ describe('SupportTicketsService', () => {
     );
     expect(row.closed_at).toBeTruthy();
     expect(row.resolved_at).toBe(resolvedAt.toISOString());
+  });
+
+  it('snapshots review_agent_id and archives the SUPPORT conversation on first CLOSED', async () => {
+    const { service, ticketRepo, convRepo } = buildService();
+    const resolvedAt = new Date('2026-01-01T00:00:00.000Z');
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'RESOLVED',
+      priority: 'NORMAL',
+      assigned_admin_id: 'admin-1',
+      review_agent_id: null,
+      conversation_id: 'conv-1',
+      resolved_at: resolvedAt,
+      closed_at: null,
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+      first_admin_response_at: new Date('2026-01-01T01:00:00.000Z'),
+      report_id: null,
+      safety_issue_id: null,
+    });
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+    convRepo.findOne.mockResolvedValue({
+      id: 'conv-1',
+      messaging_state: 'ACTIVE',
+      conversation_version: 1,
+      archived_at: null,
+      read_only_at: null,
+    });
+    const row = await service.patchForAdmin(
+      'ticket-1',
+      { status: 'CLOSED' },
+      'admin-1',
+    );
+    expect(row.review_agent_id).toBe('admin-1');
+    expect(row.closed_at).toBeTruthy();
+    expect(convRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messaging_state: 'ARCHIVED',
+        archive_reason: 'SUPPORT',
+        conversation_version: 2,
+      }),
+    );
+  });
+
+  it('does not overwrite review_agent_id on later reassignment', async () => {
+    const { service, ticketRepo, identityUsers } = buildService();
+    const closedAt = new Date('2026-01-02T00:00:00.000Z');
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'CLOSED',
+      priority: 'NORMAL',
+      assigned_admin_id: 'admin-1',
+      review_agent_id: 'admin-1',
+      conversation_id: 'conv-1',
+      resolved_at: closedAt,
+      closed_at: closedAt,
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+      first_admin_response_at: new Date('2026-01-01T01:00:00.000Z'),
+      report_id: null,
+      safety_issue_id: null,
+    });
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+    identityUsers.getAuthz.mockResolvedValue({
+      account_type: 'ADMIN',
+      status: 'ACTIVE',
+      staff_role: 'SUPPORT_AGENT',
+      authz_version: 1,
+    });
+    const row = await service.patchForAdmin(
+      'ticket-1',
+      { assigned_admin_id: 'admin-2' },
+      'admin-1',
+    );
+    expect(row.assigned_admin_id).toBe('admin-2');
+    expect(row.review_agent_id).toBe('admin-1');
+  });
+
+  it('leaves review_agent_id null when an unassigned ticket is closed', async () => {
+    const { service, ticketRepo, convRepo } = buildService();
+    ticketRepo.findOne.mockResolvedValue({
+      id: 'ticket-1',
+      status: 'OPEN',
+      priority: 'NORMAL',
+      assigned_admin_id: null,
+      review_agent_id: null,
+      conversation_id: 'conv-1',
+      resolved_at: null,
+      closed_at: null,
+      ticket_number: 'SUP-1',
+      subject: 'Help',
+      category: 'OTHER',
+      party: 'GUEST',
+      customer_name: null,
+      requester_email: null,
+      unread_for_support: false,
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+      first_admin_response_at: null,
+      report_id: null,
+      safety_issue_id: null,
+    });
+    ticketRepo.save.mockImplementation(async (row: Record<string, unknown>) => row);
+    convRepo.findOne.mockResolvedValue({
+      id: 'conv-1',
+      messaging_state: 'ACTIVE',
+      conversation_version: 1,
+      archived_at: null,
+      read_only_at: null,
+    });
+    const row = await service.patchForAdmin(
+      'ticket-1',
+      { status: 'CLOSED' },
+      'admin-1',
+    );
+    expect(row.review_agent_id).toBeNull();
+    expect(convRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messaging_state: 'ARCHIVED',
+        archive_reason: 'SUPPORT',
+      }),
+    );
   });
 
   it('rejects CLOSED admin send with 409 and does not insert a message', async () => {

@@ -120,6 +120,13 @@ export class CreateSupportTicketCsatDto {
   rating!: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  agentRating?: number;
+
+  @IsOptional()
   @IsString()
   @MaxLength(2000)
   comment?: string;

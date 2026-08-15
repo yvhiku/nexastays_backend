@@ -101,6 +101,13 @@ export class StaysSupportTicket {
   @Column({ type: 'timestamptz', name: 'closed_at', nullable: true })
   closed_at: Date | null;
 
+  /**
+   * Assignee at first CLOSED. Immutable attribution for CSAT agent rating.
+   * Null when the ticket was unassigned at close.
+   */
+  @Column({ type: 'varchar', length: 128, name: 'review_agent_id', nullable: true })
+  review_agent_id: string | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;
 
