@@ -48,6 +48,7 @@ import { StaysSupportTicketCsat } from './entities/stays-support-ticket-csat.ent
 import { StaysAuditLog } from '../stays/entities/stays-audit-log.entity';
 import {
   AdminListTicketsQueryDto,
+  AdminListSupportReviewsQueryDto,
   AdminListReportsQueryDto,
   CreateSupportTicketDto,
   PatchSupportTicketDto,
@@ -755,11 +756,78 @@ export class SupportTicketsService {
     const signalTypes = await this.ops.activeTypesByTicketIds(
       rows.map((r) => r.id),
     );
+    const csatByTicket = await this.loadCsatByTicketIds(rows.map((r) => r.id));
     return {
       items: rows.map((row) => ({
         ...this.toListRow(row, bookingRefs.get(row.booking_id ?? '') ?? null),
         operational_signal_types: signalTypes.get(row.id) ?? [],
+        csat: csatByTicket.get(row.id) ?? null,
       })),
+      total,
+      limit,
+      offset,
+      hasMore: offset + rows.length < total,
+    };
+  }
+
+  async listSupportReviewsForAdmin(
+    query: AdminListSupportReviewsQueryDto = {},
+    actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
+  ) {
+    const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
+    const offset = Math.max(query.offset ?? 0, 0);
+    const qb = this.csatRepo
+      .createQueryBuilder('c')
+      .innerJoin(StaysSupportTicket, 't', 't.id = c.ticket_id');
+
+    if (isSupportAgentActor(actor)) {
+      qb.andWhere(
+        '(t.assigned_admin_id = :actorId OR c.agent_id = :actorId)',
+        { actorId: actor.userId },
+      );
+    }
+    if (query.problemSolved === true) {
+      qb.andWhere('c.problem_solved = true');
+    } else if (query.problemSolved === false) {
+      qb.andWhere('c.problem_solved = false');
+    }
+    if (query.maxRating != null) {
+      qb.andWhere('c.rating <= :maxRating', { maxRating: query.maxRating });
+    }
+    const search = query.search?.trim();
+    if (search) {
+      const q = `%${search.replace(/[%_]/g, '\\$&')}%`;
+      qb.andWhere(
+        `(t.ticket_number ILIKE :q ESCAPE '\\'
+          OR t.customer_name ILIKE :q ESCAPE '\\'
+          OR COALESCE(c.comment, '') ILIKE :q ESCAPE '\\')`,
+        { q },
+      );
+    }
+
+    const total = await qb.clone().getCount();
+    const rows = await qb
+      .select([
+        'c.ticket_id AS ticket_id',
+        'c.rating AS rating',
+        'c.agent_rating AS agent_rating',
+        'c.agent_id AS agent_id',
+        'c.problem_solved AS problem_solved',
+        'c.comment AS comment',
+        'c.submitted_at AS submitted_at',
+        't.ticket_number AS ticket_number',
+        't.status AS status',
+        't.customer_name AS customer_name',
+        't.review_agent_id AS review_agent_id',
+        't.review_agent_name AS review_agent_name',
+      ])
+      .orderBy('c.submitted_at', 'DESC')
+      .skip(offset)
+      .take(limit)
+      .getRawMany();
+
+    return {
+      items: rows.map((row) => this.mapSupportReviewRow(row)),
       total,
       limit,
       offset,
@@ -1575,6 +1643,55 @@ export class SupportTicketsService {
   private async loadCsatForTicket(ticketId: string) {
     const row = await this.csatRepo.findOne({ where: { ticket_id: ticketId } });
     return row ? this.mapCsatRow(row) : null;
+  }
+
+  private async loadCsatByTicketIds(ticketIds: string[]) {
+    const map = new Map<string, ReturnType<SupportTicketsService['mapCsatRow']>>();
+    if (!ticketIds.length) return map;
+    const rows = await this.csatRepo.find({
+      where: { ticket_id: In(ticketIds) },
+    });
+    for (const row of rows) {
+      map.set(row.ticket_id, this.mapCsatRow(row));
+    }
+    return map;
+  }
+
+  private mapSupportReviewRow(row: Record<string, unknown>) {
+    const submitted = row.submitted_at ?? row.submittedAt;
+    const agentRatingRaw = row.agent_rating ?? row.agentRating;
+    const solvedRaw = row.problem_solved ?? row.problemSolved;
+    const reviewAgentId = row.review_agent_id ?? row.reviewAgentId;
+    const reviewAgentName = row.review_agent_name ?? row.reviewAgentName;
+    const agentId = row.agent_id ?? row.agentId;
+    return {
+      ticket_id: String(row.ticket_id ?? row.ticketId ?? ''),
+      ticket_number: String(row.ticket_number ?? row.ticketNumber ?? ''),
+      status: String(row.status ?? ''),
+      customer_name:
+        (row.customer_name ?? row.customerName ?? null) as string | null,
+      rating: Number(row.rating ?? 0),
+      agent_rating:
+        agentRatingRaw == null || agentRatingRaw === ''
+          ? null
+          : Number(agentRatingRaw),
+      problem_solved:
+        solvedRaw == null || solvedRaw === '' ? null : Boolean(solvedRaw),
+      comment: (row.comment as string | null | undefined) ?? null,
+      submitted_at:
+        submitted instanceof Date
+          ? submitted.toISOString()
+          : String(submitted ?? ''),
+      review_agent_id:
+        reviewAgentId == null || reviewAgentId === ''
+          ? null
+          : String(reviewAgentId),
+      review_agent_name:
+        reviewAgentName == null || reviewAgentName === ''
+          ? null
+          : String(reviewAgentName),
+      agent_id: agentId == null || agentId === '' ? null : String(agentId),
+    };
   }
 
   async getCsatForUser(userId: string, ticketId: string) {

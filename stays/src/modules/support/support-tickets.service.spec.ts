@@ -208,8 +208,23 @@ describe('SupportTicketsService', () => {
         getMany: jest.fn().mockResolvedValue([]),
       })),
     };
+    const csatQb = {
+      innerJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      clone: jest.fn(),
+      getCount: jest.fn().mockResolvedValue(0),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    };
+    csatQb.clone.mockReturnValue(csatQb);
     const csatRepo = {
       findOne: jest.fn().mockResolvedValue(null),
+      find: jest.fn().mockResolvedValue([]),
+      createQueryBuilder: jest.fn(() => csatQb),
       create: jest.fn((row: unknown) => row),
       save: jest.fn(async (row: Record<string, unknown>) => ({
         ...row,
@@ -279,6 +294,7 @@ describe('SupportTicketsService', () => {
       messageRepo,
       noteRepo,
       csatRepo,
+      csatQb,
       auditLogRepo,
       ops,
       assignment,
@@ -537,6 +553,114 @@ describe('SupportTicketsService', () => {
       search: 'SUP-2026',
     });
     expect(ticketQb.andWhere).toHaveBeenCalled();
+  });
+
+  it('attaches CSAT onto admin ticket list items without N+1', async () => {
+    const { service, ticketQb, csatRepo } = buildService();
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    ticketQb.getCount.mockResolvedValue(1);
+    ticketQb.getMany.mockResolvedValue([
+      {
+        id: 'ticket-1',
+        ticket_number: 'SUP-2026-000001',
+        subject: 'Help',
+        category: 'OTHER',
+        customer_name: 'Guest',
+        party: 'GUEST',
+        assigned_admin_id: 'admin-1',
+        review_agent_id: 'admin-1',
+        review_agent_name: 'Admin User',
+        status: 'CLOSED',
+        priority: 'NORMAL',
+        created_at: now,
+        updated_at: now,
+        resolved_at: now,
+        closed_at: now,
+        first_admin_response_at: now,
+        requester_user_id: 'guest-1',
+        booking_id: null,
+        listing_id: null,
+        report_id: null,
+        safety_issue_id: null,
+        unread_for_support: false,
+        last_message_preview: 'done',
+        requester_email: null,
+        conversation_id: 'conv-1',
+      },
+    ]);
+    csatRepo.find.mockResolvedValue([
+      {
+        ticket_id: 'ticket-1',
+        rating: 4.5,
+        agent_rating: 4,
+        agent_id: 'admin-1',
+        problem_solved: true,
+        comment: 'Great',
+        submitted_at: new Date('2026-01-02T00:00:00.000Z'),
+      },
+    ]);
+    const listed = await service.listForAdmin({ limit: 20, offset: 0 });
+    expect(csatRepo.find).toHaveBeenCalledTimes(1);
+    expect(listed.items[0]?.csat).toEqual(
+      expect.objectContaining({
+        rating: 4.5,
+        agent_rating: 4,
+        problem_solved: true,
+        comment: 'Great',
+      }),
+    );
+  });
+
+  it('lists submitted support reviews only and isolates agents', async () => {
+    const { service, csatQb } = buildService();
+    csatQb.getCount.mockResolvedValue(1);
+    csatQb.getRawMany.mockResolvedValue([
+      {
+        ticket_id: 'ticket-1',
+        ticket_number: 'SUP-2026-000001',
+        status: 'CLOSED',
+        customer_name: 'Guest',
+        rating: 2,
+        agent_rating: 1.5,
+        problem_solved: false,
+        comment: 'Slow',
+        submitted_at: new Date('2026-01-02T00:00:00.000Z'),
+        review_agent_id: 'agent-a',
+        review_agent_name: 'Alex Agent',
+        agent_id: 'agent-a',
+      },
+    ]);
+    const listed = await service.listSupportReviewsForAdmin({
+      problemSolved: false,
+      maxRating: 2,
+      search: 'SUP-2026',
+    });
+    expect(listed.total).toBe(1);
+    expect(listed.items[0]).toEqual(
+      expect.objectContaining({
+        ticket_id: 'ticket-1',
+        ticket_number: 'SUP-2026-000001',
+        rating: 2,
+        agent_rating: 1.5,
+        problem_solved: false,
+        comment: 'Slow',
+        review_agent_name: 'Alex Agent',
+      }),
+    );
+    expect(csatQb.andWhere).toHaveBeenCalledWith('c.problem_solved = false');
+    expect(csatQb.andWhere).toHaveBeenCalledWith('c.rating <= :maxRating', {
+      maxRating: 2,
+    });
+
+    csatQb.andWhere.mockClear();
+    await service.listSupportReviewsForAdmin(
+      {},
+      { userId: 'agent-a', role: 'SUPPORT_AGENT' },
+    );
+    expect(csatQb.andWhere).toHaveBeenCalledWith(
+      '(t.assigned_admin_id = :actorId OR c.agent_id = :actorId)',
+      { actorId: 'agent-a' },
+    );
   });
 
   it('dismissed reports remain listed and escalation does not downgrade URGENT', async () => {

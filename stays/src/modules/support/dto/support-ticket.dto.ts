@@ -326,6 +326,42 @@ export class AdminListTicketsQueryDto {
   slaState?: 'AT_RISK' | 'BREACHED';
 }
 
+export class AdminListSupportReviewsQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === true || value === 'true' || value === '1') return true;
+    if (value === false || value === 'false' || value === '0') return false;
+    return value;
+  })
+  @IsBoolean()
+  problemSolved?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.5)
+  @Max(5)
+  maxRating?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  search?: string;
+}
+
 export class AdminListReportsQueryDto {
   @IsOptional()
   @Type(() => Number)

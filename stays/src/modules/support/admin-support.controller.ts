@@ -22,6 +22,7 @@ import { OperationalIntelligenceService } from './operational-intelligence.servi
 import { staffActorFromUser } from './support-staff-access';
 import {
   AdminListTicketsQueryDto,
+  AdminListSupportReviewsQueryDto,
   AdminListReportsQueryDto,
   CreateCannedReplyDto,
   CreateSupportTicketNoteDto,
@@ -113,6 +114,18 @@ export class AdminSupportController {
     @Query() query: AdminListTicketsQueryDto,
   ) {
     return this.supportTickets.listForAdmin(query, staffActorFromUser(user));
+  }
+
+  @Get('support/reviews')
+  @Roles('ADMIN', 'SUPPORT_AGENT')
+  listSupportReviews(
+    @CurrentUser() user: { userId: string; role?: string; roles?: string[] },
+    @Query() query: AdminListSupportReviewsQueryDto,
+  ) {
+    return this.supportTickets.listSupportReviewsForAdmin(
+      query,
+      staffActorFromUser(user),
+    );
   }
 
   @Get('support/canned-replies')

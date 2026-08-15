@@ -25,6 +25,7 @@ describe('AdminSupportController roles', () => {
   it('keeps ticket isolation methods open to SUPPORT_AGENT', () => {
     for (const method of [
       'listTickets',
+      'listSupportReviews',
       'getTicket',
       'listMessages',
       'sendMessage',
