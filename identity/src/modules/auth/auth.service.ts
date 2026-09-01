@@ -559,8 +559,8 @@ export class AuthService {
     const norm = normalizePhoneOrThrow(phoneNumber);
     const expiresAt = new Date(Date.now() + appConfig.otpExpirySeconds * 1000);
     const isDemoOtp = !!appConfig.demoOtpCode;
-    if (appConfig.env === 'production' && isDemoOtp) {
-      throw new BadRequestException('Demo OTP is not allowed in production');
+    if (appConfig.env === 'production' && process.env.NEXA_ENV !== 'dogfood' && isDemoOtp) {
+      throw new BadRequestException('Demo OTP is allowed only in dogfood');
     }
     const otpCode = isDemoOtp
       ? appConfig.demoOtpCode
@@ -622,7 +622,7 @@ export class AuthService {
     const norm = normalizePhoneOrThrow(phoneNumber);
     const submitted = (otp ?? '').trim();
     const demoBypass =
-      appConfig.env !== 'production' &&
+      (appConfig.env !== 'production' || process.env.NEXA_ENV === 'dogfood') &&
       !!appConfig.demoOtpCode &&
       timingSafeEqualString(submitted, appConfig.demoOtpCode);
 
@@ -695,6 +695,7 @@ export class AuthService {
     const onboarding = deriveIdentityOnboardingState({
       kycProfileExists: !!consumerKyc,
       kycStatus: consumerKyc?.status ?? consumer?.kyc_status,
+      userKycStatus: consumer?.kyc_status,
       identityVerificationStatus: identity.identity_verification_status,
       identityVerified:
         identity.identity_verified ?? nexaProfile?.identity_verified,

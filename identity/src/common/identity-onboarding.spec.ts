@@ -61,4 +61,19 @@ describe('deriveIdentityOnboardingState', () => {
       next: null,
     });
   });
+
+  it('treats verified users as approved when kyc_profiles row lags behind identity', () => {
+    expect(
+      deriveIdentityOnboardingState({
+        kycProfileExists: true,
+        kycStatus: 'PENDING',
+        userKycStatus: 'VERIFIED',
+        identityVerified: true,
+      }),
+    ).toEqual({
+      required: false,
+      status: 'APPROVED',
+      next: null,
+    });
+  });
 });

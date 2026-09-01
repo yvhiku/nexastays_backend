@@ -657,6 +657,7 @@ export class UsersService {
     const onboarding = deriveIdentityOnboardingState({
       kycProfileExists: !!kycProfile,
       kycStatus: kycProfile?.status ?? user.kyc_status,
+      userKycStatus: user.kyc_status,
       identityVerificationStatus: identity?.identity_verification_status,
       identityVerified: identity?.identity_verified,
     });

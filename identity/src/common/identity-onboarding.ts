@@ -15,6 +15,8 @@ export interface IdentityOnboardingState {
 export interface IdentityOnboardingSource {
   kycProfileExists: boolean;
   kycStatus?: string | null;
+  /** users.kyc_status when it may differ from kyc_profiles.status (webhook lag). */
+  userKycStatus?: string | null;
   identityVerificationStatus?: string | null;
   identityVerified?: boolean;
 }
@@ -34,6 +36,22 @@ export function deriveIdentityOnboardingState(
 
   if (source.kycProfileExists) {
     status = toIdentityVerificationStatus(source.kycStatus);
+    const identityApproved =
+      source.identityVerified ||
+      toIdentityVerificationStatus(source.identityVerificationStatus) ===
+        'APPROVED';
+    const userRowApproved =
+      source.userKycStatus != null &&
+      toIdentityVerificationStatus(source.userKycStatus) === 'APPROVED';
+    // Sumsub/webhook lag can leave kyc_profiles PENDING while unified identity
+    // or users.kyc_status is already VERIFIED — returning users must log in.
+    if (
+      (identityApproved || userRowApproved) &&
+      status !== 'REJECTED' &&
+      status !== 'EXPIRED'
+    ) {
+      status = 'APPROVED';
+    }
   } else if (
     source.identityVerified ||
     toIdentityVerificationStatus(source.identityVerificationStatus) ===
