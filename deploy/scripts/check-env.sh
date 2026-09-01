@@ -140,14 +140,24 @@ if [[ "${NODE_ENV}" == "production" && -n "${demo_otp}" ]]; then
 fi
 echo "OK: DEMO_OTP_CODE policy"
 
-# Phase 1 — Twilio runtime name (Identity sms-config): TWILIO_PHONE_NUMBER
+# Phase 1 — SMS provider: EnvoiSMS (preferred) or Twilio
 if [[ "${NODE_ENV}" == "production" ]]; then
-  req "$SHARED_ENV" TWILIO_ACCOUNT_SID
-  req "$SHARED_ENV" TWILIO_AUTH_TOKEN
-  req "$SHARED_ENV" TWILIO_PHONE_NUMBER
   if has_key "$SHARED_ENV" TWILIO_FROM_NUMBER; then
     echo "FAIL: TWILIO_FROM_NUMBER is not a runtime variable; use TWILIO_PHONE_NUMBER only" >&2
     exit 1
+  fi
+  if has_key "$SHARED_ENV" ENVOISMS_API_KEY; then
+    envoi_key="$(get_val "$SHARED_ENV" ENVOISMS_API_KEY)"
+  else
+    envoi_key=""
+  fi
+  if [[ -n "${envoi_key}" ]]; then
+    echo "OK: ENVOISMS_API_KEY set (SMS provider)"
+  else
+    req "$SHARED_ENV" TWILIO_ACCOUNT_SID
+    req "$SHARED_ENV" TWILIO_AUTH_TOKEN
+    req "$SHARED_ENV" TWILIO_PHONE_NUMBER
+    echo "OK: Twilio SMS provider configured"
   fi
 fi
 

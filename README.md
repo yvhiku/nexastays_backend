@@ -36,4 +36,6 @@ npm run start:dev
 Use `DB_SYNCHRONIZE=false` in `backend/stays/.env` when using SQL migrations.
 
 Database details: [`../database/stays/README.md`](../database/stays/README.md)  
-Architecture: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)
+**Documentation hub:** [`../docs/README.md`](../docs/README.md) — canonical specs (booking, payments, auth, architecture)  
+Architecture: [`../docs/06-architecture/SYSTEM_ARCHITECTURE.md`](../docs/06-architecture/SYSTEM_ARCHITECTURE.md)  
+Deployment: [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md)

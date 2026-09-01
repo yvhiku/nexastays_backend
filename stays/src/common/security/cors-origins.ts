@@ -43,6 +43,8 @@ export const DEV_DEFAULT_CORS_ORIGINS = [
   'http://127.0.0.1:3001',
   'http://localhost:3005',
   'http://127.0.0.1:3005',
+  'http://localhost:3010',
+  'http://127.0.0.1:3010',
 ];
 
 /**

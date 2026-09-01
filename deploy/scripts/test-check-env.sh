@@ -123,17 +123,24 @@ awk 'BEGIN{FS=OFS="="} $1=="CORS_ORIGINS"{$2="*"} {print}' "$TMP/.env" >"$TMP/.e
 chmod 600 "$TMP/.env"
 assert_fail "wildcard CORS rejected"
 
-# Phase 1 — TWILIO_FROM_NUMBER deprecated name
+# Phase 1 — TWILIO_FROM_NUMBER deprecated name (still rejected even with EnvoiSMS)
 write_base dogfood mock
-printf '\nTWILIO_FROM_NUMBER=+15555550100\n' >>"$TMP/.env"
+printf '\nENVOISMS_API_KEY=smr_test\nTWILIO_FROM_NUMBER=+15555550100\n' >>"$TMP/.env"
 chmod 600 "$TMP/.env"
 assert_fail "TWILIO_FROM_NUMBER rejected (use TWILIO_PHONE_NUMBER)"
 
-# Phase 1 — missing TWILIO_PHONE_NUMBER
+# Phase 1 — missing SMS provider (no EnvoiSMS, incomplete Twilio)
 write_base dogfood mock
-awk 'BEGIN{FS=OFS="="} $1!="TWILIO_PHONE_NUMBER" {print}' "$TMP/.env" >"$TMP/.env.tmp" && mv "$TMP/.env.tmp" "$TMP/.env"
+awk 'BEGIN{FS=OFS="="} $1!="TWILIO_ACCOUNT_SID" && $1!="TWILIO_AUTH_TOKEN" && $1!="TWILIO_PHONE_NUMBER" {print}' "$TMP/.env" >"$TMP/.env.tmp" && mv "$TMP/.env.tmp" "$TMP/.env"
 chmod 600 "$TMP/.env"
-assert_fail "missing TWILIO_PHONE_NUMBER rejected"
+assert_fail "missing SMS provider rejected"
+
+# Phase 1 — EnvoiSMS alone satisfies production SMS
+write_base dogfood mock
+awk 'BEGIN{FS=OFS="="} $1!="TWILIO_ACCOUNT_SID" && $1!="TWILIO_AUTH_TOKEN" && $1!="TWILIO_PHONE_NUMBER" {print}' "$TMP/.env" >"$TMP/.env.tmp" && mv "$TMP/.env.tmp" "$TMP/.env"
+printf '\nENVOISMS_API_KEY=smr_test_key\n' >>"$TMP/.env"
+chmod 600 "$TMP/.env"
+assert_ok "EnvoiSMS API key accepted as SMS provider"
 
 # Phase 1 — weak INTERNAL_SERVICE_KEY
 write_base dogfood mock

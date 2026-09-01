@@ -5,9 +5,9 @@
  * real PUBLISHED rows exist in stays_listing_reviews (ReviewAggregateService).
  *
  * Usage:
- *   npm run seed:listings
  *   npm run seed:listings -- --count 1000
  *   npm run seed:listings -- --clean --count 500
+ *   npm run seed:listings -- --count 1000000 --batch-size 1000
  *   SEED_HOST_USER_ID=<uuid> npm run seed:listings
  *
  * Cleanup (also via --clean):
@@ -60,10 +60,18 @@ const AMENITY_POOLS: string[][] = [
   ['kitchen', 'hot_water', 'heating'],
 ];
 
+function defaultBatchSize(count: number): number {
+  if (count >= 500_000) return 1000;
+  if (count >= 50_000) return 500;
+  return 100;
+}
+
 function parseArgs(argv: string[]) {
   let count = Number(process.env.SEED_COUNT || DEFAULT_COUNT);
   let clean = process.env.SEED_CLEAN === '1' || process.env.SEED_CLEAN === 'true';
   let hostUserId = process.env.SEED_HOST_USER_ID?.trim() || '';
+  let batchSize = Number(process.env.SEED_BATCH_SIZE || 0);
+  let startOffset = Number(process.env.SEED_OFFSET || 0);
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -76,13 +84,38 @@ function parseArgs(argv: string[]) {
       hostUserId = argv[++i];
     } else if (arg.startsWith('--host=')) {
       hostUserId = arg.slice('--host='.length);
+    } else if (arg === '--batch-size' && argv[i + 1]) {
+      batchSize = Number(argv[++i]);
+    } else if (arg.startsWith('--batch-size=')) {
+      batchSize = Number(arg.slice('--batch-size='.length));
+    } else if (arg === '--offset' && argv[i + 1]) {
+      startOffset = Number(argv[++i]);
+    } else if (arg.startsWith('--offset=')) {
+      startOffset = Number(arg.slice('--offset='.length));
     }
   }
 
   if (!Number.isFinite(count) || count < 1) {
     throw new Error(`Invalid --count: ${count}`);
   }
-  return { count: Math.floor(count), clean, hostUserId };
+  const resolvedCount = Math.floor(count);
+  const resolvedBatch =
+    Number.isFinite(batchSize) && batchSize > 0
+      ? Math.floor(batchSize)
+      : defaultBatchSize(resolvedCount);
+  if (resolvedBatch < 1 || resolvedBatch > 5000) {
+    throw new Error(`Invalid --batch-size: ${resolvedBatch} (use 1–5000)`);
+  }
+  if (!Number.isFinite(startOffset) || startOffset < 0) {
+    throw new Error(`Invalid --offset: ${startOffset}`);
+  }
+  return {
+    count: resolvedCount,
+    clean,
+    hostUserId,
+    batchSize: resolvedBatch,
+    startOffset: Math.floor(startOffset),
+  };
 }
 
 function pick<T>(arr: readonly T[]): T {
@@ -129,8 +162,69 @@ function bedroomsJson(bedroomCount: number, guests: number) {
   }));
 }
 
+async function ensureApprovedHost(
+  client: Client,
+  hostUserId: string,
+): Promise<string> {
+  if (hostUserId) {
+    const approved = await client.query(
+      `SELECT 1 FROM stays_host_profiles
+       WHERE user_id = $1 AND host_verification_status = 'APPROVED'`,
+      [hostUserId],
+    );
+    if (approved.rowCount === 0) {
+      throw new Error(`Host ${hostUserId} is missing or not APPROVED.`);
+    }
+    return hostUserId;
+  }
+
+  const hostRes = await client.query<{ user_id: string }>(
+    `SELECT user_id
+     FROM stays_host_profiles
+     WHERE host_verification_status = 'APPROVED'
+     ORDER BY created_at ASC
+     LIMIT 1`,
+  );
+  if (hostRes.rows[0]?.user_id) {
+    return hostRes.rows[0].user_id;
+  }
+
+  const bootstrapUserId = process.env.SEED_BOOTSTRAP_HOST_USER_ID?.trim();
+  if (!bootstrapUserId) {
+    throw new Error(
+      'No APPROVED host found. Pass --host <uuid>, set SEED_HOST_USER_ID, or SEED_BOOTSTRAP_HOST_USER_ID to auto-provision one.',
+    );
+  }
+
+  await client.query(
+    `INSERT INTO stays_host_profiles (
+       user_id, host_verification_status, application_status,
+       identity_status, source, full_name, email, submitted_at, reviewed_at
+     ) VALUES (
+       $1::uuid, 'APPROVED', 'APPROVED', 'VERIFIED', 'ADMIN',
+       'Seed Host', 'seed-host@nexastays.ma', NOW(), NOW()
+     )
+     ON CONFLICT (user_id) DO UPDATE SET
+       host_verification_status = 'APPROVED',
+       application_status = 'APPROVED',
+       identity_status = 'VERIFIED',
+       updated_at = NOW()`,
+    [bootstrapUserId],
+  );
+  console.log(`Provisioned APPROVED seed host profile for ${bootstrapUserId}`);
+  return bootstrapUserId;
+}
+
 async function main() {
-  const { count, clean, hostUserId: hostArg } = parseArgs(process.argv.slice(2));
+  const {
+    count,
+    clean,
+    hostUserId: hostArg,
+    batchSize,
+    startOffset,
+  } = parseArgs(process.argv.slice(2));
+  const targetTotal = startOffset + count;
+  const startedAt = Date.now();
 
   const client = new Client({
     host: process.env.DB_HOST || 'localhost',
@@ -143,47 +237,32 @@ async function main() {
   await client.connect();
 
   try {
-    let hostUserId = hostArg;
-    if (!hostUserId) {
-      const hostRes = await client.query<{ user_id: string }>(
-        `SELECT user_id
-         FROM stays_host_profiles
-         WHERE host_verification_status = 'APPROVED'
-         ORDER BY created_at ASC
-         LIMIT 1`,
-      );
-      hostUserId = hostRes.rows[0]?.user_id ?? '';
-    }
-    if (!hostUserId) {
-      throw new Error(
-        'No APPROVED host found. Pass --host <uuid> or set SEED_HOST_USER_ID.',
-      );
-    }
-
-    const approved = await client.query(
-      `SELECT 1 FROM stays_host_profiles
-       WHERE user_id = $1 AND host_verification_status = 'APPROVED'`,
-      [hostUserId],
-    );
-    if (approved.rowCount === 0) {
-      throw new Error(`Host ${hostUserId} is missing or not APPROVED.`);
-    }
-
-    await client.query('BEGIN');
+    const hostUserId = await ensureApprovedHost(client, hostArg);
 
     if (clean) {
-      const del = await client.query(
-        `DELETE FROM stays_listings WHERE title LIKE $1`,
-        [`${TITLE_PREFIX}%`],
-      );
-      console.log(`Cleaned ${del.rowCount ?? 0} previous seed listings.`);
+      await client.query('BEGIN');
+      try {
+        const del = await client.query(
+          `DELETE FROM stays_listings WHERE title LIKE $1`,
+          [`${TITLE_PREFIX}%`],
+        );
+        await client.query('COMMIT');
+        console.log(`Cleaned ${del.rowCount ?? 0} previous seed listings.`);
+      } catch (cleanErr) {
+        await client.query('ROLLBACK').catch(() => undefined);
+        throw cleanErr;
+      }
     }
 
-    const batchSize = 100;
     let created = 0;
 
-    for (let offset = 0; offset < count; offset += batchSize) {
-      const n = Math.min(batchSize, count - offset);
+    console.log(
+      `Seeding ${count} listings (batch ${batchSize}, offset ${startOffset}, target ${targetTotal}) for host ${hostUserId}…`,
+    );
+
+    for (let offset = startOffset; offset < targetTotal; offset += batchSize) {
+      const n = Math.min(batchSize, targetTotal - offset);
+      await client.query('BEGIN');
       const listings: Array<{
         title: string;
         listing_type: string;
@@ -208,6 +287,8 @@ async function main() {
 
       const batchBaseMs = Date.now() - offset * 1000;
 
+      let batchCreated = 0;
+      try {
       for (let i = 0; i < n; i++) {
         const idx = offset + i + 1;
         const place = CITIES[(offset + i) % CITIES.length];
@@ -390,12 +471,26 @@ async function main() {
         [JSON.stringify(rulesPayload)],
       );
 
-      created += listingRes.rows.length;
-      process.stdout.write(`\rSeeded ${created}/${count} listings...`);
+      batchCreated = listingRes.rows.length;
+      await client.query('COMMIT');
+      } catch (batchErr) {
+        await client.query('ROLLBACK').catch(() => undefined);
+        throw batchErr;
+      }
+
+      created += batchCreated;
+      const elapsedSec = (Date.now() - startedAt) / 1000;
+      const rate = created / Math.max(elapsedSec, 0.001);
+      const remaining = targetTotal - startOffset - created;
+      const etaSec = rate > 0 ? remaining / rate : 0;
+      process.stdout.write(
+        `\rSeeded ${startOffset + created}/${targetTotal} (${Math.round(rate)}/s, ETA ~${Math.ceil(etaSec / 60)}m)`,
+      );
     }
 
-    await client.query('COMMIT');
-    console.log(`\nDone. ${created} LIVE Morocco listings for host ${hostUserId}`);
+    console.log(
+      `\nDone. ${created} LIVE Morocco listings (${startOffset + created} total with prefix) for host ${hostUserId} in ${Math.round((Date.now() - startedAt) / 1000)}s`,
+    );
     console.log(`Titles use prefix "${TITLE_PREFIX}" — re-run with --clean to replace.`);
   } catch (err) {
     await client.query('ROLLBACK').catch(() => undefined);
