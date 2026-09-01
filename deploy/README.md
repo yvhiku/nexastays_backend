@@ -1,6 +1,7 @@
-# Nexa Stays — Deploy package (PROD-OPS-002 + VPS dogfood prep)
+# Nexa Stays — immutable-image deployment
 
-SSH + Docker Compose release control for Identity and Stays.
+GitHub Actions + GHCR + SSH/Docker Compose release control for Identity,
+Stays, Web, and Dashboard.
 
 **Status:** IMPLEMENTED — NOT VERIFIED until a real dogfood/staging host completes migrate → health → smoke.
 
@@ -13,7 +14,7 @@ Full VPS topology (Cloudflare → Nginx → Web/Dashboard/API + **Platform** →
 ```
 PR → CI (lint/build/security tests)
  ↓
-main → build immutable GHCR images (:$GITHUB_SHA, not :latest)
+main → each repository builds an immutable GHCR image (:$GITHUB_SHA)
  ↓
 manual dogfood OR workflow_dispatch staging → migrate → up → health → smoke
  ↓
@@ -30,7 +31,8 @@ Cloudflare → Nginx (80/443)
   → Postgres (identity :5433 · stays :5434) + Redis :6379
 ```
 
-Release Compose in this folder covers **Identity + Stays** images. Data plane, Platform, Web, Dashboard, and Nginx are documented in `docs/deploy/VPS_ARCHITECTURE.md`.
+Release Compose in this folder covers **Identity + Stays + Web + Dashboard**.
+Postgres/Redis remain in the database repository and Nginx remains host-owned.
 
 ## Layout
 
@@ -54,8 +56,8 @@ Companion DB migrations / backups: `database` repo (`migrate-remote.sh`, systemd
 
 | Role | Path |
 |------|------|
-| Deploy package (`DEPLOY_PATH`) | `/opt/nexa/backend/deploy` |
-| Database repo (`DATABASE_REPO_PATH`) | `/opt/nexa/database` |
+| Deploy package (`DEPLOY_PATH`) | `/opt/nexa/nexastays_backend/deploy` |
+| Database repo (`DATABASE_REPO_PATH`) | `/opt/nexa/nexastays_db` |
 | Operator edge notes | `/opt/nexa/deploy` |
 | Backups staging | `/opt/nexa/backups` (+ `/var/backups/nexa`) |
 | Backup env | `/etc/nexa/backup.env` |
@@ -68,7 +70,7 @@ CI sync uses `scripts/sync-deploy-package.sh` + `scripts/ci-rsync-excludes.txt` 
 
 ### Environments
 
-Create Environments: `staging`, `production`.
+Create Environments: `dogfood`, `staging`, `production`.
 
 Production **must** require reviewers (Settings → Environments → production → Required reviewers).
 
@@ -85,6 +87,51 @@ Production **must** require reviewers (Settings → Environments → production 
 | `SMOKE_STAYS_BASE_URL` | e.g. `https://stays.staging.example/api/v1` |
 | `SMOKE_CORS_ORIGIN_OK` | Allowed origin for CORS positive check |
 | `SMOKE_CORS_ORIGIN_BAD` | Disallowed origin (expect rejection) |
+| `SMOKE_WEB_BASE_URL` | Public site base URL, e.g. `https://nexastays.ma` |
+| `SMOKE_DASHBOARD_BASE_URL` | Public dashboard URL, e.g. `https://admin.nexastays.ma` |
+
+The backend repository also needs `PLATFORM_REPO_TOKEN`: a fine-grained token
+with read-only Contents access to the private `nexastays_platform` repository.
+Web and Dashboard use their own repository `GITHUB_TOKEN` to publish images.
+
+## One-time VPS registry and backup setup
+
+Log the deploy user into GHCR with a read-only package token (the token is read
+from stdin and is not stored in Git):
+
+```bash
+printf '%s' "$GHCR_READ_TOKEN" | docker login ghcr.io -u yvhiku --password-stdin
+```
+
+`remote-deploy.sh` fails closed unless the pre-migration backup service succeeds.
+The deploy user needs narrowly scoped passwordless permission for only these
+commands:
+
+```text
+systemctl start nexa-db-backup.service
+systemctl is-failed --quiet nexa-db-backup.service
+```
+
+Never grant unrestricted passwordless sudo to the CI deploy user.
+
+## Immutable image tags and rollback
+
+The host `.env` stores three independent Git SHA tags:
+
+```text
+BACKEND_IMAGE_TAG=<backend SHA>
+WEB_IMAGE_TAG=<web SHA>
+DASHBOARD_IMAGE_TAG=<dashboard SHA>
+```
+
+Before every deploy, the current values are saved to `.release.previous.env`.
+Application rollback is then:
+
+```bash
+bash scripts/rollback-release.sh
+```
+
+Rollback never reverses database migrations automatically.
 
 Host `.env*` for Compose is **never** committed — operators place files from `env/*.env.example`.
 

@@ -8,7 +8,7 @@ SEVERITY="${2:-P3}"
 EXTRA="${3:-{}}"
 SERVICE="${NEXA_SERVICE_NAME:-nexa-deploy}"
 ENV_NAME="${NEXA_ENV:-${APP_ENV:-unknown}}"
-SHA="${IMAGE_TAG:-${GIT_SHA:-${GITHUB_SHA:-}}}"
+SHA="${BACKEND_IMAGE_TAG:-${IMAGE_TAG:-${GIT_SHA:-${GITHUB_SHA:-}}}}"
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 LINE=$(printf '{"ts":"%s","level":"info","channel":"ops","service":"%s","environment":"%s","event":"%s","severity":"%s","release":"%s","context":%s}\n' \

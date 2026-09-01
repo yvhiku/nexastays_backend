@@ -3,8 +3,16 @@ name: Deploy production
 on:
   workflow_dispatch:
     inputs:
-      image_tag:
-        description: "Immutable Git SHA previously verified on staging"
+      backend_image_tag:
+        description: "Backend Git SHA previously verified on staging"
+        required: true
+        type: string
+      web_image_tag:
+        description: "Web Git SHA previously verified on staging"
+        required: true
+        type: string
+      dashboard_image_tag:
+        description: "Dashboard Git SHA previously verified on staging"
         required: true
         type: string
       confirm_production:
@@ -38,11 +46,9 @@ jobs:
             echo "Type PRODUCTION to confirm" >&2
             exit 1
           fi
-          TAG="${{ inputs.image_tag }}"
-          if [[ -z "$TAG" || "$TAG" == "latest" ]]; then
-            echo "Invalid IMAGE_TAG" >&2
-            exit 1
-          fi
+          for TAG in "${{ inputs.backend_image_tag }}" "${{ inputs.web_image_tag }}" "${{ inputs.dashboard_image_tag }}"; do
+            [[ "$TAG" =~ ^[0-9a-f]{7,64}$ ]] || { echo "Invalid immutable image tag" >&2; exit 1; }
+          done
 
       - name: Configure SSH
         env:
@@ -79,10 +85,11 @@ jobs:
         run: |
           ssh -o BatchMode=yes "${USER}@${HOST}" \
             "cd '${PATH_REMOTE}' && \
-             export IMAGE_TAG='${{ inputs.image_tag }}' \
+             export BACKEND_IMAGE_TAG='${{ inputs.backend_image_tag }}' \
+                    WEB_IMAGE_TAG='${{ inputs.web_image_tag }}' \
+                    DASHBOARD_IMAGE_TAG='${{ inputs.dashboard_image_tag }}' \
                     DATABASE_REPO_PATH='${DB_REPO}' \
                     SKIP_MIGRATE='${{ inputs.skip_migrate }}' && \
-             sed -i.bak 's/^IMAGE_TAG=.*/IMAGE_TAG=${{ inputs.image_tag }}/' .env && \
              bash scripts/remote-deploy.sh"
 
       - name: Smoke tests
@@ -93,9 +100,12 @@ jobs:
           SMOKE_CORS_ORIGIN_BAD: ${{ secrets.SMOKE_CORS_ORIGIN_BAD }}
           SMOKE_EXPECT_NEXA_ENV: production
           SMOKE_EXPECT_SWAGGER: "false"
+          SMOKE_WEB_BASE_URL: ${{ secrets.SMOKE_WEB_BASE_URL }}
+          SMOKE_DASHBOARD_BASE_URL: ${{ secrets.SMOKE_DASHBOARD_BASE_URL }}
         run: |
           if [[ -z "${SMOKE_IDENTITY_BASE_URL}" || -z "${SMOKE_STAYS_BASE_URL}" ]]; then
             echo "Smoke URL secrets missing — fail closed." >&2
             exit 1
           fi
           bash deploy/scripts/smoke.sh
+          bash deploy/scripts/smoke-web-release.sh

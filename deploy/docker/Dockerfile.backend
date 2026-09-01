@@ -1,0 +1,33 @@
+FROM node:22-alpine AS build
+
+ARG SERVICE
+WORKDIR /workspace
+
+COPY nexastays_platform ./platform
+COPY nexastays_backend ./backend
+
+RUN npm ci --prefix platform/event-bus \
+  && npm ci --prefix platform/telemetry \
+  && npm ci --prefix platform/identity-read-model \
+  && npm run build --prefix platform/identity-read-model
+
+WORKDIR /workspace/backend/${SERVICE}
+RUN npm ci && npm run build
+
+FROM node:22-alpine AS runtime
+
+ARG SERVICE
+ENV NODE_ENV=production
+WORKDIR /workspace
+
+COPY --from=build /workspace/platform ./platform
+COPY --from=build /workspace/backend/${SERVICE}/package.json ./backend/${SERVICE}/package.json
+COPY --from=build /workspace/backend/${SERVICE}/node_modules ./backend/${SERVICE}/node_modules
+COPY --from=build /workspace/backend/${SERVICE}/dist ./backend/${SERVICE}/dist
+
+RUN addgroup -S nexa && adduser -S -G nexa nexa \
+  && chown -R nexa:nexa /workspace
+USER nexa
+
+WORKDIR /workspace/backend/${SERVICE}
+CMD ["node", "dist/main.js"]

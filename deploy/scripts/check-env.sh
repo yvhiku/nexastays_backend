@@ -59,7 +59,9 @@ req_file "$STAYS_ENV"
 
 req "$SHARED_ENV" NEXA_ENV
 req "$SHARED_ENV" NODE_ENV
-req "$SHARED_ENV" IMAGE_TAG
+req "$SHARED_ENV" BACKEND_IMAGE_TAG
+req "$SHARED_ENV" WEB_IMAGE_TAG
+req "$SHARED_ENV" DASHBOARD_IMAGE_TAG
 req "$SHARED_ENV" IMAGE_REGISTRY
 req "$SHARED_ENV" IDENTITY_DATABASE_URL
 req "$SHARED_ENV" STAYS_DATABASE_URL
@@ -83,7 +85,9 @@ done
 
 NEXA_ENV="$(get_val "$SHARED_ENV" NEXA_ENV)"
 NODE_ENV="$(get_val "$SHARED_ENV" NODE_ENV)"
-IMAGE_TAG="$(get_val "$SHARED_ENV" IMAGE_TAG)"
+BACKEND_IMAGE_TAG="$(get_val "$SHARED_ENV" BACKEND_IMAGE_TAG)"
+WEB_IMAGE_TAG="$(get_val "$SHARED_ENV" WEB_IMAGE_TAG)"
+DASHBOARD_IMAGE_TAG="$(get_val "$SHARED_ENV" DASHBOARD_IMAGE_TAG)"
 STAYS_PAYMENT_PROVIDER="$(get_val "$SHARED_ENV" STAYS_PAYMENT_PROVIDER)"
 ID_DB="$(get_val "$IDENTITY_ENV" DB_NAME)"
 ST_DB="$(get_val "$STAYS_ENV" DB_NAME)"
@@ -94,10 +98,16 @@ if [[ "${NODE_ENV}" != "production" ]]; then
   echo "WARN: NODE_ENV=${NODE_ENV} (expected production on deploy hosts)" >&2
 fi
 
-if [[ "${IMAGE_TAG}" == "latest" ]]; then
-  echo "FAIL: IMAGE_TAG=latest is not an allowed release identity" >&2
-  exit 1
-fi
+for release_tag in "$BACKEND_IMAGE_TAG" "$WEB_IMAGE_TAG" "$DASHBOARD_IMAGE_TAG"; do
+  if [[ "$release_tag" == "latest" ]]; then
+    echo "FAIL: latest is not an allowed release identity" >&2
+    exit 1
+  fi
+  if ! echo "$release_tag" | grep -qE '^[0-9a-f]{7,64}$'; then
+    echo "FAIL: release image tags must be immutable Git SHAs" >&2
+    exit 1
+  fi
+done
 
 case "${NEXA_ENV}" in
   dogfood|staging|production) ;;
@@ -126,7 +136,7 @@ if [[ "${NEXA_ENV}" == "staging" || "${NEXA_ENV}" == "dogfood" ]]; then
   fi
 fi
 
-# Phase 1 — DEMO_OTP_CODE forbidden when NODE_ENV=production (dogfood VPS contract included)
+# Demo OTP is allowed only for the explicit dogfood environment.
 demo_otp=""
 if has_key "$SHARED_ENV" DEMO_OTP_CODE; then
   demo_otp="$(get_val "$SHARED_ENV" DEMO_OTP_CODE)"
@@ -134,14 +144,20 @@ fi
 if [[ -z "$demo_otp" ]] && has_key "$IDENTITY_ENV" DEMO_OTP_CODE; then
   demo_otp="$(get_val "$IDENTITY_ENV" DEMO_OTP_CODE)"
 fi
-if [[ "${NODE_ENV}" == "production" && -n "${demo_otp}" ]]; then
-  echo "FAIL: DEMO_OTP_CODE must not be set when NODE_ENV=production" >&2
-  exit 1
+if [[ -n "${demo_otp}" ]]; then
+  if ! echo "$demo_otp" | grep -qE '^[0-9]{6}$'; then
+    echo "FAIL: DEMO_OTP_CODE must contain exactly 6 digits" >&2
+    exit 1
+  fi
+  if [[ "${NEXA_ENV}" != "dogfood" ]]; then
+    echo "FAIL: DEMO_OTP_CODE is allowed only when NEXA_ENV=dogfood" >&2
+    exit 1
+  fi
 fi
 echo "OK: DEMO_OTP_CODE policy"
 
 # Phase 1 — SMS provider: EnvoiSMS (preferred) or Twilio
-if [[ "${NODE_ENV}" == "production" ]]; then
+if [[ "${NODE_ENV}" == "production" && -z "${demo_otp}" ]]; then
   if has_key "$SHARED_ENV" TWILIO_FROM_NUMBER; then
     echo "FAIL: TWILIO_FROM_NUMBER is not a runtime variable; use TWILIO_PHONE_NUMBER only" >&2
     exit 1

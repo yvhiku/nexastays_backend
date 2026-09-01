@@ -1,11 +1,13 @@
-# PROD-OPS-002 / VPS dogfood — Identity + Stays release compose
+# Immutable release compose for all user-facing Nexa services.
 #
 # Usage (on deploy host under /opt/nexa/backend/deploy):
-#   export IMAGE_TAG=<git-sha>
+#   export BACKEND_IMAGE_TAG=<git-sha>
+#   export WEB_IMAGE_TAG=<git-sha>
+#   export DASHBOARD_IMAGE_TAG=<git-sha>
 #   bash scripts/check-env.sh
 #   bash scripts/remote-deploy.sh
 #
-# Never use IMAGE_TAG=latest as release identity.
+# Never use latest as a release identity.
 # App ports bind to 127.0.0.1 — terminate TLS at the host reverse proxy.
 # Postgres/Redis stay on the host (database/docker-compose.yml), not in this file.
 
@@ -13,12 +15,13 @@ name: nexa-release
 
 services:
   identity:
-    image: ${IMAGE_REGISTRY}/nexa-identity:${IMAGE_TAG:?IMAGE_TAG required}
+    image: ${IMAGE_REGISTRY}/nexa-identity:${BACKEND_IMAGE_TAG:?BACKEND_IMAGE_TAG required}
     restart: unless-stopped
     ports:
       - "127.0.0.1:${IDENTITY_HOST_PORT:-3001}:3001"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks: [default, data]
     env_file:
       - path: .env
         required: true
@@ -28,8 +31,8 @@ services:
       NODE_ENV: production
       PORT: "3001"
       NEXA_SERVICE_NAME: nexa-identity
-      GIT_SHA: ${IMAGE_TAG}
-      IMAGE_TAG: ${IMAGE_TAG}
+      GIT_SHA: ${BACKEND_IMAGE_TAG}
+      IMAGE_TAG: ${BACKEND_IMAGE_TAG}
       BUILD_VERSION: ${BUILD_VERSION:-}
       BUILD_TIME: ${BUILD_TIME:-}
     healthcheck:
@@ -47,12 +50,13 @@ services:
     stop_grace_period: 30s
 
   stays:
-    image: ${IMAGE_REGISTRY}/nexa-stays:${IMAGE_TAG:?IMAGE_TAG required}
+    image: ${IMAGE_REGISTRY}/nexa-stays:${BACKEND_IMAGE_TAG:?BACKEND_IMAGE_TAG required}
     restart: unless-stopped
     ports:
       - "127.0.0.1:${STAYS_HOST_PORT:-3002}:3002"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks: [default, data]
     env_file:
       - path: .env
         required: true
@@ -62,8 +66,8 @@ services:
       NODE_ENV: production
       PORT: "3002"
       NEXA_SERVICE_NAME: nexa-stays
-      GIT_SHA: ${IMAGE_TAG}
-      IMAGE_TAG: ${IMAGE_TAG}
+      GIT_SHA: ${BACKEND_IMAGE_TAG}
+      IMAGE_TAG: ${BACKEND_IMAGE_TAG}
       BUILD_VERSION: ${BUILD_VERSION:-}
       BUILD_TIME: ${BUILD_TIME:-}
     depends_on:
@@ -82,3 +86,43 @@ services:
       retries: 3
       start_period: 40s
     stop_grace_period: 30s
+
+  web:
+    image: ${IMAGE_REGISTRY}/nexa-web:${WEB_IMAGE_TAG:?WEB_IMAGE_TAG required}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-3005}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      GIT_SHA: ${WEB_IMAGE_TAG}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/en',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  dashboard:
+    image: ${IMAGE_REGISTRY}/nexa-dashboard:${DASHBOARD_IMAGE_TAG:?DASHBOARD_IMAGE_TAG required}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DASHBOARD_HOST_PORT:-3010}:3010"
+    environment:
+      NODE_ENV: production
+      PORT: "3010"
+      HOSTNAME: "0.0.0.0"
+      GIT_SHA: ${DASHBOARD_IMAGE_TAG}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3010/',r=>process.exit(r.statusCode>=200&&r.statusCode<400?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+networks:
+  default:
+  data:
+    external: true
+    name: nexastays_db_default

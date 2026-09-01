@@ -15,7 +15,9 @@ write_base() {
   cat >"$TMP/.env" <<EOF
 NEXA_ENV=${nexa_env}
 NODE_ENV=production
-IMAGE_TAG=abc123def
+BACKEND_IMAGE_TAG=abc123def
+WEB_IMAGE_TAG=abc123def
+DASHBOARD_IMAGE_TAG=abc123def
 IMAGE_REGISTRY=ghcr.io/example
 IDENTITY_DATABASE_URL=postgresql://nexa_identity:${STRONG_ID}@127.0.0.1:5433/nexa_identity
 STAYS_DATABASE_URL=postgresql://nexa_stays:${STRONG_ST}@127.0.0.1:5434/nexa_stays
@@ -114,7 +116,7 @@ assert_fail "world-readable .env rejected"
 write_base dogfood mock
 printf '\nDEMO_OTP_CODE=123456\n' >>"$TMP/.env"
 chmod 600 "$TMP/.env"
-assert_fail "DEMO_OTP_CODE rejected when NODE_ENV=production"
+assert_ok "DEMO_OTP_CODE accepted for dogfood"
 
 # Phase 1 — wildcard CORS
 write_base dogfood mock

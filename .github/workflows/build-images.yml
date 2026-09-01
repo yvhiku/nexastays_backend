@@ -1,4 +1,4 @@
-name: Build release images
+name: Build backend release images
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: build-images-${{ github.sha }}
+  group: build-backend-images-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -19,43 +19,44 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - service: identity
-            image: nexa-identity
-          - service: stays
-            image: nexa-stays
+        service: [identity, stays]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          path: nexastays_backend
 
-      - name: Image identity
-        id: meta
-        run: |
-          echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-          echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-          echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-          echo "registry=ghcr.io/${GITHUB_REPOSITORY_OWNER}" >> "$GITHUB_OUTPUT"
+      # Backend packages use file:../../platform/* dependencies.
+      - name: Checkout shared platform
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/nexastays_platform
+          token: ${{ secrets.PLATFORM_REPO_TOKEN || github.token }}
+          path: nexastays_platform
 
-      - name: Login GHCR
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push ${{ matrix.image }}
+      - name: Minimize multi-repository Docker context
+        run: |
+          printf '%s\n' '**/.git' '**/node_modules' '**/dist' '**/.env*' > .dockerignore
+
+      - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.service }}
-          file: ${{ matrix.service }}/Dockerfile.prod
+          context: .
+          file: nexastays_backend/deploy/docker/Dockerfile.backend
           push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}
           build-args: |
-            BUILD_VERSION=${{ github.sha }}
+            SERVICE=${{ matrix.service }}
+          tags: ghcr.io/${{ github.repository_owner }}/nexa-${{ matrix.service }}:${{ github.sha }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
-      - name: Confirm not using latest as sole identity
-        run: |
-          echo "Published ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}"
+      - name: Publish immutable release identity
+        run: echo "ghcr.io/${{ github.repository_owner }}/nexa-${{ matrix.service }}:${{ github.sha }}"

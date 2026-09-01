@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Host-side deploy: preflight → migrate → compose up → wait healthy.
+# Host-side deploy: preflight → backup → migrate → compose up → wait healthy.
 # Does not print secret env values.
 set -euo pipefail
 
@@ -9,8 +9,11 @@ ENV_FILE="${ENV_FILE:-$DEPLOY_DIR/.env}"
 IDENTITY_ENV="${IDENTITY_ENV:-$DEPLOY_DIR/.env.identity}"
 STAYS_ENV="${STAYS_ENV:-$DEPLOY_DIR/.env.stays}"
 DATABASE_REPO_PATH="${DATABASE_REPO_PATH:?DATABASE_REPO_PATH required}"
-IMAGE_TAG="${IMAGE_TAG:?IMAGE_TAG required}"
+BACKEND_IMAGE_TAG="${BACKEND_IMAGE_TAG:?BACKEND_IMAGE_TAG required}"
+WEB_IMAGE_TAG="${WEB_IMAGE_TAG:?WEB_IMAGE_TAG required}"
+DASHBOARD_IMAGE_TAG="${DASHBOARD_IMAGE_TAG:?DASHBOARD_IMAGE_TAG required}"
 SKIP_MIGRATE="${SKIP_MIGRATE:-0}"
+SKIP_BACKUP="${SKIP_BACKUP:-0}"
 
 get_val() {
   local file="$1"
@@ -29,7 +32,6 @@ cd "$DEPLOY_DIR"
 bash "$SCRIPT_DIR/check-env.sh" "$ENV_FILE" "$IDENTITY_ENV" "$STAYS_ENV"
 bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_STARTED P3 '{}'
 
-export IMAGE_TAG
 export IMAGE_REGISTRY
 IMAGE_REGISTRY="$(get_val "$ENV_FILE" IMAGE_REGISTRY)"
 export IMAGE_REGISTRY
@@ -49,20 +51,51 @@ if [[ -z "$IMAGE_REGISTRY" ]]; then
   exit 1
 fi
 
-if [[ "$IMAGE_TAG" == "latest" ]]; then
-  echo "Refusing IMAGE_TAG=latest" >&2
-  exit 1
-fi
+for release_tag in "$BACKEND_IMAGE_TAG" "$WEB_IMAGE_TAG" "$DASHBOARD_IMAGE_TAG"; do
+  if [[ "$release_tag" == "latest" ]] || ! echo "$release_tag" | grep -qE '^[0-9a-f]{7,64}$'; then
+    echo "Refusing non-immutable release tag" >&2
+    exit 1
+  fi
+done
 
-# Prefer IMAGE_TAG from CLI env; keep compose substitution consistent
-if grep -qE '^[[:space:]]*IMAGE_TAG=' "$ENV_FILE"; then
-  # shellcheck disable=SC2016
-  sed -i.bak "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" "$ENV_FILE"
-  bash "$SCRIPT_DIR/secure-env-perms.sh" "$ENV_FILE" "${ENV_FILE}.bak" 2>/dev/null || \
-    bash "$SCRIPT_DIR/secure-env-perms.sh" "$ENV_FILE"
-fi
+set_env_tag() {
+  local key="$1"
+  local value="$2"
+  if grep -qE "^[[:space:]]*${key}=" "$ENV_FILE"; then
+    sed -i.bak "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+  fi
+}
+
+# Keep a recoverable record of the previously active immutable tags.
+PREVIOUS_RELEASE_FILE="$DEPLOY_DIR/.release.previous.env"
+{
+  printf 'BACKEND_IMAGE_TAG=%s\n' "$(get_val "$ENV_FILE" BACKEND_IMAGE_TAG)"
+  printf 'WEB_IMAGE_TAG=%s\n' "$(get_val "$ENV_FILE" WEB_IMAGE_TAG)"
+  printf 'DASHBOARD_IMAGE_TAG=%s\n' "$(get_val "$ENV_FILE" DASHBOARD_IMAGE_TAG)"
+} > "$PREVIOUS_RELEASE_FILE"
+chmod 600 "$PREVIOUS_RELEASE_FILE"
+
+set_env_tag BACKEND_IMAGE_TAG "$BACKEND_IMAGE_TAG"
+set_env_tag WEB_IMAGE_TAG "$WEB_IMAGE_TAG"
+set_env_tag DASHBOARD_IMAGE_TAG "$DASHBOARD_IMAGE_TAG"
+bash "$SCRIPT_DIR/secure-env-perms.sh" "$ENV_FILE" "${ENV_FILE}.bak" "$PREVIOUS_RELEASE_FILE" 2>/dev/null || \
+  bash "$SCRIPT_DIR/secure-env-perms.sh" "$ENV_FILE" "$PREVIOUS_RELEASE_FILE"
+
+export BACKEND_IMAGE_TAG WEB_IMAGE_TAG DASHBOARD_IMAGE_TAG
 
 if [[ "$SKIP_MIGRATE" != "1" ]]; then
+  if [[ "$SKIP_BACKUP" != "1" ]]; then
+    echo "=== Pre-migration backup (failure stops deploy) ==="
+    sudo -n systemctl start nexa-db-backup.service
+    sudo -n systemctl is-failed --quiet nexa-db-backup.service && {
+      echo "Pre-migration backup failed" >&2
+      exit 1
+    }
+  else
+    echo "SKIP_BACKUP=1 — backup skipped (emergency only)"
+  fi
   echo "=== Migrations (failure stops deploy) ==="
   bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_MIGRATION_STARTED P3 '{}'
   bash "$SCRIPT_DIR/emit-obs-event.sh" MIGRATION_STARTED P3 '{}'
@@ -91,7 +124,7 @@ else
 fi
 
 bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_STARTED_APPLICATION P3 '{}'
-echo "=== Pull + start (${IMAGE_REGISTRY}/*:${IMAGE_TAG}) ==="
+echo "=== Pull immutable release images ==="
 docker compose -f docker-compose.release.yml --env-file "$ENV_FILE" pull
 docker compose -f docker-compose.release.yml --env-file "$ENV_FILE" up -d
 
@@ -99,13 +132,21 @@ echo "=== Wait for readiness ==="
 for _ in $(seq 1 60); do
   id_ok=0
   st_ok=0
+  web_ok=0
+  dashboard_ok=0
   if curl -fsS "http://127.0.0.1:${IDENTITY_HOST_PORT}/api/v1/health/ready" >/dev/null 2>&1; then
     id_ok=1
   fi
   if curl -fsS "http://127.0.0.1:${STAYS_HOST_PORT}/api/v1/health/ready" >/dev/null 2>&1; then
     st_ok=1
   fi
-  if [[ "$id_ok" == "1" && "$st_ok" == "1" ]]; then
+  if curl -fsS "http://127.0.0.1:${WEB_HOST_PORT:-3005}/en" >/dev/null 2>&1; then
+    web_ok=1
+  fi
+  if curl -fsS "http://127.0.0.1:${DASHBOARD_HOST_PORT:-3010}/" >/dev/null 2>&1; then
+    dashboard_ok=1
+  fi
+  if [[ "$id_ok" == "1" && "$st_ok" == "1" && "$web_ok" == "1" && "$dashboard_ok" == "1" ]]; then
     echo "Ready."
     bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_SUCCEEDED P3 '{}'
     bash "$SCRIPT_DIR/record-deployment.sh" "$ENV_FILE" "success"

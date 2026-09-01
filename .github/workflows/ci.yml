@@ -89,7 +89,9 @@ jobs:
         run: docker compose -f deploy/docker-compose.release.yml config --quiet
         env:
           IMAGE_REGISTRY: ghcr.io/example
-          IMAGE_TAG: deadbeef
+          BACKEND_IMAGE_TAG: deadbeef
+          WEB_IMAGE_TAG: deadbeef
+          DASHBOARD_IMAGE_TAG: deadbeef
       - name: Shell syntax (deploy scripts)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck || true
@@ -97,52 +99,9 @@ jobs:
           if command -v shellcheck >/dev/null; then shellcheck -x deploy/scripts/*.sh || true; fi
       - name: Reject latest as default in docs/scripts
         run: |
-          if grep -RIn --exclude-dir=.git 'IMAGE_TAG=latest' deploy/; then
-            echo "Found IMAGE_TAG=latest" >&2
-            exit 1
-          fi
           if grep -RInE 'image:.*:latest' deploy/docker-compose.release.yml; then
             echo "Found :latest image tag" >&2
             exit 1
           fi
-      - name: check-env rejects production+mock
-        run: |
-          cat > /tmp/bad.env <<'EOF'
-          NEXA_ENV=production
-          NODE_ENV=production
-          IMAGE_TAG=abc123
-          IMAGE_REGISTRY=ghcr.io/x
-          DB_PASSWORD=x
-          PII_ENCRYPTION_KEY=x
-          JWT_PRIVATE_KEY=x
-          JWT_PUBLIC_KEY=x
-          JWT_ISSUER=x
-          JWT_AUDIENCE=x
-          CORS_ORIGINS=https://a.example
-          INTERNAL_SERVICE_KEY=x
-          ADMIN_PASSWORD_HASH=x
-          STAYS_PAYMENT_PROVIDER=mock
-          EOF
-          if bash deploy/scripts/check-env.sh /tmp/bad.env; then
-            echo "expected failure for production+mock" >&2
-            exit 1
-          fi
-      - name: check-env accepts dogfood+mock
-        run: |
-          cat > /tmp/ok.env <<'EOF'
-          NEXA_ENV=dogfood
-          NODE_ENV=production
-          IMAGE_TAG=abc123
-          IMAGE_REGISTRY=ghcr.io/x
-          DB_PASSWORD=x
-          PII_ENCRYPTION_KEY=x
-          JWT_PRIVATE_KEY=x
-          JWT_PUBLIC_KEY=x
-          JWT_ISSUER=x
-          JWT_AUDIENCE=x
-          CORS_ORIGINS=https://a.example
-          INTERNAL_SERVICE_KEY=x
-          ADMIN_PASSWORD_HASH=x
-          STAYS_PAYMENT_PROVIDER=mock
-          EOF
-          bash deploy/scripts/check-env.sh /tmp/ok.env
+      - name: Deployment environment policy regression
+        run: bash deploy/scripts/test-check-env.sh

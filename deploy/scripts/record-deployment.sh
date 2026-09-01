@@ -21,5 +21,5 @@ get_val() {
 ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 file="$LOG_DIR/deployments.jsonl"
 printf '{"ts":"%s","nexa_env":"%s","image_tag":"%s","image_registry":"%s","build_version":"%s","result":"%s"}\n' \
-  "$ts" "$(get_val NEXA_ENV)" "$(get_val IMAGE_TAG)" "$(get_val IMAGE_REGISTRY)" "$(get_val BUILD_VERSION)" "$RESULT" >>"$file"
+  "$ts" "$(get_val NEXA_ENV)" "$(get_val BACKEND_IMAGE_TAG)" "$(get_val IMAGE_REGISTRY)" "$(get_val BUILD_VERSION)" "$RESULT" >>"$file"
 echo "Recorded deployment result=$RESULT → $file"
