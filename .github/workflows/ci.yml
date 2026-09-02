@@ -14,14 +14,29 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: identity
+        working-directory: nexastays_backend/identity
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          path: nexastays_backend
+      - name: Checkout shared platform
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/nexastays_platform
+          token: ${{ secrets.PLATFORM_REPO_TOKEN || github.token }}
+          path: platform
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: identity/package-lock.json
+          cache-dependency-path: |
+            nexastays_backend/identity/package-lock.json
+            platform/event-bus/package-lock.json
+            platform/telemetry/package-lock.json
+      - name: Install shared platform dependencies
+        working-directory: platform
+        run: npm ci --prefix event-bus && npm ci --prefix telemetry
       - run: npm ci
       - run: npm run build
       - run: npm test -- --runInBand
@@ -30,14 +45,30 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: stays
+        working-directory: nexastays_backend/stays
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          path: nexastays_backend
+      - name: Checkout shared platform
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/nexastays_platform
+          token: ${{ secrets.PLATFORM_REPO_TOKEN || github.token }}
+          path: platform
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: stays/package-lock.json
+          cache-dependency-path: |
+            nexastays_backend/stays/package-lock.json
+            platform/event-bus/package-lock.json
+            platform/identity-read-model/package-lock.json
+            platform/telemetry/package-lock.json
+      - name: Install shared platform dependencies
+        working-directory: platform
+        run: npm ci --prefix event-bus && npm ci --prefix identity-read-model && npm ci --prefix telemetry
       - run: npm ci
       - run: npm run build
       - run: npm test -- --runInBand
@@ -47,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: stays
+        working-directory: nexastays_backend/stays
     services:
       postgres:
         image: postgres:16-alpine
@@ -72,12 +103,28 @@ jobs:
       STAYS_PG_DATABASE: nexa_stays
       STAYS_PG_CONCURRENCY_STRESS: "20"
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          path: nexastays_backend
+      - name: Checkout shared platform
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/nexastays_platform
+          token: ${{ secrets.PLATFORM_REPO_TOKEN || github.token }}
+          path: platform
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: stays/package-lock.json
+          cache-dependency-path: |
+            nexastays_backend/stays/package-lock.json
+            platform/event-bus/package-lock.json
+            platform/identity-read-model/package-lock.json
+            platform/telemetry/package-lock.json
+      - name: Install shared platform dependencies
+        working-directory: platform
+        run: npm ci --prefix event-bus && npm ci --prefix identity-read-model && npm ci --prefix telemetry
       - run: npm ci
       - run: npm run test:pg-concurrency
 
@@ -86,7 +133,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate release compose
-        run: docker compose -f deploy/docker-compose.release.yml config --quiet
+        run: |
+          touch deploy/.env deploy/.env.identity deploy/.env.stays
+          docker compose -f deploy/docker-compose.release.yml config --quiet
         env:
           IMAGE_REGISTRY: ghcr.io/example
           BACKEND_IMAGE_TAG: deadbeef

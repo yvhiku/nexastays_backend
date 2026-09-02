@@ -14,6 +14,7 @@ WEB_IMAGE_TAG="${WEB_IMAGE_TAG:?WEB_IMAGE_TAG required}"
 DASHBOARD_IMAGE_TAG="${DASHBOARD_IMAGE_TAG:?DASHBOARD_IMAGE_TAG required}"
 SKIP_MIGRATE="${SKIP_MIGRATE:-0}"
 SKIP_BACKUP="${SKIP_BACKUP:-0}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-nexa-apps}"
 
 get_val() {
   local file="$1"
@@ -125,8 +126,8 @@ fi
 
 bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_STARTED_APPLICATION P3 '{}'
 echo "=== Pull immutable release images ==="
-docker compose -f docker-compose.release.yml --env-file "$ENV_FILE" pull
-docker compose -f docker-compose.release.yml --env-file "$ENV_FILE" up -d
+docker compose -p "$COMPOSE_PROJECT_NAME" -f docker-compose.release.yml --env-file "$ENV_FILE" pull
+docker compose -p "$COMPOSE_PROJECT_NAME" -f docker-compose.release.yml --env-file "$ENV_FILE" up -d
 
 echo "=== Wait for readiness ==="
 for _ in $(seq 1 60); do

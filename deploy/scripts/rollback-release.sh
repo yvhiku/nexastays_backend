@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEPLOY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$DEPLOY_DIR/.env}"
 PREVIOUS_RELEASE_FILE="${PREVIOUS_RELEASE_FILE:-$DEPLOY_DIR/.release.previous.env}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-nexa-apps}"
 
 [[ -f "$ENV_FILE" ]] || { echo "Missing $ENV_FILE" >&2; exit 1; }
 [[ -f "$PREVIOUS_RELEASE_FILE" ]] || { echo "No recorded previous release" >&2; exit 1; }
@@ -43,8 +44,8 @@ IMAGE_REGISTRY="$(get_val "$ENV_FILE" IMAGE_REGISTRY)"
 
 echo "Rolling application containers back to recorded immutable tags."
 echo "Database migrations are intentionally not reversed."
-docker compose -f "$DEPLOY_DIR/docker-compose.release.yml" --env-file "$ENV_FILE" pull
-docker compose -f "$DEPLOY_DIR/docker-compose.release.yml" --env-file "$ENV_FILE" up -d
+docker compose -p "$COMPOSE_PROJECT_NAME" -f "$DEPLOY_DIR/docker-compose.release.yml" --env-file "$ENV_FILE" pull
+docker compose -p "$COMPOSE_PROJECT_NAME" -f "$DEPLOY_DIR/docker-compose.release.yml" --env-file "$ENV_FILE" up -d
 
 for _ in $(seq 1 60); do
   if curl -fsS http://127.0.0.1:3001/api/v1/health/ready >/dev/null 2>&1 \

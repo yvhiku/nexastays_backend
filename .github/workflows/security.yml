@@ -25,14 +25,30 @@ jobs:
         service: [identity, stays]
     defaults:
       run:
-        working-directory: ${{ matrix.service }}
+        working-directory: nexastays_backend/${{ matrix.service }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          path: nexastays_backend
+      - name: Checkout shared platform
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/nexastays_platform
+          token: ${{ secrets.PLATFORM_REPO_TOKEN || github.token }}
+          path: platform
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: ${{ matrix.service }}/package-lock.json
+          cache-dependency-path: |
+            nexastays_backend/${{ matrix.service }}/package-lock.json
+            platform/event-bus/package-lock.json
+            platform/identity-read-model/package-lock.json
+            platform/telemetry/package-lock.json
+      - name: Install shared platform dependencies
+        working-directory: platform
+        run: npm ci --prefix event-bus && npm ci --prefix identity-read-model && npm ci --prefix telemetry
       - run: npm ci
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run build
