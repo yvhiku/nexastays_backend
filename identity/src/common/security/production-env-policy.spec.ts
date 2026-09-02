@@ -6,13 +6,24 @@ import {
 } from './production-env-policy';
 
 describe('Identity production-env-policy Phase 1', () => {
-  it('rejects DEMO_OTP_CODE when NODE_ENV=production', () => {
+  it('rejects DEMO_OTP_CODE in a production release', () => {
     expect(() =>
       assertDemoOtpForbiddenInProduction({
         NODE_ENV: 'production',
+        NEXA_ENV: 'production',
         DEMO_OTP_CODE: '123456',
       } as NodeJS.ProcessEnv),
     ).toThrow(/DEMO_OTP_CODE/);
+  });
+
+  it('allows DEMO_OTP_CODE for dogfood with production Node hardening', () => {
+    expect(() =>
+      assertDemoOtpForbiddenInProduction({
+        NODE_ENV: 'production',
+        NEXA_ENV: 'dogfood',
+        DEMO_OTP_CODE: '123456',
+      } as NodeJS.ProcessEnv),
+    ).not.toThrow();
   });
 
   it('allows DEMO_OTP_CODE outside production', () => {

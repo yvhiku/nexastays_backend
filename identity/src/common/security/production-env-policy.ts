@@ -21,8 +21,15 @@ const KNOWN_INSECURE_VALUES = new Set([
 export function assertDemoOtpForbiddenInProduction(
   env: NodeJS.ProcessEnv = process.env,
 ): void {
-  if (env.NODE_ENV === 'production' && (env.DEMO_OTP_CODE ?? '').trim()) {
-    throw new Error('DEMO_OTP_CODE must not be set in production.');
+  const demoCode = (env.DEMO_OTP_CODE ?? '').trim();
+  if (!demoCode) return;
+  if (!/^\d{6}$/.test(demoCode)) {
+    throw new Error('DEMO_OTP_CODE must contain exactly 6 digits.');
+  }
+  if (env.NODE_ENV === 'production' && env.NEXA_ENV !== 'dogfood') {
+    throw new Error(
+      'DEMO_OTP_CODE is allowed only when NEXA_ENV=dogfood; it is forbidden in staging and production.',
+    );
   }
 }
 

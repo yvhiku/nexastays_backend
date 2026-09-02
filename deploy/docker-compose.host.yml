@@ -1,0 +1,104 @@
+name: nexa-apps
+
+services:
+  identity:
+    image: nexa-identity:${IMAGE_TAG:?IMAGE_TAG required}
+    build:
+      context: /opt/nexa
+      dockerfile: nexastays_backend/deploy/docker/Dockerfile.backend
+      args:
+        SERVICE: identity
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - data
+    env_file:
+      - .env
+      - .env.identity
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      NEXA_SERVICE_NAME: nexa-identity
+      GIT_SHA: ${IMAGE_TAG}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3001/api/v1/health/ready',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+  stays:
+    image: nexa-stays:${IMAGE_TAG:?IMAGE_TAG required}
+    build:
+      context: /opt/nexa
+      dockerfile: nexastays_backend/deploy/docker/Dockerfile.backend
+      args:
+        SERVICE: stays
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3002:3002"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - data
+    env_file:
+      - .env
+      - .env.stays
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      NEXA_SERVICE_NAME: nexa-stays
+      GIT_SHA: ${IMAGE_TAG}
+    depends_on:
+      identity:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3002/api/v1/health/ready',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+  web:
+    image: nexa-web:${WEB_IMAGE_TAG:-local}
+    build:
+      context: /opt/nexa
+      dockerfile: nexastays_backend/deploy/docker/Dockerfile.web
+      args:
+        APP_DIR: nexastays_web
+        NEXT_PUBLIC_IDENTITY_API_BASE_URL: https://identity.nexastays.ma/api/v1
+        NEXT_PUBLIC_STAYS_API_BASE_URL: https://api.nexastays.ma/api/v1
+        NEXT_PUBLIC_SITE_URL: https://nexastays.ma
+        NEXT_PUBLIC_STAYS_PAYMENT_PROVIDER: mock
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3005:3000"
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+
+  dashboard:
+    image: nexa-dashboard:${DASHBOARD_IMAGE_TAG:-local}
+    build:
+      context: /opt/nexa
+      dockerfile: nexastays_backend/deploy/docker/Dockerfile.web
+      args:
+        APP_DIR: nexastays_dashboard
+        NEXT_PUBLIC_IDENTITY_API_URL: https://identity.nexastays.ma/api/v1
+        NEXT_PUBLIC_STAYS_API_URL: https://api.nexastays.ma/api/v1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3010:3010"
+    environment:
+      PORT: "3010"
+      HOSTNAME: "0.0.0.0"
+
+networks:
+  data:
+    external: true
+    name: nexastays_db_default

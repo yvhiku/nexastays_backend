@@ -52,6 +52,9 @@ export function assertProductionSmsConfigured(
   env: NodeJS.ProcessEnv = process.env,
 ): void {
   if (env.NODE_ENV !== 'production') return;
+  if (env.NEXA_ENV === 'dogfood' && /^\d{6}$/.test((env.DEMO_OTP_CODE ?? '').trim())) {
+    return;
+  }
   const provider = resolveSmsProvider(env);
   if (provider === 'envoisms' && isEnvoiSmsConfigured(env)) return;
   if (provider === 'twilio' && isTwilioConfigured(env)) return;
