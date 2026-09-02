@@ -98,7 +98,7 @@ services:
       HOSTNAME: "0.0.0.0"
       GIT_SHA: ${WEB_IMAGE_TAG}
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/en',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "require('http').get({host:'127.0.0.1',port:3000,path:'/en',headers:{host:'nexastays.ma','x-forwarded-proto':'https'}},r=>process.exit(r.statusCode>=200&&r.statusCode<400?0:1)).on('error',()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3

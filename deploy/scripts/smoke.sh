@@ -22,7 +22,7 @@ bad() {
 }
 
 code() {
-  curl -sS -o /dev/null -w '%{http_code}' "$@" || echo "000"
+  curl -sS -A 'NexaReleaseSmoke/1.0' -o /dev/null -w '%{http_code}' "$@" || echo "000"
 }
 
 echo "=== Smoke: Identity ==="
