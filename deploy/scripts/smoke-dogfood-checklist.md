@@ -38,3 +38,9 @@ export SMOKE_EXPECT_NEXA_ENV=dogfood
 ```
 
 Real-money / CMI paths: **OUT OF SCOPE**.
+
+---
+
+Full soft-launch PASS/FAIL suite (100 IDs):  
+`docs/audits/soft-launch-certification/LAUNCH_CERTIFICATION_PASSFAIL.md`  
+Scorecard: `docs/audits/soft-launch-certification/LAUNCH_CERTIFICATION_SCORECARD.md`
