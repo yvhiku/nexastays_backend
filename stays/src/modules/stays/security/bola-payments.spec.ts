@@ -148,8 +148,10 @@ describe('Payment webhook idempotency', () => {
         booking_id: 'booking-a',
         status: 'SUCCEEDED',
         amount: 500,
+        currency: 'MAD',
         provider: 'cmi',
         provider_intent_id: 'pi-1',
+        metadata: { cmi_capture_status: 'SUCCEEDED' },
       }),
     };
 

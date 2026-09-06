@@ -9,10 +9,10 @@ import { DataSource, Repository } from 'typeorm';
 import { StaysHostProfile } from '../entities/stays-host-profile.entity';
 import { StaysAuditLog } from '../entities/stays-audit-log.entity';
 import { User } from '../../users/entities/user.entity';
-import { KycProfile } from '../../compliance/entities/kyc-profile.entity';
-import { UsersService } from '../../users/users.service';
-import { UnifiedIdentityService } from '../../users/unified-identity.service';
-import { normalizePhoneOrThrow } from '../../../common/phone/phone-normalizer';
+import { KycProfile } from '../../../../modules/compliance/entities/kyc-profile.entity';
+import { UsersService } from '../../../../modules/users/users.service';
+import { UnifiedIdentityService } from '../../../../modules/users/unified-identity.service';
+import { normalizePhoneOrThrow } from '../../../../common/phone/phone-normalizer';
 import type { SubmitHostOnboardingDto } from '../dto/submit-host-onboarding.dto';
 import type {
   HostApplicationStatus,

@@ -6,6 +6,7 @@ describe('ReconciliationService', () => {
   };
   const ledgerAccountRepository = {
     createQueryBuilder: jest.fn(),
+    findOne: jest.fn().mockResolvedValue(null),
   };
   const reconciliationIssueRepository = {
     save: jest.fn(),

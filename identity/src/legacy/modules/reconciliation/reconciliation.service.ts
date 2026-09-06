@@ -6,9 +6,9 @@ import { LedgerEntry } from '../ledger/entities/ledger-entry.entity';
 import { LedgerAccount } from '../ledger/entities/ledger-account.entity';
 import { LedgerTransaction } from '../ledger/entities/ledger-transaction.entity';
 import { ReconciliationIssue } from './entities/reconciliation-issue.entity';
-import { RiskAlert } from '../admin/entities/risk-alert.entity';
-import { AuditService } from '../audit/audit.service';
-import { safeLogger } from '../../common/logging/safe-logger';
+import { RiskAlert } from '../../../modules/admin/entities/risk-alert.entity';
+import { AuditService } from '../../../modules/audit/audit.service';
+import { safeLogger } from '../../../common/logging/safe-logger';
 import { LedgerService } from '../ledger/ledger.service';
 
 type ReconciliationSummary = {

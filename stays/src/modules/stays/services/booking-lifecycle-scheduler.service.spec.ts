@@ -12,7 +12,7 @@ import { MessagingStateService } from '../../messaging/messaging-state.service';
 describe('BookingLifecycleSchedulerService — payment expiration guards', () => {
   let service: BookingLifecycleSchedulerService;
   let bookingRepo: { find: jest.Mock; update: jest.Mock };
-  let intentRepo: { update: jest.Mock };
+  let intentRepo: { find: jest.Mock; update: jest.Mock };
   let domainEvents: { publish: jest.Mock };
 
   beforeEach(async () => {
@@ -21,6 +21,7 @@ describe('BookingLifecycleSchedulerService — payment expiration guards', () =>
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     intentRepo = {
+      find: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     domainEvents = { publish: jest.fn().mockResolvedValue(undefined) };
