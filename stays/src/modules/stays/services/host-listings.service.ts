@@ -550,7 +550,10 @@ export class HostListingsService {
         dto.address !== undefined ||
         dto.geo_lat !== undefined ||
         dto.geo_lng !== undefined ||
-        dto.neighborhood !== undefined;
+        dto.neighborhood !== undefined ||
+        dto.postal_code !== undefined ||
+        dto.building_name !== undefined ||
+        dto.landmark !== undefined;
       if (locationTouched) {
         throw new BadRequestException(
           'Location changes on live listings require moderation. Contact support or wait for the next release.',
@@ -566,6 +569,15 @@ export class HostListingsService {
     if (dto.address !== undefined && !locationLocked) {
       listing.address_encrypted = dto.address;
     }
+    if (dto.postal_code !== undefined && !locationLocked) {
+      listing.postal_code = dto.postal_code || null;
+    }
+    if (dto.building_name !== undefined && !locationLocked) {
+      listing.building_name = dto.building_name || null;
+    }
+    if (dto.landmark !== undefined && !locationLocked) {
+      listing.landmark = dto.landmark || null;
+    }
     if (dto.geo_lat !== undefined && !locationLocked) listing.geo_lat = dto.geo_lat;
     if (dto.geo_lng !== undefined && !locationLocked) listing.geo_lng = dto.geo_lng;
     if (dto.description !== undefined) listing.description = dto.description;
@@ -580,6 +592,12 @@ export class HostListingsService {
     }
     if (dto.policies != null) {
       listing.policies = { ...(listing.policies ?? {}), ...dto.policies };
+    }
+    if (dto.safety_features != null) {
+      listing.safety_features = {
+        ...(listing.safety_features ?? {}),
+        ...dto.safety_features,
+      };
     }
     listing.last_edited_at = new Date();
 
@@ -600,6 +618,9 @@ export class HostListingsService {
       }
       if (dto.rules.cancellation_policy != null) {
         listing.rules.cancellation_policy = dto.rules.cancellation_policy;
+      }
+      if (dto.rules.couples_welcome != null) {
+        listing.rules.couples_welcome = dto.rules.couples_welcome;
       }
       await this.rulesRepo.save(listing.rules);
     }
@@ -666,6 +687,8 @@ export class HostListingsService {
         'Only live or approved listings can be paused.',
       );
     }
+    listing.paused_from_status =
+      listing.status === 'APPROVED' ? 'APPROVED' : 'LIVE';
     listing.status = 'PAUSED';
     await this.listingRepo.save(listing);
     return {
@@ -681,12 +704,18 @@ export class HostListingsService {
     if (listing.status !== 'PAUSED') {
       throw new BadRequestException('Only paused listings can be resumed.');
     }
-    listing.status = 'LIVE';
+    const restoreTo =
+      listing.paused_from_status === 'APPROVED' ? 'APPROVED' : 'LIVE';
+    listing.status = restoreTo;
+    listing.paused_from_status = null;
     await this.listingRepo.save(listing);
     return {
       id: listing.id,
       status: listing.status,
-      message: 'Listing is live again and visible in search.',
+      message:
+        restoreTo === 'LIVE'
+          ? 'Listing is live again and visible in search.'
+          : 'Listing restored to approved (not live). Use set-live when ready.',
     };
   }
 
@@ -1069,6 +1098,8 @@ export class HostListingsService {
       currency?: string;
       pricing_unit?: string;
       amenities?: string[];
+      bed_config?: unknown[];
+      size_sqm?: number;
       details?: Record<string, unknown>;
       sort_order?: number;
       is_active?: boolean;
@@ -1081,12 +1112,38 @@ export class HostListingsService {
         'Unit types cannot be changed in the current listing status.',
       );
     }
+    if (
+      (listing.status === 'LIVE' || listing.status === 'APPROVED') &&
+      dto.unit_types.length === 0
+    ) {
+      throw new BadRequestException(
+        'Live or approved listings must keep at least one unit type.',
+      );
+    }
 
     await this.dataSource.transaction(async (manager) => {
       const unitRepo = manager.getRepository(StaysListingUnitType);
       await unitRepo.delete({ listing_id: listingId });
       for (let i = 0; i < dto.unit_types.length; i++) {
         const u = dto.unit_types[i];
+        const details = { ...(u.details ?? {}) };
+        const bedFromDetails = details.bed_config;
+        const sizeFromDetails = details.size_sqm;
+        delete details.bed_config;
+        delete details.size_sqm;
+        const bedConfig = Array.isArray(u.bed_config)
+          ? u.bed_config
+          : Array.isArray(bedFromDetails)
+            ? bedFromDetails
+            : typeof bedFromDetails === 'string' && bedFromDetails.trim()
+              ? [{ summary: bedFromDetails.trim() }]
+              : [];
+        const sizeRaw =
+          u.size_sqm != null
+            ? u.size_sqm
+            : sizeFromDetails != null && Number.isFinite(Number(sizeFromDetails))
+              ? Number(sizeFromDetails)
+              : null;
         await unitRepo.save(
           unitRepo.create({
             listing_id: listingId,
@@ -1094,13 +1151,15 @@ export class HostListingsService {
             name: u.name,
             quantity: u.quantity ?? 1,
             max_guests: u.max_guests ?? 2,
-            bed_config: [],
-            size_sqm: null,
+            bed_config: bedConfig,
+            size_sqm: sizeRaw != null && Number.isFinite(Number(sizeRaw))
+              ? Number(sizeRaw)
+              : null,
             amenities: u.amenities ?? [],
             pricing_unit: (u.pricing_unit as StaysListingUnitType['pricing_unit']) ?? 'NIGHT',
             base_price: u.base_price,
             currency: u.currency ?? 'MAD',
-            details: u.details ?? {},
+            details,
             sort_order: u.sort_order ?? i,
             is_active: u.is_active ?? true,
           }),

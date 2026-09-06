@@ -40,6 +40,10 @@ class UpdateRulesDto {
   @IsOptional()
   @IsIn(['FLEXIBLE', 'MODERATE', 'STRICT'])
   cancellation_policy?: 'FLEXIBLE' | 'MODERATE' | 'STRICT';
+
+  @IsOptional()
+  @Type(() => Boolean)
+  couples_welcome?: boolean;
 }
 
 class UpdateRatePlanDto {
@@ -113,6 +117,21 @@ export class UpdateHostListingDto {
   address?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  postal_code?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  building_name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  landmark?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(-90)
@@ -167,4 +186,8 @@ export class UpdateHostListingDto {
   @IsOptional()
   @IsObject()
   policies?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsObject()
+  safety_features?: Record<string, unknown>;
 }

@@ -401,6 +401,23 @@ describe('ComplianceService (KYC source)', () => {
       );
     });
 
+    it('extractSumsubIdentity ignores issuedDate as expiry', () => {
+      expect(
+        service.extractSumsubIdentity({
+          info: {
+            idDocs: [
+              {
+                idDocType: 'PASSPORT',
+                country: 'USA',
+                number: 'P1',
+                issuedDate: '2015-01-01',
+              },
+            ],
+          },
+        }).documentValidUntil,
+      ).toBeNull();
+    });
+
     it('maps non-Moroccan ID_CARD to NATIONAL_ID and DRIVERS to DRIVING_LICENSE', () => {
       expect(
         service.extractSumsubIdentity({
@@ -584,6 +601,7 @@ describe('ComplianceService (KYC source)', () => {
         national_id_number_hash: null,
         email: null,
       });
+      jest.spyOn(service as any, 'sumsubRequest').mockResolvedValue(applicant);
 
       await (service as any).applySumsubReviewStatus({
         userId: user.id,
@@ -602,6 +620,61 @@ describe('ComplianceService (KYC source)', () => {
           // Empty fields are still backfilled.
           date_of_birth: '1991-07-04',
           national_id_number_extracted: 'AB123456',
+        }),
+      );
+    });
+
+    it('fetches applicant when webhook payload only has review meta (levelName/inspectionId)', async () => {
+      const user = {
+        ...mockUser,
+        date_of_birth: null,
+        nationality: 'MA',
+        kyc_status: 'PENDING',
+        unified_identity_id: null,
+        profile_locked_at: null,
+      } as User;
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockKycRepo.findOne.mockResolvedValue({
+        user_id: user.id,
+        status: 'PENDING',
+        source: 'STAYS',
+        provider: 'SUMSUB',
+        document_country: 'MA',
+        date_of_birth: null,
+        full_name: null,
+        email: null,
+      });
+      const fetchSpy = jest
+        .spyOn(service as any, 'sumsubRequest')
+        .mockResolvedValue(applicant);
+
+      await (service as any).applySumsubReviewStatus({
+        userId: user.id,
+        source: 'STAYS',
+        applicantId: 'applicant-1',
+        eventType: 'applicantReviewed',
+        reviewStatus: 'completed',
+        reviewResult: { reviewAnswer: 'GREEN' },
+        providerApplicant: {
+          levelName: 'basic-kyc-level',
+          inspectionId: 'insp-meta-only',
+          review: {
+            levelName: 'basic-kyc-level',
+            reviewStatus: 'completed',
+            reviewResult: { reviewAnswer: 'GREEN' },
+          },
+        },
+      });
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'GET',
+        '/resources/applicants/applicant-1/one',
+      );
+      expect(mockKycRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          full_name: 'Mohamed Fikri',
+          provider_level_name: 'basic-kyc-level',
+          provider_inspection_id: 'insp-meta-only',
         }),
       );
     });
@@ -714,6 +787,33 @@ describe('ComplianceService (KYC source)', () => {
       });
 
       expect(persistSpy).not.toHaveBeenCalled();
+    });
+
+    it('acks webhook when status apply throws (no uncaught 500)', async () => {
+      jest.spyOn(service as any, 'verifySumsubWebhookDigest').mockReturnValue(undefined);
+      jest
+        .spyOn(service as any, 'applySumsubReviewStatus')
+        .mockRejectedValue(new Error('db down'));
+      const persistSpy = jest
+        .spyOn(service as any, 'persistSumsubDossierArtifacts')
+        .mockResolvedValue(undefined);
+
+      await expect(
+        service.processSumsubWebhook({
+          type: 'applicantReviewed',
+          applicantId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+          externalUserId: 'STAYS_user-123',
+          reviewStatus: 'completed',
+          reviewResult: { reviewAnswer: 'GREEN' },
+        }),
+      ).resolves.toEqual(
+        expect.objectContaining({
+          received: true,
+          updated: false,
+          reason: 'status_apply_failed',
+        }),
+      );
+      expect(persistSpy).toHaveBeenCalled();
     });
   });
 });

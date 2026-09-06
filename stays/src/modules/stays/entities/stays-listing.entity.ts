@@ -99,6 +99,15 @@ export class StaysListing {
   })
   status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'LIVE' | 'PAUSED';
 
+  /** Status before PAUSED (LIVE | APPROVED); cleared on resume. */
+  @Column({
+    type: 'varchar',
+    length: 30,
+    name: 'paused_from_status',
+    nullable: true,
+  })
+  paused_from_status: 'LIVE' | 'APPROVED' | null;
+
   @Column({ type: 'time', name: 'checkin_time', default: '14:00' })
   checkin_time: string;
 

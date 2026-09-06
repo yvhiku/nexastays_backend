@@ -64,6 +64,81 @@ services:
       retries: 5
       start_period: 45s
 
+  notifications:
+    image: nexa-notifications:${PLATFORM_IMAGE_TAG:-${IMAGE_TAG:?IMAGE_TAG required}}
+    build:
+      context: /opt/nexa
+      dockerfile: nexastays_backend/deploy/docker/Dockerfile.platform
+      args:
+        SERVICE: notifications-service
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3003:3003"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - data
+    env_file:
+      - .env
+      - .env.notifications
+    environment:
+      NODE_ENV: production
+      PORT: "3003"
+      NEXA_SERVICE_NAME: nexa-notifications
+      GIT_SHA: ${PLATFORM_IMAGE_TAG:-${IMAGE_TAG}}
+      PUSH_DISABLED: ${PUSH_DISABLED:-true}
+    depends_on:
+      identity:
+        condition: service_healthy
+
+  media:
+    image: nexa-media:${PLATFORM_IMAGE_TAG:-${IMAGE_TAG:?IMAGE_TAG required}}
+    build:
+      context: /opt/nexa
+      dockerfile: nexastays_backend/deploy/docker/Dockerfile.platform
+      args:
+        SERVICE: media-service
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3004:3004"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - data
+    env_file:
+      - .env
+      - .env.media
+    environment:
+      NODE_ENV: production
+      PORT: "3004"
+      NEXA_SERVICE_NAME: nexa-media
+      GIT_SHA: ${PLATFORM_IMAGE_TAG:-${IMAGE_TAG}}
+
+  consumers:
+    image: nexa-consumers:${PLATFORM_IMAGE_TAG:-${IMAGE_TAG:?IMAGE_TAG required}}
+    build:
+      context: /opt/nexa
+      dockerfile: nexastays_backend/deploy/docker/Dockerfile.platform
+      args:
+        SERVICE: consumers
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - data
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXA_SERVICE_NAME: nexa-consumers
+      GIT_SHA: ${PLATFORM_IMAGE_TAG:-${IMAGE_TAG}}
+      EVENT_BUS_CONSUMER_GROUP: nexa-consumers
+      REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379}
+      IDENTITY_BASE_URL: ${IDENTITY_BASE_URL}
+
   web:
     image: nexa-web:${WEB_IMAGE_TAG:-local}
     build:

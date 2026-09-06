@@ -84,6 +84,15 @@ async function bootstrap() {
         'SUMSUB_SECRET_KEY is required when SUMSUB_APP_TOKEN is set.',
       );
     }
+    if (
+      (process.env.SUMSUB_APP_TOKEN?.trim() ||
+        process.env.SUMSUB_MODE?.trim()) &&
+      !process.env.SUMSUB_WEBHOOK_SECRET?.trim()
+    ) {
+      throw new Error(
+        'SUMSUB_WEBHOOK_SECRET is required when Sumsub is configured (sandbox or live). Use the console webhook secret, not the API secret.',
+      );
+    }
     // SEC-002: production must never fall open to mock OTP SMS logging.
     assertProductionSmsConfigured();
     // SEC-006: issuer/audience required in production.

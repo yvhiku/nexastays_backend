@@ -25,5 +25,7 @@ copy_if_missing() {
 copy_if_missing "$ROOT/env/dogfood.env.example" "$DEPLOY_DIR/.env"
 copy_if_missing "$ROOT/env/dogfood.identity.env.example" "$DEPLOY_DIR/.env.identity"
 copy_if_missing "$ROOT/env/dogfood.stays.env.example" "$DEPLOY_DIR/.env.stays"
+copy_if_missing "$ROOT/env/dogfood.notifications.env.example" "$DEPLOY_DIR/.env.notifications"
+copy_if_missing "$ROOT/env/dogfood.media.env.example" "$DEPLOY_DIR/.env.media"
 
 echo "=== install-dogfood-env-templates done (edit secrets; values not printed) ==="

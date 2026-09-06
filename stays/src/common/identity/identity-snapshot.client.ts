@@ -27,16 +27,18 @@ export class IdentitySnapshotClient {
 
   /**
    * @param authorizationHeader Bearer token of the calling user (fallback auth).
-   * @param userId JWT `sub` — enables the Redis cache path. Always pass it.
+   * @param userId JWT `sub` — required for the Redis cache path.
    */
   async fetchSnapshot(
     authorizationHeader: string,
     userId?: string,
   ): Promise<IdentitySnapshot | null> {
     if (!authorizationHeader?.startsWith('Bearer ')) return null;
-    const snapshot = userId
-      ? await this.readModel.getSnapshot(userId, authorizationHeader)
-      : await this.readModel.getSnapshot('__direct__', authorizationHeader);
+    if (!userId?.trim()) {
+      this.logger.warn('Identity snapshot skipped — userId (JWT sub) is required');
+      return null;
+    }
+    const snapshot = await this.readModel.getSnapshot(userId.trim(), authorizationHeader);
     if (!snapshot) {
       this.logger.warn('Identity snapshot unavailable (cache miss + API failure)');
       return null;

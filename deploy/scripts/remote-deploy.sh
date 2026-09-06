@@ -31,6 +31,12 @@ get_val() {
 cd "$DEPLOY_DIR"
 
 bash "$SCRIPT_DIR/check-env.sh" "$ENV_FILE" "$IDENTITY_ENV" "$STAYS_ENV"
+if [[ -f "$SCRIPT_DIR/assert-dogfood-secrets.sh" ]]; then
+  nexa_env_pre="$(awk -F= '$1=="NEXA_ENV"{print substr($0,index($0,"=")+1); exit}' "$ENV_FILE" | tr -d '\r')"
+  if [[ "$nexa_env_pre" == "dogfood" || "$nexa_env_pre" == "staging" ]]; then
+    bash "$SCRIPT_DIR/assert-dogfood-secrets.sh" "$(cd "$(dirname "$ENV_FILE")" && pwd)"
+  fi
+fi
 bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_STARTED P3 '{}'
 
 export IMAGE_REGISTRY
@@ -114,6 +120,13 @@ if [[ "$SKIP_MIGRATE" != "1" ]]; then
     exit 1
   fi
   if bash "$DATABASE_REPO_PATH/scripts/migrate-remote.sh"; then
+    if [[ -x "$DATABASE_REPO_PATH/scripts/verify-migrations.sh" ]] || [[ -f "$DATABASE_REPO_PATH/scripts/verify-migrations.sh" ]]; then
+      bash "$DATABASE_REPO_PATH/scripts/verify-migrations.sh" || {
+        echo "Migration verify failed after migrate-remote." >&2
+        bash "$SCRIPT_DIR/emit-obs-event.sh" MIGRATION_FAILED P1 '{}' || true
+        exit 1
+      }
+    fi
     bash "$SCRIPT_DIR/emit-obs-event.sh" MIGRATION_SUCCEEDED P3 '{}'
     bash "$SCRIPT_DIR/emit-obs-event.sh" DEPLOYMENT_MIGRATION_SUCCEEDED P3 '{}'
   else

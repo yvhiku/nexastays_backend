@@ -15,6 +15,25 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
+class BedConfigItemDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  type?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(20)
+  count?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  summary?: string;
+}
+
 class UnitTypeItemDto {
   @IsIn([
     'APARTMENT_UNIT',
@@ -67,6 +86,20 @@ class UnitTypeItemDto {
   @IsString({ each: true })
   @ArrayMaxSize(64)
   amenities?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(32)
+  @ValidateNested({ each: true })
+  @Type(() => BedConfigItemDto)
+  bed_config?: BedConfigItemDto[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(10000)
+  size_sqm?: number;
 
   @IsOptional()
   @IsObject()

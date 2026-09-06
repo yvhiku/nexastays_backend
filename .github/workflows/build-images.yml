@@ -19,14 +19,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [identity, stays]
+        include:
+          - image: nexa-identity
+            dockerfile: nexastays_backend/deploy/docker/Dockerfile.backend
+            service: identity
+          - image: nexa-stays
+            dockerfile: nexastays_backend/deploy/docker/Dockerfile.backend
+            service: stays
+          - image: nexa-notifications
+            dockerfile: nexastays_backend/deploy/docker/Dockerfile.platform
+            service: notifications-service
+          - image: nexa-media
+            dockerfile: nexastays_backend/deploy/docker/Dockerfile.platform
+            service: media-service
+          - image: nexa-consumers
+            dockerfile: nexastays_backend/deploy/docker/Dockerfile.platform
+            service: consumers
     steps:
       - name: Checkout backend
         uses: actions/checkout@v4
         with:
           path: nexastays_backend
 
-      # Backend packages use file:../../platform/* dependencies.
       - name: Checkout shared platform
         uses: actions/checkout@v4
         with:
@@ -45,18 +59,18 @@ jobs:
         run: |
           printf '%s\n' '**/.git' '**/node_modules' '**/dist' '**/.env*' > .dockerignore
 
-      - name: Build and push ${{ matrix.service }}
+      - name: Build and push ${{ matrix.image }}
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: nexastays_backend/deploy/docker/Dockerfile.backend
+          file: ${{ matrix.dockerfile }}
           push: true
           build-args: |
             SERVICE=${{ matrix.service }}
-          tags: ghcr.io/${{ github.repository_owner }}/nexa-${{ matrix.service }}:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
       - name: Publish immutable release identity
-        run: echo "ghcr.io/${{ github.repository_owner }}/nexa-${{ matrix.service }}:${{ github.sha }}"
+        run: echo "ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}"

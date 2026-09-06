@@ -74,6 +74,9 @@ req "$SHARED_ENV" CORS_ORIGINS
 req "$SHARED_ENV" INTERNAL_SERVICE_KEY
 req "$SHARED_ENV" ADMIN_PASSWORD_HASH
 req "$SHARED_ENV" STAYS_PAYMENT_PROVIDER
+req "$SHARED_ENV" REDIS_URL
+req "$SHARED_ENV" AUTH_COOKIE_DOMAIN
+req "$SHARED_ENV" NOTIFICATIONS_SERVICE_URL
 
 for f in "$IDENTITY_ENV" "$STAYS_ENV"; do
   req "$f" DB_HOST
@@ -149,6 +152,10 @@ if [[ "${NEXA_ENV}" == "production" ]]; then
     echo "FAIL: EMI_PROVIDER_TYPE=mock forbidden when NEXA_ENV=production" >&2
     exit 1
   fi
+
+  req "$SHARED_ENV" ERROR_MONITORING_DSN
+  req "$SHARED_ENV" OPS_ALERT_WEBHOOK_URL
+  req "$SHARED_ENV" MEDIA_SERVICE_URL
 fi
 
 if [[ "${NEXA_ENV}" == "staging" || "${NEXA_ENV}" == "dogfood" ]]; then
@@ -177,6 +184,55 @@ if [[ -n "${demo_otp}" ]]; then
   fi
 fi
 echo "OK: DEMO_OTP_CODE policy"
+
+# Redis must not be loopback-only string empty; reject obvious missing host
+REDIS_URL="$(get_val "$SHARED_ENV" REDIS_URL)"
+if echo "$REDIS_URL" | grep -qiE '^(redis://)?$'; then
+  echo "FAIL: REDIS_URL is empty" >&2
+  exit 1
+fi
+echo "OK: REDIS_URL is set"
+
+AUTH_COOKIE_DOMAIN="$(get_val "$SHARED_ENV" AUTH_COOKIE_DOMAIN)"
+if [[ "${AUTH_COOKIE_DOMAIN}" != .* ]]; then
+  echo "FAIL: AUTH_COOKIE_DOMAIN must start with a leading dot (e.g. .nexastays.ma)" >&2
+  exit 1
+fi
+if echo "$AUTH_COOKIE_DOMAIN" | grep -qiE 'localhost|127\.0\.0\.1'; then
+  echo "FAIL: AUTH_COOKIE_DOMAIN must not use loopback" >&2
+  exit 1
+fi
+echo "OK: AUTH_COOKIE_DOMAIN is set"
+
+# Sumsub webhook secret required whenever Sumsub is configured (sandbox or live)
+sumsub_token=""
+if has_key "$SHARED_ENV" SUMSUB_APP_TOKEN; then
+  sumsub_token="$(get_val "$SHARED_ENV" SUMSUB_APP_TOKEN)"
+fi
+if [[ -z "$sumsub_token" ]] && has_key "$IDENTITY_ENV" SUMSUB_APP_TOKEN; then
+  sumsub_token="$(get_val "$IDENTITY_ENV" SUMSUB_APP_TOKEN)"
+fi
+sumsub_mode=""
+if has_key "$SHARED_ENV" SUMSUB_MODE; then
+  sumsub_mode="$(get_val "$SHARED_ENV" SUMSUB_MODE)"
+fi
+if [[ -z "$sumsub_mode" ]] && has_key "$IDENTITY_ENV" SUMSUB_MODE; then
+  sumsub_mode="$(get_val "$IDENTITY_ENV" SUMSUB_MODE)"
+fi
+if [[ -n "$sumsub_token" || -n "$sumsub_mode" ]]; then
+  webhook_secret=""
+  if has_key "$SHARED_ENV" SUMSUB_WEBHOOK_SECRET; then
+    webhook_secret="$(get_val "$SHARED_ENV" SUMSUB_WEBHOOK_SECRET)"
+  fi
+  if [[ -z "$webhook_secret" ]] && has_key "$IDENTITY_ENV" SUMSUB_WEBHOOK_SECRET; then
+    webhook_secret="$(get_val "$IDENTITY_ENV" SUMSUB_WEBHOOK_SECRET)"
+  fi
+  if [[ -z "$webhook_secret" ]]; then
+    echo "FAIL: SUMSUB_WEBHOOK_SECRET is required when Sumsub is configured (sandbox or live). Register https://identity.<host>/api/v1/kyc/sumsub/webhook" >&2
+    exit 1
+  fi
+  echo "OK: SUMSUB_WEBHOOK_SECRET is set"
+fi
 
 # Phase 1 — SMS provider: EnvoiSMS (preferred) or Twilio
 if [[ "${NODE_ENV}" == "production" && -z "${demo_otp}" ]]; then

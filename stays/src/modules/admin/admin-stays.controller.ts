@@ -533,7 +533,7 @@ export class AdminStaysController {
     });
   }
 
-  /** Resume: PAUSED -> LIVE (blocked while the host is listing-frozen). */
+  /** Resume: PAUSED -> previous status (LIVE|APPROVED); blocked while host listing-frozen. */
   @Post('listings/:id/unpause')
   unpauseListing(
     @Param('id', ParseUUIDPipe) id: string,

@@ -1330,6 +1330,8 @@ export class AdminStaysService {
       );
     }
     const previousStatus = listing.status;
+    listing.paused_from_status =
+      previousStatus === 'APPROVED' ? 'APPROVED' : 'LIVE';
     listing.status = 'PAUSED';
     await this.listingRepo.save(listing);
     await this.auditRepo.save(
@@ -1352,9 +1354,9 @@ export class AdminStaysService {
   }
 
   /**
-   * Admin "Resume": PAUSED -> LIVE. Respects the host-wide `listing_frozen`
-   * flag: a frozen host's listing cannot be brought back live until the host is
-   * unfrozen separately (this method never clears host freeze).
+   * Admin "Resume": PAUSED -> previous status (LIVE or APPROVED).
+   * Respects host-wide `listing_frozen`. Never promotes APPROVED to LIVE —
+   * that remains setListingLive only.
    */
   async unpauseListing(
     listingId: string,
@@ -1374,7 +1376,10 @@ export class AdminStaysService {
         'Host listing access is frozen. Unfreeze the host before resuming this listing.',
       );
     }
-    listing.status = 'LIVE';
+    const restoreTo =
+      listing.paused_from_status === 'APPROVED' ? 'APPROVED' : 'LIVE';
+    listing.status = restoreTo;
+    listing.paused_from_status = null;
     await this.listingRepo.save(listing);
     await this.auditRepo.save(
       this.auditRepo.create({
@@ -1383,17 +1388,25 @@ export class AdminStaysService {
         entity_type: 'LISTING',
         entity_id: listingId,
         action: 'LISTING_RESUMED',
-        metadata: {},
+        metadata: { restored_status: restoreTo },
         ip: auditContext?.ip ?? null,
         user_agent: auditContext?.userAgent ?? null,
       }),
     );
-    void this.domainEvents.publish(EVENTS.LISTING_PUBLISHED, 'stays', {
-      listingId,
-      hostUserId: listing.host_user_id,
-    });
+    if (restoreTo === 'LIVE') {
+      void this.domainEvents.publish(EVENTS.LISTING_PUBLISHED, 'stays', {
+        listingId,
+        hostUserId: listing.host_user_id,
+      });
+    }
     void this.seoFreshness.refreshForSearchCity(listing.city);
-    return { status: 'LIVE', message: 'Listing is live again' };
+    return {
+      status: restoreTo,
+      message:
+        restoreTo === 'LIVE'
+          ? 'Listing is live again'
+          : 'Listing restored to approved (not live). Use set-live when ready.',
+    };
   }
 
   async checkHealth(): Promise<{ status: string; db: string }> {

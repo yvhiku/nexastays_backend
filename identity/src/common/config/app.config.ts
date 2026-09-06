@@ -233,7 +233,9 @@ export const sumsubConfig = {
   baseUrl: process.env.SUMSUB_BASE_URL || 'https://api.sumsub.com',
   levelName: process.env.SUMSUB_LEVEL_NAME || 'basic-kyc-level',
   tokenTtlSeconds: parseInt(process.env.SUMSUB_TOKEN_TTL_SECONDS || '600', 10),
-  webhookSecret: process.env.SUMSUB_WEBHOOK_SECRET || process.env.SUMSUB_SECRET_KEY || '',
+  // Dedicated webhook secret only — do not fall back to SUMSUB_SECRET_KEY
+  // (console webhook secret ≠ API secret; fallback caused production 400s).
+  webhookSecret: (process.env.SUMSUB_WEBHOOK_SECRET || '').trim(),
   /**
    * sandbox | live — ops credential environment. Same Sumsub API host;
    * production boot requires SUMSUB_MODE=live (see assertSumsubModePolicy).

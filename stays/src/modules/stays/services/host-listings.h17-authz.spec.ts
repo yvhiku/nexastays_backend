@@ -85,11 +85,29 @@ describe('HostListingsService H17 authorization', () => {
       id: 'listing-1',
       host_user_id: 'host-1',
       status: 'PAUSED',
+      paused_from_status: 'LIVE',
     });
     listingRepo.save.mockImplementation(async (row) => row);
 
     const result = await service.resumeListing('host-1', 'listing-1');
     expect(result.status).toBe('LIVE');
     expect(hostsService.canList).toHaveBeenCalledWith('host-1');
+  });
+
+  it('resumeListing restores APPROVED when paused_from_status is APPROVED', async () => {
+    hostsService.canList.mockResolvedValue(true);
+    listingRepo.findOne.mockResolvedValue({
+      id: 'listing-1',
+      host_user_id: 'host-1',
+      status: 'PAUSED',
+      paused_from_status: 'APPROVED',
+    });
+    listingRepo.save.mockImplementation(async (row) => row);
+
+    const result = await service.resumeListing('host-1', 'listing-1');
+    expect(result.status).toBe('APPROVED');
+    expect(listingRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'APPROVED', paused_from_status: null }),
+    );
   });
 });

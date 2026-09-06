@@ -67,8 +67,14 @@ docker --version && docker compose version
 ```bash
 cd /opt/nexa/backend/deploy
 sudo -u nexa bash scripts/install-dogfood-env-templates.sh .
-# edit .env .env.identity .env.stays — strong secrets, NEXA_ENV=dogfood, STAYS_PAYMENT_PROVIDER=mock
-bash scripts/secure-env-perms.sh .env .env.identity .env.stays
+# edit .env .env.identity .env.stays .env.notifications .env.media
+# NEXA_ENV=dogfood, STAYS_PAYMENT_PROVIDER=mock, SUMSUB_MODE=sandbox + SUMSUB_WEBHOOK_SECRET,
+# AUTH_COOKIE_DOMAIN=.nexastays.ma, REDIS_URL, NOTIFICATIONS_SERVICE_URL, PUSH_DISABLED=true
+bash scripts/secure-env-perms.sh .env .env.identity .env.stays .env.notifications .env.media
+# optional: rotate secrets in place (backs up to .env-backups/)
+# bash scripts/configure-hostinger-dogfood.sh
+bash scripts/assert-dogfood-secrets.sh .
+bash scripts/check-env.sh
 ```
 
 ### Step 6 — Data plane (volumes + non-dev passwords)
@@ -89,8 +95,10 @@ docker compose --env-file .env.db -f docker-compose.yml up -d
 DEPLOY_DIR=/opt/nexa/backend/deploy bash /opt/nexa/backend/deploy/scripts/vps-preflight.sh
 cd /opt/nexa/backend/deploy
 export IMAGE_TAG=<immutable-git-sha>
-export DATABASE_REPO_PATH=/opt/nexa/database
+export DATABASE_REPO_PATH=/opt/nexa/nexastays_db
 bash scripts/remote-deploy.sh
+# post-migrate soft-launch verify (also runs inside remote-deploy):
+# IDENTITY_DATABASE_URL=... STAYS_DATABASE_URL=... bash /opt/nexa/nexastays_db/scripts/verify-migrations.sh
 ```
 
 ### Step 8 — Edge / TLS only after real DNS

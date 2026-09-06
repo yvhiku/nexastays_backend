@@ -78,6 +78,32 @@ describe('StaysPaymentsService CMI lifecycle helpers', () => {
     expect(cmiProvider.capture).not.toHaveBeenCalled();
   });
 
+  it('captureCmiAfterConfirm retries when prior capture FAILED', async () => {
+    const intent = {
+      id: 'pi-fail',
+      booking_id: 'b-fail',
+      amount: '80.00',
+      currency: 'MAD',
+      metadata: { cmi_capture_status: 'FAILED', cmi_capture_error: 'timeout' },
+    } as unknown as StaysPaymentIntent;
+
+    cmiProvider.capture.mockResolvedValue({
+      ok: true,
+      op: 'PostAuth',
+      providerIntentId: 'STAYS-retry',
+      procReturnCode: '00',
+    });
+
+    await service.captureCmiAfterConfirm('STAYS-retry', intent);
+    expect(cmiProvider.capture).toHaveBeenCalled();
+    expect(intentRepo.update).toHaveBeenCalledWith(
+      { id: 'pi-fail' },
+      expect.objectContaining({
+        metadata: expect.objectContaining({ cmi_capture_status: 'SUCCEEDED' }),
+      }),
+    );
+  });
+
   it('voidCmiPreAuth records void metadata', async () => {
     cmiProvider.voidAuthorization.mockResolvedValue({
       ok: true,

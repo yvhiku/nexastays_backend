@@ -87,6 +87,90 @@ services:
       start_period: 40s
     stop_grace_period: 30s
 
+  notifications:
+    image: ${IMAGE_REGISTRY}/nexa-notifications:${PLATFORM_IMAGE_TAG:-${BACKEND_IMAGE_TAG:?BACKEND_IMAGE_TAG required}}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${NOTIFICATIONS_HOST_PORT:-3003}:3003"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [default, data]
+    env_file:
+      - path: .env
+        required: true
+      - path: .env.notifications
+        required: true
+    environment:
+      NODE_ENV: production
+      PORT: "3003"
+      NEXA_SERVICE_NAME: nexa-notifications
+      GIT_SHA: ${PLATFORM_IMAGE_TAG:-${BACKEND_IMAGE_TAG}}
+      # Soft-launch: set PUSH_DISABLED=true until FCM is wired
+      PUSH_DISABLED: ${PUSH_DISABLED:-true}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('net').connect({port:3003,host:'127.0.0.1'},()=>process.exit(0)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    stop_grace_period: 30s
+
+  media:
+    image: ${IMAGE_REGISTRY}/nexa-media:${PLATFORM_IMAGE_TAG:-${BACKEND_IMAGE_TAG:?BACKEND_IMAGE_TAG required}}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MEDIA_HOST_PORT:-3004}:3004"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [default, data]
+    env_file:
+      - path: .env
+        required: true
+      - path: .env.media
+        required: true
+    environment:
+      NODE_ENV: production
+      PORT: "3004"
+      NEXA_SERVICE_NAME: nexa-media
+      GIT_SHA: ${PLATFORM_IMAGE_TAG:-${BACKEND_IMAGE_TAG}}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('net').connect({port:3004,host:'127.0.0.1'},()=>process.exit(0)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    stop_grace_period: 30s
+
+  consumers:
+    image: ${IMAGE_REGISTRY}/nexa-consumers:${PLATFORM_IMAGE_TAG:-${BACKEND_IMAGE_TAG:?BACKEND_IMAGE_TAG required}}
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [default, data]
+    env_file:
+      - path: .env
+        required: true
+      - path: .env.consumers
+        required: false
+    environment:
+      NODE_ENV: production
+      NEXA_SERVICE_NAME: nexa-consumers
+      GIT_SHA: ${PLATFORM_IMAGE_TAG:-${BACKEND_IMAGE_TAG}}
+      EVENT_BUS_CONSUMER_GROUP: nexa-consumers
+    stop_grace_period: 30s
+
   web:
     image: ${IMAGE_REGISTRY}/nexa-web:${WEB_IMAGE_TAG:?WEB_IMAGE_TAG required}
     restart: unless-stopped

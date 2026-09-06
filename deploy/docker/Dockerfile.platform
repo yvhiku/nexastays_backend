@@ -1,0 +1,38 @@
+# Build a platform Nest/Node service from the monorepo root context (/opt/nexa).
+# SERVICE = notifications-service | media-service | consumers
+FROM node:22-alpine AS build
+
+ARG SERVICE
+WORKDIR /workspace
+
+COPY nexastays_platform ./platform
+
+RUN npm ci --prefix platform/event-bus \
+  && npm run build --prefix platform/event-bus \
+  && npm ci --prefix platform/telemetry \
+  && npm run build --prefix platform/telemetry \
+  && npm ci --prefix platform/identity-read-model \
+  && npm run build --prefix platform/identity-read-model
+
+WORKDIR /workspace/platform/${SERVICE}
+RUN npm ci && npm run build
+
+FROM node:22-alpine AS runtime
+
+ARG SERVICE
+ENV NODE_ENV=production
+WORKDIR /workspace
+
+COPY --from=build /workspace/platform/event-bus ./platform/event-bus
+COPY --from=build /workspace/platform/telemetry ./platform/telemetry
+COPY --from=build /workspace/platform/identity-read-model ./platform/identity-read-model
+COPY --from=build /workspace/platform/${SERVICE}/package.json ./platform/${SERVICE}/package.json
+COPY --from=build /workspace/platform/${SERVICE}/node_modules ./platform/${SERVICE}/node_modules
+COPY --from=build /workspace/platform/${SERVICE}/dist ./platform/${SERVICE}/dist
+
+RUN addgroup -S nexa && adduser -S -G nexa nexa \
+  && chown -R nexa:nexa /workspace
+USER nexa
+
+WORKDIR /workspace/platform/${SERVICE}
+CMD ["node", "dist/main.js"]

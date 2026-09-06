@@ -53,7 +53,10 @@ describe('AdminStaysService listing lifecycle (pause / unpause / set-live)', () 
       const result = await service.pauseListing('listing-1', 'admin-1');
       expect(result.status).toBe('PAUSED');
       expect(listingRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'PAUSED' }),
+        expect.objectContaining({
+          status: 'PAUSED',
+          paused_from_status: from,
+        }),
       );
       expect(auditRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -91,18 +94,45 @@ describe('AdminStaysService listing lifecycle (pause / unpause / set-live)', () 
   });
 
   describe('unpauseListing (Resume)', () => {
-    it('PAUSED -> LIVE, audits, and re-publishes for marketplace visibility', async () => {
-      listingRepo.findOne.mockResolvedValue(listing('PAUSED'));
+    it('PAUSED (from LIVE) -> LIVE, audits, and re-publishes for marketplace visibility', async () => {
+      listingRepo.findOne.mockResolvedValue({
+        ...listing('PAUSED'),
+        paused_from_status: 'LIVE',
+      });
       const result = await service.unpauseListing('listing-1', 'admin-1');
       expect(result.status).toBe('LIVE');
       expect(listingRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'LIVE' }),
+        expect.objectContaining({ status: 'LIVE', paused_from_status: null }),
       );
       expect(auditRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'LISTING_RESUMED', actor_role: 'ADMIN' }),
+        expect.objectContaining({
+          action: 'LISTING_RESUMED',
+          actor_role: 'ADMIN',
+          metadata: { restored_status: 'LIVE' },
+        }),
       );
       expect(domainEvents.publish).toHaveBeenCalled();
       expect(seoFreshness.refreshForSearchCity).toHaveBeenCalledWith('Casablanca');
+    });
+
+    it('PAUSED (from APPROVED) -> APPROVED without LISTING_PUBLISHED', async () => {
+      listingRepo.findOne.mockResolvedValue({
+        ...listing('PAUSED'),
+        paused_from_status: 'APPROVED',
+      });
+      const result = await service.unpauseListing('listing-1', 'admin-1');
+      expect(result.status).toBe('APPROVED');
+      expect(listingRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'APPROVED', paused_from_status: null }),
+      );
+      expect(domainEvents.publish).not.toHaveBeenCalled();
+    });
+
+    it('legacy PAUSED without paused_from_status defaults to LIVE', async () => {
+      listingRepo.findOne.mockResolvedValue(listing('PAUSED'));
+      const result = await service.unpauseListing('listing-1', 'admin-1');
+      expect(result.status).toBe('LIVE');
+      expect(domainEvents.publish).toHaveBeenCalled();
     });
 
     it.each(['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'LIVE'])(
@@ -117,7 +147,10 @@ describe('AdminStaysService listing lifecycle (pause / unpause / set-live)', () 
     );
 
     it('is blocked while the host is listing-frozen and does not clear host freeze', async () => {
-      listingRepo.findOne.mockResolvedValue(listing('PAUSED'));
+      listingRepo.findOne.mockResolvedValue({
+        ...listing('PAUSED'),
+        paused_from_status: 'LIVE',
+      });
       const profile = { listing_frozen: true };
       hostProfileRepo.findOne.mockResolvedValue(profile);
       await expect(service.unpauseListing('listing-1', 'admin-1')).rejects.toThrow(

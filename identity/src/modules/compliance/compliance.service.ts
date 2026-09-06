@@ -480,9 +480,8 @@ export class ComplianceService {
       documentType: this.mapSumsubDocType(primaryDoc?.idDocType, documentCountry),
       documentCountry,
       documentNumber: str(primaryDoc?.number)?.slice(0, 64) ?? null,
-      documentValidUntil:
-        this.normalizeIsoDob(str(primaryDoc?.validUntil)) ??
-        this.normalizeIsoDob(str(primaryDoc?.issuedDate)),
+      // Expiry only — never use issuedDate (issue ≠ valid-until).
+      documentValidUntil: this.normalizeIsoDob(str(primaryDoc?.validUntil)),
       email: str(applicant.email)?.slice(0, 150) ?? str(info?.email)?.slice(0, 150) ?? null,
       phone: str(applicant.phone)?.slice(0, 30) ?? null,
       levelName:
@@ -509,7 +508,10 @@ export class ComplianceService {
 
   /**
    * Resolve provider identity: prefer the applicant payload we already have;
-   * otherwise fetch the Sumsub applicant once when any KYC identity field is empty.
+   * otherwise fetch the Sumsub applicant once when KYC identity is incomplete
+   * and the payload has no identity PII.
+   * Webhook review meta (levelName / inspectionId / review*) must not count as
+   * identity — those alone used to skip the applicant GET.
    * Failures must not block KYC approval/rejection updates.
    */
   private async resolveSumsubIdentity(params: {
@@ -523,16 +525,46 @@ export class ComplianceService {
       fromPayload.dateOfBirth = this.normalizeIsoDob(params.providerDateOfBirth ?? null);
     }
     if (this.kycIdentityIsComplete(params.kyc)) return fromPayload;
-    const hasAny = Object.values(fromPayload).some((v) => v != null);
-    if (hasAny) return fromPayload;
+
+    const hasIdentityPii = Boolean(
+      fromPayload.dateOfBirth ||
+        fromPayload.fullName ||
+        fromPayload.nationality ||
+        fromPayload.documentType ||
+        fromPayload.documentCountry ||
+        fromPayload.documentNumber ||
+        fromPayload.documentValidUntil ||
+        fromPayload.email ||
+        fromPayload.phone,
+    );
+    if (hasIdentityPii) return fromPayload;
+
     const applicantId = (params.applicantId ?? '').trim();
     if (!applicantId) return fromPayload;
+
     try {
       const applicant = await this.sumsubRequest<Record<string, unknown>>(
         'GET',
         `/resources/applicants/${encodeURIComponent(applicantId)}/one`,
       );
-      return this.extractSumsubIdentity(applicant);
+      const fromApi = this.extractSumsubIdentity(applicant);
+      // Prefer API identity PII; keep webhook root meta when richer.
+      return {
+        dateOfBirth: fromApi.dateOfBirth ?? fromPayload.dateOfBirth,
+        fullName: fromApi.fullName ?? fromPayload.fullName,
+        nationality: fromApi.nationality ?? fromPayload.nationality,
+        documentType: fromApi.documentType ?? fromPayload.documentType,
+        documentCountry: fromApi.documentCountry ?? fromPayload.documentCountry,
+        documentNumber: fromApi.documentNumber ?? fromPayload.documentNumber,
+        documentValidUntil: fromApi.documentValidUntil ?? fromPayload.documentValidUntil,
+        email: fromApi.email ?? fromPayload.email,
+        phone: fromApi.phone ?? fromPayload.phone,
+        levelName: fromPayload.levelName ?? fromApi.levelName,
+        reviewStatus: fromPayload.reviewStatus ?? fromApi.reviewStatus,
+        reviewAnswer: fromPayload.reviewAnswer ?? fromApi.reviewAnswer,
+        attemptCnt: fromPayload.attemptCnt ?? fromApi.attemptCnt,
+        inspectionId: fromPayload.inspectionId ?? fromApi.inspectionId,
+      };
     } catch {
       safeLogger.debug('Sumsub applicant identity fetch skipped', {
         hasApplicantId: true,
@@ -562,6 +594,7 @@ export class ComplianceService {
       kyc.document_valid_until = id.documentValidUntil;
     }
     if (id.email && !kyc.email?.trim()) kyc.email = id.email;
+    // Phone lives on the user row (auth identity) — applied in applySumsubReviewStatus.
   }
 
   /** Always refresh provider review meta from the latest applicant payload. */
@@ -668,6 +701,10 @@ export class ComplianceService {
       }
       if (!user.email?.trim() && kyc.email?.trim()) {
         user.email = kyc.email.trim().slice(0, 150);
+      }
+      if (!user.phone_number?.trim() && providerIdentity.phone) {
+        const norm = tryNormalizePhoneNumber(providerIdentity.phone);
+        if (norm) user.phone_number = norm.slice(0, 30);
       }
       if (!user.date_of_birth && kyc.date_of_birth?.trim()) {
         const dob = kyc.date_of_birth.trim();
@@ -1190,19 +1227,30 @@ export class ComplianceService {
     }
 
     const source = this.extractSourceFromExternalId(externalUserId);
-    const result = await this.applySumsubReviewStatus({
-      userId,
-      source,
-      applicantId,
-      externalUserId,
-      eventType,
-      reviewStatus,
-      reviewResult: reviewResult ?? null,
-      providerDateOfBirth: this.extractSumsubIsoDob(
-        hasProviderApplicantKeys ? providerApplicant : null,
-      ),
-      providerApplicant: hasProviderApplicantKeys ? providerApplicant : null,
-    });
+    let result: Record<string, unknown> = { updated: false };
+    try {
+      result = await this.applySumsubReviewStatus({
+        userId,
+        source,
+        applicantId,
+        externalUserId,
+        eventType,
+        reviewStatus,
+        reviewResult: reviewResult ?? null,
+        providerDateOfBirth: this.extractSumsubIsoDob(
+          hasProviderApplicantKeys ? providerApplicant : null,
+        ),
+        providerApplicant: hasProviderApplicantKeys ? providerApplicant : null,
+      });
+    } catch (err) {
+      // Ack webhook (200) so Sumsub does not retry forever on persistent failures;
+      // admin Re-sync / next event can repair. Digest already verified above.
+      safeLogger.error('Sumsub webhook status apply failed', {
+        eventType: eventType ?? null,
+        err: String((err as Error)?.message ?? err),
+      });
+      result = { updated: false, reason: 'status_apply_failed' };
+    }
 
     // Same dossier/media path as admin Re-sync — so the drawer is populated without a click
     // once Sumsub can reach this webhook (sandbox/ngrok or production URL).

@@ -30,6 +30,9 @@ CORS_ORIGINS=https://web.example
 INTERNAL_SERVICE_KEY=${STRONG_INTERNAL}
 ADMIN_PASSWORD_HASH=x
 STAYS_PAYMENT_PROVIDER=${pay}
+REDIS_URL=redis://host.docker.internal:6379
+AUTH_COOKIE_DOMAIN=.example.com
+NOTIFICATIONS_SERVICE_URL=http://127.0.0.1:3003
 TWILIO_ACCOUNT_SID=ACtest
 TWILIO_AUTH_TOKEN=twilio-token-not-dev
 TWILIO_PHONE_NUMBER=+15555550100
@@ -71,6 +74,16 @@ assert_fail() {
 write_base dogfood mock
 assert_ok "dogfood+mock allowed"
 
+write_base dogfood mock
+printf '\nSUMSUB_MODE=sandbox\n' >>"$TMP/.env"
+chmod 600 "$TMP/.env"
+assert_fail "dogfood+sandbox Sumsub without WEBHOOK_SECRET rejected"
+
+write_base dogfood mock
+printf '\nSUMSUB_MODE=sandbox\nSUMSUB_WEBHOOK_SECRET=webhook-secret-not-dev-99\n' >>"$TMP/.env"
+chmod 600 "$TMP/.env"
+assert_ok "dogfood+sandbox Sumsub with WEBHOOK_SECRET allowed"
+
 write_base dogfood cmi
 assert_fail "dogfood without mock rejected"
 
@@ -88,8 +101,19 @@ write_base production cmi
 cat >>"$TMP/.env" <<EOF
 SUMSUB_MODE=live
 EMI_PROVIDER_TYPE=disabled
+SUMSUB_WEBHOOK_SECRET=webhook-secret-not-dev-99
+ERROR_MONITORING_DSN=https://example.ingest.sentry.io/1
+OPS_ALERT_WEBHOOK_URL=https://hooks.example/alerts
+MEDIA_SERVICE_URL=https://media.example
 EOF
 assert_ok "production+cmi+live+EMI allowed by check-env"
+
+write_base production cmi
+cat >>"$TMP/.env" <<EOF
+SUMSUB_MODE=live
+EMI_PROVIDER_TYPE=disabled
+EOF
+assert_fail "production+live Sumsub without WEBHOOK_SECRET rejected"
 
 write_base production cmi
 cat >>"$TMP/.env" <<EOF

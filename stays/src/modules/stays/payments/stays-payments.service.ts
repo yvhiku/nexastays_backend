@@ -557,6 +557,10 @@ export class StaysPaymentsService {
     if (provider === 'cmi') {
       if (outcome === 'CONFIRMED') {
         await this.captureCmiAfterConfirm(providerIntentId, intent);
+      } else if (outcome === 'ALREADY_PROCESSED') {
+        // Retry PostAuth when a prior confirm succeeded but capture failed
+        // (captureCmiAfterConfirm no-ops when cmi_capture_status === SUCCEEDED).
+        await this.captureCmiAfterConfirm(providerIntentId);
       } else if (outcome === 'DATES_UNAVAILABLE') {
         await this.voidCmiPreAuth(providerIntentId, {
           reason: 'DATES_UNAVAILABLE',

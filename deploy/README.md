@@ -26,25 +26,35 @@ workflow_dispatch production (GitHub Environment approval)
 
 ```
 Cloudflare → Nginx (80/443)
-  → Web :3005 · Dashboard :3006 · Identity :3001 · Stays :3002
+  → Web :3005 · Dashboard :3010 · Identity :3001 · Stays :3002
   → Platform (notifications :3003 · media :3004 · consumers)
   → Postgres (identity :5433 · stays :5434) + Redis :6379
 ```
 
-Release Compose in this folder covers **Identity + Stays + Web + Dashboard**.
-Postgres/Redis remain in the database repository and Nginx remains host-owned.
+Release Compose covers **Identity + Stays + Web + Dashboard + Platform**
+(notifications, media, consumers). Postgres/Redis remain in `nexastays_db`
+(`database` symlink locally) and Nginx remains host-owned.
+
+Host paths: prefer `/opt/nexa/nexastays_backend`, `/opt/nexa/nexastays_db`,
+`/opt/nexa/nexastays_platform`. Local checkout may use `database` → `nexastays_db`
+and `platform` → `nexastays_platform` symlinks — VPS should use the `nexastays_*`
+paths (or create matching symlinks).
 
 ## Layout
 
 | Path | Purpose |
 |------|---------|
-| `docker-compose.release.yml` | Identity + Stays (127.0.0.1 binds, dual env files) |
-| `env/*.env.example` | Shared + per-service DB contracts |
+| `docker-compose.release.yml` | Identity + Stays + Web + Dashboard + Platform |
+| `docker-compose.host.yml` | Same services with on-host image builds |
+| `docker/Dockerfile.platform` | notifications-service / media-service / consumers |
+| `env/*.env.example` | Shared + per-service DB + platform contracts |
 | `edge/Caddyfile.dogfood.example` | TLS reverse-proxy example (operator-owned) |
 | `scripts/check-env.sh` | Fail-closed env preflight |
+| `scripts/assert-dogfood-secrets.sh` | Soft-launch secrets + PUSH_DISABLED gate |
+| `scripts/configure-hostinger-dogfood.sh` | Rotate dogfood secrets + platform env files |
 | `scripts/vps-bootstrap.sh` | `/opt/nexa` directory bootstrap |
 | `scripts/vps-preflight.sh` | Host readiness checks |
-| `scripts/remote-deploy.sh` | Migrate → pull → up → ready |
+| `scripts/remote-deploy.sh` | Assert → migrate → verify → pull → up → ready |
 | `scripts/smoke.sh` | Post-deploy smoke suite |
 | `scripts/smoke-dogfood-checklist.md` | Extended dogfood checklist |
 | `scripts/record-deployment.sh` | Local deployment log (no secrets) |
