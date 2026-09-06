@@ -86,11 +86,11 @@ set_key "$SHARED" STAYS_PUBLIC_URL "https://api.nexastays.ma"
 set_key "$SHARED" STAYS_WEB_URL "https://nexastays.ma"
 set_key "$SHARED" STAYS_PAYMENT_PROVIDER mock
 set_key "$SHARED" DEMO_OTP_CODE 123456
-set_key "$SHARED" REDIS_URL "redis://host.docker.internal:6379"
+set_key "$SHARED" REDIS_URL "redis://redis:6379"
 set_key "$SHARED" DB_SSL true
 set_key "$SHARED" DB_SSL_REJECT_UNAUTHORIZED false
-set_key "$SHARED" NOTIFICATIONS_SERVICE_URL "http://127.0.0.1:3003"
-set_key "$SHARED" MEDIA_SERVICE_URL "http://127.0.0.1:3004"
+set_key "$SHARED" NOTIFICATIONS_SERVICE_URL "http://notifications:3003"
+set_key "$SHARED" MEDIA_SERVICE_URL "http://media:3004"
 set_key "$SHARED" PUSH_DISABLED true
 set_key "$SHARED" SUMSUB_MODE sandbox
 
@@ -109,12 +109,12 @@ set_key "$STAYS" STAYS_PAYMENT_PROVIDER mock
 
 set_key "$NOTIF" PORT 3003
 set_key "$NOTIF" NODE_ENV production
-set_key "$NOTIF" DB_HOST host.docker.internal
-set_key "$NOTIF" DB_PORT 5433
+set_key "$NOTIF" DB_HOST identity-db
+set_key "$NOTIF" DB_PORT 5432
 set_key "$NOTIF" DB_USERNAME nexa_identity
 set_key "$NOTIF" DB_PASSWORD "$identity_password"
 set_key "$NOTIF" DB_NAME nexa_identity
-set_key "$NOTIF" REDIS_URL "redis://host.docker.internal:6379"
+set_key "$NOTIF" REDIS_URL "redis://redis:6379"
 set_key "$NOTIF" INTERNAL_SERVICE_KEY "$internal_key"
 set_key "$NOTIF" PUSH_DISABLED true
 

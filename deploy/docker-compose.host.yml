@@ -136,7 +136,7 @@ services:
       NEXA_SERVICE_NAME: nexa-consumers
       GIT_SHA: ${PLATFORM_IMAGE_TAG:-${IMAGE_TAG}}
       EVENT_BUS_CONSUMER_GROUP: nexa-consumers
-      REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       IDENTITY_BASE_URL: ${IDENTITY_BASE_URL}
 
   web:
