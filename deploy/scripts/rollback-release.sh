@@ -23,10 +23,13 @@ set_env_tag() {
 }
 
 BACKEND_IMAGE_TAG="$(get_val "$PREVIOUS_RELEASE_FILE" BACKEND_IMAGE_TAG)"
+PLATFORM_IMAGE_TAG="$(get_val "$PREVIOUS_RELEASE_FILE" PLATFORM_IMAGE_TAG)"
+# Backward compatibility for release records created before platform tags were tracked.
+PLATFORM_IMAGE_TAG="${PLATFORM_IMAGE_TAG:-$BACKEND_IMAGE_TAG}"
 WEB_IMAGE_TAG="$(get_val "$PREVIOUS_RELEASE_FILE" WEB_IMAGE_TAG)"
 DASHBOARD_IMAGE_TAG="$(get_val "$PREVIOUS_RELEASE_FILE" DASHBOARD_IMAGE_TAG)"
 
-for release_tag in "$BACKEND_IMAGE_TAG" "$WEB_IMAGE_TAG" "$DASHBOARD_IMAGE_TAG"; do
+for release_tag in "$BACKEND_IMAGE_TAG" "$PLATFORM_IMAGE_TAG" "$WEB_IMAGE_TAG" "$DASHBOARD_IMAGE_TAG"; do
   echo "$release_tag" | grep -qE '^[0-9a-f]{7,64}$' || {
     echo "Previous release file contains an invalid tag" >&2
     exit 1
@@ -34,11 +37,12 @@ for release_tag in "$BACKEND_IMAGE_TAG" "$WEB_IMAGE_TAG" "$DASHBOARD_IMAGE_TAG";
 done
 
 set_env_tag BACKEND_IMAGE_TAG "$BACKEND_IMAGE_TAG"
+set_env_tag PLATFORM_IMAGE_TAG "$PLATFORM_IMAGE_TAG"
 set_env_tag WEB_IMAGE_TAG "$WEB_IMAGE_TAG"
 set_env_tag DASHBOARD_IMAGE_TAG "$DASHBOARD_IMAGE_TAG"
 chmod 600 "$ENV_FILE" "${ENV_FILE}.bak" 2>/dev/null || true
 
-export BACKEND_IMAGE_TAG WEB_IMAGE_TAG DASHBOARD_IMAGE_TAG
+export BACKEND_IMAGE_TAG PLATFORM_IMAGE_TAG WEB_IMAGE_TAG DASHBOARD_IMAGE_TAG
 export IMAGE_REGISTRY
 IMAGE_REGISTRY="$(get_val "$ENV_FILE" IMAGE_REGISTRY)"
 

@@ -12,6 +12,7 @@ DATABASE_REPO_PATH="${DATABASE_REPO_PATH:?DATABASE_REPO_PATH required}"
 BACKEND_IMAGE_TAG="${BACKEND_IMAGE_TAG:?BACKEND_IMAGE_TAG required}"
 WEB_IMAGE_TAG="${WEB_IMAGE_TAG:?WEB_IMAGE_TAG required}"
 DASHBOARD_IMAGE_TAG="${DASHBOARD_IMAGE_TAG:?DASHBOARD_IMAGE_TAG required}"
+PLATFORM_IMAGE_TAG="${PLATFORM_IMAGE_TAG:-$BACKEND_IMAGE_TAG}"
 SKIP_MIGRATE="${SKIP_MIGRATE:-0}"
 SKIP_BACKUP="${SKIP_BACKUP:-0}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-nexa-apps}"
@@ -58,7 +59,7 @@ if [[ -z "$IMAGE_REGISTRY" ]]; then
   exit 1
 fi
 
-for release_tag in "$BACKEND_IMAGE_TAG" "$WEB_IMAGE_TAG" "$DASHBOARD_IMAGE_TAG"; do
+for release_tag in "$BACKEND_IMAGE_TAG" "$PLATFORM_IMAGE_TAG" "$WEB_IMAGE_TAG" "$DASHBOARD_IMAGE_TAG"; do
   if [[ "$release_tag" == "latest" ]] || ! echo "$release_tag" | grep -qE '^[0-9a-f]{7,64}$'; then
     echo "Refusing non-immutable release tag" >&2
     exit 1
@@ -79,18 +80,20 @@ set_env_tag() {
 PREVIOUS_RELEASE_FILE="$DEPLOY_DIR/.release.previous.env"
 {
   printf 'BACKEND_IMAGE_TAG=%s\n' "$(get_val "$ENV_FILE" BACKEND_IMAGE_TAG)"
+  printf 'PLATFORM_IMAGE_TAG=%s\n' "$(get_val "$ENV_FILE" PLATFORM_IMAGE_TAG)"
   printf 'WEB_IMAGE_TAG=%s\n' "$(get_val "$ENV_FILE" WEB_IMAGE_TAG)"
   printf 'DASHBOARD_IMAGE_TAG=%s\n' "$(get_val "$ENV_FILE" DASHBOARD_IMAGE_TAG)"
 } > "$PREVIOUS_RELEASE_FILE"
 chmod 600 "$PREVIOUS_RELEASE_FILE"
 
 set_env_tag BACKEND_IMAGE_TAG "$BACKEND_IMAGE_TAG"
+set_env_tag PLATFORM_IMAGE_TAG "$PLATFORM_IMAGE_TAG"
 set_env_tag WEB_IMAGE_TAG "$WEB_IMAGE_TAG"
 set_env_tag DASHBOARD_IMAGE_TAG "$DASHBOARD_IMAGE_TAG"
 bash "$SCRIPT_DIR/secure-env-perms.sh" "$ENV_FILE" "${ENV_FILE}.bak" "$PREVIOUS_RELEASE_FILE" 2>/dev/null || \
   bash "$SCRIPT_DIR/secure-env-perms.sh" "$ENV_FILE" "$PREVIOUS_RELEASE_FILE"
 
-export BACKEND_IMAGE_TAG WEB_IMAGE_TAG DASHBOARD_IMAGE_TAG
+export BACKEND_IMAGE_TAG PLATFORM_IMAGE_TAG WEB_IMAGE_TAG DASHBOARD_IMAGE_TAG
 
 if [[ "$SKIP_MIGRATE" != "1" ]]; then
   if [[ "$SKIP_BACKUP" != "1" ]]; then
