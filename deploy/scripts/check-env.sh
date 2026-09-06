@@ -77,6 +77,21 @@ req "$SHARED_ENV" STAYS_PAYMENT_PROVIDER
 req "$SHARED_ENV" REDIS_URL
 req "$SHARED_ENV" AUTH_COOKIE_DOMAIN
 req "$SHARED_ENV" NOTIFICATIONS_SERVICE_URL
+req "$SHARED_ENV" STAYS_PUBLIC_URL
+
+# Messaging signed media HMAC — required in prod-like runtimes (NODE_ENV=production).
+# Accept MESSAGING_MEDIA_SECRET or legacy JWT_SECRET (MessagingMediaService fallback).
+messaging_media_secret="$(get_val "$SHARED_ENV" MESSAGING_MEDIA_SECRET)"
+jwt_secret_legacy="$(get_val "$SHARED_ENV" JWT_SECRET)"
+if [[ -z "$messaging_media_secret" && -z "$jwt_secret_legacy" ]]; then
+  echo "FAIL: MESSAGING_MEDIA_SECRET is required (or JWT_SECRET legacy fallback) for signed messaging media URLs" >&2
+  exit 1
+fi
+if [[ -n "$messaging_media_secret" && ( "$messaging_media_secret" == REPLACE* || "$messaging_media_secret" == *REPLACE* ) ]]; then
+  echo "FAIL: MESSAGING_MEDIA_SECRET is still a REPLACE placeholder" >&2
+  exit 1
+fi
+echo "OK: messaging media signing secret is set"
 
 for f in "$IDENTITY_ENV" "$STAYS_ENV"; do
   req "$f" DB_HOST

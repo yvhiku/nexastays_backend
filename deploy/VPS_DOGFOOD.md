@@ -69,7 +69,10 @@ cd /opt/nexa/backend/deploy
 sudo -u nexa bash scripts/install-dogfood-env-templates.sh .
 # edit .env .env.identity .env.stays .env.notifications .env.media
 # NEXA_ENV=dogfood, STAYS_PAYMENT_PROVIDER=mock, SUMSUB_MODE=sandbox + SUMSUB_WEBHOOK_SECRET,
-# AUTH_COOKIE_DOMAIN=.nexastays.ma, REDIS_URL, NOTIFICATIONS_SERVICE_URL, PUSH_DISABLED=true
+# AUTH_COOKIE_DOMAIN=.nexastays.ma, REDIS_URL, NOTIFICATIONS_SERVICE_URL, PUSH_DISABLED=true,
+# MESSAGING_MEDIA_SECRET (HMAC for signed inbox media; required with NODE_ENV=production),
+# MEDIA_SERVICE_URL=http://media:3004 (required — do not rely on ephemeral Stays uploads/),
+# .env.media MEDIA_STORAGE_ROOT=/data/nexa-media (compose volume media_data)
 bash scripts/secure-env-perms.sh .env .env.identity .env.stays .env.notifications .env.media
 # optional: rotate secrets in place (backs up to .env-backups/)
 # bash scripts/configure-hostinger-dogfood.sh

@@ -8,10 +8,12 @@ import {
   UseGuards,
   Req,
   Res,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { createReadStream } from 'fs';
+import * as path from 'path';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -62,7 +64,15 @@ export class AdminStaysController {
     @Res() res: Response,
   ) {
     const fullPath = await this.adminStaysService.getListingMediaPath(id, assetId);
-    const ext = fullPath.includes('.') ? fullPath.split('.').pop()?.toLowerCase() : '';
+    const resolved = path.resolve(fullPath);
+    const uploadRoot = path.resolve(process.cwd(), 'uploads/host');
+    if (
+      resolved !== uploadRoot &&
+      !resolved.startsWith(uploadRoot + path.sep)
+    ) {
+      throw new NotFoundException('Media not found');
+    }
+    const ext = resolved.includes('.') ? resolved.split('.').pop()?.toLowerCase() : '';
     const contentType =
       ext === 'mp4'
         ? 'video/mp4'
@@ -75,7 +85,7 @@ export class AdminStaysController {
               : 'application/octet-stream';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'private, max-age=3600');
-    createReadStream(fullPath).pipe(res);
+    createReadStream(resolved).pipe(res);
   }
 
   @Get('host-applications')

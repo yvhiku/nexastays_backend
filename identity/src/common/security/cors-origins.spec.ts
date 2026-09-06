@@ -97,6 +97,6 @@ describe('CORS allowlist SEC-005', () => {
       NODE_ENV: 'development',
     } as NodeJS.ProcessEnv);
     expect(Array.isArray(list)).toBe(true);
-    expect(list.includes('http://evil.example')).toBe(false);
+    expect(list).toEqual(DEV_DEFAULT_CORS_ORIGINS);
   });
 });

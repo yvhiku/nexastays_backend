@@ -13,6 +13,7 @@ import {
   Req,
   Res,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -25,6 +26,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { createReadStream } from 'fs';
+import * as path from 'path';
 import type { Request, Response } from 'express';
 import { StaysService } from './stays.service';
 import { HostsService } from './hosts/hosts.service';
@@ -94,7 +96,15 @@ export class StaysController {
     @Res() res: Response,
   ) {
     const fullPath = await this.staysService.getListingMediaPath(id, assetId);
-    const ext = fullPath.includes('.') ? fullPath.split('.').pop()?.toLowerCase() : '';
+    const resolved = path.resolve(fullPath);
+    const uploadRoot = path.resolve(process.cwd(), 'uploads/host');
+    if (
+      resolved !== uploadRoot &&
+      !resolved.startsWith(uploadRoot + path.sep)
+    ) {
+      throw new NotFoundException('Media not found');
+    }
+    const ext = resolved.includes('.') ? resolved.split('.').pop()?.toLowerCase() : '';
     const contentType =
       ext === 'mp4'
         ? 'video/mp4'
@@ -108,7 +118,7 @@ export class StaysController {
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=3600');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    createReadStream(fullPath).pipe(res);
+    createReadStream(resolved).pipe(res);
   }
 
   /**

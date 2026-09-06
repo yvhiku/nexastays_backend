@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createReadStream } from 'fs';
+import * as path from 'path';
 import type { Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { InternalServiceGuard } from '../../common/guards/internal-service.guard';
@@ -70,7 +71,15 @@ export class InternalUsersController {
     if (!filePath) {
       throw new NotFoundException('No profile photo');
     }
-    const ext = filePath.split('.').pop()?.toLowerCase();
+    const resolved = path.resolve(filePath);
+    const photoRoot = path.resolve('uploads/profile');
+    if (
+      resolved !== photoRoot &&
+      !resolved.startsWith(photoRoot + path.sep)
+    ) {
+      throw new NotFoundException('No profile photo');
+    }
+    const ext = resolved.split('.').pop()?.toLowerCase();
     const contentType =
       ext === 'png'
         ? 'image/png'
@@ -79,7 +88,7 @@ export class InternalUsersController {
           : 'application/octet-stream';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'private, max-age=3600');
-    createReadStream(filePath).pipe(res);
+    createReadStream(resolved).pipe(res);
   }
 
   @Get(':userId/profile-summary')

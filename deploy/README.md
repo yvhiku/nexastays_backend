@@ -46,6 +46,7 @@ paths (or create matching symlinks).
 |------|---------|
 | `docker-compose.release.yml` | Identity + Stays + Web + Dashboard + Platform |
 | `docker-compose.host.yml` | Same services with on-host image builds |
+| Compose volumes `media_data` / `stays_media_claims` | Persist media bytes + Stays remote claim sidecars |
 | `docker/Dockerfile.platform` | notifications-service / media-service / consumers |
 | `env/*.env.example` | Shared + per-service DB + platform contracts |
 | `edge/Caddyfile.dogfood.example` | TLS reverse-proxy example (operator-owned) |

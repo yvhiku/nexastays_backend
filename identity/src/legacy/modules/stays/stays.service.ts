@@ -47,6 +47,22 @@ export class StaysService {
   private static readonly LISTING_UPLOAD_DIR = 'uploads/host';
   private static readonly PHOTO_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
 
+  private async accessUnderDir(
+    dir: string,
+    fileName: string,
+  ): Promise<string | null> {
+    const candidate = path.resolve(dir, path.basename(fileName));
+    if (candidate !== dir && !candidate.startsWith(dir + path.sep)) {
+      return null;
+    }
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      return null;
+    }
+  }
+
   async getListingMediaPath(listingId: string, assetId: string): Promise<string> {
     const listing = await this.listingRepo.findOne({
       where: { id: listingId },
@@ -59,26 +75,23 @@ export class StaysService {
     const dir = path.resolve(
       process.cwd(),
       StaysService.LISTING_UPLOAD_DIR,
-      listing.host_user_id,
+      path.basename(listing.host_user_id),
       'listing',
     );
     if (media.kind === 'WALKTHROUGH') {
-      const p = path.join(dir, `walkthrough_${assetId}.mp4`);
-      try {
-        await fs.access(p);
-        return p;
-      } catch {
-        throw new NotFoundException('Walkthrough file not found');
-      }
+      const p = await this.accessUnderDir(
+        dir,
+        `walkthrough_${path.basename(assetId)}.mp4`,
+      );
+      if (!p) throw new NotFoundException('Walkthrough file not found');
+      return p;
     }
     for (const ext of StaysService.PHOTO_EXTS) {
-      const p = path.join(dir, `photo_${assetId}${ext}`);
-      try {
-        await fs.access(p);
-        return p;
-      } catch {
-        /* try next ext */
-      }
+      const p = await this.accessUnderDir(
+        dir,
+        `photo_${path.basename(assetId)}${ext}`,
+      );
+      if (p) return p;
     }
     throw new NotFoundException('Photo file not found');
   }

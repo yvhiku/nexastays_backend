@@ -77,6 +77,7 @@ set_key "$SHARED" REFRESH_TOKEN_PEPPER "$(random_hex 32)"
 set_key "$SHARED" OTP_PEPPER "$(random_hex 32)"
 set_key "$SHARED" KYC_HASH_PEPPER "$(random_hex 32)"
 set_key "$SHARED" INTERNAL_SERVICE_KEY "$internal_key"
+set_key "$SHARED" MESSAGING_MEDIA_SECRET "$(random_hex 32)"
 set_key "$SHARED" QR_NFC_HMAC_SECRET "$(random_hex 32)"
 set_key "$SHARED" CORS_ORIGINS "https://nexastays.ma,https://admin.nexastays.ma"
 set_key "$SHARED" AUTH_COOKIE_DOMAIN ".nexastays.ma"
@@ -122,6 +123,7 @@ set_key "$MEDIA" PORT 3004
 set_key "$MEDIA" NODE_ENV production
 set_key "$MEDIA" NEXA_ENV dogfood
 set_key "$MEDIA" MEDIA_STORAGE_BACKEND local
+set_key "$MEDIA" MEDIA_STORAGE_ROOT /data/nexa-media
 set_key "$MEDIA" INTERNAL_SERVICE_KEY "$internal_key"
 set_key "$MEDIA" MEDIA_SIGNING_SECRET "$media_signing"
 

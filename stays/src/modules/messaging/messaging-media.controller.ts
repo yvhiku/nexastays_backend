@@ -9,11 +9,11 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { createReadStream } from 'fs';
+import type { Response } from 'express';
 import { Readable } from 'stream';
 import { ReadableStream } from 'stream/web';
-import type { Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
+import { deliverStoredMedia } from '../../common/media/deliver-stored-media';
 import { MessagingMediaService } from './messaging-media.service';
 import { StaysService } from '../stays/stays.service';
 import { IdentityProfilePhotoClient } from '../../common/identity/identity-profile-photo.client';
@@ -98,23 +98,7 @@ export class MessagingMediaController {
     if (!valid) throw new NotFoundException();
 
     const fullPath = await this.staysService.getListingMediaPath(listingId, mediaId);
-    if (/^https?:\/\//i.test(fullPath)) {
-      res.redirect(fullPath);
-      return;
-    }
-    const ext = fullPath.includes('.') ? fullPath.split('.').pop()?.toLowerCase() : '';
-    const contentType =
-      ext === 'png'
-        ? 'image/png'
-        : ext === 'webp'
-          ? 'image/webp'
-          : ext === 'jpg' || ext === 'jpeg'
-            ? 'image/jpeg'
-            : 'application/octet-stream';
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    createReadStream(fullPath).pipe(res);
+    await deliverStoredMedia(res, fullPath);
   }
 
   @Get('attachments/:attachmentId')
@@ -153,23 +137,8 @@ export class MessagingMediaController {
         ? row.thumbnail_url
         : row.storage_url;
     const fullPath = await this.attachmentService.resolveDelivery(rel);
-    if (/^https?:\/\//i.test(fullPath)) {
-      res.redirect(fullPath);
-      return;
-    }
-    const ext = fullPath.includes('.') ? fullPath.split('.').pop()?.toLowerCase() : '';
-    const contentType =
-      row.mime ??
-      (ext === 'png'
-        ? 'image/png'
-        : ext === 'webp'
-          ? 'image/webp'
-          : ext === 'pdf'
-            ? 'application/pdf'
-            : 'application/octet-stream');
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    createReadStream(fullPath).pipe(res);
+    await deliverStoredMedia(res, fullPath, {
+      contentType: row.mime ?? undefined,
+    });
   }
 }

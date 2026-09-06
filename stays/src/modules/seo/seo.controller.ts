@@ -19,7 +19,8 @@ function parsePathSegments(path?: string): string[] {
   if (!path?.trim()) return [];
   return path
     .trim()
-    .replace(/^\/+|\/+$/g, '')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '')
     .split('/')
     .filter(Boolean);
 }

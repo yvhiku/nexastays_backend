@@ -262,8 +262,8 @@ export class AdminKycService {
       if (uuidRegex.test(term)) {
         qb.andWhere('k.user_id = :userId', { userId: term });
       } else {
-        qb.andWhere('u.phone_number ILIKE :phone', {
-          phone: `%${term.replace(/%/g, '\\%')}%`,
+        qb.andWhere('u.phone_number ILIKE :phone ESCAPE \'\\\'', {
+          phone: `%${term.replace(/\\/g, '\\\\').replace(/[%_]/g, '\\$&')}%`,
         });
       }
     }

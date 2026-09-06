@@ -350,8 +350,7 @@ export class OrdersController {
       return updatedOrder;
     } catch (error: any) {
       console.error(
-        `[OrdersController] Pickup order ${orderId.substring(0, 8)} failed:`,
-        error.message,
+        `[OrdersController] Pickup order ${orderId.substring(0, 8)} failed: ${error?.message ?? 'unknown'}`,
       );
       throw error;
     }

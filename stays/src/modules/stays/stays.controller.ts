@@ -32,8 +32,8 @@ import {
   ApiOkResponse,
   ApiQuery,
 } from '@nestjs/swagger';
-import { createReadStream } from 'fs';
 import type { Request, Response } from 'express';
+import { deliverStoredMedia } from '../../common/media/deliver-stored-media';
 import { StaysService } from './stays.service';
 import { HostsService } from './hosts/hosts.service';
 import { HostListingsService } from './services/host-listings.service';
@@ -247,28 +247,9 @@ export class StaysController {
     @Res() res: Response,
   ) {
     const fullPath = await this.staysService.getListingMediaPath(id, assetId);
-    if (/^https?:\/\//i.test(fullPath)) {
-      // Remote / signed delivery (media-service). Public LIVE listing media.
-      res.redirect(fullPath);
-      return;
-    }
-    const ext = fullPath.includes('.') ? fullPath.split('.').pop()?.toLowerCase() : '';
-    const contentType =
-      ext === 'mp4'
-        ? 'video/mp4'
-        : ext === 'webm'
-          ? 'video/webm'
-          : ext === 'png'
-            ? 'image/png'
-            : ext === 'webp'
-              ? 'image/webp'
-              : ext === 'jpg' || ext === 'jpeg'
-                ? 'image/jpeg'
-                : 'application/octet-stream';
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    createReadStream(fullPath).pipe(res);
+    // Proxy remote media-service URLs — Docker-internal hostnames are not
+    // browser-reachable, so redirect would break public listing images.
+    await deliverStoredMedia(res, fullPath);
   }
 
   /**

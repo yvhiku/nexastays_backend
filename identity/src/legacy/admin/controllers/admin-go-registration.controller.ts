@@ -17,7 +17,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { DbCircuitBreakerGuard } from '../../../common/guards/db-circuit-breaker.guard';
 import type { Response } from 'express';
 import { createReadStream } from 'fs';
-import { join } from 'path';
+import { basename, resolve, sep } from 'path';
 import type { AdminRequest } from '../types/admin-request';
 import {
   RegistrationApplicationsService,
@@ -58,7 +58,9 @@ export class AdminGoRegistrationController {
     @Res() res: Response,
   ) {
     const app = await this.registrationService.getById(id);
-    const relativePath = `${id}/${filename}`;
+    const safeId = basename(id);
+    const safeName = basename(filename);
+    const relativePath = `${safeId}/${safeName}`;
     const allowedPaths = [
       app.identity_front_path,
       app.identity_back_path,
@@ -72,8 +74,12 @@ export class AdminGoRegistrationController {
     if (!allowedPaths.some((p) => p === relativePath)) {
       return res.status(404).json({ message: 'File not found' });
     }
-    const fullPath = join(REGISTRATION_UPLOAD_DIR, relativePath);
-    const ext = filename.includes('.') ? filename.split('.').pop()?.toLowerCase() : '';
+    const root = resolve(REGISTRATION_UPLOAD_DIR);
+    const fullPath = resolve(root, safeId, safeName);
+    if (fullPath !== root && !fullPath.startsWith(root + sep)) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    const ext = safeName.includes('.') ? safeName.split('.').pop()?.toLowerCase() : '';
     const contentType =
       ext === 'png'
         ? 'image/png'

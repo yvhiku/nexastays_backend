@@ -1210,28 +1210,30 @@ export class UsersService {
     if (!user || user.profile_photo_url !== PROFILE_PHOTO_URL_PATH) {
       return null;
     }
-    const jpg = path.join(PROFILE_PHOTO_DIR, `${userId}.jpg`);
-    const jpeg = path.join(PROFILE_PHOTO_DIR, `${userId}.jpeg`);
-    const png = path.join(PROFILE_PHOTO_DIR, `${userId}.png`);
-    try {
-      await fs.access(jpg);
-      return jpg;
-    } catch {
-      //
-    }
-    try {
-      await fs.access(jpeg);
-      return jpeg;
-    } catch {
-      //
-    }
-    try {
-      await fs.access(png);
-      return png;
-    } catch {
-      //
-    }
-    return null;
+    const photoRoot = path.resolve(PROFILE_PHOTO_DIR);
+    const tryExt = async (ext: string): Promise<string | null> => {
+      const candidate = path.resolve(
+        photoRoot,
+        path.basename(`${userId}.${ext}`),
+      );
+      if (
+        candidate !== photoRoot &&
+        !candidate.startsWith(photoRoot + path.sep)
+      ) {
+        return null;
+      }
+      try {
+        await fs.access(candidate);
+        return candidate;
+      } catch {
+        return null;
+      }
+    };
+    return (
+      (await tryExt('jpg')) ??
+      (await tryExt('jpeg')) ??
+      (await tryExt('png'))
+    );
   }
 
   /**

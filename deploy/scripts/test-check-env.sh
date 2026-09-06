@@ -30,6 +30,8 @@ CORS_ORIGINS=https://web.example
 INTERNAL_SERVICE_KEY=${STRONG_INTERNAL}
 ADMIN_PASSWORD_HASH=x
 STAYS_PAYMENT_PROVIDER=${pay}
+STAYS_PUBLIC_URL=https://stays.example
+MESSAGING_MEDIA_SECRET=messaging-media-hmac-NOT-dev-99
 REDIS_URL=redis://host.docker.internal:6379
 AUTH_COOKIE_DOMAIN=.example.com
 NOTIFICATIONS_SERVICE_URL=http://127.0.0.1:3003
@@ -195,6 +197,17 @@ write_base dogfood mock
 awk 'BEGIN{FS=OFS="="} $1=="INTERNAL_SERVICE_KEY"{$2="dev-internal-key"} {print}' "$TMP/.env" >"$TMP/.env.tmp" && mv "$TMP/.env.tmp" "$TMP/.env"
 chmod 600 "$TMP/.env"
 assert_fail "dev-internal-key rejected"
+
+# Messaging media signing secret required
+write_base dogfood mock
+awk 'BEGIN{FS=OFS="="} $1!="MESSAGING_MEDIA_SECRET" {print}' "$TMP/.env" >"$TMP/.env.tmp" && mv "$TMP/.env.tmp" "$TMP/.env"
+chmod 600 "$TMP/.env"
+assert_fail "missing MESSAGING_MEDIA_SECRET rejected"
+
+write_base dogfood mock
+awk 'BEGIN{FS=OFS="="} $1=="MESSAGING_MEDIA_SECRET"{$2="REPLACE_LONG_RANDOM"} {print}' "$TMP/.env" >"$TMP/.env.tmp" && mv "$TMP/.env.tmp" "$TMP/.env"
+chmod 600 "$TMP/.env"
+assert_fail "REPLACE MESSAGING_MEDIA_SECRET rejected"
 
 # Phase 1 — loopback JWT_ISSUER
 write_base dogfood mock

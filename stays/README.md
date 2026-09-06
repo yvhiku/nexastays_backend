@@ -36,7 +36,9 @@ Create a `.env` in `backend/` (or set in the shell):
 | `PORT` | Server port | `3000` |
 | `NODE_ENV` | `development` / `production` / `test` | `development` |
 | `API_PREFIX` | Base path for API | `api/v1` |
-| `JWT_SECRET` | Secret for JWT signing | (set in production) |
+| `JWT_SECRET` | Legacy HMAC JWT secret (prefer RS256 keys; still accepted as messaging media signing fallback) | (optional) |
+| `MESSAGING_MEDIA_SECRET` | HMAC for signed messaging media URLs | **required** when `NODE_ENV=production` |
+| `KYC_HASH_PEPPER` | Pepper for KYC hashes | (set in production) |
 | `JWT_EXPIRES_IN` | JWT expiry | `15m` |
 | `DEMO_OTP_CODE` | Demo OTP for development | `123456` |
 | `OTP_EXPIRY_SECONDS` | OTP validity | `300` |
@@ -46,7 +48,6 @@ Create a `.env` in `backend/` (or set in the shell):
 | `PIN_MAX_LOCKOUT_SECONDS` | Max exponential lockout cap | `3600` |
 | `FCM_SERVICE_ACCOUNT_JSON` | Firebase service account JSON (stringified) | — |
 | `FCM_SERVICE_ACCOUNT_PATH` | Path to Firebase service account JSON | — |
-| `KYC_HASH_PEPPER` | Pepper for CNIE hashing (production required) | — |
 | `DB_HOST` | PostgreSQL host | `localhost` |
 | `DB_PORT` | PostgreSQL port | `5432` |
 | `DB_USERNAME` | DB user | `postgres` |
@@ -56,7 +57,7 @@ Create a `.env` in `backend/` (or set in the shell):
 | `MONTHLY_TRANSFER_LIMIT` | Pay monthly limit | `100000` |
 | `MAX_SINGLE_TRANSFER` | Pay max single transfer | `5000` |
 
-In **production**, set `JWT_SECRET` and `KYC_HASH_PEPPER`; do not rely on defaults.
+In **production**, set `MESSAGING_MEDIA_SECRET` and `KYC_HASH_PEPPER`; do not rely on defaults.
 
 ### PIN hash migration strategy
 

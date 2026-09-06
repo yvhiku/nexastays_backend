@@ -70,6 +70,8 @@ services:
       IMAGE_TAG: ${BACKEND_IMAGE_TAG}
       BUILD_VERSION: ${BUILD_VERSION:-}
       BUILD_TIME: ${BUILD_TIME:-}
+    volumes:
+      - stays_media_claims:/workspace/backend/stays/uploads
     depends_on:
       identity:
         condition: service_healthy
@@ -139,6 +141,8 @@ services:
       PORT: "3004"
       NEXA_SERVICE_NAME: nexa-media
       GIT_SHA: ${PLATFORM_IMAGE_TAG:-${BACKEND_IMAGE_TAG}}
+    volumes:
+      - media_data:/data/nexa-media
     healthcheck:
       test:
         [
@@ -210,3 +214,7 @@ networks:
   data:
     external: true
     name: nexastays_db_default
+
+volumes:
+  media_data:
+  stays_media_claims:

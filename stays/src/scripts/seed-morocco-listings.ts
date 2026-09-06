@@ -211,7 +211,7 @@ async function ensureApprovedHost(
        updated_at = NOW()`,
     [bootstrapUserId],
   );
-  console.log(`Provisioned APPROVED seed host profile for ${bootstrapUserId}`);
+  console.log('Provisioned APPROVED seed host profile from bootstrap env');
   return bootstrapUserId;
 }
 
@@ -257,7 +257,7 @@ async function main() {
     let created = 0;
 
     console.log(
-      `Seeding ${count} listings (batch ${batchSize}, offset ${startOffset}, target ${targetTotal}) for host ${hostUserId}…`,
+      `Seeding ${count} listings (batch ${batchSize}, offset ${startOffset}, target ${targetTotal})…`,
     );
 
     for (let offset = startOffset; offset < targetTotal; offset += batchSize) {
@@ -489,7 +489,7 @@ async function main() {
     }
 
     console.log(
-      `\nDone. ${created} LIVE Morocco listings (${startOffset + created} total with prefix) for host ${hostUserId} in ${Math.round((Date.now() - startedAt) / 1000)}s`,
+      `\nDone. ${created} LIVE Morocco listings (${startOffset + created} total with prefix) in ${Math.round((Date.now() - startedAt) / 1000)}s`,
     );
     console.log(`Titles use prefix "${TITLE_PREFIX}" — re-run with --clean to replace.`);
   } catch (err) {
@@ -500,7 +500,7 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
+main().catch(() => {
+  console.error('Morocco listings seed failed');
   process.exit(1);
 });

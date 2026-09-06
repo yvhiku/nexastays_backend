@@ -54,6 +54,8 @@ req_nonempty "$SHARED" NOTIFICATIONS_SERVICE_URL
 req_nonempty "$SHARED" CORS_ORIGINS
 req_nonempty "$SHARED" JWT_PRIVATE_KEY
 req_nonempty "$SHARED" JWT_PUBLIC_KEY
+req_nonempty "$SHARED" STAYS_PUBLIC_URL
+req_nonempty "$SHARED" MESSAGING_MEDIA_SECRET
 req_nonempty "$IDENTITY" DB_PASSWORD
 req_nonempty "$STAYS" DB_PASSWORD
 req_nonempty "$NOTIF" INTERNAL_SERVICE_KEY

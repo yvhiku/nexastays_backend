@@ -742,7 +742,7 @@ export class SupportTicketsService {
     }
     const search = query.search?.trim();
     if (search) {
-      const q = `%${search.replace(/[%_]/g, '\\$&')}%`;
+      const q = `%${search.replace(/\\/g, '\\\\').replace(/[%_]/g, '\\$&')}%`;
       qb.andWhere(
         `(t.ticket_number ILIKE :q ESCAPE '\\'
           OR t.subject ILIKE :q ESCAPE '\\'
@@ -809,7 +809,7 @@ export class SupportTicketsService {
     }
     const search = query.search?.trim();
     if (search) {
-      const q = `%${search.replace(/[%_]/g, '\\$&')}%`;
+      const q = `%${search.replace(/\\/g, '\\\\').replace(/[%_]/g, '\\$&')}%`;
       qb.andWhere(
         `(t.ticket_number ILIKE :q ESCAPE '\\'
           OR t.customer_name ILIKE :q ESCAPE '\\'
@@ -1659,7 +1659,7 @@ export class SupportTicketsService {
       }
       const search = query.search?.trim();
       if (search) {
-        const q = `%${search.replace(/[%_]/g, '\\$&')}%`;
+        const q = `%${search.replace(/\\/g, '\\\\').replace(/[%_]/g, '\\$&')}%`;
         const s = push(q);
         parts.push(
           `(${textExpr} ILIKE ${s} ESCAPE '\\'
