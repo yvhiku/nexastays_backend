@@ -18,6 +18,21 @@ import { IdentitySnapshotService } from '../../identity-snapshot/identity-snapsh
 import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import { kycTierToLevel } from '../../identity-snapshot/identity-snapshot.types';
+import { decryptPii } from '../../../common/security/pii-encryption';
+import { ComplianceService } from '../../compliance/compliance.service';
+
+/**
+ * Raw query builders bypass the entity `piiTransformer`, so encrypted columns
+ * arrive as `enc:v1:…` blobs. Decrypt for the admin DTO; never fail the request.
+ */
+function decryptPiiSafe(value: unknown): string | null {
+  if (typeof value !== 'string' || !value) return null;
+  try {
+    return decryptPii(value);
+  } catch {
+    return null;
+  }
+}
 
 interface RequestUser {
   userId?: string;
@@ -75,7 +90,42 @@ export class AdminKycService {
     private readonly kycReuseService: KycReuseService,
     private readonly snapshotService: IdentitySnapshotService,
     private readonly domainEvents: DomainEventsService,
+    private readonly complianceService: ComplianceService,
   ) {}
+
+  /**
+   * Admin-triggered re-pull of the Sumsub applicant for a case. Backfills empty
+   * identity fields (name, DOB, nationality, document type/country/number) via
+   * the same path the webhook uses, then returns the refreshed case DTO.
+   */
+  async resyncFromSumsub(id: string, adminUser?: RequestUser, req?: Request) {
+    const kyc = await this.kycRepository.findOne({ where: { id } });
+    if (!kyc) {
+      throw new NotFoundException('KYC case not found');
+    }
+    if ((kyc.provider ?? '').toUpperCase() !== 'SUMSUB') {
+      throw new BadRequestException('This case was not verified through Sumsub');
+    }
+    const source = (kyc.source ?? 'PAY').toUpperCase();
+    const sync = await this.complianceService.syncSumsubDossier(kyc.user_id, source);
+
+    const { ipAddress, deviceId } = getIpAndAgent(req);
+    await this.auditService.logAction({
+      action: 'KYC_SUMSUB_RESYNC',
+      entityType: 'kyc',
+      entityId: kyc.id,
+      userId: kyc.user_id,
+      adminUser,
+      ipAddress,
+      deviceId,
+    });
+    await this.snapshotService.invalidate(kyc.user_id);
+
+    return {
+      sync,
+      case: await this.getCase(id),
+    };
+  }
 
   /** DEV only: returns KYC profile info for debugging. 404 in production. */
   async getDebugUser(userId: string) {
@@ -264,6 +314,10 @@ export class AdminKycService {
     const documentFileUrlFront = fileUrlFromPath(userId, documentFrontPath);
     const documentFileUrlBack = fileUrlFromPath(userId, documentBackPath);
     const selfieFileUrl = fileUrlFromPath(userId, selfiePath);
+    const nationalIdNumber = decryptPiiSafe(row.national_id_number);
+    const nationalIdNumberExtracted = decryptPiiSafe(
+      row.national_id_number_extracted,
+    );
 
     return {
       userId,
@@ -272,8 +326,8 @@ export class AdminKycService {
       /** Flat fields for admin dashboards (avoid relying only on nested kycProfile). */
       document_type: row.document_type ?? null,
       document_country: row.document_country ?? null,
-      national_id_number: row.national_id_number ?? null,
-      national_id_number_extracted: row.national_id_number_extracted ?? null,
+      national_id_number: nationalIdNumber,
+      national_id_number_extracted: nationalIdNumberExtracted,
       full_name: formFullName,
       kyc_full_name: kycFullName,
       user_full_name: userFullName,
@@ -283,13 +337,21 @@ export class AdminKycService {
       city: userCity,
       date_of_birth: row.date_of_birth ?? null,
       nationality: row.nationality ?? null,
+      document_valid_until: row.document_valid_until ?? null,
       document_file_url_front: documentFileUrlFront,
       document_file_url_back: documentFileUrlBack,
       selfie_file_url: selfieFileUrl,
+      provider_level_name: row.provider_level_name ?? null,
+      provider_review_status: row.provider_review_status ?? null,
+      provider_review_answer: row.provider_review_answer ?? null,
+      provider_attempt_cnt: row.provider_attempt_cnt ?? null,
+      provider_inspection_id: row.provider_inspection_id ?? null,
+      provider_synced_at: row.provider_synced_at ?? null,
       kycProfile: {
         status: row.status ?? 'PENDING',
         document_type: row.document_type ?? null,
         document_country: row.document_country ?? null,
+        document_valid_until: row.document_valid_until ?? null,
         document_front_url: documentFrontPath ?? null,
         document_back_url: documentBackPath ?? null,
         selfie_url: selfiePath ?? null,
@@ -305,8 +367,14 @@ export class AdminKycService {
         email: kycEmail,
         date_of_birth: row.date_of_birth ?? null,
         nationality: row.nationality ?? null,
-        national_id_number: row.national_id_number ?? null,
-        national_id_number_extracted: row.national_id_number_extracted ?? null,
+        national_id_number: nationalIdNumber,
+        national_id_number_extracted: nationalIdNumberExtracted,
+        provider_level_name: row.provider_level_name ?? null,
+        provider_review_status: row.provider_review_status ?? null,
+        provider_review_answer: row.provider_review_answer ?? null,
+        provider_attempt_cnt: row.provider_attempt_cnt ?? null,
+        provider_inspection_id: row.provider_inspection_id ?? null,
+        provider_synced_at: row.provider_synced_at ?? null,
       },
       id: row.id,
       status: (row.status as string) ?? 'PENDING',
@@ -314,6 +382,8 @@ export class AdminKycService {
       user_name: row.user_name,
       level: row.level,
       provider: row.provider,
+      /** Provider reference (Sumsub applicantId once reviewed) — lets admins open the applicant in the provider console. */
+      reference: (row.reference as string | null | undefined) ?? null,
       submitted_at: row.submitted_at,
       last_webhook_event_type: row.last_webhook_event_type ?? null,
       last_webhook_received_at: row.last_webhook_received_at ?? null,
@@ -321,6 +391,7 @@ export class AdminKycService {
         id_document: false,
         selfie: false,
         liveness: false,
+        phone: false,
       },
       aml_screening: row.aml_screening || { status: 'PENDING', score: 0 },
       source: row.source ?? 'PAY',
@@ -341,6 +412,7 @@ export class AdminKycService {
         'k.status as status',
         'k.level as level',
         'k.provider as provider',
+        'k.reference as reference',
         'k.created_at as submitted_at',
         'k.reviewed_at as reviewed_at',
         'k.reviewed_by as reviewed_by',
@@ -361,6 +433,13 @@ export class AdminKycService {
         'k.nationality as nationality',
         'k.national_id_number as national_id_number',
         'k.national_id_number_extracted as national_id_number_extracted',
+        'k.document_valid_until as document_valid_until',
+        'k.provider_level_name as provider_level_name',
+        'k.provider_review_status as provider_review_status',
+        'k.provider_review_answer as provider_review_answer',
+        'k.provider_attempt_cnt as provider_attempt_cnt',
+        'k.provider_inspection_id as provider_inspection_id',
+        'k.provider_synced_at as provider_synced_at',
         'k.source as source',
         'u.account_type as account_type',
         'u.city as user_city',

@@ -234,4 +234,15 @@ export const sumsubConfig = {
   levelName: process.env.SUMSUB_LEVEL_NAME || 'basic-kyc-level',
   tokenTtlSeconds: parseInt(process.env.SUMSUB_TOKEN_TTL_SECONDS || '600', 10),
   webhookSecret: process.env.SUMSUB_WEBHOOK_SECRET || process.env.SUMSUB_SECRET_KEY || '',
+  /**
+   * sandbox | live — ops credential environment. Same Sumsub API host;
+   * production boot requires SUMSUB_MODE=live (see assertSumsubModePolicy).
+   */
+  get mode(): 'sandbox' | 'live' {
+    const raw = (process.env.SUMSUB_MODE ?? '').trim().toLowerCase();
+    if (raw === 'live' || raw === 'sandbox') return raw;
+    return (process.env.NEXA_ENV ?? '').trim().toLowerCase() === 'production'
+      ? 'live'
+      : 'sandbox';
+  },
 };

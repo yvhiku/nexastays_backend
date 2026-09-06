@@ -13,7 +13,7 @@ import { MessagingStateService } from '../../messaging/messaging-state.service';
 describe('StaysCancellationService', () => {
   let service: StaysCancellationService;
   let ledgerRepo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock };
-  let intentRepo: { update: jest.Mock };
+  let intentRepo: { update: jest.Mock; find: jest.Mock };
   let bookingRepo: {
     findOne: jest.Mock;
     update: jest.Mock;
@@ -86,6 +86,7 @@ describe('StaysCancellationService', () => {
     };
     intentRepo = {
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      find: jest.fn().mockResolvedValue([]),
     };
     bookingRepo = {
       findOne: jest.fn(),
@@ -130,6 +131,7 @@ describe('StaysCancellationService', () => {
         { provide: getRepositoryToken(StaysBooking), useValue: { findOne: bookingRepo.findOne } },
         { provide: getRepositoryToken(StaysLedgerEntry), useValue: {} },
         { provide: getRepositoryToken(StaysListing), useValue: {} },
+        { provide: getRepositoryToken(StaysPaymentIntent), useValue: intentRepo },
         {
           provide: StaysAuditService,
           useValue: { log: jest.fn().mockResolvedValue(undefined) },

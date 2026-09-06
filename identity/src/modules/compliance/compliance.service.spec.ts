@@ -28,7 +28,12 @@ describe('ComplianceService (KYC source)', () => {
     save: jest.fn(),
   };
 
-  const mockUserRepo = {
+  const mockUserRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    update: jest.Mock;
+    manager?: { query: jest.Mock };
+  } = {
     findOne: jest.fn(),
     save: jest.fn(),
     update: jest.fn(),
@@ -287,6 +292,428 @@ describe('ComplianceService (KYC source)', () => {
       expect(mockKycRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ date_of_birth: '1990-01-01' }),
       );
+    });
+  });
+
+  describe('Sumsub full identity backfill (admin KYC monitoring)', () => {
+    const applicant = {
+      id: 'applicant-1',
+      externalUserId: 'STAYS_user-123',
+      info: {
+        firstName: 'Mohamed',
+        lastName: 'Fikri',
+        dob: '1991-07-04',
+        nationality: 'MAR',
+        country: 'MAR',
+        idDocs: [
+          { idDocType: 'ID_CARD', country: 'MAR', number: 'AB123456' },
+          { idDocType: 'SELFIE', country: 'MAR' },
+        ],
+      },
+    };
+
+    beforeEach(() => {
+      mockUserRepo.manager = { query: jest.fn().mockResolvedValue([]) };
+    });
+
+    it('extractSumsubIdentity maps name / DOB / alpha-3 country / ID_CARD→CNIE / doc number', () => {
+      expect(service.extractSumsubIdentity(applicant)).toEqual({
+        dateOfBirth: '1991-07-04',
+        fullName: 'Mohamed Fikri',
+        nationality: 'MA',
+        documentType: 'CNIE',
+        documentCountry: 'MA',
+        documentNumber: 'AB123456',
+        documentValidUntil: null,
+        email: null,
+        phone: null,
+        levelName: null,
+        reviewStatus: null,
+        reviewAnswer: null,
+        attemptCnt: null,
+        inspectionId: null,
+      });
+    });
+
+    it('extractSumsubIdentity never invents values', () => {
+      expect(service.extractSumsubIdentity({ id: 'x' })).toEqual({
+        dateOfBirth: null,
+        fullName: null,
+        nationality: null,
+        documentType: null,
+        documentCountry: null,
+        documentNumber: null,
+        documentValidUntil: null,
+        email: null,
+        phone: null,
+        levelName: null,
+        reviewStatus: null,
+        reviewAnswer: null,
+        attemptCnt: null,
+        inspectionId: null,
+      });
+      expect(service.extractSumsubIdentity(null)).toMatchObject({ fullName: null });
+    });
+
+    it('extractSumsubIdentity picks expiry, email, phone, and review meta', () => {
+      expect(
+        service.extractSumsubIdentity({
+          id: 'abc123abc123abc123abc123',
+          email: 'a@example.com',
+          phone: '+212600000000',
+          inspectionId: 'insp-9',
+          review: {
+            levelName: 'basic-kyc-level',
+            reviewStatus: 'completed',
+            attemptCnt: 2,
+            reviewResult: { reviewAnswer: 'GREEN' },
+          },
+          info: {
+            firstName: 'John',
+            lastName: 'Mock-Doe',
+            dob: '1990-01-15',
+            nationality: 'USA',
+            idDocs: [
+              {
+                idDocType: 'PASSPORT',
+                country: 'USA',
+                number: 'P1234567',
+                validUntil: '2030-12-31',
+              },
+            ],
+          },
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          fullName: 'John Mock-Doe',
+          documentType: 'PASSPORT',
+          documentCountry: 'US',
+          documentNumber: 'P1234567',
+          documentValidUntil: '2030-12-31',
+          email: 'a@example.com',
+          phone: '+212600000000',
+          levelName: 'basic-kyc-level',
+          reviewStatus: 'completed',
+          reviewAnswer: 'GREEN',
+          attemptCnt: 2,
+          inspectionId: 'insp-9',
+        }),
+      );
+    });
+
+    it('maps non-Moroccan ID_CARD to NATIONAL_ID and DRIVERS to DRIVING_LICENSE', () => {
+      expect(
+        service.extractSumsubIdentity({
+          info: { idDocs: [{ idDocType: 'ID_CARD', country: 'FRA' }] },
+        }).documentType,
+      ).toBe('NATIONAL_ID');
+      expect(
+        service.extractSumsubIdentity({
+          info: { idDocs: [{ idDocType: 'DRIVERS', country: 'MAR' }] },
+        }).documentType,
+      ).toBe('DRIVING_LICENSE');
+    });
+
+    it('applyDocsStatusAndMedia stores Sumsub image paths and checklist flags', async () => {
+      const persistSpy = jest
+        .spyOn(service as any, 'persistProviderImage')
+        .mockImplementation(
+          async (_uid: string, _aid: string, _imageId: string, basename: string) => {
+            return `user-123/${basename}.jpg`;
+          },
+        );
+
+      const kyc = {
+        user_id: 'user-123',
+        documents: {},
+        document_front_url: null as string | null,
+        document_back_url: null as string | null,
+        selfie_url: null as string | null,
+        id_document_url: null as string | null,
+      };
+
+      await (service as any).applyDocsStatusAndMedia(kyc, 'applicant-hex', {
+        IDENTITY: {
+          reviewResult: { reviewAnswer: 'GREEN' },
+          imageIds: ['img-front', 'img-back'],
+        },
+        SELFIE: {
+          reviewResult: { reviewAnswer: 'GREEN' },
+          imageIds: ['img-selfie'],
+        },
+        PHONE_VERIFICATION: {
+          reviewResult: { reviewAnswer: 'GREEN' },
+        },
+      });
+
+      expect(kyc.documents).toEqual(
+        expect.objectContaining({
+          id_document: true,
+          selfie: true,
+          liveness: true,
+          phone: true,
+        }),
+      );
+      expect(kyc.document_front_url).toBe('user-123/sumsub_doc_front.jpg');
+      expect(kyc.document_back_url).toBe('user-123/sumsub_doc_back.jpg');
+      expect(kyc.selfie_url).toBe('user-123/sumsub_selfie.jpg');
+      expect(kyc.id_document_url).toBe('user-123/sumsub_doc_front.jpg');
+      expect(persistSpy).toHaveBeenCalledTimes(3);
+      persistSpy.mockRestore();
+    });
+
+    it('buildProviderSnapshot omits image binaries and keeps meta ids', () => {
+      const snap = (service as any).buildProviderSnapshot(
+        {
+          id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+          email: 'x@y.z',
+          inspectionId: 'insp',
+          review: {
+            levelName: 'basic-kyc-level',
+            reviewStatus: 'completed',
+            attemptCnt: 1,
+            reviewResult: { reviewAnswer: 'GREEN' },
+          },
+          info: {
+            firstName: 'A',
+            lastName: 'B',
+            idDocs: [{ idDocType: 'PASSPORT', number: 'P1', country: 'USA' }],
+          },
+        },
+        {
+          IDENTITY: { imageIds: ['i1'], reviewResult: { reviewAnswer: 'GREEN' } },
+          SELFIE: { imageIds: ['i2'], reviewResult: { reviewAnswer: 'GREEN' } },
+        },
+        { reviewStatus: 'completed', reviewResult: { reviewAnswer: 'GREEN' } },
+      );
+      const serialized = JSON.stringify(snap);
+      expect(serialized).toContain('i1');
+      expect(serialized).not.toMatch(/\\"buffer\\"|data:image/);
+      expect(snap).toEqual(
+        expect.objectContaining({
+          applicantId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+          inspectionId: 'insp',
+          levelName: 'basic-kyc-level',
+        }),
+      );
+      expect(serialized).not.toContain('P1');
+    });
+
+    it('GREEN webhook with applicant fills empty KYC + user identity fields and hashes the doc number', async () => {
+      const user = {
+        ...mockUser,
+        full_name: null,
+        date_of_birth: null,
+        nationality: null,
+        kyc_status: 'PENDING',
+        unified_identity_id: null,
+        profile_locked_at: null,
+      } as unknown as User;
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockKycRepo.findOne.mockResolvedValue({
+        user_id: user.id,
+        status: 'PENDING',
+        source: 'STAYS',
+        provider: 'SUMSUB',
+        date_of_birth: null,
+        full_name: null,
+        nationality: null,
+        document_type: null,
+        document_country: null,
+        national_id_number_extracted: null,
+        national_id_number_hash: null,
+        email: null,
+      });
+      const fetchSpy = jest.spyOn(service as any, 'sumsubRequest');
+
+      await (service as any).applySumsubReviewStatus({
+        userId: user.id,
+        source: 'STAYS',
+        applicantId: 'applicant-1',
+        eventType: 'applicantReviewed',
+        reviewStatus: 'completed',
+        reviewResult: { reviewAnswer: 'GREEN' },
+        providerApplicant: applicant,
+      });
+
+      // Payload already had identity → no extra Sumsub round-trip.
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(mockKycRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'VERIFIED',
+          full_name: 'Mohamed Fikri',
+          date_of_birth: '1991-07-04',
+          nationality: 'MA',
+          document_type: 'CNIE',
+          document_country: 'MA',
+          national_id_number_extracted: 'AB123456',
+          national_id_number_hash: expect.any(String),
+        }),
+      );
+      expect(mockUserRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          full_name: 'Mohamed Fikri',
+          nationality: 'MA',
+          date_of_birth: new Date('1991-07-04T00:00:00.000Z'),
+        }),
+      );
+    });
+
+    it('does not clobber form-provided name / document type with provider values', async () => {
+      const user = {
+        ...mockUser,
+        full_name: 'Form Name',
+        nationality: 'MA',
+        date_of_birth: null,
+        kyc_status: 'PENDING',
+        unified_identity_id: null,
+        profile_locked_at: null,
+      } as unknown as User;
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockKycRepo.findOne.mockResolvedValue({
+        user_id: user.id,
+        status: 'PENDING',
+        source: 'STAYS',
+        provider: 'SUMSUB',
+        date_of_birth: null,
+        full_name: 'Form Name',
+        nationality: 'MA',
+        document_type: 'PASSPORT',
+        document_country: 'MA',
+        national_id_number_extracted: null,
+        national_id_number_hash: null,
+        email: null,
+      });
+
+      await (service as any).applySumsubReviewStatus({
+        userId: user.id,
+        source: 'STAYS',
+        applicantId: 'applicant-1',
+        eventType: 'applicantReviewed',
+        reviewStatus: 'completed',
+        reviewResult: { reviewAnswer: 'GREEN' },
+        providerApplicant: applicant,
+      });
+
+      expect(mockKycRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          full_name: 'Form Name',
+          document_type: 'PASSPORT',
+          // Empty fields are still backfilled.
+          date_of_birth: '1991-07-04',
+          national_id_number_extracted: 'AB123456',
+        }),
+      );
+    });
+
+    it('fetches the applicant once when the payload has no identity and KYC is incomplete', async () => {
+      const user = {
+        ...mockUser,
+        date_of_birth: null,
+        nationality: 'MA',
+        kyc_status: 'PENDING',
+        unified_identity_id: null,
+        profile_locked_at: null,
+      } as User;
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockKycRepo.findOne.mockResolvedValue({
+        user_id: user.id,
+        status: 'PENDING',
+        source: 'STAYS',
+        provider: 'SUMSUB',
+        document_country: 'MA',
+        date_of_birth: null,
+        full_name: null,
+        email: null,
+      });
+      const fetchSpy = jest
+        .spyOn(service as any, 'sumsubRequest')
+        .mockResolvedValue(applicant);
+
+      await (service as any).applySumsubReviewStatus({
+        userId: user.id,
+        source: 'STAYS',
+        applicantId: 'applicant-1',
+        eventType: 'applicantReviewed',
+        reviewStatus: 'completed',
+        reviewResult: { reviewAnswer: 'GREEN' },
+      });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'GET',
+        '/resources/applicants/applicant-1/one',
+      );
+      expect(mockKycRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ full_name: 'Mohamed Fikri', document_type: 'CNIE' }),
+      );
+    });
+  });
+
+  describe('Sumsub webhook dossier/media sync', () => {
+    it('applicantReviewed triggers persistSumsubDossierArtifacts after status apply', async () => {
+      jest.spyOn(service as any, 'verifySumsubWebhookDigest').mockReturnValue(undefined);
+      jest.spyOn(service as any, 'applySumsubReviewStatus').mockResolvedValue({
+        updated: true,
+        status: 'VERIFIED',
+      });
+      const persistSpy = jest
+        .spyOn(service as any, 'persistSumsubDossierArtifacts')
+        .mockResolvedValue(undefined);
+
+      await service.processSumsubWebhook({
+        type: 'applicantReviewed',
+        applicantId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+        externalUserId: 'STAYS_user-123',
+        reviewStatus: 'completed',
+        reviewResult: { reviewAnswer: 'GREEN' },
+      });
+
+      expect(persistSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-123',
+          applicantId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+        }),
+      );
+    });
+
+    it('applicantPending also pulls dossier media once docs are uploaded', async () => {
+      jest.spyOn(service as any, 'verifySumsubWebhookDigest').mockReturnValue(undefined);
+      jest.spyOn(service as any, 'applySumsubReviewStatus').mockResolvedValue({
+        updated: true,
+        status: 'PENDING',
+      });
+      const persistSpy = jest
+        .spyOn(service as any, 'persistSumsubDossierArtifacts')
+        .mockResolvedValue(undefined);
+
+      await service.processSumsubWebhook({
+        type: 'applicantPending',
+        applicantId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+        externalUserId: 'STAYS_user-123',
+        reviewStatus: 'pending',
+      });
+
+      expect(persistSpy).toHaveBeenCalled();
+    });
+
+    it('does not pull media for unrelated webhook types', async () => {
+      jest.spyOn(service as any, 'verifySumsubWebhookDigest').mockReturnValue(undefined);
+      jest.spyOn(service as any, 'applySumsubReviewStatus').mockResolvedValue({
+        updated: true,
+        status: 'PENDING',
+      });
+      const persistSpy = jest
+        .spyOn(service as any, 'persistSumsubDossierArtifacts')
+        .mockResolvedValue(undefined);
+
+      await service.processSumsubWebhook({
+        type: 'applicantCreated',
+        applicantId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+        externalUserId: 'STAYS_user-123',
+      });
+
+      expect(persistSpy).not.toHaveBeenCalled();
     });
   });
 });

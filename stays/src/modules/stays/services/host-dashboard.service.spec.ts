@@ -301,6 +301,7 @@ describe('HostDashboardService.getHostDashboard', () => {
     expect(result.payouts.paid_out).toBe(0);
     expect(result.payouts.provider).toBe('mock');
     expect(result.payouts.mode).toBe('dogfood');
+    expect(result.payouts.host_payout_enabled).toBe(false);
   });
 
   it('counts settled HOST_PAYOUT in paid_out when present', async () => {

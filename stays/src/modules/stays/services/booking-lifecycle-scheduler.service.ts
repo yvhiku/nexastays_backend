@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, In } from 'typeorm';
@@ -14,7 +14,8 @@ import {
   PAYMENT_PENDING_TTL_MINUTES,
   PRE_CONFIRMATION_BOOKING_STATUSES,
 } from './booking-lifecycle.service';
-
+import { StaysPaymentsService } from '../payments/stays-payments.service';
+import { isMockPaymentProvider } from '../payments/payment-provider.config';
 function parseCheckoutDateTime(
   checkoutDate: Date | string,
   checkoutTime: string,
@@ -43,6 +44,9 @@ export class BookingLifecycleSchedulerService {
     private readonly lifecycleService: BookingLifecycleService,
     private readonly domainEvents: DomainEventsService,
     private readonly messagingState: MessagingStateService,
+    @Optional()
+    @Inject(forwardRef(() => StaysPaymentsService))
+    private readonly paymentsService?: StaysPaymentsService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -268,6 +272,29 @@ export class BookingLifecycleSchedulerService {
         );
         if (!expireUpdate.affected) {
           continue;
+        }
+
+        const pendingIntents = await this.intentRepo.find({
+          where: { booking_id: booking.id, status: 'PENDING' },
+        });
+
+        if (!isMockPaymentProvider() && this.paymentsService) {
+          for (const intent of pendingIntents) {
+            if (intent.provider === 'cmi' && intent.provider_intent_id) {
+              try {
+                await this.paymentsService.voidCmiPreAuth(
+                  intent.provider_intent_id,
+                  { reason: 'PAYMENT_EXPIRED', booking_id: booking.id },
+                );
+              } catch (voidErr) {
+                this.logger.warn(
+                  `CMI void on expire failed for ${intent.provider_intent_id}: ${
+                    voidErr instanceof Error ? voidErr.message : voidErr
+                  }`,
+                );
+              }
+            }
+          }
         }
 
         await this.intentRepo.update(

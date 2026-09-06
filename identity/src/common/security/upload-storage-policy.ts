@@ -60,6 +60,19 @@ export function assertIdentityLocalUploadsAllowed(
   }
 }
 
+/**
+ * Provider-synced KYC media (bytes fetched from Sumsub with HMAC auth) may be
+ * written to disk even when client local uploads are disabled. Bytes never
+ * originate from the browser.
+ */
+export function assertIdentityProviderMediaSyncAllowed(
+  _env: NodeJS.ProcessEnv = process.env,
+): void {
+  // Intentionally permissive relative to IDENTITY_DISABLE_LOCAL_UPLOADS.
+  // Fail closed only if storage root is explicitly forbidden via env later.
+  void _env;
+}
+
 export function isSvgBuffer(buffer: Buffer): boolean {
   if (!buffer || buffer.length < 5) return false;
   const head = buffer

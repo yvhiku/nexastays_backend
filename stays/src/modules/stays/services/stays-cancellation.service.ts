@@ -3,9 +3,13 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Inject,
+  forwardRef,
+  Logger,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { StaysBooking } from '../entities/stays-booking.entity';
 import { StaysLedgerEntry } from '../entities/stays-ledger-entry.entity';
 import { StaysListing } from '../entities/stays-listing.entity';
@@ -14,11 +18,15 @@ import { StaysAuditService } from './stays-audit.service';
 import { DomainEventsService } from '../../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import { MessagingStateService } from '../../messaging/messaging-state.service';
+import { StaysPaymentsService } from '../payments/stays-payments.service';
+import { isMockPaymentProvider } from '../payments/payment-provider.config';
 
 type CancellationPolicy = 'FLEXIBLE' | 'MODERATE' | 'STRICT';
 
 @Injectable()
 export class StaysCancellationService {
+  private readonly logger = new Logger(StaysCancellationService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(StaysBooking)
@@ -27,9 +35,14 @@ export class StaysCancellationService {
     private readonly ledgerRepo: Repository<StaysLedgerEntry>,
     @InjectRepository(StaysListing)
     private readonly listingRepo: Repository<StaysListing>,
+    @InjectRepository(StaysPaymentIntent)
+    private readonly intentRepo: Repository<StaysPaymentIntent>,
     private readonly auditService: StaysAuditService,
     private readonly domainEvents: DomainEventsService,
     private readonly messagingState: MessagingStateService,
+    @Optional()
+    @Inject(forwardRef(() => StaysPaymentsService))
+    private readonly paymentsService?: StaysPaymentsService,
   ) {}
 
   async cancel(
@@ -83,6 +96,8 @@ export class StaysCancellationService {
     const status = cancelledBy === 'guest' ? 'CANCELLED_BY_GUEST' : 'CANCELLED_BY_HOST';
 
     let refundAmount = 0;
+    let hadSettledGuestPayment = false;
+    const cmiVoidCandidates: string[] = [];
 
     await this.dataSource.transaction(async (manager) => {
       const bookingRepo = manager.getRepository(StaysBooking);
@@ -113,7 +128,7 @@ export class StaysCancellationService {
       }
 
       // Financial invariant: REFUND only when a settled GUEST_PAYMENT exists.
-      // Provider-agnostic — MOCK / future CMI both settle via confirmPaymentSuccess.
+      // Provider-agnostic — MOCK / CMI both settle via confirmPaymentSuccess.
       const settledGuestPayment = await ledgerRepo.findOne({
         where: {
           booking_id: bookingId,
@@ -121,6 +136,7 @@ export class StaysCancellationService {
           status: 'SETTLED',
         },
       });
+      hadSettledGuestPayment = !!settledGuestPayment;
 
       const existingRefund = settledGuestPayment
         ? await ledgerRepo.findOne({
@@ -150,8 +166,22 @@ export class StaysCancellationService {
         );
       }
 
-      // Stale PENDING intents must not remain payable after cancel.
+      // Collect unpaid CMI PreAuth intents to void after commit.
       const intentRepo = manager.getRepository(StaysPaymentIntent);
+      if (!settledGuestPayment) {
+        const openCmi = await intentRepo.find({
+          where: {
+            booking_id: bookingId,
+            provider: 'cmi',
+            status: In(['PENDING', 'FAILED']),
+          },
+        });
+        for (const row of openCmi) {
+          if (row.provider_intent_id) cmiVoidCandidates.push(row.provider_intent_id);
+        }
+      }
+
+      // Stale PENDING intents must not remain payable after cancel.
       await intentRepo.update(
         { booking_id: bookingId, status: 'PENDING' },
         { status: 'CANCELLED', updated_at: new Date() },
@@ -174,6 +204,40 @@ export class StaysCancellationService {
         userAgent: auditContext?.userAgent,
       });
     });
+
+    // CMI-only gateway side effects (mock remains ledger-only).
+    if (!isMockPaymentProvider() && this.paymentsService) {
+      if (hadSettledGuestPayment && refundAmount > 0) {
+        try {
+          await this.paymentsService.refundCmiForBooking(
+            bookingId,
+            refundAmount,
+            booking.currency,
+          );
+        } catch (err) {
+          this.logger.error(
+            `CMI refund after cancel failed for ${bookingId}: ${
+              err instanceof Error ? err.message : err
+            }`,
+          );
+        }
+      } else {
+        for (const oid of cmiVoidCandidates) {
+          try {
+            await this.paymentsService.voidCmiPreAuth(oid, {
+              reason: 'BOOKING_CANCELLED_UNPAID',
+              booking_id: bookingId,
+            });
+          } catch (err) {
+            this.logger.warn(
+              `CMI void after unpaid cancel failed for ${oid}: ${
+                err instanceof Error ? err.message : err
+              }`,
+            );
+          }
+        }
+      }
+    }
 
     const hostUserId = listing?.host_user_id;
     if (hostUserId) {

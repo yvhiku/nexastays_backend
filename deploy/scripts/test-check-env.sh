@@ -81,7 +81,29 @@ write_base production mock
 assert_fail "production+mock rejected"
 
 write_base production cmi
-assert_ok "production+non-mock allowed by check-env"
+# Phase 2A: production also requires SUMSUB_MODE=live + EMI_PROVIDER_TYPE
+assert_fail "production+cmi without Sumsub/EMI gates rejected"
+
+write_base production cmi
+cat >>"$TMP/.env" <<EOF
+SUMSUB_MODE=live
+EMI_PROVIDER_TYPE=disabled
+EOF
+assert_ok "production+cmi+live+EMI allowed by check-env"
+
+write_base production cmi
+cat >>"$TMP/.env" <<EOF
+SUMSUB_MODE=sandbox
+EMI_PROVIDER_TYPE=disabled
+EOF
+assert_fail "production+SUMSUB sandbox rejected"
+
+write_base production cmi
+cat >>"$TMP/.env" <<EOF
+SUMSUB_MODE=live
+EMI_PROVIDER_TYPE=mock
+EOF
+assert_fail "production+EMI mock rejected"
 
 # Collision guard
 write_base dogfood mock

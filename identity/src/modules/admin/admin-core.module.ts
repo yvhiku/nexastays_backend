@@ -31,6 +31,7 @@ import { CommonCacheModule } from '../../common/cache/cache.module';
 import { UsersModule } from '../users/users.module';
 import { AuditModule } from '../audit/audit.module';
 import { IdentitySnapshotModule } from '../identity-snapshot/identity-snapshot.module';
+import { ComplianceModule } from '../compliance/compliance.module';
 
 /** Identity-only admin — Pay/Go/Stays admin routes live in product services or legacy. */
 @Module({
@@ -42,6 +43,7 @@ import { IdentitySnapshotModule } from '../identity-snapshot/identity-snapshot.m
     UsersModule,
     CommonCacheModule,
     IdentitySnapshotModule,
+    ComplianceModule,
     TypeOrmModule.forFeature([
       User,
       UnifiedIdentity,

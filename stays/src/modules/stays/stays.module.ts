@@ -39,11 +39,13 @@ import { CalendarSyncSchedulerService } from './services/calendar-sync-scheduler
 import { ReviewAggregateService } from './reviews/review-aggregate.service';
 import { DomainEventsModule } from '../../common/events/domain-events.module';
 import { MessagingModule } from '../messaging/messaging.module';
+import { StaysPaymentsModule } from './payments/stays-payments.module';
 
 @Module({
   imports: [
     DomainEventsModule,
     forwardRef(() => MessagingModule),
+    forwardRef(() => StaysPaymentsModule),
     TypeOrmModule.forFeature([
       StaysListing,
       StaysListingRules,

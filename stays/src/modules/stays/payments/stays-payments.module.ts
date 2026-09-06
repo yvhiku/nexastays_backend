@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StaysPaymentIntent } from '../entities/stays-payment-intent.entity';
 import { StaysLedgerEntry } from '../entities/stays-ledger-entry.entity';
@@ -21,8 +21,9 @@ import { MessagingModule } from '../../messaging/messaging.module';
       StaysAuditLog,
       StaysListing,
     ]),
-    StaysModule,
-    MessagingModule,
+    // Circular: StaysModule/MessagingModule also import this module.
+    forwardRef(() => StaysModule),
+    forwardRef(() => MessagingModule),
   ],
   controllers: [StaysPaymentsController],
   providers: [StaysPaymentsService, StaysAuditService, CmiPaymentProvider],

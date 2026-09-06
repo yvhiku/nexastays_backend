@@ -340,7 +340,7 @@ export class StaysPaymentsService {
       return 'INTENT_NOT_FOUND';
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    const outcome = await this.dataSource.transaction(async (manager) => {
       const intentRepo = manager.getRepository(StaysPaymentIntent);
       const ledgerRepo = manager.getRepository(StaysLedgerEntry);
       const bookingRepo = manager.getRepository(StaysBooking);
@@ -552,6 +552,174 @@ export class StaysPaymentsService {
 
       return 'CONFIRMED';
     });
+
+    // CMI PostAuth capture / PreAuth void run after the ledger TX commits.
+    if (provider === 'cmi') {
+      if (outcome === 'CONFIRMED') {
+        await this.captureCmiAfterConfirm(providerIntentId, intent);
+      } else if (outcome === 'DATES_UNAVAILABLE') {
+        await this.voidCmiPreAuth(providerIntentId, {
+          reason: 'DATES_UNAVAILABLE',
+          booking_id: intent.booking_id,
+        });
+      }
+    }
+
+    return outcome;
+  }
+
+  /**
+   * Capture PreAuth after ledger confirmation. Mock path never calls this.
+   * Capture failure leaves booking CONFIRMED + ops alert (idempotent retry via metadata).
+   */
+  async captureCmiAfterConfirm(
+    providerIntentId: string,
+    intentRow?: StaysPaymentIntent | null,
+  ): Promise<void> {
+    const intent =
+      intentRow ??
+      (await this.intentRepo.findOne({
+        where: { provider: 'cmi', provider_intent_id: providerIntentId },
+      }));
+    if (!intent) return;
+
+    const meta = { ...(intent.metadata ?? {}) };
+    if (meta.cmi_capture_status === 'SUCCEEDED') return;
+
+    const result = await this.cmiProvider.capture({
+      providerIntentId,
+      amount: Number(intent.amount),
+      currency: intent.currency,
+    });
+
+    meta.cmi_capture_status = result.ok ? 'SUCCEEDED' : 'FAILED';
+    meta.cmi_capture_at = new Date().toISOString();
+    meta.cmi_capture_code = result.procReturnCode;
+    if (result.error) meta.cmi_capture_error = result.error;
+
+    await this.patchIntentMetadata(intent.id, meta);
+
+    if (!result.ok) {
+      this.logger.error(
+        `CMI capture failed after confirm for intent ${intent.id} / ${providerIntentId}`,
+      );
+      await this.alerting?.alert({
+        key: ObsEvents.PAYMENT_REFUND_REQUIRED,
+        severity: 'P1',
+        message: 'CMI PostAuth capture failed after booking confirmation',
+        fingerprint: `cmi-capture-failed:${intent.booking_id}`,
+        force: true,
+        context: {
+          booking_id: intent.booking_id,
+          payment_intent_id: intent.id,
+          provider_intent_id: providerIntentId,
+          proc_return_code: result.procReturnCode,
+        },
+      });
+    }
+  }
+
+  /** Void unpaid CMI PreAuth (DATES_UNAVAILABLE, unpaid cancel/expire). Mock never calls this. */
+  async voidCmiPreAuth(
+    providerIntentId: string,
+    context?: Record<string, unknown>,
+  ): Promise<void> {
+    if (!providerIntentId) return;
+    const result = await this.cmiProvider.voidAuthorization({ providerIntentId });
+    const intent = await this.intentRepo.findOne({
+      where: { provider: 'cmi', provider_intent_id: providerIntentId },
+    });
+    if (intent) {
+      const meta = {
+        ...(intent.metadata ?? {}),
+        cmi_void_status: result.ok ? 'SUCCEEDED' : 'FAILED',
+        cmi_void_at: new Date().toISOString(),
+        cmi_void_code: result.procReturnCode,
+        ...(context ?? {}),
+      };
+      await this.patchIntentMetadata(intent.id, meta);
+    }
+    if (!result.ok) {
+      this.logger.warn(
+        `CMI void failed for ${providerIntentId}: ${result.error ?? result.procReturnCode}`,
+      );
+    }
+  }
+
+  /**
+   * Gateway refund after cancel created a PENDING REFUND ledger row.
+   * Returns true when provider accepted and ledger REFUND was marked SETTLED.
+   */
+  async refundCmiForBooking(
+    bookingId: string,
+    refundAmount: number,
+    currency: string,
+  ): Promise<boolean> {
+    if (refundAmount <= 0) return false;
+    const intent = await this.intentRepo.findOne({
+      where: {
+        booking_id: bookingId,
+        provider: 'cmi',
+        status: 'SUCCEEDED',
+      },
+      order: { created_at: 'DESC' },
+    });
+    if (!intent?.provider_intent_id) {
+      this.logger.warn(`No SUCCEEDED CMI intent to refund for booking ${bookingId}`);
+      return false;
+    }
+
+    const result = await this.cmiProvider.refund({
+      providerIntentId: intent.provider_intent_id,
+      amount: refundAmount,
+      currency,
+    });
+
+    const meta = {
+      ...(intent.metadata ?? {}),
+      cmi_refund_status: result.ok ? 'SUCCEEDED' : 'FAILED',
+      cmi_refund_at: new Date().toISOString(),
+      cmi_refund_code: result.procReturnCode,
+      cmi_refund_amount: refundAmount,
+    };
+    await this.patchIntentMetadata(intent.id, meta);
+
+    if (!result.ok) {
+      this.logger.error(
+        `CMI refund failed for booking ${bookingId}: ${result.error ?? result.procReturnCode}`,
+      );
+      await this.alerting?.alert({
+        key: ObsEvents.PAYMENT_REFUND_REQUIRED,
+        severity: 'P1',
+        message: 'CMI Credit refund failed after cancellation ledger REFUND PENDING',
+        fingerprint: `cmi-refund-failed:${bookingId}`,
+        force: true,
+        context: {
+          booking_id: bookingId,
+          payment_intent_id: intent.id,
+          provider_intent_id: intent.provider_intent_id,
+          amount: refundAmount,
+          currency,
+        },
+      });
+      return false;
+    }
+
+    const pendingRefund = await this.ledgerRepo.findOne({
+      where: { booking_id: bookingId, type: 'REFUND', status: 'PENDING' },
+      order: { created_at: 'DESC' },
+    });
+    if (pendingRefund) {
+      pendingRefund.status = 'SETTLED';
+      pendingRefund.metadata = {
+        ...(pendingRefund.metadata ?? {}),
+        cmi_refund: true,
+        provider_intent_id: intent.provider_intent_id,
+      };
+      await this.ledgerRepo.save(pendingRefund);
+    }
+
+    return true;
   }
 
   async handleCmiCallback(body: Record<string, unknown>): Promise<void> {
@@ -562,6 +730,23 @@ export class StaysPaymentsService {
     if (result.success) {
       await this.handleWebhookSuccess('cmi', result.providerIntentId, body);
     }
+  }
+
+  /**
+   * TypeORM's QueryDeepPartialEntity rejects index-signature jsonb patches
+   * (`{ ...Record }` → `{ [x: string]: unknown }`), so cast the update payload.
+   */
+  private async patchIntentMetadata(
+    intentId: string,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    await this.intentRepo.update(
+      { id: intentId },
+      {
+        metadata,
+        updated_at: new Date(),
+      } as Parameters<Repository<StaysPaymentIntent>['update']>[1],
+    );
   }
 
   private async findMockIntentForBooking(

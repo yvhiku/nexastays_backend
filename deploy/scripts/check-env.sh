@@ -123,8 +123,30 @@ if [[ "${ID_DB}" == "${ST_DB}" && "${ID_PORT}" == "${ST_PORT}" ]]; then
 fi
 
 if [[ "${NEXA_ENV}" == "production" ]]; then
-  if [[ "${STAYS_PAYMENT_PROVIDER}" == "mock" ]]; then
-    echo "FAIL: mock payments forbidden when NEXA_ENV=production (use dogfood)" >&2
+  if [[ "${STAYS_PAYMENT_PROVIDER}" != "cmi" ]]; then
+    echo "FAIL: NEXA_ENV=production requires STAYS_PAYMENT_PROVIDER=cmi (got '${STAYS_PAYMENT_PROVIDER:-<empty>}')" >&2
+    exit 1
+  fi
+
+  SUMSUB_MODE="$(get_val "$SHARED_ENV" SUMSUB_MODE)"
+  if [[ -z "${SUMSUB_MODE}" ]] && has_key "$IDENTITY_ENV" SUMSUB_MODE; then
+    SUMSUB_MODE="$(get_val "$IDENTITY_ENV" SUMSUB_MODE)"
+  fi
+  if [[ "${SUMSUB_MODE}" != "live" ]]; then
+    echo "FAIL: NEXA_ENV=production requires SUMSUB_MODE=live (got '${SUMSUB_MODE:-<empty>}')" >&2
+    exit 1
+  fi
+
+  EMI_PROVIDER_TYPE="$(get_val "$SHARED_ENV" EMI_PROVIDER_TYPE)"
+  if [[ -z "${EMI_PROVIDER_TYPE}" ]] && has_key "$IDENTITY_ENV" EMI_PROVIDER_TYPE; then
+    EMI_PROVIDER_TYPE="$(get_val "$IDENTITY_ENV" EMI_PROVIDER_TYPE)"
+  fi
+  if [[ -z "${EMI_PROVIDER_TYPE}" ]]; then
+    echo "FAIL: NEXA_ENV=production requires EMI_PROVIDER_TYPE explicitly set (or disabled)" >&2
+    exit 1
+  fi
+  if [[ "${EMI_PROVIDER_TYPE}" == "mock" ]]; then
+    echo "FAIL: EMI_PROVIDER_TYPE=mock forbidden when NEXA_ENV=production" >&2
     exit 1
   fi
 fi

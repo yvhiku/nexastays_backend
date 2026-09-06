@@ -67,6 +67,7 @@ export class KycProfile {
     id_document?: boolean;
     selfie?: boolean;
     liveness?: boolean;
+    phone?: boolean;
   };
 
   @Column({ type: 'text', name: 'id_document_url', nullable: true })
@@ -148,6 +149,62 @@ export class KycProfile {
 
   @Column({ type: 'varchar', length: 150, name: 'email', nullable: true })
   email: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 16,
+    name: 'document_valid_until',
+    nullable: true,
+  })
+  document_valid_until: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 120,
+    name: 'provider_level_name',
+    nullable: true,
+  })
+  provider_level_name: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 40,
+    name: 'provider_review_status',
+    nullable: true,
+  })
+  provider_review_status: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'provider_review_answer',
+    nullable: true,
+  })
+  provider_review_answer: string | null;
+
+  @Column({ type: 'int', name: 'provider_attempt_cnt', nullable: true })
+  provider_attempt_cnt: number | null;
+
+  @Column({
+    type: 'varchar',
+    length: 64,
+    name: 'provider_inspection_id',
+    nullable: true,
+  })
+  provider_inspection_id: string | null;
+
+  @Column({
+    type: 'timestamp',
+    name: 'provider_synced_at',
+    nullable: true,
+  })
+  provider_synced_at: Date | null;
+
+  /** Trimmed Sumsub applicant + docsStatus meta (no image blobs). */
+  @Column({ type: 'jsonb', name: 'provider_snapshot', nullable: true })
+  // `any` values: TypeORM DeepPartial rejects `Record<string, unknown>`.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  provider_snapshot: Record<string, any> | null;
 
   @Column({ type: 'jsonb', nullable: true, name: 'aml_screening' })
   aml_screening: {

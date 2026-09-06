@@ -517,4 +517,34 @@ export class AdminStaysController {
       userAgent,
     });
   }
+
+  /** Freeze / Take Offline: LIVE | APPROVED -> PAUSED (recoverable). */
+  @Post('listings/:id/pause')
+  pauseListing(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: { userId: string },
+    @Req() req: Request,
+  ) {
+    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const userAgent = req.headers?.['user-agent'];
+    return this.adminStaysService.pauseListing(id, user.userId, {
+      ip,
+      userAgent,
+    });
+  }
+
+  /** Resume: PAUSED -> LIVE (blocked while the host is listing-frozen). */
+  @Post('listings/:id/unpause')
+  unpauseListing(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: { userId: string },
+    @Req() req: Request,
+  ) {
+    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const userAgent = req.headers?.['user-agent'];
+    return this.adminStaysService.unpauseListing(id, user.userId, {
+      ip,
+      userAgent,
+    });
+  }
 }

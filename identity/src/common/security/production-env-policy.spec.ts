@@ -1,11 +1,14 @@
 import {
   assertDemoOtpForbiddenInProduction,
+  assertEmiProviderPolicy,
   assertIdentityProductionEnvPolicy,
   assertNoInsecureProductionSecrets,
   assertNoLoopbackProductionServiceUrls,
+  assertSumsubModePolicy,
+  getSumsubMode,
 } from './production-env-policy';
 
-describe('Identity production-env-policy Phase 1', () => {
+describe('Identity production-env-policy Phase 1 + 2A', () => {
   it('rejects DEMO_OTP_CODE in a production release', () => {
     expect(() =>
       assertDemoOtpForbiddenInProduction({
@@ -61,6 +64,63 @@ describe('Identity production-env-policy Phase 1', () => {
         INTERNAL_SERVICE_KEY: 'strong-internal-key-not-dev',
         DB_PASSWORD: 'strong-db-pass-not-dev',
         JWT_ISSUER: 'https://identity.dogfood.example/api/v1',
+        SUMSUB_MODE: 'sandbox',
+        EMI_PROVIDER_TYPE: 'mock',
+      } as NodeJS.ProcessEnv),
+    ).not.toThrow();
+  });
+
+  it('SUMSUB_MODE sandbox allowed in dogfood; live required in production', () => {
+    expect(getSumsubMode({ NEXA_ENV: 'dogfood' } as NodeJS.ProcessEnv)).toBe(
+      'sandbox',
+    );
+    expect(() =>
+      assertSumsubModePolicy({
+        NEXA_ENV: 'dogfood',
+        SUMSUB_MODE: 'sandbox',
+      } as NodeJS.ProcessEnv),
+    ).not.toThrow();
+    expect(() =>
+      assertSumsubModePolicy({
+        NEXA_ENV: 'production',
+        SUMSUB_MODE: 'sandbox',
+      } as NodeJS.ProcessEnv),
+    ).toThrow(/sandbox/);
+    expect(() =>
+      assertSumsubModePolicy({
+        NEXA_ENV: 'production',
+      } as NodeJS.ProcessEnv),
+    ).toThrow(/SUMSUB_MODE=live/);
+    expect(() =>
+      assertSumsubModePolicy({
+        NEXA_ENV: 'production',
+        SUMSUB_MODE: 'live',
+      } as NodeJS.ProcessEnv),
+    ).not.toThrow();
+  });
+
+  it('EMI mock forbidden in production; disabled allowed', () => {
+    expect(() =>
+      assertEmiProviderPolicy({
+        NEXA_ENV: 'production',
+        EMI_PROVIDER_TYPE: 'mock',
+      } as NodeJS.ProcessEnv),
+    ).toThrow(/mock/);
+    expect(() =>
+      assertEmiProviderPolicy({
+        NEXA_ENV: 'production',
+      } as NodeJS.ProcessEnv),
+    ).toThrow(/explicitly/);
+    expect(() =>
+      assertEmiProviderPolicy({
+        NEXA_ENV: 'production',
+        EMI_PROVIDER_TYPE: 'disabled',
+      } as NodeJS.ProcessEnv),
+    ).not.toThrow();
+    expect(() =>
+      assertEmiProviderPolicy({
+        NEXA_ENV: 'dogfood',
+        EMI_PROVIDER_TYPE: 'mock',
       } as NodeJS.ProcessEnv),
     ).not.toThrow();
   });

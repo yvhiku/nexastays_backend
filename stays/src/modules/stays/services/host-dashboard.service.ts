@@ -10,6 +10,7 @@ import { BookingLifecycleService } from './booking-lifecycle.service';
 import { HostListingsService } from './host-listings.service';
 import {
   getStaysPaymentProvider,
+  isHostPayoutEnabled,
   isMockPaymentProvider,
 } from '../payments/payment-provider.config';
 import { resolveNexaStage } from '../../../common/security/cors-origins';
@@ -355,6 +356,7 @@ export class HostDashboardService {
       payouts: {
         provider: payoutMeta.provider,
         mode: payoutMeta.mode,
+        host_payout_enabled: payoutMeta.host_payout_enabled,
         pending,
         available: 0,
         paid_out: paidOut,
@@ -410,10 +412,12 @@ export class HostDashboardService {
     provider: string;
     mode: string;
     disclaimer: string;
+    host_payout_enabled: boolean;
   } {
     const provider = getStaysPaymentProvider();
     const stage = resolveNexaStage();
     const mock = isMockPaymentProvider();
+    const hostPayoutEnabled = !mock && isHostPayoutEnabled();
     const mode = mock
       ? stage === 'dogfood'
         ? 'dogfood'
@@ -423,8 +427,15 @@ export class HostDashboardService {
       : stage;
     const disclaimer = mock
       ? 'Test environment — payouts are simulated. No real money is transferred.'
-      : 'Payout wallet settlement is not enabled. Pending amounts reflect ledger HOST_PAYOUT entries only.';
-    return { provider, mode, disclaimer };
+      : hostPayoutEnabled
+        ? 'Host payout settlement is enabled for CMI. Pending amounts settle via the configured payout rails.'
+        : 'Host payout settlement is not enabled (set STAYS_HOST_PAYOUT_ENABLED=true with CMI). Pending amounts reflect ledger HOST_PAYOUT entries only.';
+    return {
+      provider,
+      mode,
+      disclaimer,
+      host_payout_enabled: hostPayoutEnabled,
+    };
   }
 
   private async sumHostPayoutLedger(

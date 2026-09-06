@@ -27,7 +27,7 @@ import {
 } from './image-type.util';
 import { safeLogger } from '../../common/logging/safe-logger';
 import { normalizePhoneOrThrow, tryNormalizePhoneNumber } from '../../common/phone/phone-normalizer';
-import { isIdentityLocalUploadDisabled } from '../../common/security/upload-storage-policy';
+import { isIdentityLocalUploadDisabled, assertIdentityProviderMediaSyncAllowed } from '../../common/security/upload-storage-policy';
 import { deriveIdentityOnboardingState } from '../../common/identity-onboarding';
 
 export type DocumentUploadOptions = {
@@ -38,6 +38,56 @@ export type DocumentUploadOptions = {
   national_id_number?: string;
   /** ID extracted from document via OCR; stored separately for comparison */
   national_id_number_extracted?: string;
+};
+
+/** Identity fields we can read back from a Sumsub applicant. All nullable — never invented. */
+export type SumsubIdentityFields = {
+  /** ISO YYYY-MM-DD */
+  dateOfBirth: string | null;
+  fullName: string | null;
+  /** ISO-3166 alpha-2 */
+  nationality: string | null;
+  /** App vocabulary: CNIE | PASSPORT | NATIONAL_ID | DRIVING_LICENSE | RESIDENCE_PERMIT */
+  documentType: string | null;
+  /** ISO-3166 alpha-2 issuing country */
+  documentCountry: string | null;
+  /** Raw document number as read by the provider (stored encrypted as *_extracted). */
+  documentNumber: string | null;
+  /** ISO YYYY-MM-DD document expiry when present. */
+  documentValidUntil: string | null;
+  email: string | null;
+  phone: string | null;
+  levelName: string | null;
+  reviewStatus: string | null;
+  reviewAnswer: string | null;
+  attemptCnt: number | null;
+  inspectionId: string | null;
+};
+
+/** Sumsub returns ISO-3166 alpha-3 country codes; we store alpha-2. Markets we serve + neighbours. */
+const SUMSUB_ALPHA3_TO_ALPHA2: Record<string, string> = {
+  MAR: 'MA',
+  FRA: 'FR',
+  ESP: 'ES',
+  DZA: 'DZ',
+  TUN: 'TN',
+  BEL: 'BE',
+  NLD: 'NL',
+  ITA: 'IT',
+  DEU: 'DE',
+  GBR: 'GB',
+  USA: 'US',
+  CAN: 'CA',
+  PRT: 'PT',
+  CHE: 'CH',
+  SAU: 'SA',
+  ARE: 'AE',
+  QAT: 'QA',
+  EGY: 'EG',
+  TUR: 'TR',
+  SEN: 'SN',
+  CIV: 'CI',
+  MRT: 'MR',
 };
 
 @Injectable()
@@ -168,11 +218,19 @@ export class ComplianceService {
       .createHmac(algorithm, sumsubConfig.webhookSecret)
       .update(rawBody)
       .digest('hex');
-    const provided = digestHeader.trim().toLowerCase();
+    // Sumsub may send bare hex or a prefixed form (e.g. "sha256-hmac.<hex>").
+    const providedRaw = digestHeader.trim();
+    const provided = (
+      providedRaw.includes('.')
+        ? providedRaw.slice(providedRaw.lastIndexOf('.') + 1)
+        : providedRaw
+    ).toLowerCase();
     const expectedBuffer = Buffer.from(expected, 'hex');
     const providedBuffer = Buffer.from(provided, 'hex');
     if (
+      !provided ||
       expectedBuffer.length !== providedBuffer.length ||
+      expectedBuffer.length === 0 ||
       !crypto.timingSafeEqual(expectedBuffer, providedBuffer)
     ) {
       throw new BadRequestException('Invalid Sumsub webhook signature');
@@ -219,6 +277,25 @@ export class ComplianceService {
       throw new BadRequestException(`Sumsub request failed: ${details}`);
     }
     return (await response.json()) as T;
+  }
+
+  /** Binary Sumsub download (document/selfie images). */
+  private async sumsubRequestBinary(
+    method: string,
+    pathName: string,
+  ): Promise<Buffer> {
+    if (!sumsubConfig.appToken || !sumsubConfig.secretKey) {
+      throw new BadRequestException('Sumsub is not configured on the server');
+    }
+    const response = await fetch(`${sumsubConfig.baseUrl}${pathName}`, {
+      method,
+      headers: this.signSumsubRequest(method, pathName, ''),
+    });
+    if (!response.ok) {
+      const details = await response.text();
+      throw new BadRequestException(`Sumsub request failed: ${details}`);
+    }
+    return Buffer.from(await response.arrayBuffer());
   }
 
   /** Sumsub returns HTTP 404 or JSON body { code: 404, description: Applicant not found } depending on endpoint/version. */
@@ -302,34 +379,198 @@ export class ComplianceService {
     return /^\d{4}-\d{2}-\d{2}$/.test(dob) ? dob : null;
   }
 
+  private normalizeCountryCode(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const v = value.trim().toUpperCase();
+    if (/^[A-Z]{2}$/.test(v)) return v;
+    // Sumsub commonly returns ISO-3166 alpha-3 (e.g. "MAR"); map the ones we serve.
+    return SUMSUB_ALPHA3_TO_ALPHA2[v] ?? null;
+  }
+
+  /** Map Sumsub `idDocType` codes onto the app's document_type vocabulary. */
+  private mapSumsubDocType(raw: unknown, country: string | null): string | null {
+    if (typeof raw !== 'string') return null;
+    const v = raw.trim().toUpperCase();
+    if (!v) return null;
+    switch (v) {
+      case 'ID_CARD':
+        // Moroccan national ID card is the CNIE in our product vocabulary.
+        return country === 'MA' ? 'CNIE' : 'NATIONAL_ID';
+      case 'PASSPORT':
+        return 'PASSPORT';
+      case 'DRIVERS':
+      case 'DRIVERS_LICENSE':
+      case 'DRIVING_LICENSE':
+        return 'DRIVING_LICENSE';
+      case 'RESIDENCE_PERMIT':
+        return 'RESIDENCE_PERMIT';
+      default:
+        return v.slice(0, 50);
+    }
+  }
+
   /**
-   * Prefer already-known provider DOB; otherwise fetch Sumsub applicant once when KYC DOB is empty.
+   * Extract verified identity fields from a Sumsub applicant payload.
+   * Never invents values: every field is null unless the provider supplied it.
+   * Checks `info` (verified/extracted), then `fixedInfo` (applicant-declared),
+   * then the first identity document in `info.idDocs`.
+   */
+  extractSumsubIdentity(
+    applicant: Record<string, unknown> | null | undefined,
+  ): SumsubIdentityFields {
+    const empty: SumsubIdentityFields = {
+      dateOfBirth: null,
+      fullName: null,
+      nationality: null,
+      documentType: null,
+      documentCountry: null,
+      documentNumber: null,
+      documentValidUntil: null,
+      email: null,
+      phone: null,
+      levelName: null,
+      reviewStatus: null,
+      reviewAnswer: null,
+      attemptCnt: null,
+      inspectionId: null,
+    };
+    if (!applicant || typeof applicant !== 'object') return empty;
+    const info = (applicant.info as Record<string, unknown> | undefined) ?? undefined;
+    const fixedInfo =
+      (applicant.fixedInfo as Record<string, unknown> | undefined) ?? undefined;
+    const review =
+      (applicant.review as Record<string, unknown> | undefined) ?? undefined;
+    const reviewResult =
+      (review?.reviewResult as Record<string, unknown> | undefined) ?? undefined;
+    const idDocs = Array.isArray(info?.idDocs)
+      ? (info!.idDocs as Record<string, unknown>[])
+      : [];
+    const primaryDoc =
+      idDocs.find((d) => typeof d?.idDocType === 'string' && d.idDocType !== 'SELFIE') ??
+      null;
+
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+    const nameFrom = (src?: Record<string, unknown>) => {
+      if (!src) return null;
+      const parts = [src.firstName, src.middleName, src.lastName]
+        .map((p) => str(p))
+        .filter((p): p is string => Boolean(p));
+      return parts.length > 0 ? parts.join(' ').slice(0, 200) : null;
+    };
+
+    const documentCountry =
+      this.normalizeCountryCode(primaryDoc?.country) ??
+      this.normalizeCountryCode(info?.country) ??
+      this.normalizeCountryCode(fixedInfo?.country);
+    const nationality =
+      this.normalizeCountryCode(info?.nationality) ??
+      this.normalizeCountryCode(fixedInfo?.nationality) ??
+      documentCountry;
+
+    const attemptRaw = review?.attemptCnt;
+    const attemptCnt =
+      typeof attemptRaw === 'number' && Number.isFinite(attemptRaw)
+        ? Math.trunc(attemptRaw)
+        : null;
+
+    return {
+      dateOfBirth: this.extractSumsubIsoDob(applicant),
+      fullName: nameFrom(info) ?? nameFrom(fixedInfo) ?? nameFrom(primaryDoc ?? undefined),
+      nationality,
+      documentType: this.mapSumsubDocType(primaryDoc?.idDocType, documentCountry),
+      documentCountry,
+      documentNumber: str(primaryDoc?.number)?.slice(0, 64) ?? null,
+      documentValidUntil:
+        this.normalizeIsoDob(str(primaryDoc?.validUntil)) ??
+        this.normalizeIsoDob(str(primaryDoc?.issuedDate)),
+      email: str(applicant.email)?.slice(0, 150) ?? str(info?.email)?.slice(0, 150) ?? null,
+      phone: str(applicant.phone)?.slice(0, 30) ?? null,
+      levelName:
+        str(review?.levelName)?.slice(0, 120) ??
+        str(applicant.levelName)?.slice(0, 120) ??
+        null,
+      reviewStatus: str(review?.reviewStatus)?.slice(0, 40) ?? null,
+      reviewAnswer: str(reviewResult?.reviewAnswer)?.slice(0, 20)?.toUpperCase() ?? null,
+      attemptCnt,
+      inspectionId: str(applicant.inspectionId)?.slice(0, 64) ?? null,
+    };
+  }
+
+  private kycIdentityIsComplete(kyc: KycProfile): boolean {
+    return Boolean(
+      this.normalizeIsoDob(kyc.date_of_birth) &&
+        kyc.full_name?.trim() &&
+        kyc.nationality?.trim() &&
+        kyc.document_type?.trim() &&
+        kyc.document_country?.trim() &&
+        kyc.national_id_number_extracted?.trim(),
+    );
+  }
+
+  /**
+   * Resolve provider identity: prefer the applicant payload we already have;
+   * otherwise fetch the Sumsub applicant once when any KYC identity field is empty.
    * Failures must not block KYC approval/rejection updates.
    */
-  private async resolveSumsubDateOfBirth(params: {
+  private async resolveSumsubIdentity(params: {
+    providerApplicant?: Record<string, unknown> | null;
     providerDateOfBirth?: string | null;
     applicantId?: string | null;
-    existingKycDob?: string | null;
-  }): Promise<string | null> {
-    if (this.normalizeIsoDob(params.existingKycDob)) {
-      return null;
+    kyc: KycProfile;
+  }): Promise<SumsubIdentityFields> {
+    const fromPayload = this.extractSumsubIdentity(params.providerApplicant);
+    if (!fromPayload.dateOfBirth) {
+      fromPayload.dateOfBirth = this.normalizeIsoDob(params.providerDateOfBirth ?? null);
     }
-    const fromParam = this.normalizeIsoDob(params.providerDateOfBirth ?? null);
-    if (fromParam) return fromParam;
+    if (this.kycIdentityIsComplete(params.kyc)) return fromPayload;
+    const hasAny = Object.values(fromPayload).some((v) => v != null);
+    if (hasAny) return fromPayload;
     const applicantId = (params.applicantId ?? '').trim();
-    if (!applicantId) return null;
+    if (!applicantId) return fromPayload;
     try {
       const applicant = await this.sumsubRequest<Record<string, unknown>>(
         'GET',
         `/resources/applicants/${encodeURIComponent(applicantId)}/one`,
       );
-      return this.extractSumsubIsoDob(applicant);
+      return this.extractSumsubIdentity(applicant);
     } catch {
-      safeLogger.debug('Sumsub applicant DOB fetch skipped', {
+      safeLogger.debug('Sumsub applicant identity fetch skipped', {
         hasApplicantId: true,
       });
-      return null;
+      return fromPayload;
     }
+  }
+
+  /** Fill only empty KYC identity columns from provider data (form/verified data is never clobbered). */
+  private applyProviderIdentityToKyc(kyc: KycProfile, id: SumsubIdentityFields): void {
+    if (id.dateOfBirth && !this.normalizeIsoDob(kyc.date_of_birth)) {
+      kyc.date_of_birth = id.dateOfBirth;
+    }
+    if (id.fullName && !kyc.full_name?.trim()) kyc.full_name = id.fullName;
+    if (id.nationality && !kyc.nationality?.trim()) kyc.nationality = id.nationality;
+    if (id.documentType && !kyc.document_type?.trim()) kyc.document_type = id.documentType;
+    if (id.documentCountry && !kyc.document_country?.trim()) {
+      kyc.document_country = id.documentCountry;
+    }
+    if (id.documentNumber && !kyc.national_id_number_extracted?.trim()) {
+      kyc.national_id_number_extracted = id.documentNumber;
+      if (!kyc.national_id_number_hash) {
+        kyc.national_id_number_hash = this.hashNationalId(id.documentNumber);
+      }
+    }
+    if (id.documentValidUntil && !this.normalizeIsoDob(kyc.document_valid_until)) {
+      kyc.document_valid_until = id.documentValidUntil;
+    }
+    if (id.email && !kyc.email?.trim()) kyc.email = id.email;
+  }
+
+  /** Always refresh provider review meta from the latest applicant payload. */
+  private applyProviderMetaToKyc(kyc: KycProfile, id: SumsubIdentityFields): void {
+    if (id.levelName) kyc.provider_level_name = id.levelName;
+    if (id.reviewStatus) kyc.provider_review_status = id.reviewStatus;
+    if (id.reviewAnswer) kyc.provider_review_answer = id.reviewAnswer;
+    if (id.attemptCnt != null) kyc.provider_attempt_cnt = id.attemptCnt;
+    if (id.inspectionId) kyc.provider_inspection_id = id.inspectionId;
   }
 
   private async applySumsubReviewStatus(params: {
@@ -342,6 +583,8 @@ export class ComplianceService {
     reviewResult?: Record<string, unknown> | null;
     /** Pre-extracted Sumsub ISO DOB from applicant sync (optional). */
     providerDateOfBirth?: string | null;
+    /** Raw Sumsub applicant object (webhook `applicant` / sync GET) for identity backfill. */
+    providerApplicant?: Record<string, unknown> | null;
   }) {
     const reviewAnswer = params.reviewResult?.reviewAnswer as string | undefined;
     const rejectLabels = params.reviewResult?.rejectLabels as unknown;
@@ -370,14 +613,14 @@ export class ComplianceService {
       (params.eventType ?? 'sumsubStatusSync').slice(0, 100) || null;
     kyc.last_webhook_received_at = new Date();
 
-    const providerDob = await this.resolveSumsubDateOfBirth({
+    const providerIdentity = await this.resolveSumsubIdentity({
+      providerApplicant: params.providerApplicant,
       providerDateOfBirth: params.providerDateOfBirth,
       applicantId: params.applicantId,
-      existingKycDob: kyc.date_of_birth,
+      kyc,
     });
-    if (providerDob) {
-      kyc.date_of_birth = providerDob;
-    }
+    this.applyProviderIdentityToKyc(kyc, providerIdentity);
+    this.applyProviderMetaToKyc(kyc, providerIdentity);
 
     const user = await this.userRepository.findOne({ where: { id: params.userId } });
 
@@ -431,6 +674,9 @@ export class ComplianceService {
         if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
           user.date_of_birth = new Date(`${dob}T00:00:00.000Z`);
         }
+      }
+      if (!user.nationality?.trim() && kyc.nationality?.trim()) {
+        user.nationality = kyc.nationality.trim().slice(0, 10);
       }
       if (
         userRowKycStatus === 'VERIFIED' &&
@@ -592,7 +838,304 @@ export class ComplianceService {
       reviewStatus: status.reviewStatus ?? null,
       reviewResult: status.reviewResult ?? null,
       providerDateOfBirth: this.extractSumsubIsoDob(applicant),
+      providerApplicant: applicant,
     });
+  }
+
+  /**
+   * Full dossier sync for admin Re-sync: status + empty-only PII fill + provider
+   * meta refresh + document/selfie download into uploads/kyc.
+   */
+  async syncSumsubDossier(userId: string, source = 'PAY') {
+    const externalUserId = `${source}_${userId}`;
+    const pathName = `/resources/applicants/-;externalUserId=${encodeURIComponent(externalUserId)}/one`;
+
+    if (!sumsubConfig.appToken || !sumsubConfig.secretKey) {
+      throw new BadRequestException('Sumsub is not configured on the server');
+    }
+
+    const signedHeaders = this.signSumsubRequest('GET', pathName, '');
+    const applicantRes = await fetch(`${sumsubConfig.baseUrl}${pathName}`, {
+      method: 'GET',
+      headers: signedHeaders,
+    });
+    const applicantText = await applicantRes.text();
+
+    if (!applicantRes.ok) {
+      if (this.isSumsubApplicantNotFound(applicantText, applicantRes.status)) {
+        return this.pendingSumsubSyncResult(userId, source);
+      }
+      throw new BadRequestException(`Sumsub request failed: ${applicantText}`);
+    }
+
+    let applicant: Record<string, unknown>;
+    try {
+      applicant = JSON.parse(applicantText) as Record<string, unknown>;
+    } catch {
+      throw new BadRequestException('Sumsub applicant response invalid JSON');
+    }
+
+    const applicantId =
+      typeof applicant.id === 'string' ? applicant.id : undefined;
+    if (!applicantId) {
+      return this.pendingSumsubSyncResult(userId, source);
+    }
+
+    const status = await this.sumsubRequest<{
+      reviewStatus?: string;
+      reviewResult?: Record<string, unknown>;
+    }>('GET', `/resources/applicants/${applicantId}/status`);
+
+    const result = await this.applySumsubReviewStatus({
+      userId,
+      source,
+      applicantId,
+      externalUserId:
+        (typeof applicant.externalUserId === 'string'
+          ? applicant.externalUserId
+          : null) ?? externalUserId,
+      eventType: 'sumsubDossierSync',
+      reviewStatus: status.reviewStatus ?? null,
+      reviewResult: status.reviewResult ?? null,
+      providerDateOfBirth: this.extractSumsubIsoDob(applicant),
+      providerApplicant: applicant,
+    });
+
+    await this.persistSumsubDossierArtifacts({
+      userId,
+      applicantId,
+      applicant,
+      reviewStatus: status.reviewStatus ?? null,
+      reviewResult: status.reviewResult ?? null,
+    });
+
+    return result;
+  }
+
+  /** Events that should pull docsStatus + images into Nexa (same as admin Re-sync media path). */
+  private shouldSyncDossierMediaOnWebhook(eventType?: string | null): boolean {
+    const t = (eventType || '').toLowerCase();
+    return (
+      t === 'applicantreviewed' ||
+      t === 'applicantpending' ||
+      t === 'applicantpersonalinfochanged' ||
+      t === 'applicantworkflowcompleted' ||
+      t === 'applicantworkflowfailed'
+    );
+  }
+
+  /**
+   * Download IDENTITY/SELFIE images + refresh provider_snapshot / provider_synced_at.
+   * Shared by admin Re-sync and Sumsub webhooks. Never throws for missing docsStatus.
+   */
+  private async persistSumsubDossierArtifacts(params: {
+    userId: string;
+    applicantId: string;
+    applicant?: Record<string, unknown> | null;
+    reviewStatus?: string | null;
+    reviewResult?: Record<string, unknown> | null;
+  }): Promise<void> {
+    const { userId, applicantId } = params;
+    let applicant = params.applicant ?? null;
+
+    if (!applicant || typeof applicant !== 'object' || !applicant.info) {
+      try {
+        applicant = await this.sumsubRequest<Record<string, unknown>>(
+          'GET',
+          `/resources/applicants/${encodeURIComponent(applicantId)}/one`,
+        );
+      } catch (err) {
+        safeLogger.debug('Sumsub applicant fetch for dossier skipped', {
+          err: String((err as Error)?.message ?? err),
+        });
+      }
+    }
+
+    let docsStatus: Record<string, unknown> | null = null;
+    try {
+      docsStatus = await this.sumsubRequest<Record<string, unknown>>(
+        'GET',
+        `/resources/applicants/${encodeURIComponent(applicantId)}/requiredIdDocsStatus`,
+      );
+    } catch (err) {
+      safeLogger.debug('Sumsub requiredIdDocsStatus fetch skipped', {
+        err: String((err as Error)?.message ?? err),
+      });
+    }
+
+    const kyc = await this.kycRepository.findOne({ where: { user_id: userId } });
+    if (!kyc) return;
+
+    if (docsStatus) {
+      await this.applyDocsStatusAndMedia(kyc, applicantId, docsStatus);
+    }
+
+    const status = {
+      reviewStatus: params.reviewStatus ?? undefined,
+      reviewResult: params.reviewResult ?? undefined,
+    };
+    kyc.provider_snapshot = this.buildProviderSnapshot(
+      applicant ?? { id: applicantId },
+      docsStatus,
+      status,
+    );
+    kyc.provider_synced_at = new Date();
+    if (/^[a-f0-9]{24}$/i.test(applicantId)) {
+      kyc.reference = applicantId;
+    }
+    await this.kycRepository.save(kyc);
+  }
+
+  private buildProviderSnapshot(
+    applicant: Record<string, unknown>,
+    docsStatus: Record<string, unknown> | null,
+    status: { reviewStatus?: string; reviewResult?: Record<string, unknown> },
+  ): Record<string, unknown> {
+    const review = (applicant.review as Record<string, unknown> | undefined) ?? {};
+    const info = (applicant.info as Record<string, unknown> | undefined) ?? {};
+    const idDocs = Array.isArray(info.idDocs) ? info.idDocs : [];
+    const trimDoc = (d: unknown) => {
+      if (!d || typeof d !== 'object') return null;
+      const doc = d as Record<string, unknown>;
+      return {
+        idDocType: doc.idDocType ?? null,
+        country: doc.country ?? null,
+        validUntil: doc.validUntil ?? null,
+        // number intentionally omitted from snapshot (PII); lives encrypted on profile
+      };
+    };
+    const trimSet = (key: string) => {
+      const set = docsStatus?.[key];
+      if (!set || typeof set !== 'object') return null;
+      const s = set as Record<string, unknown>;
+      const rr = (s.reviewResult as Record<string, unknown> | undefined) ?? {};
+      return {
+        idDocType: s.idDocType ?? null,
+        country: s.country ?? null,
+        reviewAnswer: rr.reviewAnswer ?? null,
+        imageIds: Array.isArray(s.imageIds) ? s.imageIds.slice(0, 6) : [],
+      };
+    };
+    return {
+      applicantId: applicant.id ?? null,
+      externalUserId: applicant.externalUserId ?? null,
+      inspectionId: applicant.inspectionId ?? null,
+      createdAt: applicant.createdAt ?? null,
+      levelName: review.levelName ?? null,
+      reviewStatus: status.reviewStatus ?? review.reviewStatus ?? null,
+      reviewAnswer:
+        (status.reviewResult?.reviewAnswer as string | undefined) ??
+        ((review.reviewResult as Record<string, unknown> | undefined)?.reviewAnswer as
+          | string
+          | undefined) ??
+        null,
+      attemptCnt: review.attemptCnt ?? null,
+      idDocs: idDocs.slice(0, 5).map(trimDoc).filter(Boolean),
+      docsStatus: docsStatus
+        ? {
+            IDENTITY: trimSet('IDENTITY'),
+            SELFIE: trimSet('SELFIE'),
+            PHONE_VERIFICATION: trimSet('PHONE_VERIFICATION'),
+          }
+        : null,
+      syncedAt: new Date().toISOString(),
+    };
+  }
+
+  private async applyDocsStatusAndMedia(
+    kyc: KycProfile,
+    applicantId: string,
+    docsStatus: Record<string, unknown>,
+  ): Promise<void> {
+    const identity = docsStatus.IDENTITY as Record<string, unknown> | undefined;
+    const selfie = docsStatus.SELFIE as Record<string, unknown> | undefined;
+    const phone = docsStatus.PHONE_VERIFICATION as Record<string, unknown> | undefined;
+
+    const answer = (set?: Record<string, unknown>) =>
+      String(
+        ((set?.reviewResult as Record<string, unknown> | undefined)?.reviewAnswer as
+          | string
+          | undefined) ?? '',
+      ).toUpperCase() === 'GREEN';
+
+    const docs = {
+      ...(kyc.documents ?? {}),
+      id_document: answer(identity) || Boolean(kyc.documents?.id_document),
+      selfie: answer(selfie) || Boolean(kyc.documents?.selfie),
+      liveness:
+        answer(selfie) || Boolean(kyc.documents?.liveness),
+      phone: answer(phone) || Boolean((kyc.documents as { phone?: boolean } | null)?.phone),
+    };
+    kyc.documents = docs;
+
+    const identityIds = Array.isArray(identity?.imageIds)
+      ? (identity!.imageIds as unknown[]).filter((x) => x != null).map(String)
+      : [];
+    const selfieIds = Array.isArray(selfie?.imageIds)
+      ? (selfie!.imageIds as unknown[]).filter((x) => x != null).map(String)
+      : [];
+
+    if (identityIds[0]) {
+      const rel = await this.persistProviderImage(
+        kyc.user_id,
+        applicantId,
+        identityIds[0],
+        'sumsub_doc_front',
+      );
+      if (rel) {
+        kyc.document_front_url = rel;
+        kyc.id_document_url = rel;
+      }
+    }
+    if (identityIds[1]) {
+      const rel = await this.persistProviderImage(
+        kyc.user_id,
+        applicantId,
+        identityIds[1],
+        'sumsub_doc_back',
+      );
+      if (rel) kyc.document_back_url = rel;
+    }
+    if (selfieIds[0]) {
+      const rel = await this.persistProviderImage(
+        kyc.user_id,
+        applicantId,
+        selfieIds[0],
+        'sumsub_selfie',
+      );
+      if (rel) kyc.selfie_url = rel;
+    }
+  }
+
+  private async persistProviderImage(
+    userId: string,
+    applicantId: string,
+    imageId: string,
+    basename: string,
+  ): Promise<string | null> {
+    try {
+      assertIdentityProviderMediaSyncAllowed();
+      const buf = await this.sumsubRequestBinary(
+        'GET',
+        `/resources/applicants/${encodeURIComponent(applicantId)}/resources/${encodeURIComponent(imageId)}`,
+      );
+      if (!buf?.length) return null;
+      const detected = detectImageType(buf);
+      const ext = detected ? this.getExtensionFromDetected(detected) : '.jpg';
+      const filename = `${basename}${ext}`;
+      this.validateFilename(filename);
+      const relativePath = `${userId}/${filename}`.replace(/\\/g, '/');
+      const dir = path.join(UPLOAD_DIR, userId);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(UPLOAD_DIR, userId, filename), buf);
+      return relativePath;
+    } catch (err) {
+      safeLogger.debug('Sumsub image persist skipped', {
+        basename,
+        err: String((err as Error)?.message ?? err),
+      });
+      return null;
+    }
   }
 
   async processSumsubWebhook(
@@ -615,6 +1158,32 @@ export class ComplianceService {
       (payload.reviewResult as Record<string, unknown> | undefined) ||
       ((payload.review as Record<string, unknown> | undefined)?.reviewResult as Record<string, unknown> | undefined);
 
+    // Sumsub puts levelName / inspectionId on the webhook root, not always under `applicant`.
+    const providerApplicant: Record<string, unknown> | null = {
+      ...(applicantPayload ?? {}),
+      ...(typeof payload.levelName === 'string'
+        ? { levelName: payload.levelName }
+        : {}),
+      ...(typeof payload.inspectionId === 'string'
+        ? { inspectionId: payload.inspectionId }
+        : {}),
+      ...(typeof payload.reviewStatus === 'string' || reviewResult
+        ? {
+            review: {
+              ...((applicantPayload?.review as Record<string, unknown> | undefined) ?? {}),
+              ...(typeof payload.levelName === 'string'
+                ? { levelName: payload.levelName }
+                : {}),
+              ...(typeof payload.reviewStatus === 'string'
+                ? { reviewStatus: payload.reviewStatus }
+                : {}),
+              ...(reviewResult ? { reviewResult } : {}),
+            },
+          }
+        : {}),
+    };
+    const hasProviderApplicantKeys = Object.keys(providerApplicant).length > 0;
+
     const userId = this.extractUserIdFromExternalId(externalUserId);
     if (!userId) {
       return { received: true, updated: false, reason: 'missing external user id' };
@@ -629,8 +1198,33 @@ export class ComplianceService {
       eventType,
       reviewStatus,
       reviewResult: reviewResult ?? null,
-      providerDateOfBirth: this.extractSumsubIsoDob(applicantPayload),
+      providerDateOfBirth: this.extractSumsubIsoDob(
+        hasProviderApplicantKeys ? providerApplicant : null,
+      ),
+      providerApplicant: hasProviderApplicantKeys ? providerApplicant : null,
     });
+
+    // Same dossier/media path as admin Re-sync — so the drawer is populated without a click
+    // once Sumsub can reach this webhook (sandbox/ngrok or production URL).
+    if (
+      applicantId &&
+      this.shouldSyncDossierMediaOnWebhook(eventType)
+    ) {
+      try {
+        await this.persistSumsubDossierArtifacts({
+          userId,
+          applicantId,
+          applicant: hasProviderApplicantKeys ? providerApplicant : applicantPayload,
+          reviewStatus: reviewStatus ?? null,
+          reviewResult: reviewResult ?? null,
+        });
+      } catch (err) {
+        safeLogger.warn('Sumsub webhook dossier/media sync failed', {
+          eventType: eventType ?? null,
+          err: String((err as Error)?.message ?? err),
+        });
+      }
+    }
 
     return { received: true, eventType: eventType ?? null, ...result };
   }

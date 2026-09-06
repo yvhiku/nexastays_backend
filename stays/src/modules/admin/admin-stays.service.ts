@@ -23,6 +23,9 @@ import { SeoFreshnessEngineService } from '../seo/seo-freshness-engine.service';
 import { SeoAdminService } from '../seo/seo-admin.service';
 import { MediaStorageService } from '../../common/media/media-storage.module';
 
+/** Admin Freeze / Take Offline source states (same as host pause). */
+const ADMIN_PAUSABLE_STATUSES: StaysListing['status'][] = ['LIVE', 'APPROVED'];
+
 @Injectable()
 export class AdminStaysService {
   private static readonly PHOTO_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
@@ -1307,6 +1310,90 @@ export class AdminStaysService {
     });
     void this.seoFreshness.refreshForSearchCity(listing.city);
     return { status: 'LIVE', message: 'Listing is now live' };
+  }
+
+  /**
+   * Admin "Freeze" / "Take Offline": LIVE | APPROVED -> PAUSED.
+   * Mirrors the host pause transition (no ownership check) with an admin audit
+   * row. PAUSED is an operational, fully recoverable state — never archive here.
+   */
+  async pauseListing(
+    listingId: string,
+    adminUserId: string,
+    auditContext?: { ip?: string; userAgent?: string },
+  ) {
+    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (!ADMIN_PAUSABLE_STATUSES.includes(listing.status)) {
+      throw new BadRequestException(
+        'Only LIVE or APPROVED listings can be paused',
+      );
+    }
+    const previousStatus = listing.status;
+    listing.status = 'PAUSED';
+    await this.listingRepo.save(listing);
+    await this.auditRepo.save(
+      this.auditRepo.create({
+        actor_user_id: adminUserId,
+        actor_role: 'ADMIN',
+        entity_type: 'LISTING',
+        entity_id: listingId,
+        action: 'LISTING_PAUSED',
+        metadata: { previous_status: previousStatus },
+        ip: auditContext?.ip ?? null,
+        user_agent: auditContext?.userAgent ?? null,
+      }),
+    );
+    void this.seoFreshness.refreshForSearchCity(listing.city);
+    return {
+      status: 'PAUSED',
+      message: 'Listing paused and hidden from search. It can be resumed later.',
+    };
+  }
+
+  /**
+   * Admin "Resume": PAUSED -> LIVE. Respects the host-wide `listing_frozen`
+   * flag: a frozen host's listing cannot be brought back live until the host is
+   * unfrozen separately (this method never clears host freeze).
+   */
+  async unpauseListing(
+    listingId: string,
+    adminUserId: string,
+    auditContext?: { ip?: string; userAgent?: string },
+  ) {
+    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (listing.status !== 'PAUSED') {
+      throw new BadRequestException('Only PAUSED listings can be resumed');
+    }
+    const hostProfile = await this.hostProfileRepo.findOne({
+      where: { user_id: listing.host_user_id },
+    });
+    if (hostProfile?.listing_frozen) {
+      throw new BadRequestException(
+        'Host listing access is frozen. Unfreeze the host before resuming this listing.',
+      );
+    }
+    listing.status = 'LIVE';
+    await this.listingRepo.save(listing);
+    await this.auditRepo.save(
+      this.auditRepo.create({
+        actor_user_id: adminUserId,
+        actor_role: 'ADMIN',
+        entity_type: 'LISTING',
+        entity_id: listingId,
+        action: 'LISTING_RESUMED',
+        metadata: {},
+        ip: auditContext?.ip ?? null,
+        user_agent: auditContext?.userAgent ?? null,
+      }),
+    );
+    void this.domainEvents.publish(EVENTS.LISTING_PUBLISHED, 'stays', {
+      listingId,
+      hostUserId: listing.host_user_id,
+    });
+    void this.seoFreshness.refreshForSearchCity(listing.city);
+    return { status: 'LIVE', message: 'Listing is live again' };
   }
 
   async checkHealth(): Promise<{ status: string; db: string }> {
