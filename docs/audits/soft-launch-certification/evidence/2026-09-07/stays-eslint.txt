@@ -1,0 +1,30 @@
+=== summary (full run EXIT captured) ===
+  295:18  error    Unsafe member access .query on a type that cannot be resolved                                                                                                                                           @typescript-eslint/no-unsafe-member-access
+  298:11  error    Unsafe call of a type that could not be resolved                                                                                                                                                        @typescript-eslint/no-unsafe-call
+  298:18  error    Unsafe member access .end on a type that cannot be resolved                                                                                                                                             @typescript-eslint/no-unsafe-member-access
+
+✖ 2716 problems (2695 errors, 21 warnings)
+  2050 errors and 2 warnings potentially fixable with the `--fix` option.
+
+EXIT:1
+=== first 20 lines ===
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/app.controller.spec.ts
+  15:10  error  Replace `·provide:·DbHealthService,·useValue:·{·check:·jest.fn().mockResolvedValue(true)·}` with `⏎··········provide:·DbHealthService,⏎··········useValue:·{·check:·jest.fn().mockResolvedValue(true)·},⏎·······`  prettier/prettier
+  16:10  error  Replace `·provide:·MetricsService,·useValue:·{·getMetrics:·jest.fn().mockReturnValue({})·}` with `⏎··········provide:·MetricsService,⏎··········useValue:·{·getMetrics:·jest.fn().mockReturnValue({})·},⏎·······`  prettier/prettier
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/app.health.spec.ts
+  10:42  error  Replace `new·AppService(db·as·never),·metrics·as·never` with `⏎······new·AppService(db·as·never),⏎······metrics·as·never,⏎····`  prettier/prettier
+  17:42  error  Replace `new·AppService(db·as·never),·metrics·as·never` with `⏎······new·AppService(db·as·never),⏎······metrics·as·never,⏎····`  prettier/prettier
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/cache/http-cache.interceptor.ts
+  74:11  error    Unsafe assignment of an `any` value                                                                                                                                                              @typescript-eslint/no-unsafe-assignment
+  75:17  error    Unsafe member access .method on an `any` value                                                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  79:31  warning  Unsafe argument of type `any` assigned to a parameter of type `{ url?: string | undefined; user?: { userId?: string | undefined; } | undefined; query?: Record<string, unknown> | undefined; }`  @typescript-eslint/no-unsafe-argument
+  95:11  error    Promise returned in function argument where a void return was expected                                                                                                                           @typescript-eslint/no-misused-promises
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/config/app.config.ts
+  13:15  error  Replace `.split(',').map((s)·=>·s.trim())` with `⏎······.split(',')⏎······.map((s)·=>·s.trim())⏎······`  prettier/prettier
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/config/database.config.ts
+  22:28  error  Delete `⏎·········`                                                                                                                      prettier/prettier

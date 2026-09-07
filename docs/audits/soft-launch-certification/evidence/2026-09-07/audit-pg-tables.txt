@@ -1,0 +1,6 @@
+   tablename    
+----------------
+ stays_bookings
+ stays_listings
+(2 rows)
+

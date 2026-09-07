@@ -1,0 +1,6 @@
+
+> nexa-stays-landing@0.1.0 check:locales
+> node scripts/check-locale-parity.mjs
+
+Locale parity OK — no unexpected EN fallbacks in fr.json or ar.json
+EXIT:0

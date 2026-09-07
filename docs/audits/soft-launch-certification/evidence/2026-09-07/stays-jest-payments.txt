@@ -1,0 +1,29 @@
+PASS src/common/idempotency/canonical-request-hash.spec.ts
+PASS src/modules/stays/payments/cmi-payment.provider.spec.ts
+[Nest] 38556  - 09/07/2026, 1:42:56 AM    WARN [CmiPaymentProvider] CMI Credit failed for STAYS-r-1: HTTP 200 code=99
+PASS src/modules/stays/payments/stays-payments-cmi-lifecycle.spec.ts
+PASS src/modules/stays/payments/booking-state-concurrency.spec.ts
+PASS src/modules/stays/security/bola-payments.spec.ts
+PASS src/modules/stays/payments/mock-payment-confirm.spec.ts
+PASS src/modules/stays/payments/payment-provider.config.spec.ts
+PASS src/modules/stays/payments/booking-pg-concurrency.prod-inv-001.spec.ts (18.576 s)
+  ● Console
+
+    console.log
+      [PROD-INV-001] PostgreSQL: PostgreSQL 16.15 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+
+      at Object.<anonymous> (modules/stays/payments/booking-pg-concurrency.prod-inv-001.spec.ts:257:13)
+
+    console.log
+      [PROD-INV-001] Constraint: EXCLUDE USING gist (listing_id WITH =, daterange(checkin_date, checkout_date, '[)'::text) WITH &&) WHERE (((status)::text = ANY ((ARRAY['INITIATED'::character varying, 'PAYMENT_PENDING'::character varying, 'CONFIRMED'::character varying, 'CHECKED_IN'::character varying])::text[])))
+
+      at Object.<anonymous> (modules/stays/payments/booking-pg-concurrency.prod-inv-001.spec.ts:267:13)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+
+Test Suites: 8 passed, 8 total
+Tests:       55 passed, 55 total
+Snapshots:   0 total
+Time:        19.42 s
+Ran all test suites matching mock|idempoten|ledger|payment.
+EXIT:0

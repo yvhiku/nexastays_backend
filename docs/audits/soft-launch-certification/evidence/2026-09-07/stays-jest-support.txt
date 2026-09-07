@@ -1,0 +1,92 @@
+PASS src/modules/support/support-tickets.service.spec.ts
+  SupportTicketsService
+    ✓ creates ticket + SUPPORT conversation + first message transactionally (5 ms)
+    ✓ snapshots requester_language at create and ignores unsupported locales (1 ms)
+    ✓ auto-assigns after a standalone ticket create commits (1 ms)
+    ✓ still creates the ticket when auto-assign throws
+    ✓ returns 404 obfuscation when booking is not owned
+    ✓ returns 404 obfuscation when report is not owned
+    ✓ ensureTicketForReport is idempotent when ticket already exists (1 ms)
+    ✓ ensureTicketForSafetyIssue is idempotent when ticket already exists
+    ✓ createTicketForUser reuses ticket for same reportId
+    ✓ reuses existing ticket when unique constraint races (1 ms)
+    ✓ copies booking/listing/reported user onto canonical report (1 ms)
+    ✓ keeps null context when conversation has none
+    ✓ paginates admin tickets and enforces max limit (2 ms)
+    ✓ attaches CSAT onto admin ticket list items without N+1 (1 ms)
+    ✓ lists submitted support reviews only and isolates agents (1 ms)
+    ✓ dismissed reports remain listed and escalation does not downgrade URGENT (2 ms)
+    ✓ auto-assigns when escalation first creates a ticket
+    ✓ paginates admin reports with default limit and empty page
+    ✓ assigns eligible SUPPORT_AGENT and audits assignment (1 ms)
+    ✓ rejects GUEST assignee with 422 (40 ms)
+    ✓ rejects Super Admin assignee with 422 (1 ms)
+    ✓ rejects frozen assignee with 422 (1 ms)
+    ✓ reassigns and unassigns with audit metadata and does not mutate status (1 ms)
+    ✓ rejects unknown assignee with 404
+    ✓ rejects combining unassigned with assignedAdminId (1 ms)
+    ✓ accepts CSAT for CLOSED requester and rejects OPEN / RESOLVED / duplicate / cross-user (2 ms)
+    ✓ accepts overall-only CSAT when the close snapshot has no agent (1 ms)
+    ✓ accepts half-star CSAT ratings (1 ms)
+    ✓ GET CSAT returns canReview only when CLOSED and not yet submitted (1 ms)
+    ✓ returns empty analytics for empty created_at range (1 ms)
+    ✓ rejects invalid analytics dates and ranges over 90 days (1 ms)
+    ✓ aggregates analytics volume, status distribution, and assignment
+    ✓ creates and lists internal notes without body in audit
+    ✓ rejects SUPPORT source conversation for investigation transcript (1 ms)
+    ✓ lists ticket activity by entity_type and entity_id only (1 ms)
+    ✓ rolls back REVIEWED when escalation ticket ensure fails (2 ms)
+    ✓ rejects PATCH without kind or with invalid status (2 ms)
+    ✓ refuses evidence that does not belong to the canonical record (1 ms)
+    ✓ clears unread_for_support when admin lists messages (1 ms)
+    ✓ stamps unread requester messages READ when admin opens the ticket
+    ✓ does not rewrite already READ requester messages or republish on reopen (1 ms)
+    ✓ does not enqueue delivery when admin send rolls back (6 ms)
+    ✓ maps admin messages as SUPPORT_AGENT (4 ms)
+    ✓ does not overwrite first_admin_response_at on second admin reply (1 ms)
+    ✓ sets closed_at on CLOSED without clearing resolved_at (1 ms)
+    ✓ snapshots review_agent_id and archives the SUPPORT conversation on first CLOSED (1 ms)
+    ✓ does not publish realtime when the close transaction fails (1 ms)
+    ✓ does not re-archive or republish on a second CLOSED patch (1 ms)
+    ✓ does not overwrite review_agent_id on later reassignment
+    ✓ leaves review_agent_id null when an unassigned ticket is closed
+    ✓ rejects CLOSED admin send with 409 and does not insert a message (1 ms)
+    ✓ applies customer message effects: RESOLVED reopens and preserves resolved_at (1 ms)
+    ✓ applies customer message effects: WAITING_FOR_CUSTOMER becomes IN_PROGRESS
+    ✓ preserves WAITING_FOR_HOST for GUEST party and does not clear resolved_at (1 ms)
+    ✓ rejects CLOSED customer lock with 409
+    ✓ provisionReportWithTicket uses one TX and rolls back when ticket ensure fails (1 ms)
+    ✓ reuses ticket on unique conflict via savepoint without poisoning outer TX (1 ms)
+    ✓ throws when 23505 reuse finds no ticket (no ticket:null success) (1 ms)
+    ✓ throws when safety 23505 reuse finds no ticket
+    ✓ does not escalate when source conversation is missing
+    ✓ keeps REVIEWED when escalate hits unrecovered 23505 (2 ms)
+    ✓ rejects generic PATCH status out of CLOSED and keeps the conversation archived
+    ✓ reopens CLOSED tickets, unarchives, preserves CSAT, and evaluates SLA (1 ms)
+    ✓ returns 409 when reopen is called on a ticket that is not closed
+    ✓ does not reopen CSAT after close → review → reopen → close (2 ms)
+    ✓ creates FOLLOW_UP_REQUIRED after unsolved CSAT (1 ms)
+    ✓ makes concurrent reopen idempotent: one success, one 409, one audit (1 ms)
+    ✓ reopens an unassigned CLOSED ticket to OPEN
+    ✓ forbids support agents from reopening tickets (1 ms)
+    ✓ heartbeats presence independently of ticket data (1 ms)
+    ✓ sets optional resolution_type, audits, and preserves it on reopen (2 ms)
+    ✓ renders allowlisted canned variables after ticket access
+    ✓ does not render inactive canned replies (1 ms)
+    ✓ allows resolution_type on CLOSED without leaving CLOSED (1 ms)
+    ticket isolation for SUPPORT_AGENT
+      ✓ lists only the agent queue and ignores assignedAdminId / unassigned
+      ✓ cannot expand the queue with requesterUserId
+      ✓ GET own ticket 200, foreign unassigned and guessed UUID 404 (1 ms)
+      ✓ returns host name email and phone on ticket detail
+      ✓ messages notes and activity follow the same ownership 404 (2 ms)
+      ✓ POST message to unassigned 404s and does not auto-claim (1 ms)
+      ✓ PATCH own status allowed; priority and assignment 403; foreign 404 not 403 (1 ms)
+      ✓ allows notes on CLOSED tickets and never inserts a customer message
+
+Test Suites: 1 passed, 1 total
+Tests:       82 passed, 82 total
+Snapshots:   0 total
+Time:        0.961 s, estimated 1 s
+Ran all test suites matching support-tickets.service.
+EXIT:0

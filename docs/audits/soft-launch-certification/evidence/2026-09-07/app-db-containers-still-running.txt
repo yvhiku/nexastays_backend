@@ -1,0 +1,3 @@
+nexastays_db-identity-db-1
+nexastays_db-redis-1
+nexastays_db-stays-db-1

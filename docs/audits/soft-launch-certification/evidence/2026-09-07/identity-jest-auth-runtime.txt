@@ -1,0 +1,10 @@
+PASS src/modules/auth/auth.otp-contract.spec.ts
+PASS src/modules/auth/logout-refresh-revoke.spec.ts
+PASS src/modules/auth/pin-lockout.service.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       11 passed, 11 total
+Snapshots:   0 total
+Time:        0.859 s, estimated 1 s
+Ran all test suites matching pin-lockout|auth.otp|logout-refresh|session.
+EXIT:0

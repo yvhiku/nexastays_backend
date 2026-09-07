@@ -1,0 +1,6 @@
+/en/terms 200
+/en/privacy 200
+/en/refund 200
+/en/fees 200
+/fr/terms 200
+/ar 200

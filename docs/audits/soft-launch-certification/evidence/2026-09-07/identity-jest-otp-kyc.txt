@@ -1,0 +1,84 @@
+PASS src/modules/compliance/sumsub-webhook-auth.spec.ts
+PASS src/modules/compliance/compliance.service.spec.ts
+  ● Console
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.277Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC submit received","data":{"userId":"user-123","hasFullName":false,"hasDob":false,"hasNationality":false,"hasNationalId":"[REDACTED]"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.289Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC user resolved"}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.291Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC submit received","data":{"userId":"user-123","hasFullName":false,"hasDob":false,"hasNationality":false,"hasNationalId":"[REDACTED]"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.291Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC user resolved"}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.292Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC submit received","data":{"userId":"user-123","hasFullName":false,"hasDob":false,"hasNationality":false,"hasNationalId":"[REDACTED]"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.292Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC user resolved"}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.292Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC submit received","data":{"userId":"user-123","hasFullName":false,"hasDob":false,"hasNationality":false,"hasNationalId":"[REDACTED]"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.292Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC user resolved"}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.293Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC submit received","data":{"userId":"user-123","hasFullName":false,"hasDob":false,"hasNationality":true,"hasNationalId":"[REDACTED]"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.293Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC user resolved"}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T00:42:38.295Z","level":"debug","service":"nexa-identity","environment":"development","event":"Sumsub applicant identity fetch skipped","data":{"hasApplicantId":true}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.error
+      {"ts":"2026-09-07T00:42:38.307Z","level":"error","service":"nexa-identity","environment":"development","event":"Sumsub webhook status apply failed","error":{"eventType":"applicantReviewed"}}
+
+      35 |     }),
+      36 |   );
+    > 37 |   if (level === 'error') console.error(line);
+         |                                  ^
+      38 |   else if (level === 'warn') console.warn(line);
+      39 |   else console.log(line);
+      40 | }
+
+      at emit (common/logging/safe-logger.ts:37:34)
+      at Object.error (common/logging/safe-logger.ts:53:5)
+      at ComplianceService.processSumsubWebhook (modules/compliance/compliance.service.ts:1302:18)
+      at Object.<anonymous> (modules/compliance/compliance.service.spec.ts:848:7)
+
+PASS src/legacy/modules/compliance-kyc-policy/kyc-policy.engine.spec.ts
+PASS src/legacy/modules/compliance-kyc-policy/kyc-policy.override-effectiveness.spec.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       54 passed, 54 total
+Snapshots:   0 total
+Time:        0.53 s, estimated 1 s
+Ran all test suites matching otp-lockout|otp-send-rate|otp-verify-rate|compliance.
+EXIT:0

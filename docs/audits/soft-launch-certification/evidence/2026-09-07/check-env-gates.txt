@@ -1,0 +1,22 @@
+76:req "$SHARED_ENV" STAYS_PAYMENT_PROVIDER
+109:STAYS_PAYMENT_PROVIDER="$(get_val "$SHARED_ENV" STAYS_PAYMENT_PROVIDER)"
+144:  if [[ "${STAYS_PAYMENT_PROVIDER}" != "cmi" ]]; then
+145:    echo "FAIL: NEXA_ENV=production requires STAYS_PAYMENT_PROVIDER=cmi (got '${STAYS_PAYMENT_PROVIDER:-<empty>}')" >&2
+149:  SUMSUB_MODE="$(get_val "$SHARED_ENV" SUMSUB_MODE)"
+150:  if [[ -z "${SUMSUB_MODE}" ]] && has_key "$IDENTITY_ENV" SUMSUB_MODE; then
+151:    SUMSUB_MODE="$(get_val "$IDENTITY_ENV" SUMSUB_MODE)"
+153:  if [[ "${SUMSUB_MODE}" != "live" ]]; then
+154:    echo "FAIL: NEXA_ENV=production requires SUMSUB_MODE=live (got '${SUMSUB_MODE:-<empty>}')" >&2
+177:  if [[ "${STAYS_PAYMENT_PROVIDER}" != "mock" ]]; then
+178:    echo "FAIL: ${NEXA_ENV} requires STAYS_PAYMENT_PROVIDER=mock explicitly (got '${STAYS_PAYMENT_PROVIDER:-<empty>}')" >&2
+185:if has_key "$SHARED_ENV" DEMO_OTP_CODE; then
+186:  demo_otp="$(get_val "$SHARED_ENV" DEMO_OTP_CODE)"
+188:if [[ -z "$demo_otp" ]] && has_key "$IDENTITY_ENV" DEMO_OTP_CODE; then
+189:  demo_otp="$(get_val "$IDENTITY_ENV" DEMO_OTP_CODE)"
+193:    echo "FAIL: DEMO_OTP_CODE must contain exactly 6 digits" >&2
+197:    echo "FAIL: DEMO_OTP_CODE is allowed only when NEXA_ENV=dogfood" >&2
+201:echo "OK: DEMO_OTP_CODE policy"
+231:if has_key "$SHARED_ENV" SUMSUB_MODE; then
+232:  sumsub_mode="$(get_val "$SHARED_ENV" SUMSUB_MODE)"
+234:if [[ -z "$sumsub_mode" ]] && has_key "$IDENTITY_ENV" SUMSUB_MODE; then
+235:  sumsub_mode="$(get_val "$IDENTITY_ENV" SUMSUB_MODE)"

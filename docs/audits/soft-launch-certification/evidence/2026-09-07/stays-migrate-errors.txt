@@ -1,0 +1,15 @@
+NOTICE:  relation "schema_migrations" already exists, skipping
+NOTICE:  relation "idx_stays_bookings_idempotency_guest" already exists, skipping
+NOTICE:  relation "idx_stays_bookings_idempotency_key_unique" already exists, skipping
+NOTICE:  relation "idx_stays_payment_intents_booking_pending_unique" already exists, skipping
+NOTICE:  constraint "stays_conversation_reports_status_check" of relation "stays_conversation_reports" does not exist, skipping
+NOTICE:  constraint "stays_safety_issues_status_check" of relation "stays_safety_issues" does not exist, skipping
+NOTICE:  constraint "stays_support_ticket_csat_agent_rating_range" of relation "stays_support_ticket_csat" does not exist, skipping
+NOTICE:  constraint "stays_support_ticket_csat_agent_pair" of relation "stays_support_ticket_csat" does not exist, skipping
+NOTICE:  constraint "stays_support_tickets_requester_language_check" of relation "stays_support_tickets" does not exist, skipping
+NOTICE:  constraint "stays_support_tickets_resolution_type_check" of relation "stays_support_tickets" does not exist, skipping
+NOTICE:  constraint "stays_support_canned_replies_language_check" of relation "stays_support_canned_replies" does not exist, skipping
+NOTICE:  constraint "stays_support_canned_replies_category_check" of relation "stays_support_canned_replies" does not exist, skipping
+NOTICE:  constraint "stays_support_ticket_viewers_activity_state_check" of relation "stays_support_ticket_viewers" does not exist, skipping
+NOTICE:  constraint "stays_listings_paused_from_status_check" of relation "stays_listings" does not exist, skipping
+NOTICE:  column "paused_from_status" of relation "stays_listings" already exists, skipping

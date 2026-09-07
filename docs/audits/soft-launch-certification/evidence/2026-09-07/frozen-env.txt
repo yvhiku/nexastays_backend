@@ -1,0 +1,6 @@
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.stays.env.example:12:STAYS_PAYMENT_PROVIDER=mock
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:6:#   NODE_ENV=production  +  NEXA_ENV=dogfood  +  STAYS_PAYMENT_PROVIDER=mock
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:53:# Dogfood may set DEMO_OTP_CODE for soft-launch OTP (forbidden when NEXA_ENV=production).
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:54:# DEMO_OTP_CODE=123456
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:65:SUMSUB_MODE=sandbox
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:84:STAYS_PAYMENT_PROVIDER=mock

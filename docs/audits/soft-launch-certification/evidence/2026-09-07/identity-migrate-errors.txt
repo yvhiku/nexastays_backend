@@ -1,0 +1,12 @@
+NOTICE:  extension "pgcrypto" already exists, skipping
+NOTICE:  extension "pgcrypto" already exists, skipping
+NOTICE:  relation "refresh_tokens" already exists, skipping
+NOTICE:  relation "idx_refresh_tokens_user_id" already exists, skipping
+NOTICE:  relation "idx_refresh_tokens_expires_at" already exists, skipping
+NOTICE:  relation "idx_refresh_tokens_token_hash" already exists, skipping
+NOTICE:  relation "otp_attempts" already exists, skipping
+NOTICE:  relation "idx_otp_attempts_phone_ip" already exists, skipping
+NOTICE:  relation "idx_otp_attempts_updated_at" already exists, skipping
+NOTICE:  relation "kyc_tier_policies" already exists, skipping
+NOTICE:  relation "kyc_admin_overrides" already exists, skipping
+NOTICE:  relation "idx_kyc_admin_overrides_user_active" already exists, skipping

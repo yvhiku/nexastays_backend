@@ -1,0 +1,13 @@
+PASS src/modules/stays/payments/payment-provider.config.spec.ts
+PASS src/modules/stays/payments/mock-payment-confirm.spec.ts
+PASS src/modules/stays/payments/booking-state-concurrency.spec.ts
+PASS src/modules/stays/services/booked-statuses.alignment.spec.ts
+PASS src/modules/stays/security/financial-integrity.spec.ts
+PASS src/common/observability/financial-observability.spec.ts
+
+Test Suites: 6 passed, 6 total
+Tests:       33 passed, 33 total
+Snapshots:   0 total
+Time:        1.101 s
+Ran all test suites matching mock-payment-confirm|payment-provider.config|booking-state-concurrency|booked-statuses|financial.
+EXIT:0

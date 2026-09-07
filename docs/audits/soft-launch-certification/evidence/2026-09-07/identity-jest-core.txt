@@ -1,0 +1,11 @@
+PASS src/modules/auth/auth.otp-contract.spec.ts
+PASS src/modules/admin/services/admin-kyc.service.spec.ts
+PASS src/modules/auth/logout-refresh-revoke.spec.ts
+PASS src/common/security/cors-origins.spec.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       22 passed, 22 total
+Snapshots:   0 total
+Time:        1.336 s
+Ran all test suites matching auth.otp-contract|cors-origins|logout-refresh|admin-kyc|otp-lockout|otp-send.
+EXIT:0

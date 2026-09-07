@@ -1,0 +1,8 @@
+nexa-audit-150-stays-restore	127.0.0.1:55433->5432/tcp
+nexa-audit-150-stays-pg	127.0.0.1:55432->5432/tcp
+nexa-cert-20260906-redis	127.0.0.1:53343->6379/tcp
+nexa-cert-20260906-stays-db-1	127.0.0.1:53154->5432/tcp
+nexa-cert-20260906-identity-db-1	127.0.0.1:53156->5432/tcp
+nexastays_db-identity-db-1	127.0.0.1:5433->5432/tcp
+nexastays_db-redis-1	127.0.0.1:6379->6379/tcp
+nexastays_db-stays-db-1	127.0.0.1:5434->5432/tcp

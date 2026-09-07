@@ -1,0 +1,32 @@
+  console.log
+    [PROD-INV-001] PostgreSQL: PostgreSQL 16.15 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+
+      at Object.<anonymous> (modules/stays/payments/booking-pg-concurrency.prod-inv-001.spec.ts:257:13)
+
+  console.log
+    [PROD-INV-001] Constraint: EXCLUDE USING gist (listing_id WITH =, daterange(checkin_date, checkout_date, '[)'::text) WITH &&) WHERE (((status)::text = ANY ((ARRAY['INITIATED'::character varying, 'PAYMENT_PENDING'::character varying, 'CONFIRMED'::character varying, 'CHECKED_IN'::character varying])::text[])))
+
+      at Object.<anonymous> (modules/stays/payments/booking-pg-concurrency.prod-inv-001.spec.ts:267:13)
+
+PASS src/modules/stays/payments/booking-pg-concurrency.prod-inv-001.spec.ts
+  PROD-INV-001 real PostgreSQL concurrency
+    ✓ constraint exists in live catalog with expected predicate (2 ms)
+    ✓ exact overlap: only one of two concurrent creates succeeds (1025 ms)
+    ✓ partial overlap: only one succeeds (25 ms)
+    ✓ adjacent nights (checkout = next check-in): both succeed — half-open [) (17 ms)
+    ✓ different listings same dates: both succeed (39 ms)
+    ✓ failed transaction leaves no orphan booking row (12 ms)
+    ✓ same-row confirm vs cancel: exactly one wins with status predicate (9 ms)
+    ✓ same-row expire vs confirm: exactly one wins (8 ms)
+    ✓ stress: many concurrent exact overlaps → exactly one winner (28 ms)
+    ✓ COMPLETED bookings do not participate in exclusion (product rule) (13 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+Snapshots:   0 total
+Time:        1.383 s
+Ran all test suites matching booking-pg-concurrency.
+Jest did not exit one second after the test run has completed.
+
+'This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.
+EXIT:0

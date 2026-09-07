@@ -1,0 +1,11 @@
+PASS src/modules/auth/otp-lockout.service.spec.ts
+  OtpLockoutService
+    ✓ locks after 5 failures for ~15 minutes (1 ms)
+    ✓ resets failed count after successful verify
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        0.497 s
+Ran all test suites matching otp-lockout.service.spec.
+EXIT:0

@@ -1,0 +1,6 @@
+ar_home:200
+lang="ar
+dir="rtl"
+dir="rtl"
+dir="rtl"
+EXIT:0

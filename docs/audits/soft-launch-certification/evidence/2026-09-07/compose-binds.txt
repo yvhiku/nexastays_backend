@@ -1,0 +1,22 @@
+=== nexastays_db docker-compose.yml ===
+18:    ports:
+19:      - "127.0.0.1:5433:5432"
+37:    ports:
+38:      - "127.0.0.1:5434:5432"
+44:    ports:
+45:      - "127.0.0.1:6379:6379"
+=== backend deploy/docker-compose.host.yml ===
+12:    ports:
+13:      - "127.0.0.1:3001:3001"
+28:      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3001/api/v1/health/ready',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+42:    ports:
+43:      - "127.0.0.1:3002:3002"
+64:      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3002/api/v1/health/ready',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+78:    ports:
+79:      - "127.0.0.1:3003:3003"
+106:    ports:
+107:      - "127.0.0.1:3004:3004"
+159:    ports:
+160:      - "127.0.0.1:3005:3000"
+175:    ports:
+176:      - "127.0.0.1:3010:3010"

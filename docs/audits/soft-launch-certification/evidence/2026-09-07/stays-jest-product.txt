@@ -1,0 +1,10 @@
+PASS src/modules/admin/admin-stays.listing-lifecycle.spec.ts
+PASS src/modules/stays/services/stays-cancellation.service.spec.ts
+PASS src/modules/stays/hosts/host-onboarding.service.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       45 passed, 45 total
+Snapshots:   0 total
+Time:        0.627 s, estimated 1 s
+Ran all test suites matching cancel|refund|host-onboarding|moderation|admin-stays.
+EXIT:0

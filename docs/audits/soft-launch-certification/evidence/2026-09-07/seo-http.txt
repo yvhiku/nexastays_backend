@@ -1,0 +1,22 @@
+robots:200
+sitemap:200
+User-Agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /en/bookings
+Disallow: /en/my-bookings
+Disallow: /en/profile
+Disallow: /en/inbox
+Disallow: /en/login
+Disallow: /en/registration
+Disallow: /en/saved-listings
+Disallow: /en/host/dashboard
+Disallow: /en/host/listings
+Disallow: /fr/bookings
+Disallow: /fr/my-bookings
+Disallow: /fr/profile
+Disallow: /fr/inbox
+Disallow: /fr/login
+Disallow: /fr/registration
+Disallow: /fr/saved-listings

@@ -1,0 +1,13 @@
+              List of relations
+ Schema |      Name      | Type  |   Owner    
+--------+----------------+-------+------------
+ public | stays_bookings | table | nexa_stays
+ public | stays_listings | table | nexa_stays
+(2 rows)
+
+            indexname             
+----------------------------------
+ ex_stays_bookings_active_overlap
+(1 row)
+
+DUMP_BYTES= 6905

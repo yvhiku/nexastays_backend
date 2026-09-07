@@ -1,0 +1,3 @@
+9:    "profile",
+10:    "inbox",
+26:        disallow: ["/api/", "/_next/", ...localizedPrivatePaths],
