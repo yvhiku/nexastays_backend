@@ -1,0 +1,67 @@
+=== FREEZE ===
+NEXA_ENV=dogfood
+STAYS_PAYMENT_PROVIDER=mock
+DEMO_OTP_CODE=[REDACTED]
+SUMSUB_MODE=sandbox
+=== OPS_ALERT presence ===
+=== 145 health endpoints ===
+{"ok":true,"status":"ok","check":"ready","timestamp":"2026-09-07T14:22:07.053Z","uptime":967.435849266,"db":"connected","service":"nexa-identity"}
+{"ok":true,"status":"ok","check":"ready","timestamp":"2026-09-07T14:22:07.072Z","uptime":956.635414135,"db":"connected","service":"nexa-stays"}
+/var/run/postgresql:5432 - accepting connections
+/var/run/postgresql:5432 - accepting connections
+db_container_healthcheck: identity=null stays=null (compose); app healthchecks include DB via /health/ready
+=== 146 monitoring inventory ===
+node_exporter: inactive
+missing
+monitoring_containers: 0
+cron_user:
+(none matching)
+VERDICT_HINT: no host metrics exporter / no Prometheus stack observed
+=== 147 logs sample (redacted) ===
+{"ts":"2026-09-07T14:21:54.861Z","level":"info","service":"nexa-identity","environment":"dogfood","event":"http.request.end","request_id":"[REDACTED]","data":{"statusCode":200,"latencyMs":2}}
+{"level":"info","service":"nexa-identity","event":"http.request","environment":"dogfood","request_id":"[REDACTED]","traceId":"[REDACTED]","ts":"2026-09-07T14:21:54.861Z","method":"GET","path":"/api/v1/health/ready","status":200,"latencyMs":2}
+{"ts":"2026-09-07T14:22:07.051Z","level":"info","service":"nexa-identity","environment":"dogfood","event":"http.request.start","request_id":"[REDACTED]","data":{"method":"GET","path":"/api/v1/health/ready"}}
+{"ts":"2026-09-07T14:22:07.053Z","level":"info","service":"nexa-identity","environment":"dogfood","event":"http.request.end","request_id":"[REDACTED]","data":{"statusCode":200,"latencyMs":2}}
+{"level":"info","service":"nexa-identity","event":"http.request","environment":"dogfood","request_id":"[REDACTED]","traceId":"[REDACTED]","ts":"2026-09-07T14:22:07.054Z","method":"GET","path":"/api/v1/health/ready","status":200,"latencyMs":3}
+{"ts":"2026-09-07T14:22:00.622Z","level":"info","service":"nexa-stays","environment":"dogfood","event":"http.request.end","request_id":"[REDACTED]","data":{"request_id":"[REDACTED]","statusCode":200,"latencyMs":2}}
+{"level":"info","service":"nexa-stays","event":"http.request","environment":"dogfood","request_id":"[REDACTED]","traceId":"[REDACTED]","ts":"2026-09-07T14:22:00.623Z","method":"GET","path":"/api/v1/health/ready","status":200,"latencyMs":3}
+{"ts":"2026-09-07T14:22:07.069Z","level":"info","service":"nexa-stays","environment":"dogfood","event":"http.request.start","request_id":"[REDACTED]","data":{"method":"GET","path":"/api/v1/health/ready"}}
+{"ts":"2026-09-07T14:22:07.072Z","level":"info","service":"nexa-stays","environment":"dogfood","event":"http.request.end","request_id":"[REDACTED]","data":{"request_id":"[REDACTED]","statusCode":200,"latencyMs":3}}
+{"level":"info","service":"nexa-stays","event":"http.request","environment":"dogfood","request_id":"[REDACTED]","traceId":"[REDACTED]","ts":"2026-09-07T14:22:07.072Z","method":"GET","path":"/api/v1/health/ready","status":200,"latencyMs":2}
+=== 148 payment/booking observability ===
+stays_log_payment_booking_hits_last3k=21
+stays_log_error_level_last3k=0
+emit_obs_script=/opt/nexa/nexastays_backend/deploy/scripts/emit-obs-event.sh exists=yes
+{"ts":"2026-09-07T14:22:07Z","level":"info","channel":"ops","service":"nexa-deploy","environment":"unknown","event":"PAYMENT_FAILED_TEST","severity":"P1","release":"","context":{"source":"r7"}}}
+=== 149 backup alert config readable? ===
+backup.env NOT readable by nexa (needs sudo); cannot run backup-alert without secrets
+ls: cannot access '/etc/nexa/backup.env': Permission denied
+=== notifications DB probe ===
+                  List of relations
+ Schema |        Name        | Type  |     Owner     
+--------+--------------------+-------+---------------
+ public | user_notifications | table | nexa_identity
+(1 row)
+
+Did not find any relation named "*outbox*".
+Did not find any relation named "*notif*".
+                  List of relations
+ Schema |          Name          | Type  |   Owner    
+--------+------------------------+-------+------------
+ public | stays_messaging_outbox | table | nexa_stays
+(1 row)
+
+user_notifications
+pg_event_trigger
+stays_external_calendar_events
+stays_messaging_outbox
+=== notifications dead-letter gap (redacted) ===
+{"level":"error","service":"event-bus","event":"event.dead_letter","eventType":"booking.confirmed.v1","eventId":"[REDACTED]","attempts":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1","ts":"2026-09-06T18:46:44.429Z"}
+{"level":"error","service":"event-bus","event":"event.dead_letter","eventType":"payment.succeeded.v1","eventId":"[REDACTED]","attempts":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1","ts":"2026-09-06T18:46:46.525Z"}
+{"level":"error","service":"event-bus","event":"event.dead_letter","eventType":"message.received.v1","eventId":"[REDACTED]","attempts":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1","ts":"2026-09-06T19:13:47.318Z"}
+{"level":"error","service":"event-bus","event":"event.dead_letter","eventType":"message.received.v1","eventId":"[REDACTED]","attempts":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1","ts":"2026-09-06T20:45:16.366Z"}
+{"level":"error","service":"event-bus","event":"event.dead_letter","eventType":"booking.checkout_reminder.v1","eventId":"[REDACTED]","attempts":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1","ts":"2026-09-07T10:46:16.986Z"}
+{"level":"error","service":"event-bus","event":"event.dead_letter","eventType":"booking.checkout_reminder.v1","eventId":"[REDACTED]","attempts":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1","ts":"2026-09-07T11:01:14.840Z"}
+{"level":"error","service":"event-bus","event":"event.dead_letter","eventType":"review.reminder.v1","eventId":"[REDACTED]","attempts":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1","ts":"2026-09-07T14:01:16.755Z"}
+redis_ping_from_notifications:
+PONG

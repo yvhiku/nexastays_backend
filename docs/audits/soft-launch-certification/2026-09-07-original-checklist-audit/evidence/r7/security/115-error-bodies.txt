@@ -1,16 +1,20 @@
-=== 115 error bodies ===
---- 400 bad body ---
-{"statusCode":429,"timestamp":"2026-09-07T14:16:45.567Z","path":"/api/v1/auth/send-otp","message":"ThrottlerException: Too Many Requests"}
-HTTP 429
+=== 115 error bodies (redo) ===
+--- 400 bad phone ---
+{"statusCode":400,"timestamp":"2026-09-07T14:20:52.921Z","path":"/api/v1/auth/login","message":"Phone number has too few digits","code":"Bad Request"}
+HTTP 400
 
---- 401 missing auth stays ---
+--- 401 missing auth stays host listings ---
+{"statusCode":401,"timestamp":"2026-09-07T14:20:55.275Z","path":"/api/v1/stays/host/listings","message":"No authorization token provided","code":"Unauthorized"}
+HTTP 401
 
-HTTP 000
+--- 404 unknown stays ---
+{"statusCode":404,"timestamp":"2026-09-07T14:20:55.763Z","path":"/api/v1/stays/no-such-route-zzzz","message":"Cannot GET /api/v1/stays/no-such-route-zzzz","code":"Not Found"}
+HTTP 404
 
---- 404 unknown ---
+--- 400/404 invalid listing id ---
+{"statusCode":400,"timestamp":"2026-09-07T14:20:56.708Z","path":"/api/v1/stays/listings/not-a-uuid","message":"Validation failed (uuid is expected)","code":"Bad Request"}
+HTTP 400
 
-HTTP 000
-
---- 400 invalid UUID ---
-
-HTTP 000
+--- 401 verify with garbage token ---
+{"statusCode":404,"timestamp":"2026-09-07T14:20:57.271Z","path":"/api/v1/auth/me","message":"Cannot GET /api/v1/auth/me","code":"Not Found"}
+HTTP 404

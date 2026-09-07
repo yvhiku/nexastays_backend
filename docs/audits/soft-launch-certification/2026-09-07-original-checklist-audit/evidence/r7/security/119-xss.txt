@@ -1,10 +1,5 @@
-=== 119 XSS reflection ===
---- explore city ---
-
-HTTP 000
-
---- web search page ---
-<!DOCTYPE html><html lang="en" dir="ltr" class="__variable_71020d __variable_1d2406"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/><link rel="stylesheet" href="/_next/static/css/697f23859299f6f0.css" data-precedence="next"/><link rel="stylesheet" href="/_next/static/css/071cf62a2c549dc5.css" data-precedence="next"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/chunks/webpack-88030fcf5ac14d10.js"/><script src="/_next/static/chunks/4bd1b696-e356ca5ba0218e27.js" async=""></script><script src="/_next/static/chunks/3794-1b03b52e3112452e.js" async=""></script><script src="/_next/static/chunks/main-app-dd34b0e775cca20f.js" async=""></script><script src="/_next/static/chunks/app/layout-f97e176632ed43b1.js" async=""></script><meta name="robots" content="noindex"/><meta name="next-size-adjust" content=""/><title>404: This page could not be found.</title><meta name="theme-color" content="#000000"/><title>Nexa Stays | Verified Stays in Morocco</title><meta name="description" content="Nexa Stays is a Moroccan verified-stays platform built for more safety, transparency, and comfort for guests and hosts."/><meta name="application-name" content="Nexa Stays"/><link rel="manifest" href="/manifest.webmanifest"/><meta name="mobile-web-app-capable" content="yes"/><link rel="alternate" hrefLang="en" href="https://nexastays.ma/en"/><link rel="alternate" hrefLang="fr" href="https://nexastays.ma/fr"/><link rel="alternate" hrefLang="ar" href="https://nexastays.ma/ar"/><link rel="alternate" hrefLang="x-default" href="https://nexastays.ma/en"/><meta name="format-detection" content="telephone=no"/><meta name="mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-title" content="Nexa Stays"/><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/><meta property="og:title" content="Nexa Stays | Verified Stays in Morocco"/><meta property="og:description" conte
-raw_script_tag_count=1
-escaped_lt_script_count=0
-payload_in_html=1
+=== 119 XSS ===
+{"label": "api_explore_city", "http": "400", "len": 219, "raw_html_injection": false, "unescaped_onerror_attr": false, "payload_url_encoded_in_body": true}
+{"label": "web_home_q", "http": "200", "len": 221010, "raw_html_injection": false, "unescaped_onerror_attr": false, "payload_url_encoded_in_body": true}
+{"label": "web_listings_search", "http": "200", "len": 221019, "raw_html_injection": false, "unescaped_onerror_attr": false, "payload_url_encoded_in_body": true}
+SUMMARY_PASS True

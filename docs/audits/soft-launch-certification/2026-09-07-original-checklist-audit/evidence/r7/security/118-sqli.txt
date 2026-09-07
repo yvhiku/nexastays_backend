@@ -1,21 +1,16 @@
-=== 118 SQLi-shaped city/search ===
+=== 118 SQLi-shaped ===
 --- city=Casablanca' OR '1'='1 ---
+HTTP 400
+{"statusCode":400,"timestamp":"2026-09-07T14:20:57.571Z","path":"/api/v1/stays/explore?city=Casablanca%27+OR+%271%27%3d%271&limit=5","message":"city contains invalid characters","code":"Bad Request"}
 
-HTTP 000
-
+leak_heuristics: 0
 --- city=1; DROP TABLE bookings-- ---
+HTTP 400
+{"statusCode":400,"timestamp":"2026-09-07T14:20:58.010Z","path":"/api/v1/stays/explore?city=1%3b+DROP+TABLE+bookings--&limit=5","message":"city contains invalid characters","code":"Bad Request"}
 
-HTTP 000
+leak_heuristics: 0
+--- city=' UNION SELECT NULL-- ---
+HTTP 200
+{"items":[],"pagination":{"next_cursor":null,"has_more":false},"meta":{"query_ms":12,"sort":"newest","cache":"miss","total_estimate":null}}
 
---- city=Casablanca%27%3B%20SELECT%20*%20FROM%20users-- ---
-
-HTTP 000
-
---- city=' UNION SELECT * FROM users-- ---
-
-HTTP 000
-
---- search q ---
-
-HTTP 000
-
+leak_heuristics: 0

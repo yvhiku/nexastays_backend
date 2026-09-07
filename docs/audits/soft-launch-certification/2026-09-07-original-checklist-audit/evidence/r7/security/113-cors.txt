@@ -144,3 +144,20 @@ BODY:
 {"sent":true}
 
 --- stays API OPTIONS bad vs good ---
+
+=== stays CORS OPTIONS ===
+--- good ---
+HTTP/2 204 
+access-control-allow-origin: https://nexastays.ma
+vary: Origin
+access-control-allow-credentials: true
+access-control-allow-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+access-control-allow-headers: Content-Type,Authorization,Accept,X-Request-Id,X-Device-Id,X-Internal-Key,X-Auth-Transport,X-Nexa-Client
+access-control-expose-headers: Content-Type,Authorization,X-Request-Id
+--- bad ---
+HTTP/2 204 
+vary: Origin
+access-control-allow-credentials: true
+access-control-allow-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+access-control-allow-headers: Content-Type,Authorization,Accept,X-Request-Id,X-Device-Id,X-Internal-Key,X-Auth-Transport,X-Nexa-Client
+access-control-expose-headers: Content-Type,Authorization,X-Request-Id
