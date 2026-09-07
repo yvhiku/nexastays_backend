@@ -1,0 +1,16 @@
+=== 115 error bodies ===
+--- 400 bad body ---
+{"statusCode":429,"timestamp":"2026-09-07T14:16:45.567Z","path":"/api/v1/auth/send-otp","message":"ThrottlerException: Too Many Requests"}
+HTTP 429
+
+--- 401 missing auth stays ---
+
+HTTP 000
+
+--- 404 unknown ---
+
+HTTP 000
+
+--- 400 invalid UUID ---
+
+HTTP 000

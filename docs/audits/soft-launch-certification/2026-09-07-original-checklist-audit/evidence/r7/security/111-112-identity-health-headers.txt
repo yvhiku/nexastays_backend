@@ -1,0 +1,36 @@
+HTTP/2 200 
+date: Mon, 07 Sep 2026 14:16:00 GMT
+content-type: application/json; charset=utf-8
+content-length: 144
+server: cloudflare
+content-security-policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: cross-origin
+origin-agent-cluster: ?1
+referrer-policy: no-referrer
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-dns-prefetch-control: off
+x-download-options: noopen
+x-frame-options: SAMEORIGIN
+x-permitted-cross-domain-policies: none
+x-xss-protection: 0
+x-request-id: f73ca399-b0eb-44a9-acdf-ca8c6030ec29
+x-trace-id: 0ecce3a913ecb3f5031a7be1810b08c2
+vary: Origin
+access-control-allow-credentials: true
+access-control-expose-headers: Content-Type,Authorization,X-Request-Id
+x-ratelimit-limit-short: 15
+x-ratelimit-remaining-short: 14
+x-ratelimit-reset-short: 1
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 99
+x-ratelimit-reset: 60
+etag: W/"90-3N1uoNQbpkmQ4AkUpP66947pUdg"
+cf-cache-status: DYNAMIC
+speculation-rules: "/cdn-cgi/speculation"
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=g58e%2BV48qG7JT2ms64cp3kt2dE%2F%2BXd8nb7UiBpK%2B%2F9lnkQDYMsHOlBTq6Fzqgxi2R92PMc2R%2F4ijkz%2BdGOAFNIuRQ%2FVOQfBf8iJZuYFKVSSVMyQdJ0yCcK8ZSMyZQSy9ZnH79%2Fy5V9A%3D"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+cf-ray: a376542bccf4bd0e-LIS
+alt-svc: h3=":443"; ma=86400
+

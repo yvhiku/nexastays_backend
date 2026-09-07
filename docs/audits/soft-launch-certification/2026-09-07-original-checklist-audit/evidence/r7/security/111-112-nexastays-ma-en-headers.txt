@@ -1,0 +1,26 @@
+HTTP/2 103 
+link: </_next/static/media/0b664db7d0c34e73-s.p.woff2>; as=font; crossorigin=; rel=preload; type=font/woff2, </_next/static/media/26655915f363546e-s.p.woff2>; as=font; crossorigin=; rel=preload; type=font/woff2, </_next/static/media/2b52b515fe0776cc-s.p.woff2>; as=font; crossorigin=; rel=preload; type=font/woff2, </_next/static/media/9781e609aab30c9c-s.p.woff2>; as=font; crossorigin=; rel=preload; type=font/woff2, </_next/static/media/bfe8c811ed1df969-s.p.woff2>; as=font; crossorigin=; rel=preload; type=font/woff2, </_next/static/media/e399f3e068a97f0c-s.p.woff2>; as=font; crossorigin=; rel=preload; type=font/woff2, </_next/static/media/fbf4c1a63780e158-s.p.woff2>; as=font; crossorigin=; rel=preload; type=font/woff2
+
+HTTP/2 200 
+date: Mon, 07 Sep 2026 14:16:00 GMT
+content-type: text/html; charset=utf-8
+server: cloudflare
+content-security-policy: default-src 'self'; script-src 'self' https://static.sumsub.com  'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.unsplash.com https://*.tile.openstreetmap.org https://staticmap.openstreetmap.de https://*.basemaps.cartocdn.com https://api.nexastays.ma; font-src 'self' data:; media-src 'self' https://api.nexastays.ma; connect-src 'self' https://nexastays.ma https://identity.nexastays.ma https://api.nexastays.ma https://api.sumsub.com; frame-src 'self' https://api.sumsub.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+x-content-type-options: nosniff
+x-frame-options: DENY
+referrer-policy: no-referrer
+cross-origin-opener-policy: same-origin
+permissions-policy: camera=(self "https://api.sumsub.com"), microphone=(self "https://api.sumsub.com"), geolocation=(self)
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+content-language: en
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+link: </_next/static/media/0b664db7d0c34e73-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/26655915f363546e-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/2b52b515fe0776cc-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/9781e609aab30c9c-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/bfe8c811ed1df969-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/e399f3e068a97f0c-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/fbf4c1a63780e158-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2"
+x-powered-by: Next.js
+cache-control: private, no-cache, no-store, max-age=0, must-revalidate
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+cf-cache-status: DYNAMIC
+speculation-rules: "/cdn-cgi/speculation"
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=dup9vjfuI0oKPFA%2FaDOdlrtXZZZ8DMnqVvfVycahOyU%2FV5zSZNZaCut7lmtyKDDQhM9NtF0z9W7639VKy5pEINGR6p5Mcol%2Fmm3812bez2XLTaPy0q9EPJG9qssOuG8%3D"}]}
+cf-ray: a37654291b87bd0e-LIS
+alt-svc: h3=":443"; ma=86400
+

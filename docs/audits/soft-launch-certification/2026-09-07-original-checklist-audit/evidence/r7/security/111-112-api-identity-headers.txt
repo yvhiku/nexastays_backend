@@ -1,0 +1,30 @@
+HTTP/2 404 
+date: Mon, 07 Sep 2026 14:15:38 GMT
+content-type: application/json; charset=utf-8
+content-length: 125
+server: cloudflare
+content-security-policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: cross-origin
+origin-agent-cluster: ?1
+referrer-policy: no-referrer
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-dns-prefetch-control: off
+x-download-options: noopen
+x-frame-options: SAMEORIGIN
+x-permitted-cross-domain-policies: none
+x-xss-protection: 0
+x-request-id: 15445631-1bb8-4ce7-94a2-2558b4ec47ea
+x-trace-id: 714318c14701a65a5683385efa165d79
+vary: Origin
+access-control-allow-credentials: true
+access-control-expose-headers: Content-Type,Authorization,X-Request-Id
+etag: W/"7d-p7mjhvzlgO4pO9KU+OCky8V2dG0"
+cf-cache-status: DYNAMIC
+speculation-rules: "/cdn-cgi/speculation"
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=Qs2cjOF8WGM1BF3r864h4zkrB3dXKdQ8nVpAICNbObpA56giIGXXQ7bgKYhEiLc8tE7jU9Gg74015O79we5DJBJJHi%2BpiPgH6PGQ%2F2%2FbwTTZU0oTqH3v8XpOZLMiuqqst6xnvqDBCBo%3D"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+cf-ray: a37653a20e668df7-LIS
+alt-svc: h3=":443"; ma=86400
+

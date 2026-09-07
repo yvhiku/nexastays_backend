@@ -1,0 +1,9 @@
+=== 114 rate limiting OTP send-otp ===
+try 1 -> HTTP 200 body={"sent":true}
+try 2 -> HTTP 200 body={"sent":true}
+try 3 -> HTTP 200 body={"sent":true}
+try 4 -> HTTP 200 body={"sent":true}
+try 5 -> HTTP 200 body={"sent":true}
+try 6 -> HTTP 429 body={"statusCode":429,"timestamp":"2026-09-07T14:16:44.472Z","path":"/api/v1/auth/send-otp","message":"Too many OTP requests. Try again later."}
+try 7 -> HTTP 429 body={"statusCode":429,"timestamp":"2026-09-07T14:16:44.904Z","path":"/api/v1/auth/send-otp","message":"Too many OTP requests. Try again later."}
+try 8 -> HTTP 429 body={"statusCode":429,"timestamp":"2026-09-07T14:16:45.237Z","path":"/api/v1/auth/send-otp","message":"Too many OTP requests. Try again later."}

@@ -1,0 +1,21 @@
+=== 118 SQLi-shaped city/search ===
+--- city=Casablanca' OR '1'='1 ---
+
+HTTP 000
+
+--- city=1; DROP TABLE bookings-- ---
+
+HTTP 000
+
+--- city=Casablanca%27%3B%20SELECT%20*%20FROM%20users-- ---
+
+HTTP 000
+
+--- city=' UNION SELECT * FROM users-- ---
+
+HTTP 000
+
+--- search q ---
+
+HTTP 000
+

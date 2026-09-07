@@ -1,0 +1,146 @@
+=== 113 CORS ===
+--- OPTIONS allowed origin https://nexastays.ma on identity OTP ---
+HTTP/2 204 
+date: Mon, 07 Sep 2026 14:16:01 GMT
+server: cloudflare
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+content-security-policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: cross-origin
+origin-agent-cluster: ?1
+referrer-policy: no-referrer
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-dns-prefetch-control: off
+x-download-options: noopen
+x-frame-options: SAMEORIGIN
+x-permitted-cross-domain-policies: none
+x-xss-protection: 0
+x-request-id: a273fc78-327f-4603-bd0b-e08fbbf4f78a
+x-trace-id: 69891e21062bc6f7a31de194851f9141
+access-control-allow-origin: https://nexastays.ma
+vary: Origin
+access-control-allow-credentials: true
+access-control-allow-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+access-control-allow-headers: Content-Type,Authorization,Accept,X-Request-Id,X-Device-Id,X-Device-Integrity,X-Nexa-Product,X-Internal-Key,X-Auth-Transport,X-Nexa-Client
+access-control-expose-headers: Content-Type,Authorization,X-Request-Id
+cf-cache-status: DYNAMIC
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=9ic%2Bez%2FpEBOUzlRLT8f%2B51V0g9d6asDgiITvGizi9PkCYv1TeZX5bzVu5oOrdLzYKeeQBu69SKh1QVi2o4%2BBtupxeQunOIhmxoxtrnNS7q%2FiyWFThAG%2F6MJOYZUnLWSK82M0RFeSsC8%3D"}]}
+cf-ray: a376542f5a3f94ad-LIS
+alt-svc: h3=":443"; ma=86400
+
+
+--- OPTIONS bad origin https://evil.example ---
+HTTP/2 204 
+date: Mon, 07 Sep 2026 14:16:01 GMT
+server: cloudflare
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+content-security-policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: cross-origin
+origin-agent-cluster: ?1
+referrer-policy: no-referrer
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-dns-prefetch-control: off
+x-download-options: noopen
+x-frame-options: SAMEORIGIN
+x-permitted-cross-domain-policies: none
+x-xss-protection: 0
+x-request-id: 5ffb595f-4d0e-4362-ae5f-29e95a426361
+x-trace-id: 4d2d436ec97284bdc7a12d375e5dc76d
+vary: Origin
+access-control-allow-credentials: true
+access-control-allow-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+access-control-allow-headers: Content-Type,Authorization,Accept,X-Request-Id,X-Device-Id,X-Device-Integrity,X-Nexa-Product,X-Internal-Key,X-Auth-Transport,X-Nexa-Client
+access-control-expose-headers: Content-Type,Authorization,X-Request-Id
+cf-cache-status: DYNAMIC
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=hwhK3bcfW9PzecgvPPQVX5tOWaMjYwB4%2BF8zwfI2uN0OR0QpQSiDUNce9FDatgLDt3%2FX%2Fx7c%2FR6rmJaiBqIDkrNBq204Cas12XKvos5RXrsCfA0TMYXMkLvrfGMU0HJwSNOaa8f0l7I%3D"}]}
+cf-ray: a37654310a83e3cd-LIS
+alt-svc: h3=":443"; ma=86400
+
+
+--- POST with allowed Origin (expect ACAO) ---
+
+--- POST with bad Origin (expect no ACAO or reject) ---
+=== 113 CORS POST responses (headers only via -D) ===
+--- allowed Origin ---
+HTTP/2 200 
+date: Mon, 07 Sep 2026 14:16:19 GMT
+content-type: application/json; charset=utf-8
+content-length: 13
+server: cloudflare
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+content-security-policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: cross-origin
+origin-agent-cluster: ?1
+referrer-policy: no-referrer
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-dns-prefetch-control: off
+x-download-options: noopen
+x-frame-options: SAMEORIGIN
+x-permitted-cross-domain-policies: none
+x-xss-protection: 0
+x-request-id: f856567d-17d0-4c0d-847e-009010d37e02
+x-trace-id: ec534eac10602347791e010126282aa9
+access-control-allow-origin: https://nexastays.ma
+vary: Origin
+access-control-allow-credentials: true
+access-control-expose-headers: Content-Type,Authorization,X-Request-Id
+x-ratelimit-limit-short: 3
+x-ratelimit-remaining-short: 2
+x-ratelimit-reset-short: 1
+x-ratelimit-limit: 10
+x-ratelimit-remaining: 9
+x-ratelimit-reset: 60
+etag: W/"d-22HxxIkkzmgXAf/5dnhY+ZoD9PM"
+cf-cache-status: DYNAMIC
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=u%2FVk69Dy0BvYvLRM9vYD%2BJVngH6aouC0YYOMZS%2BWE4nwWPeSIGrKsKOHnLJm%2FVNWZHwPgi6SGrdzElcTKSgnRYMztZD82LuArR%2BhXf68uRJHxjpmqdb6DenIUfvB7YRDLmm6EkWEFCU%3D"}]}
+cf-ray: a37654a13d40b3a4-LIS
+alt-svc: h3=":443"; ma=86400
+
+BODY:
+{"sent":true}
+
+--- bad Origin ---
+HTTP/2 200 
+date: Mon, 07 Sep 2026 14:16:19 GMT
+content-type: application/json; charset=utf-8
+content-length: 13
+server: cloudflare
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+content-security-policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: cross-origin
+origin-agent-cluster: ?1
+referrer-policy: no-referrer
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-dns-prefetch-control: off
+x-download-options: noopen
+x-frame-options: SAMEORIGIN
+x-permitted-cross-domain-policies: none
+x-xss-protection: 0
+x-request-id: 1576b4a9-a05f-434c-b2a9-fe2f671a01c8
+x-trace-id: 52350fac06a55b8c6dfeb73254e14a14
+vary: Origin
+access-control-allow-credentials: true
+access-control-expose-headers: Content-Type,Authorization,X-Request-Id
+x-ratelimit-limit-short: 3
+x-ratelimit-remaining-short: 1
+x-ratelimit-reset-short: 1
+x-ratelimit-limit: 10
+x-ratelimit-remaining: 8
+x-ratelimit-reset: 60
+etag: W/"d-22HxxIkkzmgXAf/5dnhY+ZoD9PM"
+cf-cache-status: DYNAMIC
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=ARqCNatnMhtqzxH4QAI%2BnFKaGWkkUvYdXYW1anavZOkzylPOM4v0wMZBxjJRMVbdWdPtewbbFwPuMr1rCrLEtZwHDVapX9L2Q2%2FBUxXPD3I7VidX9foIx%2BCk7OeBjl%2FfFkto6IjErUo%3D"}]}
+cf-ray: a37654a3ea6310fc-LIS
+alt-svc: h3=":443"; ma=86400
+
+BODY:
+{"sent":true}
+
+--- stays API OPTIONS bad vs good ---
