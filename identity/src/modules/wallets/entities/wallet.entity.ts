@@ -6,7 +6,6 @@ import {
   OneToOne,
   OneToMany,
   JoinColumn,
-  ManyToOne,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { LedgerAccount } from '../../ledger/entities/ledger-account.entity';

@@ -27,9 +27,10 @@ export type AccountType = (typeof ACCOUNT_TYPES)[number];
 export const STAFF_ROLES = ['ADMIN', 'SUPPORT_AGENT'] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
-export function staffJwtClaims(
-  staffRole: string | null | undefined,
-): { role: StaffRole; roles: [StaffRole] } {
+export function staffJwtClaims(staffRole: string | null | undefined): {
+  role: StaffRole;
+  roles: [StaffRole];
+} {
   const role: StaffRole =
     staffRole === 'SUPPORT_AGENT' ? 'SUPPORT_AGENT' : 'ADMIN';
   return { role, roles: [role] };
@@ -53,7 +54,10 @@ export class User {
   @Column({ type: 'uuid', name: 'unified_identity_id', nullable: true })
   unified_identity_id: string | null;
 
-  @ManyToOne(() => UnifiedIdentity, (ui) => ui.users, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => UnifiedIdentity, (ui) => ui.users, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'unified_identity_id' })
   unified_identity: UnifiedIdentity | null;
 
@@ -184,7 +188,12 @@ export class User {
   idempotency_keys: IdempotencyKey[];
 
   /** Nexa rewards program tier: standard | pro | premium */
-  @Column({ type: 'varchar', length: 20, name: 'rewards_tier', default: 'standard' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'rewards_tier',
+    default: 'standard',
+  })
   rewards_tier: string;
 
   /** Cached Nexa Points balance; ledger is source of truth for history */

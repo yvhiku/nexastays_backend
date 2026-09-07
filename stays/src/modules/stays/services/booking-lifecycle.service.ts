@@ -62,7 +62,10 @@ export class BookingLifecycleService {
   }
 
   isPaymentExpired(booking: StaysBooking, now = new Date()): boolean {
-    if (booking.status !== 'PAYMENT_PENDING' && booking.status !== 'INITIATED') {
+    if (
+      booking.status !== 'PAYMENT_PENDING' &&
+      booking.status !== 'INITIATED'
+    ) {
       return false;
     }
     return this.getPaymentExpiresAt(booking.created_at) <= now;
@@ -130,7 +133,10 @@ export class BookingLifecycleService {
     return true;
   }
 
-  canComplain(booking: StaysBooking, ctx: BookingLifecycleContext = {}): boolean {
+  canComplain(
+    booking: StaysBooking,
+    ctx: BookingLifecycleContext = {},
+  ): boolean {
     const lifecycle = this.computeLifecycle(booking, ctx);
     if (lifecycle !== 'COMPLETED' && lifecycle !== 'ACTIVE') {
       return false;

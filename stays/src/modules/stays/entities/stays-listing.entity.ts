@@ -63,7 +63,12 @@ export class StaysListing {
   @Column({ type: 'varchar', length: 20, name: 'postal_code', nullable: true })
   postal_code: string | null;
 
-  @Column({ type: 'varchar', length: 120, name: 'building_name', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 120,
+    name: 'building_name',
+    nullable: true,
+  })
   building_name: string | null;
 
   @Column({ type: 'varchar', length: 200, nullable: true })
@@ -77,10 +82,22 @@ export class StaysListing {
   })
   address_encrypted: string | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7, name: 'geo_lat', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 7,
+    name: 'geo_lat',
+    nullable: true,
+  })
   geo_lat: number | null;
 
-  @Column({ type: 'decimal', precision: 11, scale: 8, name: 'geo_lng', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 11,
+    scale: 8,
+    name: 'geo_lng',
+    nullable: true,
+  })
   geo_lng: number | null;
 
   @Column({ type: 'jsonb', name: 'property_details', default: () => "'{}'" })
@@ -167,7 +184,9 @@ export class StaysListing {
   @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updated_at: Date;
 
-  @OneToOne(() => StaysListingRules, (rules) => rules.listing, { cascade: true })
+  @OneToOne(() => StaysListingRules, (rules) => rules.listing, {
+    cascade: true,
+  })
   rules: StaysListingRules | null;
 
   @OneToMany(() => StaysListingMedia, (m) => m.listing)

@@ -41,12 +41,7 @@ function clientIp(req: {
     : typeof xf === 'string'
       ? xf.split(',')[0].trim()
       : '';
-  return (
-    fromHeader ||
-    req.ip ||
-    req.socket?.remoteAddress ||
-    '0.0.0.0'
-  );
+  return fromHeader || req.ip || req.socket?.remoteAddress || '0.0.0.0';
 }
 
 export function noteAuthFailure(
@@ -79,16 +74,14 @@ export function noteAuthFailure(
   }
 }
 
-export function noteRateLimited(
-  req: {
-    ip?: string;
-    headers?: Record<string, string | string[] | undefined>;
-    socket?: { remoteAddress?: string };
-    method?: string;
-    url?: string;
-    path?: string;
-  },
-): void {
+export function noteRateLimited(req: {
+  ip?: string;
+  headers?: Record<string, string | string[] | undefined>;
+  socket?: { remoteAddress?: string };
+  method?: string;
+  url?: string;
+  path?: string;
+}): void {
   const ip = clientIp(req);
   const n = bump(rateLimits, ip);
   safeLogger.info('security.rate_limited', {

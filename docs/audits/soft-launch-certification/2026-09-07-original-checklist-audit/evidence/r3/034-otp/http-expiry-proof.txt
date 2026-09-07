@@ -1,0 +1,15 @@
+ID: 034 R3 dogfood HTTP
+{"sent":true}
+UPDATE 1
+{"verified":false}
+HTTP:200
+
+--- fresh send then valid verify ---
+{"sent":true}
+{"verified":true,"otp_session_token":"***","identity_session_token":"***","accounts":[{"id":"8cac3b69-dc89-4d39-b8e8-ed367a31b5f1","account_type":"CONSUMER"}],"account":{"id":"8cac3b69-dc89-4d39-b8e8-ed367a31b5f1","type":"CONSUMER"},"onboarding":{"required":true,"status":"NOT_STARTED","next":"REGISTRATION"},"nexa_profile":{"exists":true,"full_name":null,"email":null,"date_of_birth":null,"city":nul
+--- consumed OTP ---
+{"sent":true}
+{"verified":true,"otp_session_token":"***","identity_session_token":"***","accounts":[{"id":"2c5b81be-52c1-423d-9e85-f531d1ab32b6","account_type":"CONSUMER"}],"account":{"id":"2c5b81be-52c1-423d-9e85-
+
+{"verified":false}
+HTTP:200

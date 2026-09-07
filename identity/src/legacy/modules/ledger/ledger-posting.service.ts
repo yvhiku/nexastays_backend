@@ -95,7 +95,8 @@ export class LedgerPostingService {
       idempotency_key: params.idempotencyKey ?? null,
       idempotency_payload_hash: payloadHash,
       metadata: params.metadata ?? null,
-      reverses_ledger_transaction_id: params.reversesLedgerTransactionId ?? null,
+      reverses_ledger_transaction_id:
+        params.reversesLedgerTransactionId ?? null,
     });
 
     const rows = params.lines.map((line, idx) => ({

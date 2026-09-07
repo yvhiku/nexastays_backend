@@ -27,7 +27,13 @@ export class StaysRatePlan {
   @Column({ type: 'decimal', precision: 18, scale: 2, name: 'base_price' })
   base_price: number;
 
-  @Column({ type: 'decimal', precision: 18, scale: 2, name: 'weekend_price', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 18,
+    scale: 2,
+    name: 'weekend_price',
+    nullable: true,
+  })
   weekend_price: number | null;
 
   @Column({ type: 'text', name: 'deposit_policy_text', nullable: true })

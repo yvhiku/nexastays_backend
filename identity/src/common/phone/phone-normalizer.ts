@@ -91,8 +91,10 @@ export function validatePhoneNumber(raw: string): ValidatePhoneResult {
   const s = String(raw ?? '').trim();
   if (!s) return { valid: false, error: 'Phone number is required' };
   const digits = s.replace(/\D/g, '');
-  if (digits.length < 9) return { valid: false, error: 'Phone number has too few digits' };
-  if (digits.length > 15) return { valid: false, error: 'Phone number has too many digits' };
+  if (digits.length < 9)
+    return { valid: false, error: 'Phone number has too few digits' };
+  if (digits.length > 15)
+    return { valid: false, error: 'Phone number has too many digits' };
   if (/^0+$/.test(digits) || /^0\d{0,5}$/.test(digits)) {
     return { valid: false, error: 'Phone number is invalid or ambiguous' };
   }
@@ -100,7 +102,10 @@ export function validatePhoneNumber(raw: string): ValidatePhoneResult {
     const normalized = normalizePhoneNumber(s);
     return { valid: true, normalized };
   } catch (e) {
-    return { valid: false, error: (e as Error).message ?? 'Invalid phone number' };
+    return {
+      valid: false,
+      error: (e as Error).message ?? 'Invalid phone number',
+    };
   }
 }
 
@@ -115,13 +120,21 @@ export function normalizePhoneOrThrow(raw: string): string {
   return result.normalized!;
 }
 
-function looksLikeMorocco(raw: string, digits: string, normalized: string | null): boolean {
+function looksLikeMorocco(
+  raw: string,
+  digits: string,
+  normalized: string | null,
+): boolean {
   if (normalized?.startsWith('+212')) return true;
   if (digits.startsWith('212')) return true;
   const trimmed = raw.trim();
   // Explicit non-MA international prefix — do not invent +212 variants
   if (trimmed.startsWith('+') && !digits.startsWith('212')) return false;
-  if (trimmed.startsWith('00') && !digits.startsWith('00212') && !digits.startsWith('212')) {
+  if (
+    trimmed.startsWith('00') &&
+    !digits.startsWith('00212') &&
+    !digits.startsWith('212')
+  ) {
     return false;
   }
   // Bare national / leading 0 → treated as MA by normalizePhoneNumber

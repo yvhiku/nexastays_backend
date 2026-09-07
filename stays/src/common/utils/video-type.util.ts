@@ -2,9 +2,7 @@
  * Detect allowed video containers from magic bytes.
  * MP4/MOV typically start with size + 'ftyp' at offset 4.
  */
-export function detectVideoType(
-  buffer: Buffer,
-): 'mp4' | 'webm' | null {
+export function detectVideoType(buffer: Buffer): 'mp4' | 'webm' | null {
   if (!buffer || buffer.length < 12) return null;
 
   // ISO BMFF (mp4/m4v/mov): ....ftyp

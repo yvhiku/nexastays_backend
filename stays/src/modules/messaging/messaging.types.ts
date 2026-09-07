@@ -167,7 +167,12 @@ export interface TimelineCardMetadata {
   bookingId?: string | null;
 }
 
-export type DeliveryState = 'PENDING' | 'PERSISTED' | 'SENT' | 'DELIVERED' | 'READ';
+export type DeliveryState =
+  | 'PENDING'
+  | 'PERSISTED'
+  | 'SENT'
+  | 'DELIVERED'
+  | 'READ';
 
 export type ProcessingStatus = 'UPLOADING' | 'PROCESSING' | 'READY' | 'FAILED';
 export type VirusScanStatus = 'PENDING' | 'SAFE' | 'FAILED';

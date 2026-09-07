@@ -15,7 +15,10 @@ const KNOWN_INSECURE_VALUES = new Set([
 ]);
 
 function isLoopbackHostname(hostname: string): boolean {
-  const h = hostname.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  const h = hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '');
   return h === 'localhost' || h === '127.0.0.1' || h === '::1';
 }
 

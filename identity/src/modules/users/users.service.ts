@@ -28,7 +28,11 @@ import { hashPin, verifyPinHash } from '../../common/security/pin-hasher';
 import { UserConsent } from './entities/user-consent.entity';
 import { UnifiedIdentityService } from './unified-identity.service';
 import { IdentityPhoneNumbersService } from './identity-phone-numbers.service';
-import { normalizePhoneOrThrow, tryNormalizePhoneNumber, phoneLookupCandidates } from '../../common/phone/phone-normalizer';
+import {
+  normalizePhoneOrThrow,
+  tryNormalizePhoneNumber,
+  phoneLookupCandidates,
+} from '../../common/phone/phone-normalizer';
 import {
   ProfileSyncService,
   type SharedProfileUpdate,
@@ -269,11 +273,16 @@ export class UsersService {
   async createUser(payload: CreateUserDto) {
     const phone = normalizePhoneOrThrow(payload.phone_number);
     const candidates = [phone];
-    if (tryNormalizePhoneNumber(payload.phone_number) !== payload.phone_number) {
+    if (
+      tryNormalizePhoneNumber(payload.phone_number) !== payload.phone_number
+    ) {
       candidates.push(payload.phone_number);
     }
     const existingConsumer = await this.userRepository.findOne({
-      where: candidates.map((p) => ({ phone_number: p, account_type: 'CONSUMER' })),
+      where: candidates.map((p) => ({
+        phone_number: p,
+        account_type: 'CONSUMER',
+      })),
     });
     if (existingConsumer) {
       throw new ConflictException(
@@ -297,13 +306,18 @@ export class UsersService {
       });
 
       if (user.phone_number) {
-        await this.unifiedIdentityService.findOrCreateByPhone(user.phone_number);
+        await this.unifiedIdentityService.findOrCreateByPhone(
+          user.phone_number,
+        );
       }
       return user;
     } catch (e: any) {
       if (e?.code === '23505') {
         const existing = await this.userRepository.findOne({
-          where: candidates.map((p) => ({ phone_number: p, account_type: 'CONSUMER' })),
+          where: candidates.map((p) => ({
+            phone_number: p,
+            account_type: 'CONSUMER',
+          })),
         });
         if (existing) return existing;
       }
@@ -326,7 +340,8 @@ export class UsersService {
     identity_verified: boolean;
     linked_services: string[];
   } | null> {
-    const unified = await this.unifiedIdentityService.getProfileByPhone(phoneNumber);
+    const unified =
+      await this.unifiedIdentityService.getProfileByPhone(phoneNumber);
     if (unified) {
       return {
         exists: true,
@@ -342,9 +357,17 @@ export class UsersService {
     }
 
     const candidates = phoneLookupCandidates(phoneNumber);
-    let users = await this.userRepository.find({
+    const users = await this.userRepository.find({
       where: candidates.map((phone_number) => ({ phone_number })),
-      select: ['id', 'account_type', 'full_name', 'email', 'date_of_birth', 'city', 'kyc_status'],
+      select: [
+        'id',
+        'account_type',
+        'full_name',
+        'email',
+        'date_of_birth',
+        'city',
+        'kyc_status',
+      ],
       order: { account_type: 'ASC' },
     });
     if (users.length === 0) return null;
@@ -354,10 +377,20 @@ export class UsersService {
 
     const kyc = await this.kycProfileRepository.findOne({
       where: { user_id: best.id },
-      select: ['status', 'full_name', 'email', 'date_of_birth', 'document_type'],
+      select: [
+        'status',
+        'full_name',
+        'email',
+        'date_of_birth',
+        'document_type',
+      ],
     });
 
-    const kycStatus = (best.kyc_status ?? kyc?.status ?? 'PENDING').toUpperCase();
+    const kycStatus = (
+      best.kyc_status ??
+      kyc?.status ??
+      'PENDING'
+    ).toUpperCase();
     const identityVerified =
       kycStatus === 'APPROVED' || kycStatus === 'VERIFIED';
 
@@ -366,10 +399,10 @@ export class UsersService {
       full_name: best.full_name ?? kyc?.full_name ?? null,
       email: best.email ?? kyc?.email ?? null,
       date_of_birth: best.date_of_birth
-        ? (best.date_of_birth instanceof Date
-            ? best.date_of_birth.toISOString().slice(0, 10)
-            : String(best.date_of_birth).slice(0, 10))
-        : kyc?.date_of_birth ?? null,
+        ? best.date_of_birth instanceof Date
+          ? best.date_of_birth.toISOString().slice(0, 10)
+          : String(best.date_of_birth).slice(0, 10)
+        : (kyc?.date_of_birth ?? null),
       city: best.city ?? null,
       address: null,
       kyc_status: best.kyc_status ?? kyc?.status ?? 'PENDING',
@@ -459,7 +492,8 @@ export class UsersService {
     unifiedIdentityId: string | null | undefined,
   ): Promise<string | null> {
     if (!unifiedIdentityId) return null;
-    const identity = await this.unifiedIdentityService.findById(unifiedIdentityId);
+    const identity =
+      await this.unifiedIdentityService.findById(unifiedIdentityId);
     return identity?.preferred_language ?? null;
   }
 
@@ -467,7 +501,9 @@ export class UsersService {
    * Get CONSUMER account for an identity (for payouts, wallet operations).
    * Returns null if identity has no CONSUMER account.
    */
-  async getConsumerForIdentity(unifiedIdentityId: string): Promise<User | null> {
+  async getConsumerForIdentity(
+    unifiedIdentityId: string,
+  ): Promise<User | null> {
     return this.userRepository.findOne({
       where: {
         unified_identity_id: unifiedIdentityId,
@@ -523,7 +559,9 @@ export class UsersService {
         return u;
       });
       if (user.phone_number) {
-        await this.unifiedIdentityService.findOrCreateByPhone(user.phone_number);
+        await this.unifiedIdentityService.findOrCreateByPhone(
+          user.phone_number,
+        );
       }
       return user;
     } catch (e: any) {
@@ -640,7 +678,10 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
     let linked: User | null = null;
-    if (user.unified_identity_id && roleUsesConsumerForPayout(user.account_type)) {
+    if (
+      user.unified_identity_id &&
+      roleUsesConsumerForPayout(user.account_type)
+    ) {
       linked = await this.getConsumerForIdentity(user.unified_identity_id);
     }
     if (!linked && user.linked_user) {
@@ -661,10 +702,14 @@ export class UsersService {
       identityVerificationStatus: identity?.identity_verification_status,
       identityVerified: identity?.identity_verified,
     });
-    const formatDob = (value: Date | string | null | undefined): string | null => {
+    const formatDob = (
+      value: Date | string | null | undefined,
+    ): string | null => {
       if (value == null || value === '') return null;
       if (value instanceof Date) {
-        return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+        return Number.isNaN(value.getTime())
+          ? null
+          : value.toISOString().slice(0, 10);
       }
       const s = String(value).trim().slice(0, 10);
       return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
@@ -680,7 +725,8 @@ export class UsersService {
           email: identity.email ?? user.email,
           city: identity.city ?? user.city ?? null,
           date_of_birth: dateOfBirth,
-          profile_photo_url: identity.profile_photo_url ?? user.profile_photo_url ?? null,
+          profile_photo_url:
+            identity.profile_photo_url ?? user.profile_photo_url ?? null,
           address: identity.address ?? null,
           preferred_language: identity.preferred_language ?? null,
         }
@@ -699,7 +745,7 @@ export class UsersService {
       ...sharedFromIdentity,
       account_type: user.account_type ?? 'CONSUMER',
       unified_identity_id: user.unified_identity_id ?? null,
-      linked_user_id: user.linked_user_id ?? (linked?.id ?? null),
+      linked_user_id: user.linked_user_id ?? linked?.id ?? null,
       kyc_status: user.kyc_status,
       onboarding,
       status: user.status,
@@ -953,10 +999,7 @@ export class UsersService {
     const locked = this.isProfileLocked(user);
 
     if (locked) {
-      if (
-        payload.full_name != null &&
-        payload.full_name !== user.full_name
-      ) {
+      if (payload.full_name != null && payload.full_name !== user.full_name) {
         throw new ForbiddenException({
           code: 'PROFILE_LOCKED',
           message:
@@ -998,7 +1041,8 @@ export class UsersService {
           userId,
           unifiedIdentityId: user.unified_identity_id,
           profileLocked: locked,
-          identityVerified: (user.kyc_status ?? '').toUpperCase() === 'APPROVED' ||
+          identityVerified:
+            (user.kyc_status ?? '').toUpperCase() === 'APPROVED' ||
             (user.kyc_status ?? '').toUpperCase() === 'VERIFIED',
           auditParams: { actorUserId: userId, actorRole: user.account_type },
         },
@@ -1006,13 +1050,16 @@ export class UsersService {
     } else {
       if (locked) {
         if (sharedUpdates.email !== undefined) user.email = sharedUpdates.email;
-        if (sharedUpdates.city !== undefined) user.city = sharedUpdates.city || null;
+        if (sharedUpdates.city !== undefined)
+          user.city = sharedUpdates.city || null;
         if (sharedUpdates.profile_photo_url !== undefined)
           user.profile_photo_url = sharedUpdates.profile_photo_url;
       } else {
-        if (sharedUpdates.full_name !== undefined) user.full_name = sharedUpdates.full_name;
+        if (sharedUpdates.full_name !== undefined)
+          user.full_name = sharedUpdates.full_name;
         if (sharedUpdates.email !== undefined) user.email = sharedUpdates.email;
-        if (sharedUpdates.city !== undefined) user.city = sharedUpdates.city || null;
+        if (sharedUpdates.city !== undefined)
+          user.city = sharedUpdates.city || null;
         if (sharedUpdates.date_of_birth !== undefined)
           user.date_of_birth = sharedUpdates.date_of_birth ?? null;
         if (sharedUpdates.profile_photo_url !== undefined)
@@ -1159,7 +1206,9 @@ export class UsersService {
       currentOtpRecord.consumed_at ||
       currentOtpRecord.expires_at.getTime() < Date.now()
     ) {
-      throw new BadRequestException('Current OTP invalid or expired. Request a new code.');
+      throw new BadRequestException(
+        'Current OTP invalid or expired. Request a new code.',
+      );
     }
     if (currentOtp !== currentOtpRecord.code) {
       throw new BadRequestException('Invalid OTP for current phone');
@@ -1177,7 +1226,9 @@ export class UsersService {
       newOtpRecord.consumed_at ||
       newOtpRecord.expires_at.getTime() < Date.now()
     ) {
-      throw new BadRequestException('New phone OTP invalid or expired. Request a new code.');
+      throw new BadRequestException(
+        'New phone OTP invalid or expired. Request a new code.',
+      );
     }
     if (newOtp !== newOtpRecord.code) {
       throw new BadRequestException('Invalid OTP for new phone');
@@ -1230,9 +1281,7 @@ export class UsersService {
       }
     };
     return (
-      (await tryExt('jpg')) ??
-      (await tryExt('jpeg')) ??
-      (await tryExt('png'))
+      (await tryExt('jpg')) ?? (await tryExt('jpeg')) ?? (await tryExt('png'))
     );
   }
 

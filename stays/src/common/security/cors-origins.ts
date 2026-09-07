@@ -3,11 +3,7 @@
  * Keep in sync with identity/src/common/security/cors-origins.ts.
  */
 
-export type NexaStage =
-  | 'development'
-  | 'dogfood'
-  | 'staging'
-  | 'production';
+export type NexaStage = 'development' | 'dogfood' | 'staging' | 'production';
 
 export function resolveNexaStage(
   env: NodeJS.ProcessEnv = process.env,
@@ -51,9 +47,7 @@ export const DEV_DEFAULT_CORS_ORIGINS = [
  * Credentials are always enabled on Stays. Reject wildcard / null origins
  * whenever CORS_ORIGINS is explicitly configured (any stage).
  */
-export function assertNoCredentialedWildcardCors(
-  origins: string[],
-): void {
+export function assertNoCredentialedWildcardCors(origins: string[]): void {
   for (const origin of origins) {
     const o = origin.trim();
     if (o === '*' || o.toLowerCase() === 'null') {

@@ -20,7 +20,10 @@ export class SeoContentPipelineService {
   ) {}
 
   /** Generate an AI-style draft from live marketplace data + templates. */
-  async generateGuideDraft(guideId: string, adminUserId?: string): Promise<{ draftId: string }> {
+  async generateGuideDraft(
+    guideId: string,
+    adminUserId?: string,
+  ): Promise<{ draftId: string }> {
     const guide = await this.guideRepo.findOne({
       where: { id: guideId },
       relations: ['destination'],
@@ -28,7 +31,9 @@ export class SeoContentPipelineService {
     if (!guide) throw new NotFoundException('Guide not found');
 
     const dest = guide.destination_id
-      ? await this.destinationRepo.findOne({ where: { id: guide.destination_id } })
+      ? await this.destinationRepo.findOne({
+          where: { id: guide.destination_id },
+        })
       : null;
 
     let intel: DestinationIntelligence | null = null;
@@ -53,7 +58,13 @@ export class SeoContentPipelineService {
     }
 
     const title = dest?.name ?? 'Morocco';
-    const html = this.buildDraftHtml(guide.guide_type, title, dest, intel, blocks);
+    const html = this.buildDraftHtml(
+      guide.guide_type,
+      title,
+      dest,
+      intel,
+      blocks,
+    );
 
     const draft = await this.cms.saveDraft({
       entityType: 'guide',
@@ -71,7 +82,9 @@ export class SeoContentPipelineService {
     guideType: string,
     title: string,
     dest: SeoDestination | null,
-    intel: Awaited<ReturnType<DestinationIntelligenceService['compute']>> | null,
+    intel: Awaited<
+      ReturnType<DestinationIntelligenceService['compute']>
+    > | null,
     blocks: GeoBlockDto[],
   ): string {
     const intro =

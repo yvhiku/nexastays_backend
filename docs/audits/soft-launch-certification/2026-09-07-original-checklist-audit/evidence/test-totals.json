@@ -1,0 +1,49 @@
+{
+  "identity": {
+    "numPassedTests": 294,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numPassedTestSuites": 49,
+    "numFailedTestSuites": 0
+  },
+  "stays": {
+    "numPassedTests": 554,
+    "numFailedTests": 0,
+    "numPendingTests": 10,
+    "numPassedTestSuites": 78,
+    "numFailedTestSuites": 0
+  },
+  "postgres-concurrency": {
+    "numPassedTests": 10,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numPassedTestSuites": 1,
+    "numFailedTestSuites": 0
+  },
+  "web": {
+    "passed": 332,
+    "failed": 0,
+    "skipped": 0
+  },
+  "dashboard": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0
+  },
+  "notifications": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0
+  },
+  "flutter": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0
+  },
+  "telemetry": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "limitation": "npm test exits zero with zero tests"
+  }
+}

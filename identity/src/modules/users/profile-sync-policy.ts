@@ -8,11 +8,11 @@ import type { NexaService } from './nexa-services';
 
 export type { NexaService };
 export type ConflictStrategy =
-  | 'UNIFIED_WINS'     // UnifiedIdentity always wins; overwrite local
-  | 'LATEST_WINS'      // Most recent update wins (timestamp compare)
-  | 'VERIFIED_WINS'    // KYC-verified value wins over unverified
-  | 'NO_OVERWRITE'     // Never overwrite existing non-null value
-  | 'MANUAL_RESOLVE';  // Flag for admin resolution
+  | 'UNIFIED_WINS' // UnifiedIdentity always wins; overwrite local
+  | 'LATEST_WINS' // Most recent update wins (timestamp compare)
+  | 'VERIFIED_WINS' // KYC-verified value wins over unverified
+  | 'NO_OVERWRITE' // Never overwrite existing non-null value
+  | 'MANUAL_RESOLVE'; // Flag for admin resolution
 
 export type SharedField =
   | 'full_name'
@@ -55,9 +55,9 @@ export const SERVICE_SPECIFIC_FIELDS = [
   'insurance',
   'background_checks',
   'payout_methods',
-  'kyc_status',           // Per-user KYC state; verification flows only
-  'profile_locked_at',    // Per-user lock from KYC
-  'linked_user_id',       // Role linking
+  'kyc_status', // Per-user KYC state; verification flows only
+  'profile_locked_at', // Per-user lock from KYC
+  'linked_user_id', // Role linking
   'risk_score',
   'last_login_at',
 ] as const;
@@ -66,15 +66,31 @@ export const PROFILE_SYNC_RULES: Record<SharedField, FieldSyncRule> = {
   full_name: {
     field: 'full_name',
     source_of_truth: 'UNIFIED_IDENTITY',
-    writable_from_services: ['PAY', 'GO', 'STAYS', 'DRIVER', 'COURIER', 'HOST', 'MERCHANT'],
-    requires_verification: true,  // Locked after KYC
+    writable_from_services: [
+      'PAY',
+      'GO',
+      'STAYS',
+      'DRIVER',
+      'COURIER',
+      'HOST',
+      'MERCHANT',
+    ],
+    requires_verification: true, // Locked after KYC
     conflict_strategy: 'VERIFIED_WINS',
     audit_required: true,
   },
   email: {
     field: 'email',
     source_of_truth: 'UNIFIED_IDENTITY',
-    writable_from_services: ['PAY', 'GO', 'STAYS', 'DRIVER', 'COURIER', 'HOST', 'MERCHANT'],
+    writable_from_services: [
+      'PAY',
+      'GO',
+      'STAYS',
+      'DRIVER',
+      'COURIER',
+      'HOST',
+      'MERCHANT',
+    ],
     requires_verification: false,
     conflict_strategy: 'LATEST_WINS',
     audit_required: true,
@@ -82,7 +98,15 @@ export const PROFILE_SYNC_RULES: Record<SharedField, FieldSyncRule> = {
   date_of_birth: {
     field: 'date_of_birth',
     source_of_truth: 'UNIFIED_IDENTITY',
-    writable_from_services: ['PAY', 'GO', 'STAYS', 'DRIVER', 'COURIER', 'HOST', 'MERCHANT'],
+    writable_from_services: [
+      'PAY',
+      'GO',
+      'STAYS',
+      'DRIVER',
+      'COURIER',
+      'HOST',
+      'MERCHANT',
+    ],
     requires_verification: true,
     conflict_strategy: 'VERIFIED_WINS',
     audit_required: true,
@@ -90,7 +114,15 @@ export const PROFILE_SYNC_RULES: Record<SharedField, FieldSyncRule> = {
   city: {
     field: 'city',
     source_of_truth: 'UNIFIED_IDENTITY',
-    writable_from_services: ['PAY', 'GO', 'STAYS', 'DRIVER', 'COURIER', 'HOST', 'MERCHANT'],
+    writable_from_services: [
+      'PAY',
+      'GO',
+      'STAYS',
+      'DRIVER',
+      'COURIER',
+      'HOST',
+      'MERCHANT',
+    ],
     requires_verification: false,
     conflict_strategy: 'LATEST_WINS',
     audit_required: false,
@@ -98,7 +130,15 @@ export const PROFILE_SYNC_RULES: Record<SharedField, FieldSyncRule> = {
   address: {
     field: 'address',
     source_of_truth: 'UNIFIED_IDENTITY',
-    writable_from_services: ['PAY', 'GO', 'STAYS', 'DRIVER', 'COURIER', 'HOST', 'MERCHANT'],
+    writable_from_services: [
+      'PAY',
+      'GO',
+      'STAYS',
+      'DRIVER',
+      'COURIER',
+      'HOST',
+      'MERCHANT',
+    ],
     requires_verification: false,
     conflict_strategy: 'LATEST_WINS',
     audit_required: false,
@@ -106,7 +146,15 @@ export const PROFILE_SYNC_RULES: Record<SharedField, FieldSyncRule> = {
   profile_photo_url: {
     field: 'profile_photo_url',
     source_of_truth: 'UNIFIED_IDENTITY',
-    writable_from_services: ['PAY', 'GO', 'STAYS', 'DRIVER', 'COURIER', 'HOST', 'MERCHANT'],
+    writable_from_services: [
+      'PAY',
+      'GO',
+      'STAYS',
+      'DRIVER',
+      'COURIER',
+      'HOST',
+      'MERCHANT',
+    ],
     requires_verification: false,
     conflict_strategy: 'LATEST_WINS',
     audit_required: true,
@@ -114,7 +162,15 @@ export const PROFILE_SYNC_RULES: Record<SharedField, FieldSyncRule> = {
   preferred_language: {
     field: 'preferred_language',
     source_of_truth: 'UNIFIED_IDENTITY',
-    writable_from_services: ['PAY', 'GO', 'STAYS', 'DRIVER', 'COURIER', 'HOST', 'MERCHANT'],
+    writable_from_services: [
+      'PAY',
+      'GO',
+      'STAYS',
+      'DRIVER',
+      'COURIER',
+      'HOST',
+      'MERCHANT',
+    ],
     requires_verification: false,
     conflict_strategy: 'LATEST_WINS',
     audit_required: false,

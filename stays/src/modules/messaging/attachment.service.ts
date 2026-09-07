@@ -65,9 +65,16 @@ export class AttachmentService {
     file: Express.Multer.File,
   ): Promise<AttachmentDto> {
     await this.getParticipantConversation(conversationId, userId);
-    if (!file?.buffer?.length) throw new BadRequestException('No file uploaded');
-    const declaredMime = (file.mimetype || '').toLowerCase().split(';')[0].trim();
-    if (!declaredMime.startsWith('image/') || !ALLOWED_DECLARED_MIMES.has(declaredMime)) {
+    if (!file?.buffer?.length)
+      throw new BadRequestException('No file uploaded');
+    const declaredMime = (file.mimetype || '')
+      .toLowerCase()
+      .split(';')[0]
+      .trim();
+    if (
+      !declaredMime.startsWith('image/') ||
+      !ALLOWED_DECLARED_MIMES.has(declaredMime)
+    ) {
       throw new BadRequestException('Only image screenshots are allowed');
     }
     return this.ingestFile(conversationId, null, userId, file);
@@ -136,7 +143,8 @@ export class AttachmentService {
     if (!messages.length) return new Map();
 
     for (const message of messages) {
-      const attachmentIds = (message.metadata?.attachment_ids as string[] | undefined) ?? [];
+      const attachmentIds =
+        (message.metadata?.attachment_ids as string[] | undefined) ?? [];
       if (attachmentIds.length) {
         await this.linkToMessage(message.id, attachmentIds);
       }
@@ -186,7 +194,11 @@ export class AttachmentService {
     userId: string,
     attachmentIds: string[],
   ): Promise<StaysMessageAttachment[]> {
-    const rows = await this.assertReadyForSend(conversationId, userId, attachmentIds);
+    const rows = await this.assertReadyForSend(
+      conversationId,
+      userId,
+      attachmentIds,
+    );
     for (const row of rows) {
       if (!row.mime || !isImageMime(row.mime)) {
         throw new BadRequestException('Only image screenshots are allowed');
@@ -278,10 +290,14 @@ export class AttachmentService {
     userId: string,
     file: Express.Multer.File,
   ): Promise<AttachmentDto> {
-    if (!file?.buffer?.length) throw new BadRequestException('No file uploaded');
+    if (!file?.buffer?.length)
+      throw new BadRequestException('No file uploaded');
     if (file.size > MAX_BYTES) throw new BadRequestException('File too large');
 
-    const declaredMime = (file.mimetype || '').toLowerCase().split(';')[0].trim();
+    const declaredMime = (file.mimetype || '')
+      .toLowerCase()
+      .split(';')[0]
+      .trim();
     if (declaredMime && !ALLOWED_DECLARED_MIMES.has(declaredMime)) {
       throw new BadRequestException('Unsupported file type');
     }
@@ -315,7 +331,8 @@ export class AttachmentService {
       await this.attachmentRepo.update(pending.id, {
         media_asset_id: processed.asset.id,
         storage_url: processed.storageKey,
-        thumbnail_url: processed.thumbnailKey ?? (isImage ? processed.storageKey : null),
+        thumbnail_url:
+          processed.thumbnailKey ?? (isImage ? processed.storageKey : null),
         mime: processed.mime,
         width: processed.width,
         height: processed.height,

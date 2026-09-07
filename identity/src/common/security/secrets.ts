@@ -15,7 +15,9 @@ export function requireSecret(
   const value = (process.env[name] ?? '').trim();
   if (value) return value;
   if (isProductionRuntime()) {
-    throw new Error(`${name} is required in production and must be set via environment variables.`);
+    throw new Error(
+      `${name} is required in production and must be set via environment variables.`,
+    );
   }
   if (options?.devFallback !== undefined) return options.devFallback;
   throw new Error(`${name} is not set.`);

@@ -49,7 +49,12 @@ export class AdminSystemController {
 
   @Patch('pay-config')
   updatePayConfig(
-    @Body() body: { dailyLimitUnverified?: number; dailyLimitKyc?: number; qrExpirySeconds?: number },
+    @Body()
+    body: {
+      dailyLimitUnverified?: number;
+      dailyLimitKyc?: number;
+      qrExpirySeconds?: number;
+    },
   ) {
     return this.payConfigService.updatePayConfig(body);
   }

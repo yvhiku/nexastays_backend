@@ -39,7 +39,9 @@ export class RpCashbackProgramService {
     private readonly achievementsProgram: RpAchievementsProgramService,
   ) {}
 
-  async processPaymentConfirmed(input: RpPaymentConfirmedPayload): Promise<void> {
+  async processPaymentConfirmed(
+    input: RpPaymentConfirmedPayload,
+  ): Promise<void> {
     if (!RP_TX_TYPES_ELIGIBLE_FOR_CASHBACK.has(input.transactionType)) {
       return;
     }
@@ -62,7 +64,11 @@ export class RpCashbackProgramService {
       periodCategories.map((pc) => [pc.category_id, Number(pc.cashback_rate)]),
     );
 
-    const summary = await this.getOrCreateSummary(input.userId, period.id, tier);
+    const summary = await this.getOrCreateSummary(
+      input.userId,
+      period.id,
+      tier,
+    );
 
     const result = calculateCashback({
       purchaseAmount: Number(input.amount),
@@ -119,10 +125,7 @@ export class RpCashbackProgramService {
       );
     }
     if (result.capReached) {
-      await this.summaryRepo.update(
-        { id: summary.id },
-        { cap_reached: true },
-      );
+      await this.summaryRepo.update({ id: summary.id }, { cap_reached: true });
     }
 
     if (cbType === 'category' && input.categoryId) {

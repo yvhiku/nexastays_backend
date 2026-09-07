@@ -27,9 +27,12 @@ export class AttachmentCleanupScheduler {
     const cutoff = new Date(Date.now() - ORPHAN_AGE_MS);
     let removed = 0;
 
-    const abandonedSessions = await this.sessions.markExpiredSessionsAbandoned();
+    const abandonedSessions =
+      await this.sessions.markExpiredSessionsAbandoned();
     if (abandonedSessions > 0) {
-      this.logger.log(`Marked ${abandonedSessions} expired attachment sessions abandoned`);
+      this.logger.log(
+        `Marked ${abandonedSessions} expired attachment sessions abandoned`,
+      );
     }
 
     const staleSessions = await this.sessionRepo.find({

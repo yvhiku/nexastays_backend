@@ -38,7 +38,9 @@ export function encodeExploreCursor(payload: ExploreCursorPayload): string {
   return CURSOR_PREFIX + Buffer.from(json, 'utf8').toString('base64url');
 }
 
-export function decodeExploreCursor(raw: string | undefined | null): ExploreCursorPayload | null {
+export function decodeExploreCursor(
+  raw: string | undefined | null,
+): ExploreCursorPayload | null {
   if (raw == null || raw === '') return null;
   const trimmed = raw.trim();
   if (!trimmed.startsWith(CURSOR_PREFIX)) {
@@ -48,9 +50,10 @@ export function decodeExploreCursor(raw: string | undefined | null): ExploreCurs
     });
   }
   try {
-    const json = Buffer.from(trimmed.slice(CURSOR_PREFIX.length), 'base64url').toString(
-      'utf8',
-    );
+    const json = Buffer.from(
+      trimmed.slice(CURSOR_PREFIX.length),
+      'base64url',
+    ).toString('utf8');
     const parsed = JSON.parse(json) as ExploreCursorPayload;
     if (parsed?.v !== 1 || !EXPLORE_SORTS.includes(parsed.s)) {
       throw new Error('bad shape');
@@ -68,7 +71,9 @@ export function nowSnapshotIso(): string {
   return new Date().toISOString();
 }
 
-export function normalizeExploreSort(raw: string | undefined | null): ExploreSort {
+export function normalizeExploreSort(
+  raw: string | undefined | null,
+): ExploreSort {
   if (raw && EXPLORE_SORTS.includes(raw as ExploreSort)) {
     return raw as ExploreSort;
   }

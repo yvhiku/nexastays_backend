@@ -24,7 +24,9 @@ export class VerifyOtpDto {
   /** Driver app: driver | courier. When set, response includes kyc_reuse for registration flow. */
   @IsOptional()
   @IsString()
-  @Matches(/^(driver|courier)$/, { message: 'registration_role must be driver or courier' })
+  @Matches(/^(driver|courier)$/, {
+    message: 'registration_role must be driver or courier',
+  })
   registration_role?: string;
 
   /** If provided and valid, immediately issue access_token for this account (skips account/select). */
@@ -72,7 +74,8 @@ export class VerifyPinDto {
   @IsOptional()
   @IsString()
   @Matches(/^(CONSUMER|DRIVER|COURIER|HOST|MERCHANT)$/, {
-    message: 'account_type must be CONSUMER, DRIVER, COURIER, HOST, or MERCHANT',
+    message:
+      'account_type must be CONSUMER, DRIVER, COURIER, HOST, or MERCHANT',
   })
   account_type?: string;
 }

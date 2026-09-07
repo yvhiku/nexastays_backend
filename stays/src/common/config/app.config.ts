@@ -10,6 +10,9 @@ export const appConfig = {
   },
   get corsOrigins(): string[] {
     const raw = process.env.CORS_ORIGINS || '';
-    return raw.split(',').map((s) => s.trim()).filter(Boolean);
+    return raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   },
 };

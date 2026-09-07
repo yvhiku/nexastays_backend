@@ -12,8 +12,6 @@ import { StaysAuditLog } from '../entities/stays-audit-log.entity';
 import { normalizePhoneOrThrow } from '../../../common/phone/phone-normalizer';
 import type { SubmitHostOnboardingDto } from '../dto/submit-host-onboarding.dto';
 import type {
-  HostApplicationStatus,
-  HostIdentityStatus,
   HostOnboardingSource,
   StaysUserContext,
 } from './host-onboarding.types';
@@ -109,7 +107,9 @@ export class HostOnboardingService {
       profile?.application_status === 'APPROVED'
     ) {
       if (profile.application_status === 'APPROVED') {
-        throw new ConflictException('You already have an approved host account');
+        throw new ConflictException(
+          'You already have an approved host account',
+        );
       }
       return this.toSubmitResponse(profile);
     }
@@ -149,12 +149,15 @@ export class HostOnboardingService {
       dto.document_back_asset_id ?? profile.document_back_asset_id;
     profile.selfie_asset_id = dto.selfie_asset_id ?? profile.selfie_asset_id;
 
-    const useExistingKyc = dto.use_existing_kyc === true && this.isIdentityVerified(user);
+    const useExistingKyc =
+      dto.use_existing_kyc === true && this.isIdentityVerified(user);
     if (useExistingKyc) {
       profile.identity_status = 'VERIFIED';
       profile.identity_reused = true;
     } else if (dto.document_front_asset_id && dto.selfie_asset_id) {
-      profile.identity_status = this.isIdentityVerified(user) ? 'VERIFIED' : 'PENDING';
+      profile.identity_status = this.isIdentityVerified(user)
+        ? 'VERIFIED'
+        : 'PENDING';
       profile.identity_reused = false;
     } else {
       profile.identity_status = 'VERIFIED';
@@ -323,7 +326,10 @@ export class HostOnboardingService {
         entity_type: 'HOST_PROFILE',
         entity_id: profileId,
         action: 'HOST_ONBOARDING_APPROVED',
-        metadata: { source: profile.source, submitted_from: profile.submitted_from },
+        metadata: {
+          source: profile.source,
+          submitted_from: profile.submitted_from,
+        },
         ip: auditContext?.ip ?? null,
         user_agent: auditContext?.userAgent ?? null,
       }),
@@ -472,8 +478,8 @@ export class HostOnboardingService {
   private toSubmitResponse(profile: StaysHostProfile) {
     return {
       id: profile.id,
-      application_status: profile.application_status as HostApplicationStatus,
-      identity_status: profile.identity_status as HostIdentityStatus,
+      application_status: profile.application_status,
+      identity_status: profile.identity_status,
       status: profile.application_status,
       message: 'Host onboarding status retrieved',
     };

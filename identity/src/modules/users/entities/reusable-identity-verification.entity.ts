@@ -28,7 +28,12 @@ export class ReusableIdentityVerification {
   @Column({ type: 'varchar', length: 50, nullable: true, name: 'kyc_provider' })
   kyc_provider: string | null;
 
-  @Column({ type: 'varchar', length: 100, nullable: true, name: 'verification_reference' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'verification_reference',
+  })
   verification_reference: string | null;
 
   /**
@@ -44,22 +49,42 @@ export class ReusableIdentityVerification {
   verification_status: string;
 
   /** @deprecated Use verification_status. VERIFIED = APPROVED (reusable). */
-  @Column({ type: 'varchar', length: 20, default: 'PENDING', name: 'kyc_status' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: 'PENDING',
+    name: 'kyc_status',
+  })
   kyc_status: string;
 
   @Column({ type: 'boolean', default: false, name: 'identity_verified' })
   identity_verified: boolean;
 
   /** e.g. LEVEL_1, LEVEL_2, FULL */
-  @Column({ type: 'varchar', length: 30, nullable: true, name: 'verification_level' })
+  @Column({
+    type: 'varchar',
+    length: 30,
+    nullable: true,
+    name: 'verification_level',
+  })
   verification_level: string | null;
 
   /** e.g. NATIONAL_ID, PASSPORT */
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'document_type' })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'document_type',
+  })
   document_type: string | null;
 
   /** Masked for display: ****1234 */
-  @Column({ type: 'varchar', length: 32, nullable: true, name: 'document_number_masked' })
+  @Column({
+    type: 'varchar',
+    length: 32,
+    nullable: true,
+    name: 'document_number_masked',
+  })
   document_number_masked: string | null;
 
   @Column({ type: 'timestamptz', nullable: true, name: 'first_verified_at' })
@@ -80,7 +105,12 @@ export class ReusableIdentityVerification {
   reusable_across_services: boolean;
 
   /** If reuse is blocked: EXPIRED, REJECTED, INCOMPLETE, POLICY, etc. */
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'reuse_block_reason' })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'reuse_block_reason',
+  })
   reuse_block_reason: string | null;
 
   @UpdateDateColumn({ name: 'updated_at' })

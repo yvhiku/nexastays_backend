@@ -35,12 +35,14 @@ export function parseBookingDateOnly(value: string): Date {
  *
  * Examples: 2026-08-10 → 2026-08-11 = 1; 2026-08-10 → 2026-08-12 = 2.
  */
-export function bookingNightsBetween(checkin: string, checkout: string): number {
+export function bookingNightsBetween(
+  checkin: string,
+  checkout: string,
+): number {
   const a = parseBookingYmd(checkin);
   const b = parseBookingYmd(checkout);
   const ms =
-    Date.UTC(b.year, b.month - 1, b.day) -
-    Date.UTC(a.year, a.month - 1, a.day);
+    Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day);
   return Math.trunc(ms / 86_400_000);
 }
 

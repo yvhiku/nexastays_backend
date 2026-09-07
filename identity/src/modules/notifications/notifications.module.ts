@@ -7,7 +7,10 @@ import { NotificationsService } from './notifications.service';
 import { UserNotificationsService } from './user-notifications.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PushDeviceToken, UserNotification]), CommonCacheModule],
+  imports: [
+    TypeOrmModule.forFeature([PushDeviceToken, UserNotification]),
+    CommonCacheModule,
+  ],
   controllers: [],
   providers: [NotificationsService, UserNotificationsService],
   exports: [NotificationsService, UserNotificationsService, TypeOrmModule],

@@ -1,0 +1,11 @@
+PASS src/modules/stays/services/host-listings.h17-authz.spec.ts
+PASS src/modules/stays/security/bola-payments.spec.ts
+PASS src/modules/stays/security/bola-multi-actor-matrix.spec.ts
+PASS src/modules/stays/security/bola-bookings.spec.ts
+PASS src/modules/stays/security/bola-listings.spec.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       36 passed, 36 total
+Snapshots:   0 total
+Time:        0.664 s, estimated 1 s
+Ran all test suites matching bola-|host-listings.h17.

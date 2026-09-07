@@ -1,0 +1,10 @@
+PASS src/modules/auth/auth.otp-expiry-invariants.spec.ts
+  DEMO OTP security invariants (audit 034)
+    ✓ allows DEMO only outside NEXA_ENV=production (1 ms)
+    ✓ rejects expired and consumed rows even when DEMO code would match
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        0.166 s
+Ran all test suites matching otp-expiry-invariants.

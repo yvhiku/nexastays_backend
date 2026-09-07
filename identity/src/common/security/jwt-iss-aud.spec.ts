@@ -61,29 +61,28 @@ describe('JWT iss/aud verification SEC-006', () => {
   });
 
   it('rejects missing issuer', () => {
-    const token = jwt.sign(
-      { sub: 'u1', aud: audience },
-      privateKey,
-      { algorithm: 'RS256', expiresIn: '15m' },
-    );
+    const token = jwt.sign({ sub: 'u1', aud: audience }, privateKey, {
+      algorithm: 'RS256',
+      expiresIn: '15m',
+    });
     expect(() => verify(token)).toThrow(/issuer/i);
   });
 
   it('rejects missing audience', () => {
-    const token = jwt.sign(
-      { sub: 'u1', iss: issuer },
-      privateKey,
-      { algorithm: 'RS256', expiresIn: '15m' },
-    );
+    const token = jwt.sign({ sub: 'u1', iss: issuer }, privateKey, {
+      algorithm: 'RS256',
+      expiresIn: '15m',
+    });
     expect(() => verify(token)).toThrow(/audience/i);
   });
 
   it('rejects wrong algorithm (HS256)', () => {
-    const token = jwt.sign(
-      { sub: 'u1' },
-      'hmac-secret',
-      { algorithm: 'HS256', expiresIn: '15m', issuer, audience },
-    );
+    const token = jwt.sign({ sub: 'u1' }, 'hmac-secret', {
+      algorithm: 'HS256',
+      expiresIn: '15m',
+      issuer,
+      audience,
+    });
     expect(() => verify(token)).toThrow();
   });
 

@@ -1,0 +1,16 @@
+[
+  {
+    "service": "identity",
+    "terminated_connections": 1,
+    "readiness_status": 200,
+    "result": "PASS",
+    "limitation": "Connection termination only; not outage duration, server or container restart"
+  },
+  {
+    "service": "stays",
+    "terminated_connections": 2,
+    "readiness_status": 200,
+    "result": "PASS",
+    "limitation": "Connection termination only; not outage duration, server or container restart"
+  }
+]

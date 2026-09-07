@@ -96,7 +96,14 @@ export class BookingIdParamDto {
 export class ConnectExternalCalendarDto {
   @IsString()
   @Matches(/^(AIRBNB|BOOKING|VRBO|GOOGLE|APPLE|DIRECT|OTHER)$/)
-  provider: 'AIRBNB' | 'BOOKING' | 'VRBO' | 'GOOGLE' | 'APPLE' | 'DIRECT' | 'OTHER';
+  provider:
+    | 'AIRBNB'
+    | 'BOOKING'
+    | 'VRBO'
+    | 'GOOGLE'
+    | 'APPLE'
+    | 'DIRECT'
+    | 'OTHER';
 
   @IsString()
   @MaxLength(2000)
@@ -124,4 +131,3 @@ export class UpdateExternalCalendarDto {
   @Matches(/^(ACTIVE|PAUSED)$/)
   status?: 'ACTIVE' | 'PAUSED';
 }
-

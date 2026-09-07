@@ -19,7 +19,10 @@ import {
   type ResolvedSeoPage,
   type SeoExploreFilters,
 } from './seo-catalog';
-import { computeSeoQualityScore, isPageIndexable } from './seo-quality-scoring.service';
+import {
+  computeSeoQualityScore,
+  isPageIndexable,
+} from './seo-quality-scoring.service';
 import { SeoKnowledgeGraphService } from './seo-knowledge-graph.service';
 import { SeoLandingContentService } from './seo-landing-content.service';
 import { SeoGuideService } from './seo-guide.service';
@@ -74,7 +77,10 @@ export class SeoEngineService {
     return this.knowledgeGraph.getRelatedBySlug(citySlug);
   }
 
-  async generateCityPage(slug: string, locale: SeoLocale): Promise<SeoPagePayload> {
+  async generateCityPage(
+    slug: string,
+    locale: SeoLocale,
+  ): Promise<SeoPagePayload> {
     return this.resolveAndGenerate([slug], locale);
   }
 
@@ -163,8 +169,11 @@ export class SeoEngineService {
         ? this.areaHint(page.destination.slug, 'nomads')
         : null,
       topAmenities: page.intelligence.topAmenities,
-      bestMonth: page.destination?.bestTimeToVisit?.split(';')[0]?.trim() ?? null,
-      safety: geoBlocks.find((b) => b.question.toLowerCase().includes('safe'))?.answer ?? null,
+      bestMonth:
+        page.destination?.bestTimeToVisit?.split(';')[0]?.trim() ?? null,
+      safety:
+        geoBlocks.find((b) => b.question.toLowerCase().includes('safe'))
+          ?.answer ?? null,
       transport: null,
       snippets: page.aiSnippets,
       canonicalUrl: `${siteUrl.replace(/\/$/, '')}${page.canonical}`,
@@ -348,7 +357,10 @@ export class SeoEngineService {
       name: nb.name,
       searchTerm: nb.searchTerm,
     };
-    const nbRow = await this.landingContent.findNeighborhoodId(citySlug, neighborhoodSlug);
+    const nbRow = await this.landingContent.findNeighborhoodId(
+      citySlug,
+      neighborhoodSlug,
+    );
     let contentBlocks: SeoLandingContentBlocks | null = null;
     if (nbRow) {
       contentBlocks = await this.landingContent.loadPublishedBlocks(
@@ -375,7 +387,9 @@ export class SeoEngineService {
       exploreFilters,
       contentBlocks,
       cityGuideLink,
-      relatedGuides: relatedGuides.filter((g) => g.destinationSlug === dest.slug).slice(0, 6),
+      relatedGuides: relatedGuides
+        .filter((g) => g.destinationSlug === dest.slug)
+        .slice(0, 6),
       title: `Stays in ${nb.name}, ${dest.name} | Nexa Stays`,
       description: `Browse verified stays in ${nb.name}, ${dest.name}. Compare prices and book securely on Nexa Stays.`,
       h1: `Stays in ${nb.name}, ${dest.name}`,
@@ -481,7 +495,12 @@ export class SeoEngineService {
         )
       : [];
 
-    const dynamicGeoBlocks = this.buildGeoBlocks(args.h1, args.dest, intel, args.landmark);
+    const dynamicGeoBlocks = this.buildGeoBlocks(
+      args.h1,
+      args.dest,
+      intel,
+      args.landmark,
+    );
     const editorialFaq = (args.contentBlocks?.faq ?? []).map((item) => ({
       question: item.question,
       answer: item.answer,
@@ -638,12 +657,42 @@ export class SeoEngineService {
     kind: 'family' | 'nightlife' | 'couples' | 'nomads',
   ): string | null {
     const hints: Record<string, Partial<Record<typeof kind, string>>> = {
-      marrakech: { family: 'Palmeraie', nightlife: 'Gueliz', couples: 'Hivernage', nomads: 'Gueliz' },
-      casablanca: { family: 'Anfa', nightlife: 'Maarif', couples: 'Ain Diab', nomads: 'Maarif' },
-      agadir: { family: 'Founty', nightlife: 'Marina', couples: 'Talborjt', nomads: 'Marina' },
-      rabat: { family: 'Agdal', nightlife: 'Agdal', couples: 'Hassan', nomads: 'Agdal' },
-      fes: { family: 'Zouagha', nightlife: 'Ville Nouvelle', couples: 'Medina', nomads: 'Ville Nouvelle' },
-      tangier: { family: 'Malabata', nightlife: 'City Center', couples: 'Kasbah', nomads: 'City Center' },
+      marrakech: {
+        family: 'Palmeraie',
+        nightlife: 'Gueliz',
+        couples: 'Hivernage',
+        nomads: 'Gueliz',
+      },
+      casablanca: {
+        family: 'Anfa',
+        nightlife: 'Maarif',
+        couples: 'Ain Diab',
+        nomads: 'Maarif',
+      },
+      agadir: {
+        family: 'Founty',
+        nightlife: 'Marina',
+        couples: 'Talborjt',
+        nomads: 'Marina',
+      },
+      rabat: {
+        family: 'Agdal',
+        nightlife: 'Agdal',
+        couples: 'Hassan',
+        nomads: 'Agdal',
+      },
+      fes: {
+        family: 'Zouagha',
+        nightlife: 'Ville Nouvelle',
+        couples: 'Medina',
+        nomads: 'Ville Nouvelle',
+      },
+      tangier: {
+        family: 'Malabata',
+        nightlife: 'City Center',
+        couples: 'Kasbah',
+        nomads: 'City Center',
+      },
     };
     return hints[slug]?.[kind] ?? null;
   }
@@ -654,7 +703,10 @@ export class SeoEngineService {
       where: { slug: In(slugs), content_status: 'published' },
     });
     const bySlug = new Map(rows.map((r) => [r.slug, r]));
-    return slugs.map((s) => bySlug.get(s)).filter(Boolean).map((d) => this.toDestinationDto(d!));
+    return slugs
+      .map((s) => bySlug.get(s))
+      .filter(Boolean)
+      .map((d) => this.toDestinationDto(d!));
   }
 
   private toDestinationDto(d: SeoDestination): SeoDestinationDto {

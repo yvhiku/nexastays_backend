@@ -45,7 +45,13 @@ import {
   SendSupportTicketMessageDto,
   TRUST_REPORT_KINDS,
 } from './dto/support-ticket.dto';
-import { AdminSupportAnalyticsQueryDto, AdminSupportAttentionQueryDto, AdminSupportPerformanceQueryDto, CreateCoachingNoteDto, PatchCoachingNoteDto } from './dto/support-analytics.dto';
+import {
+  AdminSupportAnalyticsQueryDto,
+  AdminSupportAttentionQueryDto,
+  AdminSupportPerformanceQueryDto,
+  CreateCoachingNoteDto,
+  PatchCoachingNoteDto,
+} from './dto/support-analytics.dto';
 import {
   AdminListSignalsQueryDto,
   PatchOperationalSignalDto,

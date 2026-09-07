@@ -12,15 +12,17 @@ describe('StaysCancellationService', () => {
   let ledgerRepo: { create: jest.Mock; save: jest.Mock };
   let bookingRepo: { findOne: jest.Mock; update: jest.Mock };
 
-  const mockBooking = (overrides?: Partial<{
-    id: string;
-    guest_user_id: string;
-    status: string;
-    checkin_date: string;
-    total_subtotal: string;
-    guest_fee: string;
-    currency: string;
-  }>) => ({
+  const mockBooking = (
+    overrides?: Partial<{
+      id: string;
+      guest_user_id: string;
+      status: string;
+      checkin_date: string;
+      total_subtotal: string;
+      guest_fee: string;
+      currency: string;
+    }>,
+  ) => ({
     id: 'booking-1',
     guest_user_id: 'guest-1',
     status: 'CONFIRMED',
@@ -43,7 +45,8 @@ describe('StaysCancellationService', () => {
       transaction: jest.fn((cb) => {
         const manager = {
           getRepository: jest.fn((entity: unknown) => {
-            if (entity === StaysBooking) return { ...bookingRepo, update: bookingRepo.update };
+            if (entity === StaysBooking)
+              return { ...bookingRepo, update: bookingRepo.update };
             if (entity === StaysLedgerEntry) {
               const repo = { create: ledgerRepo.create, save: ledgerRepo.save };
               ledgerRepo.create.mockImplementation((d: object) => ({ ...d }));
@@ -60,7 +63,10 @@ describe('StaysCancellationService', () => {
       providers: [
         StaysCancellationService,
         { provide: DataSource, useValue: mockDataSource },
-        { provide: getRepositoryToken(StaysBooking), useValue: { findOne: bookingRepo.findOne } },
+        {
+          provide: getRepositoryToken(StaysBooking),
+          useValue: { findOne: bookingRepo.findOne },
+        },
         { provide: getRepositoryToken(StaysLedgerEntry), useValue: {} },
         { provide: getRepositoryToken(StaysListing), useValue: {} },
         {
@@ -83,7 +89,10 @@ describe('StaysCancellationService', () => {
         checkin_date: checkinStr,
         total_subtotal: '1000',
         guest_fee: '20',
-        listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'MODERATE' } },
+        listing: {
+          host_user_id: 'host-1',
+          rules: { cancellation_policy: 'MODERATE' },
+        },
       }),
     );
 
@@ -105,7 +114,10 @@ describe('StaysCancellationService', () => {
         checkin_date: checkinStr,
         total_subtotal: '1000',
         guest_fee: '20',
-        listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'MODERATE' } },
+        listing: {
+          host_user_id: 'host-1',
+          rules: { cancellation_policy: 'MODERATE' },
+        },
       }),
     );
 
@@ -128,7 +140,10 @@ describe('StaysCancellationService', () => {
         checkin_date: checkinStr,
         total_subtotal: '1000',
         guest_fee: '20',
-        listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'MODERATE' } },
+        listing: {
+          host_user_id: 'host-1',
+          rules: { cancellation_policy: 'MODERATE' },
+        },
       }),
     );
 
@@ -147,7 +162,10 @@ describe('StaysCancellationService', () => {
         checkin_date: checkinStr,
         total_subtotal: '500',
         guest_fee: '10',
-        listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'FLEXIBLE' } },
+        listing: {
+          host_user_id: 'host-1',
+          rules: { cancellation_policy: 'FLEXIBLE' },
+        },
       }),
     );
 
@@ -169,7 +187,10 @@ describe('StaysCancellationService', () => {
         checkin_date: checkinStr,
         total_subtotal: '1000',
         guest_fee: '20',
-        listing: { host_user_id: 'host-1', rules: { cancellation_policy: 'STRICT' } },
+        listing: {
+          host_user_id: 'host-1',
+          rules: { cancellation_policy: 'STRICT' },
+        },
       }),
     );
 
@@ -182,9 +203,7 @@ describe('StaysCancellationService', () => {
   });
 
   it('should reject cancellation of COMPLETED booking', async () => {
-    bookingRepo.findOne.mockResolvedValue(
-      mockBooking({ status: 'COMPLETED' }),
-    );
+    bookingRepo.findOne.mockResolvedValue(mockBooking({ status: 'COMPLETED' }));
 
     await expect(
       service.cancel('booking-1', 'guest-1', 'guest', undefined, {}),

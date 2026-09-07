@@ -60,7 +60,9 @@ export class RpBillingPeriodsService {
     billingPeriodId: number,
     dto: SetCategoryRatesDto,
   ): Promise<RpBillingPeriodCategory[]> {
-    const period = await this.periodRepo.findOne({ where: { id: billingPeriodId } });
+    const period = await this.periodRepo.findOne({
+      where: { id: billingPeriodId },
+    });
     if (!period) throw new NotFoundException('Billing period not found');
     await this.periodCatRepo.delete({ billing_period_id: billingPeriodId });
     const rows = dto.categories.map((c) =>

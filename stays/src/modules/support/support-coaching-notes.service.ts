@@ -47,7 +47,11 @@ export class SupportCoachingNotesService {
   async patch(
     noteId: string,
     actorUserId: string,
-    patch: { note?: string; followUpAt?: string | null; status?: 'OPEN' | 'COMPLETED' },
+    patch: {
+      note?: string;
+      followUpAt?: string | null;
+      status?: 'OPEN' | 'COMPLETED';
+    },
   ) {
     const row = await this.repo.findOne({ where: { id: noteId } });
     if (!row) throw new NotFoundException('Coaching note not found');
@@ -55,7 +59,9 @@ export class SupportCoachingNotesService {
       throw new ConflictException('Completed coaching notes cannot be edited');
     }
     if (row.status === 'COMPLETED' && patch.status === 'OPEN') {
-      throw new ConflictException('Completed coaching notes cannot be reopened');
+      throw new ConflictException(
+        'Completed coaching notes cannot be reopened',
+      );
     }
     if (patch.note !== undefined) {
       const note = patch.note.trim();

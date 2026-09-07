@@ -66,7 +66,9 @@ export class AdminGoService {
     const cancellationRate =
       totalRidesToday === 0
         ? 0
-        : Number((((cancelledRidesToday || 0) / totalRidesToday) * 100).toFixed(2));
+        : Number(
+            (((cancelledRidesToday || 0) / totalRidesToday) * 100).toFixed(2),
+          );
 
     return {
       ridesToday,
@@ -103,9 +105,15 @@ export class AdminGoService {
     const data = rides.map((r) => ({
       id: r.id,
       rider_user_id: r.rider_user_id,
-      passenger_name: (r as any).rider_user?.full_name ?? (r as any).rider_user?.phone_number ?? null,
+      passenger_name:
+        (r as any).rider_user?.full_name ??
+        (r as any).rider_user?.phone_number ??
+        null,
       driver_user_id: r.driver_user_id,
-      driver_name: (r as any).driver_user?.full_name ?? (r as any).driver_user?.phone_number ?? null,
+      driver_name:
+        (r as any).driver_user?.full_name ??
+        (r as any).driver_user?.phone_number ??
+        null,
       status: r.status,
       fare_amount: Number(r.fare_amount),
       currency: r.currency,
@@ -147,9 +155,15 @@ export class AdminGoService {
     const data = orders.map((o) => ({
       id: o.id,
       customer_id: o.customer_id,
-      customer_name: (o as any).customer?.full_name ?? (o as any).customer?.phone_number ?? null,
+      customer_name:
+        (o as any).customer?.full_name ??
+        (o as any).customer?.phone_number ??
+        null,
       merchant_id: o.merchant_id,
-      merchant_name: (o as any).merchant?.name ?? (o as any).merchant?.user?.full_name ?? null,
+      merchant_name:
+        (o as any).merchant?.name ??
+        (o as any).merchant?.user?.full_name ??
+        null,
       courier_id: (o as any).courier_id ?? null,
       status: o.status,
       total_amount: o.total_amount != null ? Number(o.total_amount) : null,
@@ -175,7 +189,10 @@ export class AdminGoService {
       .leftJoinAndSelect('o.merchant', 'merchant')
       .leftJoinAndSelect('merchant.user', 'mu')
       .select('o.merchant_id', 'merchant_id')
-      .addSelect('COALESCE(merchant.name, mu.full_name, mu.phone_number, \'Unknown\')', 'merchant_name')
+      .addSelect(
+        "COALESCE(merchant.name, mu.full_name, mu.phone_number, 'Unknown')",
+        'merchant_name',
+      )
       .addSelect('COUNT(o.id)', 'orders_count')
       .addSelect(
         "SUM(CASE WHEN o.created_at >= date_trunc('day', NOW()) THEN 1 ELSE 0 END)",

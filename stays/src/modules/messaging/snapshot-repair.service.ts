@@ -22,7 +22,9 @@ export class SnapshotRepairService {
   ) {}
 
   /** Booking facts only — identity is always live via PresentationService. */
-  isSnapshotIncomplete(snapshot: ReservationSnapshot | null | undefined): boolean {
+  isSnapshotIncomplete(
+    snapshot: ReservationSnapshot | null | undefined,
+  ): boolean {
     if (!snapshot?.listingTitle) return true;
     if (!snapshot.listingId) return true;
     if (!snapshot.checkinDate || !snapshot.checkoutDate) return true;
@@ -40,7 +42,9 @@ export class SnapshotRepairService {
     }
 
     if (!conv.booking_id || !conv.listing_id) {
-      this.logger.warn(`Cannot repair conversation ${conversationId}: missing booking/listing`);
+      this.logger.warn(
+        `Cannot repair conversation ${conversationId}: missing booking/listing`,
+      );
       return false;
     }
 
@@ -56,11 +60,14 @@ export class SnapshotRepairService {
 
     const snapshot = this.timelineSeeder.buildSnapshot(booking, listing);
 
-    conv.reservation_snapshot = snapshot as unknown as StaysConversation['reservation_snapshot'];
+    conv.reservation_snapshot =
+      snapshot as unknown as StaysConversation['reservation_snapshot'];
     conv.snapshot_version = (conv.snapshot_version ?? 1) + 1;
     await this.convRepo.save(conv);
 
-    this.logger.log(`Repaired booking snapshot for conversation ${conversationId}`);
+    this.logger.log(
+      `Repaired booking snapshot for conversation ${conversationId}`,
+    );
     return true;
   }
 }

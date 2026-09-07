@@ -104,10 +104,15 @@ export class AdminKycService {
       throw new NotFoundException('KYC case not found');
     }
     if ((kyc.provider ?? '').toUpperCase() !== 'SUMSUB') {
-      throw new BadRequestException('This case was not verified through Sumsub');
+      throw new BadRequestException(
+        'This case was not verified through Sumsub',
+      );
     }
     const source = (kyc.source ?? 'PAY').toUpperCase();
-    const sync = await this.complianceService.syncSumsubDossier(kyc.user_id, source);
+    const sync = await this.complianceService.syncSumsubDossier(
+      kyc.user_id,
+      source,
+    );
 
     const { ipAddress, deviceId } = getIpAndAgent(req);
     await this.auditService.logAction({
@@ -258,11 +263,12 @@ export class AdminKycService {
 
     if (query.search && query.search.trim() !== '') {
       const term = query.search.trim();
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (uuidRegex.test(term)) {
         qb.andWhere('k.user_id = :userId', { userId: term });
       } else {
-        qb.andWhere('u.phone_number ILIKE :phone ESCAPE \'\\\'', {
+        qb.andWhere("u.phone_number ILIKE :phone ESCAPE '\\'", {
           phone: `%${term.replace(/\\/g, '\\\\').replace(/[%_]/g, '\\$&')}%`,
         });
       }
@@ -474,7 +480,10 @@ export class AdminKycService {
       try {
         await this.kycReuseService.syncFromKycApproval(user.phone_number, kyc);
       } catch (err) {
-        safeLogger.info('Reusable KYC sync failed (non-fatal)', { userId: kyc.user_id, err: String((err as Error)?.message ?? err) });
+        safeLogger.info('Reusable KYC sync failed (non-fatal)', {
+          userId: kyc.user_id,
+          err: String((err as Error)?.message ?? err),
+        });
       }
     }
     const updatePayload: { kyc_status: string; profile_locked_at?: Date } = {

@@ -65,10 +65,7 @@ export class HostOnboardingService {
       );
     }
 
-    if (
-      context.requirePolicies &&
-      dto.hosting_policies_accepted !== true
-    ) {
+    if (context.requirePolicies && dto.hosting_policies_accepted !== true) {
       throw new BadRequestException(
         'You must accept hosting policies to apply',
       );
@@ -83,16 +80,19 @@ export class HostOnboardingService {
       );
     }
 
-    const existingHost = await this.usersService.findByUnifiedIdentityIdAndAccountType(
-      identity.id,
-      'HOST',
-    );
+    const existingHost =
+      await this.usersService.findByUnifiedIdentityIdAndAccountType(
+        identity.id,
+        'HOST',
+      );
     if (existingHost) {
       const hostProfile = await this.hostProfileRepo.findOne({
         where: { user_id: existingHost.id },
       });
       if (hostProfile?.application_status === 'APPROVED') {
-        throw new ConflictException('You already have an approved host account');
+        throw new ConflictException(
+          'You already have an approved host account',
+        );
       }
     }
 
@@ -103,7 +103,9 @@ export class HostOnboardingService {
       profile?.application_status === 'APPROVED'
     ) {
       if (profile.application_status === 'APPROVED') {
-        throw new ConflictException('Your host application was already approved');
+        throw new ConflictException(
+          'Your host application was already approved',
+        );
       }
       return this.toSubmitResponse(profile);
     }
@@ -120,10 +122,7 @@ export class HostOnboardingService {
     }
 
     const phone =
-      dto.phone ??
-      identity.phone_number ??
-      user.phone_number ??
-      null;
+      dto.phone ?? identity.phone_number ?? user.phone_number ?? null;
     if (!phone?.trim()) {
       throw new BadRequestException(
         'A verified phone number is required to submit host onboarding',
@@ -131,7 +130,10 @@ export class HostOnboardingService {
     }
 
     profile.full_name =
-      dto.full_name ?? user.full_name ?? identity.full_name ?? profile.full_name;
+      dto.full_name ??
+      user.full_name ??
+      identity.full_name ??
+      profile.full_name;
     profile.email = dto.email ?? user.email ?? identity.email ?? profile.email;
     profile.phone = normalizePhoneOrThrow(phone);
     profile.city = dto.city ?? profile.city;
@@ -156,7 +158,8 @@ export class HostOnboardingService {
       dto.document_front_asset_id ||
       dto.selfie_asset_id
     ) {
-      profile.document_type = dto.document_type || profile.document_type || 'CNIE';
+      profile.document_type =
+        dto.document_type || profile.document_type || 'CNIE';
       profile.document_number_hash =
         dto.document_number_hash ?? profile.document_number_hash;
       profile.document_front_asset_id =
@@ -208,10 +211,7 @@ export class HostOnboardingService {
     }
 
     const kycProfileStatus = (kyc.status || '').toUpperCase();
-    if (
-      kycProfileStatus !== 'APPROVED' &&
-      kycProfileStatus !== 'VERIFIED'
-    ) {
+    if (kycProfileStatus !== 'APPROVED' && kycProfileStatus !== 'VERIFIED') {
       throw new BadRequestException(
         'Your identity must be fully approved before applying as a host.',
       );
@@ -242,9 +242,9 @@ export class HostOnboardingService {
             )
           : null;
 
-    const isHost = hostUser != null && profile?.application_status === 'APPROVED';
-    const applicationStatus =
-      profile?.application_status ?? 'NOT_STARTED';
+    const isHost =
+      hostUser != null && profile?.application_status === 'APPROVED';
+    const applicationStatus = profile?.application_status ?? 'NOT_STARTED';
     const identityStatus = profile?.identity_status ?? 'NOT_STARTED';
     const canCreateListing =
       profile?.application_status === 'APPROVED' && !profile?.listing_frozen;
@@ -256,7 +256,8 @@ export class HostOnboardingService {
       profile_id: profile?.id ?? null,
       application_status: applicationStatus,
       identity_status: identityStatus,
-      host_verification_status: profile?.host_verification_status ?? 'NOT_STARTED',
+      host_verification_status:
+        profile?.host_verification_status ?? 'NOT_STARTED',
       can_create_listing: canCreateListing,
       can_publish_listing: canPublishListing,
       rejection_reason: profile?.rejection_reason ?? null,
@@ -376,10 +377,14 @@ export class HostOnboardingService {
       profile.phone ?? applicant.phone_number ?? '',
     );
     const identity = applicant.unified_identity_id
-      ? await this.unifiedIdentityService.findById(applicant.unified_identity_id)
+      ? await this.unifiedIdentityService.findById(
+          applicant.unified_identity_id,
+        )
       : await this.unifiedIdentityService.findOrCreateByPhone(phone);
     if (!identity) {
-      throw new BadRequestException('Unified identity not found for host approval');
+      throw new BadRequestException(
+        'Unified identity not found for host approval',
+      );
     }
 
     await this.usersService.findOrCreateForKyc(
@@ -406,7 +411,10 @@ export class HostOnboardingService {
         entity_type: 'HOST_PROFILE',
         entity_id: profileId,
         action: 'HOST_ONBOARDING_APPROVED',
-        metadata: { source: profile.source, submitted_from: profile.submitted_from },
+        metadata: {
+          source: profile.source,
+          submitted_from: profile.submitted_from,
+        },
         ip: auditContext?.ip ?? null,
         user_agent: auditContext?.userAgent ?? null,
       }),
@@ -516,13 +524,12 @@ export class HostOnboardingService {
     });
   }
 
-  async resolveProfileForUser(userId: string): Promise<StaysHostProfile | null> {
+  async resolveProfileForUser(
+    userId: string,
+  ): Promise<StaysHostProfile | null> {
     const user = await this.usersService.findById(userId);
     if (!user) return null;
-    return this.findProfileForApplicant(
-      userId,
-      user.unified_identity_id ?? '',
-    );
+    return this.findProfileForApplicant(userId, user.unified_identity_id ?? '');
   }
 
   async canList(userId: string): Promise<boolean> {
@@ -545,10 +552,11 @@ export class HostOnboardingService {
 
     if (!unifiedIdentityId) return null;
 
-    const hostUser = await this.usersService.findByUnifiedIdentityIdAndAccountType(
-      unifiedIdentityId,
-      'HOST',
-    );
+    const hostUser =
+      await this.usersService.findByUnifiedIdentityIdAndAccountType(
+        unifiedIdentityId,
+        'HOST',
+      );
     if (hostUser) {
       return this.hostProfileRepo.findOne({
         where: { user_id: hostUser.id },

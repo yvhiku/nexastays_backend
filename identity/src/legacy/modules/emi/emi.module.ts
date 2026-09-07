@@ -69,11 +69,7 @@ export class EMIModule {
         LedgerModule,
         AuditModule,
       ],
-      providers: [
-        providerFactory,
-        EMIService,
-        EMIMockProvider,
-      ],
+      providers: [providerFactory, EMIService, EMIMockProvider],
       exports: [EMIService, EMI_PROVIDER],
     };
   }

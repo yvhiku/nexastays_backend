@@ -154,7 +154,9 @@ async function main() {
       );
     }
 
-    console.log(`Using ${listings.length} LIVE listing(s). Seeding ${count} bookings…`);
+    console.log(
+      `Using ${listings.length} LIVE listing(s). Seeding ${count} bookings…`,
+    );
 
     // Per-listing cursor so active bookings never overlap (exclusion constraint).
     const nextFree = new Map<string, Date>();
@@ -170,7 +172,10 @@ async function main() {
       [listings.map((l) => l.id)],
     );
     for (const row of existing.rows) {
-      nextFree.set(row.listing_id, addDays(new Date(`${row.checkout_date}T00:00:00Z`), 0));
+      nextFree.set(
+        row.listing_id,
+        addDays(new Date(`${row.checkout_date}T00:00:00Z`), 0),
+      );
     }
 
     const today = new Date();
@@ -199,7 +204,8 @@ async function main() {
       } else {
         const gap = 1 + Math.floor(Math.random() * 4);
         const cursor =
-          nextFree.get(listing.id) ?? addDays(today, 1 + Math.floor(Math.random() * 7));
+          nextFree.get(listing.id) ??
+          addDays(today, 1 + Math.floor(Math.random() * 7));
         checkin = addDays(cursor, gap);
         checkout = addDays(checkin, nights);
         status = Math.random() < 0.2 ? 'CHECKED_IN' : 'CONFIRMED';
@@ -275,7 +281,10 @@ async function main() {
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        if (msg.includes('ex_stays_bookings_active_overlap') || msg.includes('overlap')) {
+        if (
+          msg.includes('ex_stays_bookings_active_overlap') ||
+          msg.includes('overlap')
+        ) {
           nextFree.set(listing.id, addDays(checkout, 2));
           continue;
         }
@@ -290,7 +299,9 @@ async function main() {
     }
 
     await client.query('COMMIT');
-    console.log(`Done. Inserted ${created} seed bookings (idempotency ${IDEMPOTENCY_PREFIX}*).`);
+    console.log(
+      `Done. Inserted ${created} seed bookings (idempotency ${IDEMPOTENCY_PREFIX}*).`,
+    );
   } catch (e) {
     await client.query('ROLLBACK');
     throw e;

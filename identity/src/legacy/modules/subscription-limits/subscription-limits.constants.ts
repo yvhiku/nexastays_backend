@@ -65,7 +65,10 @@ export function mergeSubscriptionWithKycLimits(
       kycLimits.maxSingleTransferMad,
       subscription.maxSingleTransferMad,
     ),
-    dailyOutflowMad: min(kycLimits.dailyOutflowMad, subscription.dailyOutflowMad),
+    dailyOutflowMad: min(
+      kycLimits.dailyOutflowMad,
+      subscription.dailyOutflowMad,
+    ),
     monthlyOutflowMad: min(
       kycLimits.monthlyOutflowMad,
       subscription.monthlyOutflowMad,

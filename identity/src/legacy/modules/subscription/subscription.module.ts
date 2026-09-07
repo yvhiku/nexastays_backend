@@ -34,9 +34,11 @@ import { KycMoneyMovementMiddleware } from '../compliance/kyc-policy/kyc-money-m
 })
 export class SubscriptionModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(KycMoneyMovementMiddleware).forRoutes(
-      { path: 'subscription/pro/purchase', method: RequestMethod.POST },
-      { path: 'pay/subscription/pro/purchase', method: RequestMethod.POST },
-    );
+    consumer
+      .apply(KycMoneyMovementMiddleware)
+      .forRoutes(
+        { path: 'subscription/pro/purchase', method: RequestMethod.POST },
+        { path: 'pay/subscription/pro/purchase', method: RequestMethod.POST },
+      );
   }
 }

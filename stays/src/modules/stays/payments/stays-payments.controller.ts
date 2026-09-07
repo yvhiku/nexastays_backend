@@ -9,7 +9,12 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -51,10 +56,16 @@ export class StaysPaymentsController {
   @ApiOperation({
     summary: 'Simulate mock payment success (authenticated guest only)',
   })
-  @ApiResponse({ status: 200, description: 'Payment confirmed or already processed' })
+  @ApiResponse({
+    status: 200,
+    description: 'Payment confirmed or already processed',
+  })
   @ApiResponse({ status: 400, description: 'Booking not payable' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'Booking or payment intent not found' })
+  @ApiResponse({
+    status: 404,
+    description: 'Booking or payment intent not found',
+  })
   async confirmMockPayment(
     @Param('id', ParseUUIDPipe) bookingId: string,
     @CurrentUser() user: { userId: string },
@@ -69,7 +80,9 @@ export class StaysPaymentsController {
    */
   @Post('webhooks/payments/mock')
   @Public()
-  @ApiOperation({ summary: 'Legacy mock webhook (local dev only — deprecated)' })
+  @ApiOperation({
+    summary: 'Legacy mock webhook (local dev only — deprecated)',
+  })
   async mockWebhook(@Body() body: MockPaymentWebhookDto) {
     if (!isLegacyMockWebhookEnabled()) {
       throw new ForbiddenException(

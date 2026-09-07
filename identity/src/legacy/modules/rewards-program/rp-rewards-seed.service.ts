@@ -35,14 +35,16 @@ const SEED_ACHIEVEMENTS = [
   {
     key: 'category_explorer',
     name: 'Category Explorer',
-    description: 'Earn category cashback in all four of your selected categories in one period.',
+    description:
+      'Earn category cashback in all four of your selected categories in one period.',
     icon: 'explore',
     points_reward: 100,
   },
   {
     key: 'smart_selector',
     name: 'Smart Selector',
-    description: 'Complete category selection in 3+ consecutive billing periods.',
+    description:
+      'Complete category selection in 3+ consecutive billing periods.',
     icon: 'psychology',
     points_reward: 120,
   },
@@ -137,7 +139,15 @@ export class RpRewardsSeedService implements OnModuleInit {
 
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
     await this.periodRepo.update({}, { is_active: false });
     const period = await this.periodRepo.save(
@@ -277,6 +287,8 @@ export class RpRewardsSeedService implements OnModuleInit {
       }),
     ]);
 
-    this.logger.log('Rewards program seed completed (categories + period + offers).');
+    this.logger.log(
+      'Rewards program seed completed (categories + period + offers).',
+    );
   }
 }

@@ -1,0 +1,11 @@
+{
+  "nexastays_backend": {
+    "exit_code": 0
+  },
+  "nexastays_web": {
+    "exit_code": 0
+  },
+  "nexastays_db": {
+    "exit_code": 0
+  }
+}

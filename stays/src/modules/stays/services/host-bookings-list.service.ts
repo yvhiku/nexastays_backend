@@ -95,12 +95,11 @@ export class HostBookingsListService {
     };
   }
 
-  private rawField(
-    raw: Record<string, unknown>,
-    name: string,
-  ): unknown {
+  private rawField(raw: Record<string, unknown>, name: string): unknown {
     if (name in raw) return raw[name];
-    const hit = Object.keys(raw).find((k) => k === name || k.endsWith('_' + name));
+    const hit = Object.keys(raw).find(
+      (k) => k === name || k.endsWith('_' + name),
+    );
     return hit ? raw[hit] : undefined;
   }
 

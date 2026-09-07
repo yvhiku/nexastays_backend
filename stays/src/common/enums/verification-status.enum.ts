@@ -12,7 +12,8 @@ export const IDENTITY_VERIFICATION_STATUS = [
   'REJECTED',
   'EXPIRED',
 ] as const;
-export type IdentityVerificationStatus = (typeof IDENTITY_VERIFICATION_STATUS)[number];
+export type IdentityVerificationStatus =
+  (typeof IDENTITY_VERIFICATION_STATUS)[number];
 
 /** Reusable verification artifact (ReusableIdentityVerification). */
 export const VERIFICATION_ARTIFACT_STATUS = [
@@ -23,7 +24,8 @@ export const VERIFICATION_ARTIFACT_STATUS = [
   'REJECTED',
   'EXPIRED',
 ] as const;
-export type VerificationArtifactStatus = (typeof VERIFICATION_ARTIFACT_STATUS)[number];
+export type VerificationArtifactStatus =
+  (typeof VERIFICATION_ARTIFACT_STATUS)[number];
 
 /** Operational account status (User, service accounts). */
 export const SERVICE_ACCOUNT_STATUS = [
@@ -48,7 +50,13 @@ export const ONBOARDING_STATUS = [
 export type OnboardingStatus = (typeof ONBOARDING_STATUS)[number];
 
 /** Legacy kyc_status values (users, kyc_profiles). Map to new enums where used. */
-export const LEGACY_KYC_STATUS = ['PENDING', 'APPROVED', 'VERIFIED', 'REJECTED', 'NONE'] as const;
+export const LEGACY_KYC_STATUS = [
+  'PENDING',
+  'APPROVED',
+  'VERIFIED',
+  'REJECTED',
+  'NONE',
+] as const;
 
 /** Map legacy kyc_status to identity_verification_status. */
 export function toIdentityVerificationStatus(

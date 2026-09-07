@@ -152,8 +152,7 @@ export class QrService {
               ? `Ref ${String(parsed.reference)}: Payment could not be completed`
               : 'QR payment could not be completed',
           reference: parsed.reference != null ? String(parsed.reference) : '',
-          amount:
-            parsed.amount != null ? Number(parsed.amount).toFixed(2) : '',
+          amount: parsed.amount != null ? Number(parsed.amount).toFixed(2) : '',
           direction: 'sent',
           event: 'QR_PAYMENT_FAILED',
         })

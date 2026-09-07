@@ -4,7 +4,10 @@ import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { StaysMessage, MessageType } from './entities/stays-message.entity';
-import type { ReservationSnapshot, TimelineCardMetadata } from './messaging.types';
+import type {
+  ReservationSnapshot,
+  TimelineCardMetadata,
+} from './messaging.types';
 import { formatInboxPreview } from './message-preview.util';
 
 export interface BuildSnapshotOptions {
@@ -66,7 +69,11 @@ export class TimelineSeederService {
     snapshot: ReservationSnapshot,
     listing: StaysListing,
   ): Promise<StaysMessage[]> {
-    const seeds: Array<{ type: MessageType; body: string | null; metadata: Record<string, unknown> }> = [
+    const seeds: Array<{
+      type: MessageType;
+      body: string | null;
+      metadata: Record<string, unknown>;
+    }> = [
       {
         type: 'SYSTEM_EVENT',
         body: 'Booking confirmed',
@@ -81,12 +88,19 @@ export class TimelineSeederService {
       {
         type: 'BOOKING_CARD',
         body: null,
-        metadata: this.bookingCard(snapshot, conversation.booking_id) as unknown as Record<string, unknown>,
+        metadata: this.bookingCard(
+          snapshot,
+          conversation.booking_id,
+        ) as unknown as Record<string, unknown>,
       },
       {
         type: 'PROPERTY_CARD',
         body: null,
-        metadata: this.propertyCard(snapshot, listing, conversation.booking_id) as unknown as Record<string, unknown>,
+        metadata: this.propertyCard(
+          snapshot,
+          listing,
+          conversation.booking_id,
+        ) as unknown as Record<string, unknown>,
       },
     ];
 
@@ -95,14 +109,21 @@ export class TimelineSeederService {
       seeds.push({
         type: 'CHECKIN_CARD',
         body: null,
-        metadata: this.checkinCard(snapshot, contact.access_instructions, conversation.booking_id) as unknown as Record<string, unknown>,
+        metadata: this.checkinCard(
+          snapshot,
+          contact.access_instructions,
+          conversation.booking_id,
+        ) as unknown as Record<string, unknown>,
       });
     }
     if (contact?.wifi_ssid) {
       seeds.push({
         type: 'WIFI_CARD',
         body: null,
-        metadata: this.wifiCard(contact.wifi_ssid, contact.wifi_password) as unknown as Record<string, unknown>,
+        metadata: this.wifiCard(
+          contact.wifi_ssid,
+          contact.wifi_password,
+        ) as unknown as Record<string, unknown>,
       });
     }
 
@@ -119,13 +140,18 @@ export class TimelineSeederService {
     conversation: StaysConversation,
     booking: StaysBooking,
   ): Promise<StaysMessage[]> {
-    const snapshot = conversation.reservation_snapshot as unknown as ReservationSnapshot;
+    const snapshot =
+      conversation.reservation_snapshot as unknown as ReservationSnapshot;
     const listingTitle = snapshot.listingTitle?.trim();
     const reviewBody = listingTitle
       ? `How was your stay at ${listingTitle}?`
       : 'How was your stay?';
 
-    const seeds: Array<{ type: MessageType; body: string | null; metadata: Record<string, unknown> }> = [
+    const seeds: Array<{
+      type: MessageType;
+      body: string | null;
+      metadata: Record<string, unknown>;
+    }> = [
       {
         type: 'SYSTEM_EVENT',
         body: 'Checkout complete',
@@ -239,10 +265,11 @@ export class TimelineSeederService {
     });
     if (!reviewCard) return;
 
-    const meta = (reviewCard.metadata ?? {}) as Record<string, unknown>;
+    const meta = reviewCard.metadata ?? {};
     if (meta.reviewed === true) return;
 
-    const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot | null;
+    const snapshot =
+      conv.reservation_snapshot as unknown as ReservationSnapshot | null;
     const listingId =
       (meta.listingId as string | undefined) ??
       snapshot?.listingId ??
@@ -345,7 +372,14 @@ export class TimelineSeederService {
             ]
           : []),
         ...(mapsUrl
-          ? [{ id: 'open_maps', label: 'Open in Maps', type: 'external_maps', url: mapsUrl }]
+          ? [
+              {
+                id: 'open_maps',
+                label: 'Open in Maps',
+                type: 'external_maps',
+                url: mapsUrl,
+              },
+            ]
           : []),
       ],
     };
@@ -367,12 +401,22 @@ export class TimelineSeederService {
       bookingId: bookingId ?? undefined,
       snapshot: { checkInTime: snapshot.checkinDate },
       actions: bookingId
-        ? [{ id: 'view_booking', label: 'Directions', type: 'OPEN_BOOKING', url: `/bookings/${bookingId}` }]
+        ? [
+            {
+              id: 'view_booking',
+              label: 'Directions',
+              type: 'OPEN_BOOKING',
+              url: `/bookings/${bookingId}`,
+            },
+          ]
         : [],
     };
   }
 
-  private wifiCard(ssid: string, password: string | null): TimelineCardMetadata {
+  private wifiCard(
+    ssid: string,
+    password: string | null,
+  ): TimelineCardMetadata {
     return {
       schemaVersion: 1,
       cardVersion: 1,
@@ -383,7 +427,14 @@ export class TimelineSeederService {
       source: 'SYSTEM',
       snapshot: { ssid, password: password ?? '' },
       actions: password
-        ? [{ id: 'copy_wifi', label: 'Copy password', type: 'COPY', value: password }]
+        ? [
+            {
+              id: 'copy_wifi',
+              label: 'Copy password',
+              type: 'COPY',
+              value: password,
+            },
+          ]
         : [],
     };
   }

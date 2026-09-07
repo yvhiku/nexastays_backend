@@ -42,14 +42,20 @@ export class MediaAssetService {
     private readonly mediaStorage: MediaStorageService,
   ) {}
 
-  async processAndStore(input: ProcessedMediaInput): Promise<ProcessedMediaResult> {
+  async processAndStore(
+    input: ProcessedMediaInput,
+  ): Promise<ProcessedMediaResult> {
     const detected = detectAttachmentMime(input.buffer);
     if (!detected) {
       throw new Error('Unsupported or invalid file content');
     }
 
     const declared = input.declaredMime?.toLowerCase() ?? '';
-    if (declared && !declared.startsWith('application/octet') && declared !== detected) {
+    if (
+      declared &&
+      !declared.startsWith('application/octet') &&
+      declared !== detected
+    ) {
       if (!(declared === 'image/jpg' && detected === 'image/jpeg')) {
         throw new Error('File content does not match declared type');
       }
@@ -80,7 +86,10 @@ export class MediaAssetService {
 
       const thumbBuffer = await sharp(input.buffer)
         .rotate()
-        .resize(THUMB_MAX_PX, THUMB_MAX_PX, { fit: 'inside', withoutEnlargement: true })
+        .resize(THUMB_MAX_PX, THUMB_MAX_PX, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
         .jpeg({ quality: 82 })
         .toBuffer();
       thumbnailKey = `messaging/${input.conversationId}/${assetId}_thumb.jpg`;

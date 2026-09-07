@@ -24,7 +24,12 @@ export class StaysListingRules {
   @Column({ type: 'varchar', length: 30, name: 'pets_policy', nullable: true })
   pets_policy: 'ALLOWED' | 'DOGS_CATS' | 'NO' | null;
 
-  @Column({ type: 'varchar', length: 20, name: 'smoking_policy', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'smoking_policy',
+    nullable: true,
+  })
   smoking_policy: 'ALLOWED' | 'NOT_ALLOWED' | null;
 
   @Column({ type: 'boolean', name: 'quiet_hours', default: false })

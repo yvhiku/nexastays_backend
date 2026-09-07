@@ -9,8 +9,7 @@ export const SUPPORT_RESOLUTION_TYPES = [
   'OTHER',
 ] as const;
 
-export type SupportResolutionType =
-  (typeof SUPPORT_RESOLUTION_TYPES)[number];
+export type SupportResolutionType = (typeof SUPPORT_RESOLUTION_TYPES)[number];
 
 export function resolutionLabel(type: string | null | undefined): string {
   switch (type) {

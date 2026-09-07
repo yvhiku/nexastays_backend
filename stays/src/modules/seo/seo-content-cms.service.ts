@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SeoContentVersion } from './entities/seo-content-version.entity';
@@ -32,18 +36,25 @@ export class SeoContentCmsService {
     const row = await this.versionRepo.findOne({ where: { id: versionId } });
     if (!row) throw new NotFoundException('Content version not found');
     if (row.status !== 'draft') {
-      throw new BadRequestException('Only draft versions can be submitted for review');
+      throw new BadRequestException(
+        'Only draft versions can be submitted for review',
+      );
     }
     row.status = 'review';
     await this.versionRepo.save(row);
     return this.toDto(row);
   }
 
-  async publish(versionId: string, adminUserId: string): Promise<SeoContentVersionDto> {
+  async publish(
+    versionId: string,
+    adminUserId: string,
+  ): Promise<SeoContentVersionDto> {
     const row = await this.versionRepo.findOne({ where: { id: versionId } });
     if (!row) throw new NotFoundException('Content version not found');
     if (row.status !== 'review' && row.status !== 'draft') {
-      throw new BadRequestException('Version must be draft or in review to publish');
+      throw new BadRequestException(
+        'Version must be draft or in review to publish',
+      );
     }
 
     const now = new Date();
@@ -53,7 +64,9 @@ export class SeoContentCmsService {
     await this.versionRepo.save(row);
 
     if (row.entity_type === 'guide' && row.field_name === 'body_html') {
-      const guide = await this.guideRepo.findOne({ where: { id: row.entity_id } });
+      const guide = await this.guideRepo.findOne({
+        where: { id: row.entity_id },
+      });
       if (guide) {
         guide.body_html = row.content_html;
         guide.content_status = 'published';
@@ -71,10 +84,16 @@ export class SeoContentCmsService {
       }
     }
 
-    if (row.entity_type === 'neighborhood' && row.field_name === 'content_blocks_json') {
+    if (
+      row.entity_type === 'neighborhood' &&
+      row.field_name === 'content_blocks_json'
+    ) {
       let parsed: Record<string, unknown> = {};
       try {
-        parsed = JSON.parse(row.content_html ?? '{}') as Record<string, unknown>;
+        parsed = JSON.parse(row.content_html ?? '{}') as Record<
+          string,
+          unknown
+        >;
       } catch {
         throw new BadRequestException('Invalid content_blocks_json payload');
       }

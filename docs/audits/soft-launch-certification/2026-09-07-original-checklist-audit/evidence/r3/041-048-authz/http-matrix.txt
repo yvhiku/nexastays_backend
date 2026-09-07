@@ -1,0 +1,24 @@
+Gate 3 HTTP multi-actor matrix
+
+PASS consumer GET host/listings actor=guest GET /stays/host/listings -> 200 items=0 
+PASS hostA GET host/listings actor=hostA GET /stays/host/listings -> 200 items=0 
+PASS hostB GET host/listings actor=hostB GET /stays/host/listings -> 200 items=0 
+PASS guest POST host/listings (typed) actor=guest POST /stays/host/listings -> 400 Host verification required. Your host application must be approved before creating listings.
+PASS guest GET foreign host listing actor=guest GET /stays/host/listings/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee -> 404 Listing not found
+PASS hostA pause foreign listing actor=hostA POST /stays/host/listings/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/pause -> 404 Listing not found
+PASS hostB pause foreign listing actor=hostB POST /stays/host/listings/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/pause -> 404 Listing not found
+PASS hostA PATCH foreign listing actor=hostA PATCH /stays/host/listings/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee -> 400 Host verification required. Your host application must be approved before creating listings.
+PASS guest admin stays actor=guest GET /admin/stays/listings -> 403 Insufficient permissions. Required roles: ADMIN
+PASS hostA admin stays actor=hostA GET /admin/stays/listings -> 403 Insufficient permissions. Required roles: ADMIN
+PASS hostB admin stays actor=hostB GET /admin/stays/listings -> 403 Insufficient permissions. Required roles: ADMIN
+PASS guest identity admin actor=guest GET /admin/users -> 403 Insufficient permissions. Required roles: ADMIN
+PASS hostA identity admin actor=hostA GET /admin/users -> 403 Insufficient permissions. Required roles: ADMIN
+PASS admin stays listings actor=admin GET /admin/stays/listings -> 200 items=50 
+PASS admin identity users actor=admin GET /admin/users -> 200 
+PASS guest foreign booking actor=guest GET /stays/bookings/bbbbbbbb-cccc-4ddd-8eee-ffffffffffff -> 404 Booking not found
+PASS hostA foreign booking actor=hostA GET /stays/bookings/bbbbbbbb-cccc-4ddd-8eee-ffffffffffff -> 404 Booking not found
+PASS hostB cancel foreign actor=hostB POST /stays/bookings/bbbbbbbb-cccc-4ddd-8eee-ffffffffffff/cancel -> 404 Booking not found
+PASS hostA reject injected hostId query actor=hostA GET /stays/host/listings?hostId=host-b-inject&host_user_id=host-b-inject -> 400 property hostId should not exist, property host_user_id should not exist
+PASS hostA listings clean actor=hostA GET /stays/host/listings -> 200 items=0 
+
+probes_pass=20 probes_fail=0 total=20

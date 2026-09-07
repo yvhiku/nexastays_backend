@@ -58,7 +58,9 @@ export type CompletionInput = {
   guest_house?: boolean;
 };
 
-export function computeCompletionFlags(input: CompletionInput): ListingCompletionFlags {
+export function computeCompletionFlags(
+  input: CompletionInput,
+): ListingCompletionFlags {
   const roomsNeeded = roomsRequiredForType(
     input.listing_type,
     input.booking_model,
@@ -70,15 +72,15 @@ export function computeCompletionFlags(input: CompletionInput): ListingCompletio
   return {
     location_complete: Boolean(
       input.city?.trim() &&
-        input.address?.trim() &&
-        input.geo_lat != null &&
-        input.geo_lng != null,
+      input.address?.trim() &&
+      input.geo_lat != null &&
+      input.geo_lng != null,
     ),
     about_complete: Boolean(
       input.title?.trim() &&
-        input.title.trim() !== 'Untitled listing' &&
-        (input.description?.trim()?.length ?? 0) >= 20 &&
-        (input.max_guests ?? 0) >= 1,
+      input.title.trim() !== 'Untitled listing' &&
+      (input.description?.trim()?.length ?? 0) >= 20 &&
+      (input.max_guests ?? 0) >= 1,
     ),
     pricing_complete: pricingOk,
     photos_complete: input.photo_count >= SUBMIT_MIN_PHOTOS,
@@ -90,7 +92,9 @@ export function computeCompletionFlags(input: CompletionInput): ListingCompletio
   };
 }
 
-export function computeCompletionPercentage(flags: ListingCompletionFlags): number {
+export function computeCompletionPercentage(
+  flags: ListingCompletionFlags,
+): number {
   let score = 0;
   if (flags.location_complete) score += COMPLETION_WEIGHTS.location;
   if (flags.about_complete) score += COMPLETION_WEIGHTS.about;
@@ -117,9 +121,12 @@ export function computeCompletionPercentage(flags: ListingCompletionFlags): numb
 }
 
 export function assertCanSubmit(flags: ListingCompletionFlags): string | null {
-  if (!flags.location_complete) return 'Location (city, address, and map pin) is required.';
-  if (!flags.about_complete) return 'Title, description (20+ characters), and guest capacity are required.';
-  if (!flags.rooms_complete) return 'Room configuration is required for this property type.';
+  if (!flags.location_complete)
+    return 'Location (city, address, and map pin) is required.';
+  if (!flags.about_complete)
+    return 'Title, description (20+ characters), and guest capacity are required.';
+  if (!flags.rooms_complete)
+    return 'Room configuration is required for this property type.';
   if (!flags.pricing_complete) return 'Pricing is required.';
   if (!flags.photos_complete) {
     return `At least ${SUBMIT_MIN_PHOTOS} photos are required to submit.`;
@@ -151,7 +158,11 @@ export function listMissing(flags: ListingCompletionFlags): MissingItem[] {
     });
   }
   if (!flags.walkthrough_complete) {
-    items.push({ key: 'walkthrough', label: 'Walkthrough video', required: false });
+    items.push({
+      key: 'walkthrough',
+      label: 'Walkthrough video',
+      required: false,
+    });
   }
   if (!flags.photos_quality_complete) {
     items.push({

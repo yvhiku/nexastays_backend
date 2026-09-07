@@ -19,4 +19,3 @@ export class AdminNotificationsController {
     return this.adminNotificationsService.getSummary();
   }
 }
-

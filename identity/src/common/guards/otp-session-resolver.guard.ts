@@ -22,7 +22,10 @@ export class OtpSessionResolverGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    if (!user?.type || (user.type !== 'otp_session' && user.type !== 'identity_session')) {
+    if (
+      !user?.type ||
+      (user.type !== 'otp_session' && user.type !== 'identity_session')
+    ) {
       return true;
     }
 
@@ -56,15 +59,15 @@ export class OtpSessionResolverGuard implements CanActivate {
     const nationality = body.nationality as string | undefined;
 
     const resolvedUser = isKycRoute
-        ? await this.usersService.findOrCreateForKyc(
-            phoneNumber,
-            fullName,
-            nationality,
-          )
-        : isConsentRoute
-            ? (await this.usersService.findForKyc(phoneNumber)) ??
-                (await this.usersService.findOrCreateForKyc(phoneNumber))
-            : await this.usersService.findForKyc(phoneNumber);
+      ? await this.usersService.findOrCreateForKyc(
+          phoneNumber,
+          fullName,
+          nationality,
+        )
+      : isConsentRoute
+        ? ((await this.usersService.findForKyc(phoneNumber)) ??
+          (await this.usersService.findOrCreateForKyc(phoneNumber)))
+        : await this.usersService.findForKyc(phoneNumber);
 
     if (!resolvedUser) {
       if (isGetMe) {
@@ -76,9 +79,7 @@ export class OtpSessionResolverGuard implements CanActivate {
         };
         return true;
       }
-      throw new NotFoundException(
-        'Complete KYC first to create your account',
-      );
+      throw new NotFoundException('Complete KYC first to create your account');
     }
 
     request.user = {

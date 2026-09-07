@@ -13,7 +13,10 @@ import type {
 } from './messaging.types';
 
 function formatShortDate(value: string): string {
-  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 function bookingLifecycleSubtitle(
@@ -25,7 +28,11 @@ function bookingLifecycleSubtitle(
   if (s === 'COMPLETED') return 'Stay completed';
   if (s === 'CHECKED_IN') return 'Current Stay';
   if (s === 'CONFIRMED') return 'Upcoming Stay';
-  if (s === 'CANCELLED' || s === 'CANCELLED_BY_GUEST' || s === 'CANCELLED_BY_HOST') {
+  if (
+    s === 'CANCELLED' ||
+    s === 'CANCELLED_BY_GUEST' ||
+    s === 'CANCELLED_BY_HOST'
+  ) {
     return 'Cancelled';
   }
   if (s === 'EXPIRED') return 'Expired';
@@ -65,10 +72,16 @@ export class ConversationPresentationService {
       : null;
 
     const avatar = counterpartId
-      ? await this.resolveCounterpartAvatar(counterpartId, conv.snapshot_version ?? 1)
+      ? await this.resolveCounterpartAvatar(
+          counterpartId,
+          conv.snapshot_version ?? 1,
+        )
       : null;
     const reservation = this.buildReservationPresentation(conv, snapshot);
-    const subtitle = bookingLifecycleSubtitle(bookingStatus, conv.messaging_state);
+    const subtitle = bookingLifecycleSubtitle(
+      bookingStatus,
+      conv.messaging_state,
+    );
     const bookingChip = `${snapshot.listingTitle} • ${formatShortDate(snapshot.checkinDate)}–${formatShortDate(snapshot.checkoutDate)} • ${snapshot.guestCount} guests`;
 
     return {
@@ -131,9 +144,14 @@ export class ConversationPresentationService {
     };
   }
 
-  buildSyncMeta(conv: StaysConversation, viewerUserId: string): ConversationSyncMeta {
+  buildSyncMeta(
+    conv: StaysConversation,
+    viewerUserId: string,
+  ): ConversationSyncMeta {
     const isGuest = conv.guest_user_id === viewerUserId;
-    const unreadCount = isGuest ? conv.unread_guest ?? 0 : conv.unread_host ?? 0;
+    const unreadCount = isGuest
+      ? (conv.unread_guest ?? 0)
+      : (conv.unread_host ?? 0);
     const messageId = isGuest
       ? conv.guest_last_read_message_id
       : conv.host_last_read_message_id;
@@ -170,11 +188,16 @@ export class ConversationPresentationService {
     const coverMediaId = snapshot.coverMediaId ?? null;
     const coverMedia =
       listingId && coverMediaId
-        ? this.media.resolveListingCover(listingId, coverMediaId, {
-            w: 640,
-            h: 360,
-            fit: 'crop',
-          }, conv.snapshot_version ?? 1)
+        ? this.media.resolveListingCover(
+            listingId,
+            coverMediaId,
+            {
+              w: 640,
+              h: 360,
+              fit: 'crop',
+            },
+            conv.snapshot_version ?? 1,
+          )
         : null;
 
     return {

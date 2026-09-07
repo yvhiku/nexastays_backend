@@ -11,7 +11,10 @@ import { Request, Response } from 'express';
 import type { AlertingService, ErrorMonitoringService } from '@nexa/telemetry';
 import { ObsEvents } from '@nexa/telemetry';
 import { noteApiError } from '../security/security-traffic';
-import { ALERTING, ERROR_MONITORING } from '../observability/observability.tokens';
+import {
+  ALERTING,
+  ERROR_MONITORING,
+} from '../observability/observability.tokens';
 
 /** Standard error envelope (opt-in via x-api-envelope: 1) */
 export interface ApiErrorEnvelope {

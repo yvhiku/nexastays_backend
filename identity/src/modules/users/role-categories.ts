@@ -20,12 +20,16 @@ export const PERSON_ROLES: readonly AccountType[] = [
  * Roles that may represent or operate a business entity.
  * Today MERCHANT is person-scoped (one User = one operator); future: MerchantOrganization + operators.
  */
-export const BUSINESS_CAPABLE_ROLES: readonly AccountType[] = ['MERCHANT'] as const;
+export const BUSINESS_CAPABLE_ROLES: readonly AccountType[] = [
+  'MERCHANT',
+] as const;
 
 export function isPersonRole(accountType: string | null | undefined): boolean {
   return (
     (accountType ?? '').length > 0 &&
-    (PERSON_ROLES as readonly string[]).includes((accountType ?? '').toUpperCase())
+    (PERSON_ROLES as readonly string[]).includes(
+      (accountType ?? '').toUpperCase(),
+    )
   );
 }
 
@@ -33,6 +37,10 @@ export function isPersonRole(accountType: string | null | undefined): boolean {
  * Roles that typically need linked_user → CONSUMER for payouts.
  * MERCHANT excluded: operator may not need consumer link; business entity may have different payout model.
  */
-export function roleUsesConsumerForPayout(accountType: string | null | undefined): boolean {
-  return ['DRIVER', 'COURIER', 'HOST'].includes((accountType ?? '').toUpperCase());
+export function roleUsesConsumerForPayout(
+  accountType: string | null | undefined,
+): boolean {
+  return ['DRIVER', 'COURIER', 'HOST'].includes(
+    (accountType ?? '').toUpperCase(),
+  );
 }

@@ -104,7 +104,9 @@ export class StaysController {
     ) {
       throw new NotFoundException('Media not found');
     }
-    const ext = resolved.includes('.') ? resolved.split('.').pop()?.toLowerCase() : '';
+    const ext = resolved.includes('.')
+      ? resolved.split('.').pop()?.toLowerCase()
+      : '';
     const contentType =
       ext === 'mp4'
         ? 'video/mp4'
@@ -173,12 +175,19 @@ export class StaysController {
     @Body() dto: CreateBookingDto,
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     try {
-      return await this.staysService.createBooking(user.userId, dto, { ip, userAgent });
+      return await this.staysService.createBooking(user.userId, dto, {
+        ip,
+        userAgent,
+      });
     } catch (err: unknown) {
-      this.logger.error('createBooking failed', err instanceof Error ? err.stack : String(err));
+      this.logger.error(
+        'createBooking failed',
+        err instanceof Error ? err.stack : String(err),
+      );
       throw err;
     }
   }
@@ -197,7 +206,8 @@ export class StaysController {
     @Body() dto: CancelBookingDto,
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.cancellationService.cancel(
       id,
@@ -316,7 +326,10 @@ export class StaysController {
   @ApiOperation({ summary: 'Upload listing photo' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
   })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -340,7 +353,10 @@ export class StaysController {
   @ApiOperation({ summary: 'Upload listing walkthrough video' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
   })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -469,7 +485,10 @@ export class StaysController {
   @ApiOperation({ summary: 'Upload host ID document (front)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
   })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -493,7 +512,10 @@ export class StaysController {
   @ApiOperation({ summary: 'Upload host ID document (back)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
   })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -517,7 +539,10 @@ export class StaysController {
   @ApiOperation({ summary: 'Upload host selfie' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
   })
   @UseInterceptors(
     FileInterceptor('file', {

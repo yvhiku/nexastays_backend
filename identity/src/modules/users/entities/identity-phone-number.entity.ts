@@ -32,7 +32,12 @@ export class IdentityPhoneNumber {
   @JoinColumn({ name: 'identity_id' })
   identity: UnifiedIdentity;
 
-  @Column({ type: 'varchar', length: 20, name: 'phone_number', nullable: false })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'phone_number',
+    nullable: false,
+  })
   phone_number: string;
 
   @Column({

@@ -18,14 +18,20 @@ export class StaysCheckInContact {
   @Column({ type: 'uuid', unique: true, name: 'listing_id' })
   listing_id: string;
 
-  @OneToOne(() => StaysListing, (l) => l.check_in_contact, { onDelete: 'CASCADE' })
+  @OneToOne(() => StaysListing, (l) => l.check_in_contact, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'listing_id' })
   listing: StaysListing;
 
   @Column({ type: 'varchar', length: 100, name: 'full_name' })
   full_name: string;
 
-  @Column({ type: 'text', name: 'phone_encrypted', transformer: piiTransformer })
+  @Column({
+    type: 'text',
+    name: 'phone_encrypted',
+    transformer: piiTransformer,
+  })
   phone_encrypted: string;
 
   @Column({ type: 'varchar', length: 20 })
@@ -37,7 +43,12 @@ export class StaysCheckInContact {
   @Column({ type: 'varchar', length: 128, name: 'wifi_ssid', nullable: true })
   wifi_ssid: string | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'wifi_password', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'wifi_password',
+    nullable: true,
+  })
   wifi_password: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })

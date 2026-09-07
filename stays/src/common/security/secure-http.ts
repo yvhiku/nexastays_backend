@@ -32,8 +32,7 @@ export function applySecureHttp(app: NestExpressApplication): void {
   );
   app.disable('x-powered-by');
 
-  const enforceHttps =
-    isProd && process.env.ENFORCE_HTTPS !== 'false';
+  const enforceHttps = isProd && process.env.ENFORCE_HTTPS !== 'false';
   if (enforceHttps) {
     app.use((req: Request, res: Response, next: NextFunction) => {
       const proto = String(req.headers['x-forwarded-proto'] || '')
@@ -54,4 +53,3 @@ export function resolveCorsOrigin(): string[] {
   // SEC-005: never reflect arbitrary Origin (no `origin: true` / `*`).
   return resolveCorsAllowlist();
 }
-

@@ -37,8 +37,16 @@ describe('UsersService (profile lock)', () => {
       execute: jest.fn().mockResolvedValue({}),
     })),
   };
-  const mockTrustedDeviceRepo = { findOne: jest.fn(), find: jest.fn(), save: jest.fn() };
-  const mockUserConsentRepo = { find: jest.fn(), save: jest.fn(), create: jest.fn() };
+  const mockTrustedDeviceRepo = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
+  };
+  const mockUserConsentRepo = {
+    find: jest.fn(),
+    save: jest.fn(),
+    create: jest.fn(),
+  };
   const mockDataSource = { transaction: jest.fn() };
 
   beforeEach(async () => {
@@ -61,7 +69,10 @@ describe('UsersService (profile lock)', () => {
           provide: getRepositoryToken(UserConsent),
           useValue: mockUserConsentRepo,
         },
-        { provide: getRepositoryToken(OtpCode), useValue: { findOne: jest.fn() } },
+        {
+          provide: getRepositoryToken(OtpCode),
+          useValue: { findOne: jest.fn() },
+        },
         { provide: DataSource, useValue: mockDataSource },
         {
           provide: UnifiedIdentityService,
@@ -115,7 +126,9 @@ describe('UsersService (profile lock)', () => {
         city: 'Rabat',
         date_of_birth: new Date('1990-05-15'),
       });
-      mockUserRepo.save.mockImplementation((u) => Promise.resolve({ ...user, ...u }));
+      mockUserRepo.save.mockImplementation((u) =>
+        Promise.resolve({ ...user, ...u }),
+      );
 
       const dto: UpdateProfileDto = {
         full_name: 'Alice Updated',
@@ -171,8 +184,13 @@ describe('UsersService (profile lock)', () => {
 
     it('allows updating email when locked', async () => {
       mockUserRepo.findOne.mockResolvedValue(lockedUser);
-      mockUserRepo.findOneOrFail.mockResolvedValue({ ...lockedUser, email: 'new@b.com' });
-      mockUserRepo.save.mockImplementation((u) => Promise.resolve({ ...lockedUser, ...u }));
+      mockUserRepo.findOneOrFail.mockResolvedValue({
+        ...lockedUser,
+        email: 'new@b.com',
+      });
+      mockUserRepo.save.mockImplementation((u) =>
+        Promise.resolve({ ...lockedUser, ...u }),
+      );
 
       await service.updateProfile('u2', { email: 'new@b.com' });
 
@@ -183,8 +201,13 @@ describe('UsersService (profile lock)', () => {
 
     it('allows updating city when locked', async () => {
       mockUserRepo.findOne.mockResolvedValue(lockedUser);
-      mockUserRepo.findOneOrFail.mockResolvedValue({ ...lockedUser, city: 'Casablanca' });
-      mockUserRepo.save.mockImplementation((u) => Promise.resolve({ ...lockedUser, ...u }));
+      mockUserRepo.findOneOrFail.mockResolvedValue({
+        ...lockedUser,
+        city: 'Casablanca',
+      });
+      mockUserRepo.save.mockImplementation((u) =>
+        Promise.resolve({ ...lockedUser, ...u }),
+      );
 
       await service.updateProfile('u2', { city: 'Casablanca' });
 
@@ -199,7 +222,9 @@ describe('UsersService (profile lock)', () => {
         ...lockedUser,
         profile_photo_url: 'https://example.com/photo.jpg',
       });
-      mockUserRepo.save.mockImplementation((u) => Promise.resolve({ ...lockedUser, ...u }));
+      mockUserRepo.save.mockImplementation((u) =>
+        Promise.resolve({ ...lockedUser, ...u }),
+      );
 
       await service.updateProfile('u2', {
         profile_photo_url: 'https://example.com/photo.jpg',
@@ -212,7 +237,9 @@ describe('UsersService (profile lock)', () => {
   });
 
   describe('createUser - 23505 idempotency (race simulation)', () => {
-    const mockUnified = { findOrCreateByPhone: jest.fn().mockResolvedValue({}) };
+    const mockUnified = {
+      findOrCreateByPhone: jest.fn().mockResolvedValue({}),
+    };
 
     beforeEach(() => {
       (service as any).unifiedIdentityService = mockUnified;
@@ -227,15 +254,21 @@ describe('UsersService (profile lock)', () => {
         full_name: 'Existing',
       } as User;
 
-      mockDataSource.transaction.mockImplementation(async (fn: (m: any) => any) => {
-        const manager = {
-          save: jest
-            .fn()
-            .mockRejectedValueOnce(Object.assign(new Error('duplicate'), { code: '23505' })),
-        };
-        return fn(manager);
-      });
-      mockUserRepo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(existingUser);
+      mockDataSource.transaction.mockImplementation(
+        async (fn: (m: any) => any) => {
+          const manager = {
+            save: jest
+              .fn()
+              .mockRejectedValueOnce(
+                Object.assign(new Error('duplicate'), { code: '23505' }),
+              ),
+          };
+          return fn(manager);
+        },
+      );
+      mockUserRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(existingUser);
 
       const result = await service.createUser({
         phone_number: '+212612345678',
@@ -249,7 +282,9 @@ describe('UsersService (profile lock)', () => {
 
   describe('ensureRoleAccount - 23505 idempotency (race simulation)', () => {
     const mockUnified = {
-      findById: jest.fn().mockResolvedValue({ id: 'id-1', phone_number: '+212612345678' }),
+      findById: jest
+        .fn()
+        .mockResolvedValue({ id: 'id-1', phone_number: '+212612345678' }),
       refreshLinkedServices: jest.fn().mockResolvedValue(undefined),
     };
     const mockIdentityPhone = {

@@ -34,7 +34,10 @@ export class LedgerService {
     const repo =
       manager?.getRepository(LedgerAccount) ?? this.accountRepository;
     const existing = await repo.findOne({
-      where: { wallet_id: walletId, account_type: CUSTOMER_LIABILITY_ACCOUNT_TYPE },
+      where: {
+        wallet_id: walletId,
+        account_type: CUSTOMER_LIABILITY_ACCOUNT_TYPE,
+      },
     });
     /** Legacy WALLET naming pre-migration */
     const legacy = existing
@@ -137,9 +140,7 @@ export class LedgerService {
       };
       return map[input]!;
     }
-    if (
-      (Object.values(LedgerSystemAccountType) as string[]).includes(input)
-    ) {
+    if ((Object.values(LedgerSystemAccountType) as string[]).includes(input)) {
       return input as LedgerSystemAccountType;
     }
     throw new BadRequestException(`Unknown system ledger account: ${input}`);
@@ -157,7 +158,10 @@ export class LedgerService {
         };
       case LedgerSystemAccountType.FEES:
       case LedgerSystemAccountType.COMPANY_REVENUE:
-        return { normal_balance: LedgerNormalBalance.CREDIT, allow_negative: false };
+        return {
+          normal_balance: LedgerNormalBalance.CREDIT,
+          allow_negative: false,
+        };
       case LedgerSystemAccountType.REWARDS_LIABILITY:
         return {
           normal_balance: LedgerNormalBalance.CREDIT,
@@ -165,7 +169,10 @@ export class LedgerService {
         };
       case LedgerSystemAccountType.SUSPENSE:
       case LedgerSystemAccountType.REVERSALS:
-        return { normal_balance: LedgerNormalBalance.CREDIT, allow_negative: true };
+        return {
+          normal_balance: LedgerNormalBalance.CREDIT,
+          allow_negative: true,
+        };
       default:
         return {
           normal_balance: LedgerNormalBalance.CREDIT,
@@ -220,7 +227,10 @@ export class LedgerService {
   }
 
   /** Backwards-compatible alias — always reads from ledger entries. */
-  async getBalance(accountId: string, manager?: EntityManager): Promise<number> {
+  async getBalance(
+    accountId: string,
+    manager?: EntityManager,
+  ): Promise<number> {
     const repo =
       manager?.getRepository(LedgerAccount) ?? this.accountRepository;
     const account = await repo.findOne({ where: { id: accountId } });

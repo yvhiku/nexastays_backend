@@ -39,7 +39,9 @@ export class SeoKnowledgeGraphService {
     citySlug: string,
     limit = 6,
   ): Promise<RelatedDestinationDto[]> {
-    const dest = await this.destinationRepo.findOne({ where: { slug: citySlug } });
+    const dest = await this.destinationRepo.findOne({
+      where: { slug: citySlug },
+    });
     if (!dest) return [];
     return this.getRelatedDestinations(dest.id, limit);
   }
@@ -56,7 +58,10 @@ export class SeoKnowledgeGraphService {
         where: { slug: In(slugs), content_status: 'published' },
       });
       const bySlug = new Map(rows.map((r) => [r.slug, r]));
-      return slugs.map((s) => bySlug.get(s)).filter(Boolean).map((d) => toDto(d!));
+      return slugs
+        .map((s) => bySlug.get(s))
+        .filter(Boolean)
+        .map((d) => toDto(d!));
     }
 
     const slugs = dest.nearby_city_slugs ?? [];
@@ -65,6 +70,9 @@ export class SeoKnowledgeGraphService {
       where: { slug: In(slugs), content_status: 'published' },
     });
     const bySlug = new Map(rows.map((r) => [r.slug, r]));
-    return slugs.map((s) => bySlug.get(s)).filter(Boolean).map((d) => toDto(d!));
+    return slugs
+      .map((s) => bySlug.get(s))
+      .filter(Boolean)
+      .map((d) => toDto(d!));
   }
 }

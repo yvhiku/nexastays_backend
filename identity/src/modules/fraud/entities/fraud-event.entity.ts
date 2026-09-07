@@ -35,7 +35,12 @@ export class FraudEvent {
   @Column({ type: 'varchar', length: 20, default: 'OPEN' })
   status: string;
 
-  @Column({ type: 'varchar', length: 120, nullable: true, name: 'assigned_owner' })
+  @Column({
+    type: 'varchar',
+    length: 120,
+    nullable: true,
+    name: 'assigned_owner',
+  })
   assigned_owner: string | null;
 
   @Column({ type: 'text', nullable: true, name: 'internal_note' })

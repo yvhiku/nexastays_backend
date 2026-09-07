@@ -26,15 +26,13 @@ export class SecurityEventsService {
    * High-volume path uses insert() (no entity hydration, no SELECT roundtrip).
    */
   async logEvent(input: CreateSecurityEventInput): Promise<void> {
-    await this.securityEventRepository.insert(
-      {
-        user_id: input.user_id ?? null,
-        event_type: input.event_type,
-        metadata: input.metadata ?? null,
-        ip_address: input.ip_address ?? null,
-        device_id: input.device_id ?? null,
-      } as any,
-    );
+    await this.securityEventRepository.insert({
+      user_id: input.user_id ?? null,
+      event_type: input.event_type,
+      metadata: input.metadata ?? null,
+      ip_address: input.ip_address ?? null,
+      device_id: input.device_id ?? null,
+    } as any);
   }
 
   async queryEvents(query: QuerySecurityEventsDto) {

@@ -1,0 +1,22 @@
+[
+  {
+    "name": "all declared foreign keys are validated",
+    "status": "PASS"
+  },
+  {
+    "name": "database rejects second settled guest payment",
+    "status": "PASS"
+  },
+  {
+    "name": "foreign key rejects orphan payment",
+    "status": "PASS"
+  },
+  {
+    "name": "failed financial transaction rolls back all writes",
+    "status": "PASS"
+  },
+  {
+    "name": "cancelled inventory accepts a new overlapping booking",
+    "status": "PASS"
+  }
+]

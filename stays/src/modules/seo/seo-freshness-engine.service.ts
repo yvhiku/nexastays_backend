@@ -15,7 +15,10 @@ import {
   landmarkToExploreFilters,
   neighborhoodToExploreFilters,
 } from './seo-catalog';
-import { computeSeoQualityScore, isPageIndexable } from './seo-quality-scoring.service';
+import {
+  computeSeoQualityScore,
+  isPageIndexable,
+} from './seo-quality-scoring.service';
 
 @Injectable()
 export class SeoFreshnessEngineService {
@@ -96,7 +99,9 @@ export class SeoFreshnessEngineService {
 
     for (const am of SEO_AMENITIES) {
       try {
-        const intel = await this.intelligence.compute(amenityToExploreFilters(am));
+        const intel = await this.intelligence.compute(
+          amenityToExploreFilters(am),
+        );
         const score = computeSeoQualityScore({ intelligence: intel });
         const indexable = isPageIndexable({
           seoScore: score,
@@ -116,7 +121,9 @@ export class SeoFreshnessEngineService {
 
     for (const lm of SEO_LANDMARKS) {
       try {
-        const intel = await this.intelligence.compute(landmarkToExploreFilters(lm));
+        const intel = await this.intelligence.compute(
+          landmarkToExploreFilters(lm),
+        );
         const score = computeSeoQualityScore({ intelligence: intel });
         const indexable = isPageIndexable({
           seoScore: score,
@@ -143,7 +150,9 @@ export class SeoFreshnessEngineService {
     dest: SeoDestination,
     now: Date = new Date(),
   ): Promise<void> {
-    const cityIntel = await this.intelligence.compute({ city: dest.search_city });
+    const cityIntel = await this.intelligence.compute({
+      city: dest.search_city,
+    });
     const cityScore = computeSeoQualityScore({
       intelligence: cityIntel,
       destination: dest,

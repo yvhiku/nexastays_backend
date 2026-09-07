@@ -38,10 +38,9 @@ export const appConfig = {
   bodyLimit: parseInt(process.env.BODY_LIMIT || '1048576', 10),
   /** Stays service base URL for cross-service header aggregation. */
   get staysApiBaseUrl(): string {
-    return (process.env.STAYS_API_BASE_URL || 'http://127.0.0.1:3002/api/v1').replace(
-      /\/$/,
-      '',
-    );
+    return (
+      process.env.STAYS_API_BASE_URL || 'http://127.0.0.1:3002/api/v1'
+    ).replace(/\/$/, '');
   },
   /** Refresh token validity in seconds. Beta: 7 days. */
   refreshTokenExpiresIn: parseInt(
@@ -59,9 +58,7 @@ export const appConfig = {
       );
     }
     return (
-      process.env.KYC_HASH_PEPPER ||
-      process.env.JWT_SECRET ||
-      DEV_ONLY_SECRET
+      process.env.KYC_HASH_PEPPER || process.env.JWT_SECRET || DEV_ONLY_SECRET
     );
   },
   /**
@@ -85,7 +82,11 @@ export const appConfig = {
       process.env.REFRESH_TOKEN_PEPPER ||
       process.env.JWT_SECRET ||
       '';
-    if (process.env.NODE_ENV === 'production' && !process.env.OTP_PEPPER && !process.env.REFRESH_TOKEN_PEPPER) {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      !process.env.OTP_PEPPER &&
+      !process.env.REFRESH_TOKEN_PEPPER
+    ) {
       throw new Error(
         'OTP_PEPPER (or REFRESH_TOKEN_PEPPER) is required in production for hashing one-time codes.',
       );
@@ -95,13 +96,12 @@ export const appConfig = {
   /** Pepper for HMAC of refresh token hashes. Required in production. */
   get refreshTokenPepper(): string {
     const pepper =
-      process.env.REFRESH_TOKEN_PEPPER ||
-      process.env.JWT_SECRET ||
-      '';
-    if (process.env.NODE_ENV === 'production' && !process.env.REFRESH_TOKEN_PEPPER) {
-      throw new Error(
-        'REFRESH_TOKEN_PEPPER is required in production.',
-      );
+      process.env.REFRESH_TOKEN_PEPPER || process.env.JWT_SECRET || '';
+    if (
+      process.env.NODE_ENV === 'production' &&
+      !process.env.REFRESH_TOKEN_PEPPER
+    ) {
+      throw new Error('REFRESH_TOKEN_PEPPER is required in production.');
     }
     if (!pepper) {
       return 'dev-refresh-pepper-not-for-production';

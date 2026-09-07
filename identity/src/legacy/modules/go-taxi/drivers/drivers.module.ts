@@ -10,7 +10,12 @@ import { UsersModule } from '../../users/users.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([DriverProfile, DriverAvailability, RegistrationApplication, User]),
+    TypeOrmModule.forFeature([
+      DriverProfile,
+      DriverAvailability,
+      RegistrationApplication,
+      User,
+    ]),
     UsersModule,
   ],
   controllers: [DriversController],

@@ -3025,4 +3025,45 @@ describe('SupportTicketsService', () => {
       expect.objectContaining({ action: 'support_ticket_resolution_changed' }),
     );
   });
+
+  describe('Gate3 requester ownership (043/048)', () => {
+    it('getForUser allows own ticket and 404s foreign / missing without leaking', async () => {
+      const { service, ticketRepo } = buildService();
+      ticketRepo.findOne.mockResolvedValue({
+        id: 'ticket-own',
+        requester_user_id: 'guest-1',
+        status: 'OPEN',
+        category: 'OTHER',
+        subject: 'Help',
+        priority: 'NORMAL',
+        booking_id: null,
+        listing_id: null,
+        conversation_id: null,
+        assigned_admin_id: null,
+        created_at: new Date('2026-01-01T00:00:00.000Z'),
+        updated_at: new Date('2026-01-01T00:00:00.000Z'),
+      });
+      const own = await service.getForUser('guest-1', 'ticket-own');
+      expect(own.id).toBe('ticket-own');
+
+      ticketRepo.findOne.mockResolvedValue(null);
+      await expect(service.getForUser('guest-2', 'ticket-own')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(
+        service.getForUser('guest-1', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('listForUser always filters by requester_user_id of the caller', async () => {
+      const { service, ticketRepo } = buildService();
+      ticketRepo.find.mockResolvedValue([]);
+      await service.listForUser('guest-1', 20);
+      expect(ticketRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { requester_user_id: 'guest-1' },
+        }),
+      );
+    });
+  });
 });

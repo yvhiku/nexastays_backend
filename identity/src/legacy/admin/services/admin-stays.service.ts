@@ -58,10 +58,7 @@ export class AdminStaysService {
     // Platform revenue = guest_fee + host_fee (4% total: 2% guest + 2% host)
     const revenueRow = await this.bookingRepo
       .createQueryBuilder('b')
-      .select(
-        'COALESCE(SUM(b.guest_fee + b.host_fee), 0)',
-        'total',
-      )
+      .select('COALESCE(SUM(b.guest_fee + b.host_fee), 0)', 'total')
       .where('b.status IN (:...statuses)', {
         statuses: ['CONFIRMED', 'CHECKED_IN', 'COMPLETED'],
       })
@@ -69,10 +66,7 @@ export class AdminStaysService {
 
     const todayRevenueRow = await this.bookingRepo
       .createQueryBuilder('b')
-      .select(
-        'COALESCE(SUM(b.guest_fee + b.host_fee), 0)',
-        'total',
-      )
+      .select('COALESCE(SUM(b.guest_fee + b.host_fee), 0)', 'total')
       .where('b.status IN (:...statuses)', {
         statuses: ['CONFIRMED', 'CHECKED_IN', 'COMPLETED'],
       })
@@ -105,7 +99,11 @@ export class AdminStaysService {
     };
   }
 
-  async getListings(params?: { status?: string; limit?: number; offset?: number }) {
+  async getListings(params?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }) {
     const { status, limit = 50, offset = 0 } = params || {};
     const qb = this.listingRepo
       .createQueryBuilder('l')
@@ -148,7 +146,10 @@ export class AdminStaysService {
     }
   }
 
-  async getListingMediaPath(listingId: string, assetId: string): Promise<string> {
+  async getListingMediaPath(
+    listingId: string,
+    assetId: string,
+  ): Promise<string> {
     const listing = await this.listingRepo.findOne({
       where: { id: listingId },
       relations: ['media'],
@@ -193,7 +194,11 @@ export class AdminStaysService {
     });
   }
 
-  async getBookings(params?: { status?: string; limit?: number; offset?: number }) {
+  async getBookings(params?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }) {
     const { status, limit = 50, offset = 0 } = params || {};
     const qb = this.bookingRepo
       .createQueryBuilder('b')
@@ -218,10 +223,21 @@ export class AdminStaysService {
     });
     if (!booking) return null;
     // Return occupants with full_name and id_number only (no ID document assets)
-    const b = booking as StaysBooking & { occupants?: Array<{ full_name: string; id_number: string | null; is_primary: boolean }> };
+    const b = booking as StaysBooking & {
+      occupants?: Array<{
+        full_name: string;
+        id_number: string | null;
+        is_primary: boolean;
+      }>;
+    };
     return {
       ...booking,
-      occupants: b.occupants?.map((o) => ({ full_name: o.full_name, id_number: o.id_number ?? null, is_primary: o.is_primary })) ?? [],
+      occupants:
+        b.occupants?.map((o) => ({
+          full_name: o.full_name,
+          id_number: o.id_number ?? null,
+          is_primary: o.is_primary,
+        })) ?? [],
     };
   }
 
@@ -230,7 +246,11 @@ export class AdminStaysService {
     adminUserId: string,
     auditContext?: { ip?: string; userAgent?: string },
   ) {
-    return this.hostOnboarding.approve(hostProfileId, adminUserId, auditContext);
+    return this.hostOnboarding.approve(
+      hostProfileId,
+      adminUserId,
+      auditContext,
+    );
   }
 
   async rejectHost(
@@ -273,7 +293,10 @@ export class AdminStaysService {
         user_agent: auditContext?.userAgent ?? null,
       }),
     );
-    return { listing_frozen: true, message: 'Host listing access frozen. They can still book.' };
+    return {
+      listing_frozen: true,
+      message: 'Host listing access frozen. They can still book.',
+    };
   }
 
   async unfreezeHost(
@@ -307,7 +330,9 @@ export class AdminStaysService {
     adminUserId: string,
     auditContext?: { ip?: string; userAgent?: string },
   ) {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+    });
     if (!listing) throw new NotFoundException('Listing not found');
     if (listing.status !== 'SUBMITTED') {
       throw new BadRequestException('Only SUBMITTED listings can be approved');
@@ -338,7 +363,9 @@ export class AdminStaysService {
     adminUserId: string,
     auditContext?: { ip?: string; userAgent?: string },
   ) {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+    });
     if (!listing) throw new NotFoundException('Listing not found');
     if (listing.status !== 'SUBMITTED') {
       throw new BadRequestException('Only SUBMITTED listings can be rejected');
@@ -368,7 +395,9 @@ export class AdminStaysService {
     adminUserId: string,
     auditContext?: { ip?: string; userAgent?: string },
   ) {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+    });
     if (!listing) throw new NotFoundException('Listing not found');
     if (listing.status !== 'APPROVED') {
       throw new BadRequestException('Only APPROVED listings can be set LIVE');

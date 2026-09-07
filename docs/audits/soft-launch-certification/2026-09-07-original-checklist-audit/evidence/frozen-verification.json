@@ -1,0 +1,38 @@
+[
+  {
+    "path": "nexastays_backend/deploy/env/dogfood.identity.env.example",
+    "unchanged": true
+  },
+  {
+    "path": "nexastays_backend/deploy/env/dogfood.stays.env.example",
+    "unchanged": true
+  },
+  {
+    "path": "nexastays_backend/deploy/env/staging.identity.env.example",
+    "unchanged": true
+  },
+  {
+    "path": "nexastays_backend/deploy/env/dogfood.notifications.env.example",
+    "unchanged": true
+  },
+  {
+    "path": "nexastays_backend/deploy/env/staging.stays.env.example",
+    "unchanged": true
+  },
+  {
+    "path": "nexastays_backend/deploy/env/staging.env.example",
+    "unchanged": true
+  },
+  {
+    "path": "nexastays_backend/deploy/env/production.env.example",
+    "unchanged": true
+  },
+  {
+    "path": "nexastays_backend/deploy/env/dogfood.media.env.example",
+    "unchanged": true
+  },
+  {
+    "path": "nexastays_backend/deploy/env/dogfood.env.example",
+    "unchanged": true
+  }
+]

@@ -10,7 +10,9 @@ export class JwksController {
 
   @Get('jwks.json')
   @Public()
-  @ApiOperation({ summary: 'JSON Web Key Set for verifying Identity-issued JWTs' })
+  @ApiOperation({
+    summary: 'JSON Web Key Set for verifying Identity-issued JWTs',
+  })
   getJwks() {
     return this.jwtKeys.getJwks();
   }

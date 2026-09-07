@@ -110,4 +110,54 @@ describe('HostListingsService H17 authorization', () => {
       expect.objectContaining({ status: 'APPROVED', paused_from_status: null }),
     );
   });
+
+  it('cross-host updateListing returns NotFound and does not save (044)', async () => {
+    hostsService.canList.mockResolvedValue(true);
+    listingRepo.findOne.mockResolvedValue({
+      id: 'listing-b',
+      host_user_id: 'host-b',
+      status: 'DRAFT',
+    });
+
+    await expect(
+      service.updateListing('host-a', 'listing-b', { title: 'hijack' } as never),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(listingRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('consumer/guest createListing DENY when canList false — no listingRepo create path', async () => {
+    hostsService.canList.mockResolvedValue(false);
+    hostsService.getHostProfileOrNull.mockResolvedValue({ listing_frozen: false });
+
+    await expect(
+      service.createListing('guest-1', { listing_type: 'APARTMENT' } as never),
+    ).rejects.toThrow(/Host verification required/i);
+    expect(listingRepo.findOne).not.toHaveBeenCalled();
+    expect(listingRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('getHostListings scopes by caller userId only (041 self-scope)', async () => {
+    const findRepo = {
+      findOne: jest.fn(),
+      save: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
+    };
+    const scoped = new HostListingsService(
+      {} as never,
+      hostsService as unknown as HostsService,
+      {} as never,
+      findRepo as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    await scoped.getHostListings('host-a');
+    expect(findRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { host_user_id: 'host-a' },
+      }),
+    );
+  });
 });

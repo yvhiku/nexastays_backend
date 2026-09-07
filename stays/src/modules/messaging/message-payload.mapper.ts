@@ -1,11 +1,21 @@
 import type { StaysMessage } from './entities/stays-message.entity';
-import type { AttachmentDto, MessagePayload, TimelineCardPayload } from './messaging.types';
+import type {
+  AttachmentDto,
+  MessagePayload,
+  TimelineCardPayload,
+} from './messaging.types';
 
-export type DeliveryState = 'PERSISTED' | 'SENT' | 'DELIVERED' | 'READ' | 'PENDING';
+export type DeliveryState =
+  | 'PERSISTED'
+  | 'SENT'
+  | 'DELIVERED'
+  | 'READ'
+  | 'PENDING';
 
 export function resolveDeliveryState(message: StaysMessage): DeliveryState {
   if (message.status === 'READ' || message.read_at) return 'READ';
-  if (message.status === 'DELIVERED' || message.delivered_at) return 'DELIVERED';
+  if (message.status === 'DELIVERED' || message.delivered_at)
+    return 'DELIVERED';
   if (message.status === 'PERSISTED' && message.sent_at) return 'SENT';
   if (message.status === 'PERSISTED') return 'PERSISTED';
   return 'PENDING';
@@ -69,7 +79,12 @@ export function payloadToStorage(
   if ('text' in payload && type === 'TEXT') {
     return {
       body: payload.text,
-      metadata: { source: 'USER', schemaVersion: 1, cardVersion: 1, presentationVersion: 1 },
+      metadata: {
+        source: 'USER',
+        schemaVersion: 1,
+        cardVersion: 1,
+        presentationVersion: 1,
+      },
     };
   }
 

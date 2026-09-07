@@ -15,7 +15,6 @@ import {
   HttpStatus,
   Req,
   Res,
-  Header,
   Logger,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -54,9 +53,11 @@ import {
   HostListingsListQueryDto,
 } from './dto/host-listings-list.dto';
 import type { StaysUserContext } from './hosts/host-onboarding.types';
-import { AccountTypes } from '../../common/decorators/account-type.decorator';
 import { StaysCancellationService } from './services/stays-cancellation.service';
-import { StaysReviewsService, parseReviewSort } from './services/stays-reviews.service';
+import {
+  StaysReviewsService,
+  parseReviewSort,
+} from './services/stays-reviews.service';
 import { HostDashboardService } from './services/host-dashboard.service';
 import { HostAnalyticsService } from './services/host-analytics.service';
 import { CalendarSyncService } from './services/calendar-sync.service';
@@ -146,7 +147,9 @@ export class StaysController {
   @Public()
   @UseGuards(BotProtectionGuard)
   @Throttle(PUBLIC_SEARCH_THROTTLE)
-  @ApiOperation({ summary: 'Explore listings (cursor pagination, card payload)' })
+  @ApiOperation({
+    summary: 'Explore listings (cursor pagination, card payload)',
+  })
   async explore(@Query() query: ExploreListingsDto) {
     return this.exploreService.exploreListings({
       city: query.city,
@@ -213,7 +216,9 @@ export class StaysController {
   @Public()
   @UseGuards(BotProtectionGuard)
   @Throttle(PUBLIC_SEARCH_THROTTLE)
-  @ApiOperation({ summary: 'Search available listings (shim → /stays/explore)' })
+  @ApiOperation({
+    summary: 'Search available listings (shim → /stays/explore)',
+  })
   async searchListings(@Query() query: SearchListingsDto) {
     return this.exploreService.exploreListings({
       city: query.city,
@@ -272,7 +277,8 @@ export class StaysController {
   @UseGuards(BotProtectionGuard)
   @Throttle(PUBLIC_SEARCH_THROTTLE)
   @ApiOperation({
-    summary: 'Get blocked date ranges for a listing (booked / host-blocked nights)',
+    summary:
+      'Get blocked date ranges for a listing (booked / host-blocked nights)',
   })
   async getListingAvailability(
     @Param('id', ParseUUIDPipe) id: string,
@@ -310,7 +316,8 @@ export class StaysController {
     @Body('side') side: string | undefined,
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     const normalizedSide: 'front' | 'back' = side === 'back' ? 'back' : 'front';
     return this.staysService.uploadOccupantIdDocument(
@@ -335,7 +342,8 @@ export class StaysController {
     @Body() dto: CreateBookingDto,
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     const snapshot = await this.identitySnapshotClient.fetchSnapshot(
       this.authHeader(req),
@@ -348,7 +356,10 @@ export class StaysController {
         identitySnapshot: snapshot,
       });
     } catch (err: unknown) {
-      this.logger.error('createBooking failed', err instanceof Error ? err.stack : String(err));
+      this.logger.error(
+        'createBooking failed',
+        err instanceof Error ? err.stack : String(err),
+      );
       throw err;
     }
   }
@@ -367,7 +378,8 @@ export class StaysController {
     @Body() dto: CancelBookingDto,
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.cancellationService.cancel(
       id,
@@ -509,7 +521,9 @@ export class StaysController {
   @Throttle(SENSITIVE_WRITE_THROTTLE)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Connect an external ICS calendar and sync immediately' })
+  @ApiOperation({
+    summary: 'Connect an external ICS calendar and sync immediately',
+  })
   async connectExternalCalendar(
     @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -528,7 +542,12 @@ export class StaysController {
     @Param('calId', ParseUUIDPipe) calId: string,
     @Body() body: UpdateExternalCalendarDto,
   ) {
-    return this.calendarSyncService.updateCalendar(id, calId, user.userId, body);
+    return this.calendarSyncService.updateCalendar(
+      id,
+      calId,
+      user.userId,
+      body,
+    );
   }
 
   @Delete('host/listings/:id/external-calendars/:calId')
@@ -536,7 +555,9 @@ export class StaysController {
   @Throttle(SENSITIVE_WRITE_THROTTLE)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Disconnect external calendar and remove ICAL blocks' })
+  @ApiOperation({
+    summary: 'Disconnect external calendar and remove ICAL blocks',
+  })
   async deleteExternalCalendar(
     @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -575,7 +596,9 @@ export class StaysController {
   @Throttle(SENSITIVE_WRITE_THROTTLE)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Regenerate calendar export token (invalidates old URL)' })
+  @ApiOperation({
+    summary: 'Regenerate calendar export token (invalidates old URL)',
+  })
   async regenerateCalendarExport(
     @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -586,11 +609,10 @@ export class StaysController {
   @Public()
   @Get('calendar/:token')
   @Throttle(PUBLIC_SEARCH_THROTTLE)
-  @ApiOperation({ summary: 'Public ICS export feed for a listing export token' })
-  async exportCalendarIcs(
-    @Param('token') token: string,
-    @Res() res: Response,
-  ) {
+  @ApiOperation({
+    summary: 'Public ICS export feed for a listing export token',
+  })
+  async exportCalendarIcs(@Param('token') token: string, @Res() res: Response) {
     const clean = token.replace(/\.ics$/i, '');
     const body = await this.calendarSyncService.buildExportIcs(clean);
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
@@ -714,10 +736,7 @@ export class StaysController {
       },
     );
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${filename}"`,
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Cache-Control', 'no-store');
     res.send(csv);
   }
@@ -814,7 +833,10 @@ export class StaysController {
   @ApiOperation({ summary: 'Upload listing photo' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
   })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -838,7 +860,10 @@ export class StaysController {
   @ApiOperation({ summary: 'Upload listing walkthrough video' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
   })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -867,7 +892,11 @@ export class StaysController {
     @Req() req: Request,
   ) {
     const ctx = await this.userWithSnapshot(user, req);
-    const source = (body.source ?? 'WEB') as 'WEB' | 'MOBILE' | 'ADMIN' | 'UNKNOWN';
+    const source = (body.source ?? 'WEB') as
+      | 'WEB'
+      | 'MOBILE'
+      | 'ADMIN'
+      | 'UNKNOWN';
     const submittedFrom = body.submitted_from ?? 'API_HOST_ONBOARDING';
     return this.hostOnboardingService.submitHostOnboarding(ctx, body, {
       source,
@@ -884,7 +913,9 @@ export class StaysController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get host onboarding status for current user' })
   async getHostMe(@CurrentUser() user: IdentityJwtUser, @Req() req: Request) {
-    return this.hostOnboardingService.getHostMe(await this.userWithSnapshot(user, req));
+    return this.hostOnboardingService.getHostMe(
+      await this.userWithSnapshot(user, req),
+    );
   }
 
   /**
@@ -960,7 +991,10 @@ export class StaysController {
   @ApiOperation({ summary: 'Upload host ID document (front)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
   })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -984,7 +1018,10 @@ export class StaysController {
   @ApiOperation({ summary: 'Upload host ID document (back)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
   })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -1008,7 +1045,10 @@ export class StaysController {
   @ApiOperation({ summary: 'Upload host selfie' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
   })
   @UseInterceptors(
     FileInterceptor('file', {

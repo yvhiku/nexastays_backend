@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { readFileSync } from 'fs';
 import { Repository } from 'typeorm';
 import {
   cert,
@@ -49,7 +50,9 @@ export class NotificationsService {
       if (serviceAccountJson) {
         serviceAccount = JSON.parse(serviceAccountJson) as ServiceAccount;
       } else {
-        serviceAccount = require(serviceAccountPath!) as ServiceAccount;
+        serviceAccount = JSON.parse(
+          readFileSync(serviceAccountPath!, 'utf8'),
+        ) as ServiceAccount;
       }
       this.firebaseApp = initializeApp({ credential: cert(serviceAccount) });
       safeLogger.info('FCM initialized');

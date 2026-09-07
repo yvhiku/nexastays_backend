@@ -80,5 +80,8 @@ export function isSvgBuffer(buffer: Buffer): boolean {
     .toString('utf8')
     .trimStart()
     .toLowerCase();
-  return head.startsWith('<svg') || (head.startsWith('<?xml') && head.includes('<svg'));
+  return (
+    head.startsWith('<svg') ||
+    (head.startsWith('<?xml') && head.includes('<svg'))
+  );
 }

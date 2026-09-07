@@ -1,0 +1,26 @@
+{
+  "nexastays_backend": {
+    "revision": "20613aac764953f01bae9aba9cf66aa1b83360bd",
+    "status": "M docs/audits/soft-launch-certification/README.md\n M identity/package-lock.json\n M identity/package.json\n M identity/src/modules/compliance/compliance.service.spec.ts\n M identity/src/modules/compliance/compliance.service.ts\n M identity/src/modules/compliance/entities/kyc-profile.entity.ts\n M stays/package-lock.json\n M stays/package.json\n?? docs/audits/soft-launch-certification/2026-09-07-original-checklist-audit/\n?? identity/src/modules/compliance/sumsub-webhook-auth.spec.ts"
+  },
+  "nexastays_web": {
+    "revision": "9fab15bf91710a5486a13e955842a482b59a1fbf",
+    "status": "M components/navbar/NavBar.tsx\n M lib/__tests__/sec-008-otp-binder-storage.test.ts\n M next-env.d.ts"
+  },
+  "nexastays_dashboard": {
+    "revision": "e498a5cc677e358b5374b23b53556f2978edc3cf",
+    "status": ""
+  },
+  "nexastays_platform": {
+    "revision": "a12fcaa9a96cc23793aa526f3443d563d5680b5e",
+    "status": ""
+  },
+  "nexastays_db": {
+    "revision": "802ba70adc4b331e1f2002b49862a858e15886d7",
+    "status": "M scripts/restore-postgres.sh\n?? identity/migrations/067_kyc_provider_event_order.sql\n?? scripts/test-restore-failure.sh"
+  },
+  "nexastays_mobile": {
+    "revision": "597852c30c7b9d89c1a7ee04880971f986bbe792",
+    "status": ""
+  }
+}

@@ -24,7 +24,12 @@ export class StaysPaymentIntent {
   @Column({ type: 'varchar', length: 50 })
   provider: string;
 
-  @Column({ type: 'varchar', length: 256, name: 'provider_intent_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 256,
+    name: 'provider_intent_id',
+    nullable: true,
+  })
   provider_intent_id: string | null;
 
   @Column({ type: 'decimal', precision: 18, scale: 2 })
@@ -40,7 +45,12 @@ export class StaysPaymentIntent {
   })
   status: 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
-  @Column({ type: 'varchar', length: 64, name: 'idempotency_key', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 64,
+    name: 'idempotency_key',
+    nullable: true,
+  })
   idempotency_key: string | null;
 
   @Column({ type: 'jsonb', default: {} })

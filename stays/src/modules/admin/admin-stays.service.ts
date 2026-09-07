@@ -10,7 +10,10 @@ import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysHostProfile } from '../stays/entities/stays-host-profile.entity';
 import { StaysAuditLog } from '../stays/entities/stays-audit-log.entity';
 import { StaysListingReview } from '../stays/entities/stays-listing-review.entity';
-import { HostOnboardingService, toAdminHostProfileDto } from '../stays/hosts/host-onboarding.service';
+import {
+  HostOnboardingService,
+  toAdminHostProfileDto,
+} from '../stays/hosts/host-onboarding.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { StaysService } from '../stays/stays.service';
 import { StaysBookingOccupant } from '../stays/entities/stays-booking-occupant.entity';
@@ -20,7 +23,6 @@ import { StaysSafetyIssue } from '../support/entities/stays-safety-issue.entity'
 import { DomainEventsService } from '../../common/events/domain-events.service';
 import { EVENTS } from '@nexa/event-bus';
 import { SeoFreshnessEngineService } from '../seo/seo-freshness-engine.service';
-import { SeoAdminService } from '../seo/seo-admin.service';
 import { MediaStorageService } from '../../common/media/media-storage.module';
 
 /** Admin Freeze / Take Offline source states (same as host pause). */
@@ -94,7 +96,10 @@ export class AdminStaysService {
     return d;
   }
 
-  private conversionRate(numerator: number, denominator: number): number | null {
+  private conversionRate(
+    numerator: number,
+    denominator: number,
+  ): number | null {
     if (!denominator || denominator <= 0) return null;
     return Math.round((numerator / denominator) * 1000) / 10;
   }
@@ -114,17 +119,13 @@ export class AdminStaysService {
     cancellationRate: number;
   }): { score: number; label: 'Healthy' | 'Watch' | 'Critical' } {
     let score = 100;
-    score -= Math.min(
-      40,
-      input.pendingListings * 2 + input.pendingHosts * 3,
-    );
+    score -= Math.min(40, input.pendingListings * 2 + input.pendingHosts * 3);
     if (input.avgRating > 0 && input.avgRating < 4) {
       score -= (4 - input.avgRating) * 10;
     }
     score -= input.cancellationRate * 50;
     score = Math.max(0, Math.min(100, Math.round(score)));
-    const label =
-      score >= 80 ? 'Healthy' : score >= 55 ? 'Watch' : 'Critical';
+    const label = score >= 80 ? 'Healthy' : score >= 55 ? 'Watch' : 'Critical';
     return { score, label };
   }
 
@@ -417,7 +418,7 @@ export class AdminStaysService {
     const live = typeof funnelLive === 'number' ? funnelLive : 0;
     const firstBooking = Number(
       Array.isArray(funnelFirstBookingRow)
-        ? funnelFirstBookingRow[0]?.count ?? 0
+        ? (funnelFirstBookingRow[0]?.count ?? 0)
         : 0,
     );
 
@@ -428,12 +429,12 @@ export class AdminStaysService {
       ]),
     );
     const moneyByDay = new Map(
-      (
-        seriesMoneyRows as { day: string; gmv: string; revenue: string }[]
-      ).map((r) => [
-        r.day,
-        { gmv: Number(r.gmv || 0), revenue: Number(r.revenue || 0) },
-      ]),
+      (seriesMoneyRows as { day: string; gmv: string; revenue: string }[]).map(
+        (r) => [
+          r.day,
+          { gmv: Number(r.gmv || 0), revenue: Number(r.revenue || 0) },
+        ],
+      ),
     );
 
     const series: {
@@ -466,7 +467,10 @@ export class AdminStaysService {
       : null;
     const hoursSince = (iso: string | null): number | null => {
       if (!iso) return null;
-      return Math.round(((Date.now() - new Date(iso).getTime()) / 3_600_000) * 10) / 10;
+      return (
+        Math.round(((Date.now() - new Date(iso).getTime()) / 3_600_000) * 10) /
+        10
+      );
     };
 
     return {
@@ -546,7 +550,9 @@ export class AdminStaysService {
       },
       opsTiming: {
         avgHoursToHostApproval:
-          avgHoursRaw != null ? Math.round(Number(avgHoursRaw) * 10) / 10 : null,
+          avgHoursRaw != null
+            ? Math.round(Number(avgHoursRaw) * 10) / 10
+            : null,
         avgDaysDraftToSubmit:
           avgDaysRaw != null ? Math.round(Number(avgDaysRaw) * 10) / 10 : null,
       },
@@ -673,7 +679,10 @@ export class AdminStaysService {
     hostUserId?: string;
   }) {
     const rawLimit = params?.limit ?? 50;
-    const limit = Math.min(Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 50), 100);
+    const limit = Math.min(
+      Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 50),
+      100,
+    );
     const rawOffset = params?.offset ?? 0;
     const offset = Math.max(0, Number.isFinite(rawOffset) ? rawOffset : 0);
     const status = params?.status;
@@ -751,7 +760,10 @@ export class AdminStaysService {
     };
   }
 
-  async getListingMediaPath(listingId: string, assetId: string): Promise<string> {
+  async getListingMediaPath(
+    listingId: string,
+    assetId: string,
+  ): Promise<string> {
     const listing = await this.listingRepo.findOne({
       where: { id: listingId },
       relations: ['media'],
@@ -1150,7 +1162,11 @@ export class AdminStaysService {
     adminUserId: string,
     auditContext?: { ip?: string; userAgent?: string },
   ) {
-    return this.hostOnboarding.approve(hostProfileId, adminUserId, auditContext);
+    return this.hostOnboarding.approve(
+      hostProfileId,
+      adminUserId,
+      auditContext,
+    );
   }
 
   async rejectHost(
@@ -1230,7 +1246,9 @@ export class AdminStaysService {
     adminUserId: string,
     auditContext?: { ip?: string; userAgent?: string },
   ) {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+    });
     if (!listing) throw new NotFoundException('Listing not found');
     if (listing.status !== 'SUBMITTED') {
       throw new BadRequestException('Only SUBMITTED listings can be approved');
@@ -1258,7 +1276,9 @@ export class AdminStaysService {
     adminUserId: string,
     auditContext?: { ip?: string; userAgent?: string },
   ) {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+    });
     if (!listing) throw new NotFoundException('Listing not found');
     if (listing.status !== 'SUBMITTED') {
       throw new BadRequestException('Only SUBMITTED listings can be rejected');
@@ -1285,7 +1305,9 @@ export class AdminStaysService {
     adminUserId: string,
     auditContext?: { ip?: string; userAgent?: string },
   ) {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+    });
     if (!listing) throw new NotFoundException('Listing not found');
     if (listing.status !== 'APPROVED') {
       throw new BadRequestException('Only APPROVED listings can be set LIVE');
@@ -1322,7 +1344,9 @@ export class AdminStaysService {
     adminUserId: string,
     auditContext?: { ip?: string; userAgent?: string },
   ) {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+    });
     if (!listing) throw new NotFoundException('Listing not found');
     if (!ADMIN_PAUSABLE_STATUSES.includes(listing.status)) {
       throw new BadRequestException(
@@ -1349,7 +1373,8 @@ export class AdminStaysService {
     void this.seoFreshness.refreshForSearchCity(listing.city);
     return {
       status: 'PAUSED',
-      message: 'Listing paused and hidden from search. It can be resumed later.',
+      message:
+        'Listing paused and hidden from search. It can be resumed later.',
     };
   }
 
@@ -1363,7 +1388,9 @@ export class AdminStaysService {
     adminUserId: string,
     auditContext?: { ip?: string; userAgent?: string },
   ) {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+    });
     if (!listing) throw new NotFoundException('Listing not found');
     if (listing.status !== 'PAUSED') {
       throw new BadRequestException('Only PAUSED listings can be resumed');

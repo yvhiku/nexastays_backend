@@ -1,0 +1,40 @@
+{
+  "time": "2026-09-06T21:12:38.413648+00:00",
+  "repos": {
+    "nexastays_backend": {
+      "revision": "36d303ef5a0609da94159e6859ab69cad04c1d46",
+      "status": ""
+    },
+    "nexastays_web": {
+      "revision": "9fab15bf91710a5486a13e955842a482b59a1fbf",
+      "status": ""
+    },
+    "nexastays_dashboard": {
+      "revision": "e498a5cc677e358b5374b23b53556f2978edc3cf",
+      "status": ""
+    },
+    "nexastays_platform": {
+      "revision": "7724f98d245e748d50f2cfda3225894dfbb6e1f4",
+      "status": ""
+    },
+    "nexastays_db": {
+      "revision": "802ba70adc4b331e1f2002b49862a858e15886d7",
+      "status": ""
+    },
+    "nexastays_mobile": {
+      "revision": "597852c30c7b9d89c1a7ee04880971f986bbe792",
+      "status": ""
+    }
+  },
+  "frozen_config_hashes": {
+    "nexastays_backend/deploy/env/dogfood.identity.env.example": "541a851e63028f75a8b6f39580859501a5145b035240c9b211c678b953e954b2",
+    "nexastays_backend/deploy/env/dogfood.stays.env.example": "84892a9cf1dcc89aee728fd48550133b14744b1f335d977d4d0801b378cd43e7",
+    "nexastays_backend/deploy/env/staging.identity.env.example": "31fdb536033e341761b69f67e264117edce406aebe91be4b70330438047b8783",
+    "nexastays_backend/deploy/env/dogfood.notifications.env.example": "b4ff0c63b08e9ae66053fb3f0925db33e01d9545a15cf8fbfb978ca27745fee1",
+    "nexastays_backend/deploy/env/staging.stays.env.example": "b143cc628c1b341989e110b59a7ed5abec4af69f1114dddb90510d455d5f6358",
+    "nexastays_backend/deploy/env/staging.env.example": "f8f89981e81277f5a3a595e3e47e63e4718ea1bbeef62d4b3ff8bfbb0c1b949a",
+    "nexastays_backend/deploy/env/production.env.example": "5e1db9af531789d962fc164c263759224cba9df677fe2a3ede8911253078f6c4",
+    "nexastays_backend/deploy/env/dogfood.media.env.example": "bf22ffd26ba64306ed99879804e4a873002e5784aad6975c9756945ed9b07e81",
+    "nexastays_backend/deploy/env/dogfood.env.example": "52bfa0b97820258e98ea19c59a33285d3c5efafdf7e9284243879d2813be8bc5"
+  }
+}

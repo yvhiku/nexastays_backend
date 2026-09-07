@@ -16,15 +16,21 @@ export class RpRewardsDashboardService {
   ) {}
 
   async getDashboard(userId: string) {
-    const [cashbackSummary, pointsBalance, activeCats, recentCb, recentAch, achList] =
-      await Promise.all([
-        this.cashback.getSummaryForUser(userId),
-        this.points.getBalance(userId),
-        this.categories.getCurrentPeriodCategoriesWithRates(),
-        this.cashback.listTransactions(userId, 1, 5),
-        this.achievements.recentUnlocked(userId, 3),
-        this.achievements.listForUser(userId),
-      ]);
+    const [
+      cashbackSummary,
+      pointsBalance,
+      activeCats,
+      recentCb,
+      recentAch,
+      achList,
+    ] = await Promise.all([
+      this.cashback.getSummaryForUser(userId),
+      this.points.getBalance(userId),
+      this.categories.getCurrentPeriodCategoriesWithRates(),
+      this.cashback.listTransactions(userId, 1, 5),
+      this.achievements.recentUnlocked(userId, 3),
+      this.achievements.listForUser(userId),
+    ]);
 
     const period = await this.billing.getActivePeriod();
     let selectionBanner = false;

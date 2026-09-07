@@ -1,0 +1,3 @@
+=== Gate 4 R2 restore prerequisites ===
+age:MISSING
+rclone:MISSING

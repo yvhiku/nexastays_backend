@@ -42,7 +42,10 @@ export class StaysMessageAttachment {
   @Column({ type: 'uuid', name: 'session_id', nullable: true })
   session_id: string | null;
 
-  @ManyToOne(() => StaysAttachmentSession, { onDelete: 'SET NULL', nullable: true })
+  @ManyToOne(() => StaysAttachmentSession, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
   @JoinColumn({ name: 'session_id' })
   session: StaysAttachmentSession | null;
 
@@ -66,7 +69,12 @@ export class StaysMessageAttachment {
   @Column({ type: 'int', name: 'duration_ms', nullable: true })
   duration_ms: number | null;
 
-  @Column({ type: 'varchar', length: 64, name: 'checksum_sha256', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 64,
+    name: 'checksum_sha256',
+    nullable: true,
+  })
   checksum_sha256: string | null;
 
   @Column({ type: 'text', name: 'storage_url' })
@@ -90,7 +98,12 @@ export class StaysMessageAttachment {
   @Column({ type: 'varchar', length: 64, nullable: true })
   blurhash: string | null;
 
-  @Column({ type: 'varchar', length: 20, name: 'virus_scan_status', default: 'PENDING' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'virus_scan_status',
+    default: 'PENDING',
+  })
   virus_scan_status: VirusScanStatus;
 
   @Column({ type: 'bigint', name: 'size_bytes', nullable: true })

@@ -1,4 +1,10 @@
-import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Optional,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, In } from 'typeorm';
@@ -27,7 +33,10 @@ function parseCheckoutDateTime(
   const [hourPart, minutePart] = checkoutTime.split(':');
   const hours = Number(hourPart) || 11;
   const minutes = Number(minutePart) || 0;
-  return new Date(dateStr + `T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`);
+  return new Date(
+    dateStr +
+      `T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`,
+  );
 }
 
 @Injectable()
@@ -83,7 +92,10 @@ export class BookingLifecycleSchedulerService {
         );
         const msUntilCheckout = checkoutAt.getTime() - now;
         // 15-minute cron window: fire once between 45–75 minutes before checkout
-        if (msUntilCheckout <= 45 * 60 * 1000 || msUntilCheckout > 75 * 60 * 1000) {
+        if (
+          msUntilCheckout <= 45 * 60 * 1000 ||
+          msUntilCheckout > 75 * 60 * 1000
+        ) {
           continue;
         }
 
@@ -180,7 +192,7 @@ export class BookingLifecycleSchedulerService {
           { status: 'COMPLETED', completed_at: new Date() },
         );
 
-        const listing = booking.listing as StaysListing;
+        const listing = booking.listing;
         const hostUserId = listing?.host_user_id;
         if (hostUserId) {
           void this.domainEvents.publish(EVENTS.BOOKING_COMPLETED, 'stays', {
@@ -245,7 +257,9 @@ export class BookingLifecycleSchedulerService {
           listingTitle: listing?.title,
           reminderStage: stage,
         });
-        this.logger.log(`Review reminder (${stage}) queued for booking ${booking.id}`);
+        this.logger.log(
+          `Review reminder (${stage}) queued for booking ${booking.id}`,
+        );
       }
     }
   }

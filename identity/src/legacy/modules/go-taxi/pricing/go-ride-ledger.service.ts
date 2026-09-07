@@ -24,8 +24,7 @@ export class GoRideLedgerService {
     @InjectRepository(Wallet)
     private readonly walletRepo: Repository<Wallet>,
   ) {
-    this.platformWalletId =
-      process.env.GO_PLATFORM_WALLET_ID?.trim() || null;
+    this.platformWalletId = process.env.GO_PLATFORM_WALLET_ID?.trim() || null;
   }
 
   /**
@@ -42,8 +41,9 @@ export class GoRideLedgerService {
     if (!wallet) {
       throw new NotFoundException('Passenger wallet not found');
     }
-    const account =
-      await this.ledgerService.getOrCreateWalletAccount(wallet.id);
+    const account = await this.ledgerService.getOrCreateWalletAccount(
+      wallet.id,
+    );
     const balance = await this.ledgerService.getBalance(account.id);
     if (balance < requiredHold) {
       throw new BadRequestException(
@@ -216,7 +216,9 @@ export class GoRideLedgerService {
     commissionAmount: number,
     rideId: string,
   ): Promise<void> {
-    if (Math.abs(fareAmount - driverPayout - commissionAmount) > ROUND_EPSILON) {
+    if (
+      Math.abs(fareAmount - driverPayout - commissionAmount) > ROUND_EPSILON
+    ) {
       throw new BadRequestException(
         'Settlement splits do not sum to fare amount',
       );
@@ -236,11 +238,10 @@ export class GoRideLedgerService {
           passengerWallet.id,
           manager,
         );
-      const driverAccount =
-        await this.ledgerService.getOrCreateWalletAccount(
-          driverWallet.id,
-          manager,
-        );
+      const driverAccount = await this.ledgerService.getOrCreateWalletAccount(
+        driverWallet.id,
+        manager,
+      );
       const platformAccount = await this.getPlatformAccount(manager);
 
       await manager
@@ -327,8 +328,10 @@ export class GoRideLedgerService {
       if (!wallet) {
         throw new NotFoundException('Wallet not found for user');
       }
-      const creditAccount =
-        await this.ledgerService.getOrCreateWalletAccount(wallet.id, manager);
+      const creditAccount = await this.ledgerService.getOrCreateWalletAccount(
+        wallet.id,
+        manager,
+      );
       const platformAccount = await this.getPlatformAccount(manager);
       const ref = `${REF_PREFIX}_${rideId}_CREDIT`.slice(0, 64);
       await this.ledgerPostingService.postTwoLegJournal(manager, {

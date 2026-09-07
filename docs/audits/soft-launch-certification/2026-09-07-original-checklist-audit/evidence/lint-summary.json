@@ -1,0 +1,50 @@
+{
+  "identity": {
+    "errors": 3172,
+    "warnings": 338,
+    "rules": {
+      "prettier/prettier": 1067,
+      "@typescript-eslint/require-await": 39,
+      "@typescript-eslint/no-unsafe-member-access": 971,
+      "@typescript-eslint/no-unsafe-assignment": 569,
+      "@typescript-eslint/no-unsafe-argument": 336,
+      "@typescript-eslint/no-misused-promises": 1,
+      "@typescript-eslint/no-unsafe-return": 63,
+      "@typescript-eslint/no-unsafe-call": 350,
+      "@typescript-eslint/restrict-template-expressions": 1,
+      "@typescript-eslint/no-unused-vars": 61,
+      "@typescript-eslint/no-unnecessary-type-assertion": 24,
+      "@typescript-eslint/no-redundant-type-constituents": 5,
+      "@typescript-eslint/no-base-to-string": 13,
+      "no-case-declarations": 1,
+      "parser": 5,
+      "@typescript-eslint/no-require-imports": 1,
+      "prefer-const": 2,
+      "@typescript-eslint/no-floating-promises": 1
+    }
+  },
+  "stays": {
+    "errors": 2696,
+    "warnings": 21,
+    "rules": {
+      "prettier/prettier": 1997,
+      "@typescript-eslint/no-unsafe-assignment": 102,
+      "@typescript-eslint/no-unsafe-member-access": 231,
+      "@typescript-eslint/no-unsafe-argument": 19,
+      "@typescript-eslint/no-misused-promises": 1,
+      "@typescript-eslint/no-unsafe-return": 33,
+      "@typescript-eslint/restrict-template-expressions": 9,
+      "@typescript-eslint/no-unused-vars": 20,
+      "@typescript-eslint/no-unsafe-call": 99,
+      "@typescript-eslint/require-await": 114,
+      "@typescript-eslint/no-unnecessary-type-assertion": 52,
+      "@typescript-eslint/no-redundant-type-constituents": 4,
+      "@typescript-eslint/no-base-to-string": 24,
+      "no-useless-escape": 4,
+      "parser": 2,
+      "no-case-declarations": 1,
+      "@typescript-eslint/unbound-method": 3,
+      "prefer-const": 2
+    }
+  }
+}

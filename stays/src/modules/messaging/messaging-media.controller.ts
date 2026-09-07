@@ -61,12 +61,16 @@ export class MessagingMediaController {
     res.setHeader('Content-Type', photo.contentType);
     res.setHeader('Cache-Control', 'public, max-age=3600');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    Readable.fromWeb(photo.body as unknown as ReadableStream<Uint8Array>).pipe(res);
+    Readable.fromWeb(photo.body as unknown as ReadableStream<Uint8Array>).pipe(
+      res,
+    );
   }
 
   @Get('listings/:listingId/cover/:mediaId')
   @Public()
-  @ApiOperation({ summary: 'Signed listing cover thumbnail for messaging cards' })
+  @ApiOperation({
+    summary: 'Signed listing cover thumbnail for messaging cards',
+  })
   async getListingCover(
     @Param('listingId') listingId: string,
     @Param('mediaId') mediaId: string,
@@ -97,7 +101,10 @@ export class MessagingMediaController {
     );
     if (!valid) throw new NotFoundException();
 
-    const fullPath = await this.staysService.getListingMediaPath(listingId, mediaId);
+    const fullPath = await this.staysService.getListingMediaPath(
+      listingId,
+      mediaId,
+    );
     await deliverStoredMedia(res, fullPath);
   }
 
@@ -129,7 +136,9 @@ export class MessagingMediaController {
     );
     if (!valid) throw new NotFoundException();
 
-    const row = await this.attachmentRepo.findOne({ where: { id: attachmentId } });
+    const row = await this.attachmentRepo.findOne({
+      where: { id: attachmentId },
+    });
     if (!row || row.status !== 'READY') throw new NotFoundException();
 
     const rel =

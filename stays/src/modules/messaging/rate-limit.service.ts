@@ -36,17 +36,26 @@ export class MessagingRateLimitService {
     bucket.timestamps = bucket.timestamps.filter((t) => now - t < 86_400_000);
     const lastMinute = bucket.timestamps.filter((t) => now - t < 60_000);
     if (lastMinute.length >= this.perMinute) {
-      throw new HttpException('Rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        'Rate limit exceeded',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
     if (bucket.timestamps.length >= this.perDay) {
-      throw new HttpException('Daily message limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        'Daily message limit exceeded',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
 
     const normalized = body.trim().toLowerCase();
     const bodyTimes = bucket.bodies.get(normalized) ?? [];
     const recentBodies = bodyTimes.filter((t) => now - t < 60_000);
     if (recentBodies.length >= this.identicalPerMinute) {
-      throw new HttpException('Duplicate message limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        'Duplicate message limit exceeded',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
     recentBodies.push(now);
     bucket.bodies.set(normalized, recentBodies);

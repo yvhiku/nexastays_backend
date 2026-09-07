@@ -1,4 +1,9 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+} from 'typeorm';
 
 @Entity('stays_messaging_audit_log')
 export class StaysMessagingAuditLog {
@@ -8,7 +13,12 @@ export class StaysMessagingAuditLog {
   @Column({ type: 'uuid', name: 'conversation_id', nullable: true })
   conversation_id: string | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'actor_user_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'actor_user_id',
+    nullable: true,
+  })
   actor_user_id: string | null;
 
   @Column({ type: 'varchar', length: 64 })

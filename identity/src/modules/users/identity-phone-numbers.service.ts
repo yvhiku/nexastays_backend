@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
@@ -76,7 +75,9 @@ export class IdentityPhoneNumbersService {
     const identityRepo = manager
       ? manager.getRepository(UnifiedIdentity)
       : this.identityRepo;
-    const repo = manager ? manager.getRepository(IdentityPhoneNumber) : this.repo;
+    const repo = manager
+      ? manager.getRepository(IdentityPhoneNumber)
+      : this.repo;
 
     const identity = await identityRepo.findOne({
       where: { id: identityId },
@@ -96,14 +97,12 @@ export class IdentityPhoneNumbersService {
         'This phone number is already linked to another identity',
       );
     }
-    const isFirst = (await repo.count({ where: { identity_id: identityId } })) === 0;
+    const isFirst =
+      (await repo.count({ where: { identity_id: identityId } })) === 0;
     const isPrimary = options?.isPrimary ?? isFirst;
     const isVerified = options?.isVerified ?? false;
     if (isPrimary) {
-      await repo.update(
-        { identity_id: identityId },
-        { is_primary: false },
-      );
+      await repo.update({ identity_id: identityId }, { is_primary: false });
     }
     const row = repo.create({
       identity_id: identityId,
@@ -146,14 +145,9 @@ export class IdentityPhoneNumbersService {
       },
     });
     if (!row) {
-      throw new NotFoundException(
-        'Phone number not found for this identity',
-      );
+      throw new NotFoundException('Phone number not found for this identity');
     }
-    await this.repo.update(
-      { identity_id: identityId },
-      { is_primary: false },
-    );
+    await this.repo.update({ identity_id: identityId }, { is_primary: false });
     row.is_primary = true;
     return this.repo.save(row);
   }
@@ -173,9 +167,7 @@ export class IdentityPhoneNumbersService {
       },
     });
     if (!row) {
-      throw new NotFoundException(
-        'Phone number not found for this identity',
-      );
+      throw new NotFoundException('Phone number not found for this identity');
     }
     row.is_verified = true;
     row.verified_at = new Date();

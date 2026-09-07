@@ -19,18 +19,24 @@ export class DomainEventsService {
    * Invalid events are REJECTED and logged as errors — never silently published.
    * Transport failures are absorbed (event bus has its own buffering/retry).
    */
-  publish<T extends Record<string, unknown>>(type: string, source: string, payload: T) {
-    return this.publisher.publish(type, source, payload).catch((err: unknown) => {
-      if (err instanceof EventValidationError) {
-        this.logger.error(
-          `Rejected invalid event "${err.eventType}": ${err.issues.join('; ')}`,
-        );
-      } else {
-        this.logger.warn(
-          `Event publish transport failure for "${type}": ${err instanceof Error ? err.message : err}`,
-        );
-      }
-      return undefined;
-    });
+  publish<T extends Record<string, unknown>>(
+    type: string,
+    source: string,
+    payload: T,
+  ) {
+    return this.publisher
+      .publish(type, source, payload)
+      .catch((err: unknown) => {
+        if (err instanceof EventValidationError) {
+          this.logger.error(
+            `Rejected invalid event "${err.eventType}": ${err.issues.join('; ')}`,
+          );
+        } else {
+          this.logger.warn(
+            `Event publish transport failure for "${type}": ${err instanceof Error ? err.message : err}`,
+          );
+        }
+        return undefined;
+      });
   }
 }

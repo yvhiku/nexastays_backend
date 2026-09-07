@@ -89,7 +89,9 @@ describe('SEC-002 SMS / OTP logging', () => {
       jest.spyOn(Logger.prototype, 'log').mockImplementation(capture);
       jest.spyOn(Logger.prototype, 'warn').mockImplementation(capture);
       jest.spyOn(Logger.prototype, 'error').mockImplementation(capture);
-      jest.spyOn(Logger.prototype, 'debug').mockImplementation(capture as never);
+      jest
+        .spyOn(Logger.prototype, 'debug')
+        .mockImplementation(capture as never);
       return lines;
     }
 
@@ -145,7 +147,8 @@ describe('SEC-002 SMS / OTP logging', () => {
         ok: true,
         json: async () => ({ id: 'msg_test' }),
       });
-      (globalThis as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+      (globalThis as { fetch: typeof fetch }).fetch =
+        fetchMock as unknown as typeof fetch;
 
       const service = new SmsService();
       const lines = collectLoggerOutput(service);
@@ -216,7 +219,9 @@ describe('SEC-002 SMS / OTP logging', () => {
 
       (globalThis as { fetch: typeof fetch }).fetch = jest
         .fn()
-        .mockRejectedValue(new Error(`EnvoiSMS boom includes ${OTP}`)) as unknown as typeof fetch;
+        .mockRejectedValue(
+          new Error(`EnvoiSMS boom includes ${OTP}`),
+        ) as unknown as typeof fetch;
 
       const ok = await service.sendOtp('+212612345678', OTP);
       expect(ok).toBe(false);

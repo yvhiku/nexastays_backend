@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { SignedMedia } from './messaging.types';
-import { isProductionRuntime, requirePublicBaseUrl } from '../../common/security/secrets';
+import {
+  isProductionRuntime,
+  requirePublicBaseUrl,
+} from '../../common/security/secrets';
 
 const DEFAULT_TTL_MS = 60 * 60 * 1000;
 
@@ -27,7 +30,10 @@ export class MessagingMediaService {
   }
 
   private publicBaseUrl(): string {
-    const base = requirePublicBaseUrl('STAYS_PUBLIC_URL', 'http://127.0.0.1:3002');
+    const base = requirePublicBaseUrl(
+      'STAYS_PUBLIC_URL',
+      'http://127.0.0.1:3002',
+    );
     const withApi = base.endsWith('/api/v1') ? base : `${base}/api/v1`;
     return withApi;
   }
@@ -37,7 +43,9 @@ export class MessagingMediaService {
       .sort()
       .map((k) => `${k}=${payload[k]}`)
       .join('&');
-    return createHmac('sha256', this.signingSecret()).update(canonical).digest('hex');
+    return createHmac('sha256', this.signingSecret())
+      .update(canonical)
+      .digest('hex');
   }
 
   verifySignature(
@@ -52,7 +60,11 @@ export class MessagingMediaService {
     }
   }
 
-  resolveAvatar(userId: string, version = 1, ttlMs = DEFAULT_TTL_MS): SignedMedia {
+  resolveAvatar(
+    userId: string,
+    version = 1,
+    ttlMs = DEFAULT_TTL_MS,
+  ): SignedMedia {
     const exp = Date.now() + ttlMs;
     const sig = this.signPayload({ userId, exp, v: version, kind: 'avatar' });
     return {

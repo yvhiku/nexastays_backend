@@ -4,7 +4,10 @@ import { getInternalServiceKey } from '../security/secrets';
 @Injectable()
 export class IdentityProfilePhotoClient {
   private readonly logger = new Logger(IdentityProfilePhotoClient.name);
-  private readonly existsCache = new Map<string, { value: boolean; expiresAt: number }>();
+  private readonly existsCache = new Map<
+    string,
+    { value: boolean; expiresAt: number }
+  >();
 
   private baseUrl(): string {
     return (
@@ -29,10 +32,15 @@ export class IdentityProfilePhotoClient {
       if (!res.ok) return false;
       const data = (await res.json()) as { hasPhoto?: boolean };
       const value = !!data.hasPhoto;
-      this.existsCache.set(userId, { value, expiresAt: Date.now() + 5 * 60_000 });
+      this.existsCache.set(userId, {
+        value,
+        expiresAt: Date.now() + 5 * 60_000,
+      });
       return value;
     } catch (err) {
-      this.logger.debug(`profile photo exists check failed for ${userId}: ${err}`);
+      this.logger.debug(
+        `profile photo exists check failed for ${userId}: ${err}`,
+      );
       return false;
     }
   }
@@ -48,7 +56,10 @@ export class IdentityProfilePhotoClient {
       );
       if (!res.ok || !res.body) return null;
       const contentType = res.headers.get('content-type') ?? 'image/jpeg';
-      return { body: res.body as unknown as NodeJS.ReadableStream, contentType };
+      return {
+        body: res.body as unknown as NodeJS.ReadableStream,
+        contentType,
+      };
     } catch (err) {
       this.logger.debug(`profile photo fetch failed for ${userId}: ${err}`);
       return null;

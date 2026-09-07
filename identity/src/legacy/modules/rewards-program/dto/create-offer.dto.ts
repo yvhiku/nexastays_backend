@@ -23,7 +23,11 @@ export class CreateMerchantOfferDto {
   category_id?: number | null;
 
   @IsString()
-  offer_type: 'cashback_boost' | 'points_multiplier' | 'voucher' | 'loyalty_stamp';
+  offer_type:
+    | 'cashback_boost'
+    | 'points_multiplier'
+    | 'voucher'
+    | 'loyalty_stamp';
 
   @IsString()
   @MaxLength(255)

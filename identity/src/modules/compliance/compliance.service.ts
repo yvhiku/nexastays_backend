@@ -14,21 +14,21 @@ import { KycProfile } from './entities/kyc-profile.entity';
 import { User } from '../users/entities/user.entity';
 import { SubmitKycDto } from './dto/submit-kyc.dto';
 
-const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const UPLOAD_DIR = 'uploads/kyc';
 /** Filename allowlist: only alphanumeric, dot, underscore, hyphen. No path traversal. */
 const FILENAME_ALLOWLIST = /^[a-zA-Z0-9._-]+$/;
-const MAX_FILES_PER_REQUEST = 1;
 
-import {
-  detectImageType,
-  mimetypeFromDetected,
-  type AllowedImageType,
-} from './image-type.util';
+import { detectImageType, type AllowedImageType } from './image-type.util';
 import { safeLogger } from '../../common/logging/safe-logger';
-import { normalizePhoneOrThrow, tryNormalizePhoneNumber } from '../../common/phone/phone-normalizer';
-import { isIdentityLocalUploadDisabled, assertIdentityProviderMediaSyncAllowed } from '../../common/security/upload-storage-policy';
+import {
+  normalizePhoneOrThrow,
+  tryNormalizePhoneNumber,
+} from '../../common/phone/phone-normalizer';
+import {
+  isIdentityLocalUploadDisabled,
+  assertIdentityProviderMediaSyncAllowed,
+} from '../../common/security/upload-storage-policy';
 import { deriveIdentityOnboardingState } from '../../common/identity-onboarding';
 
 export type DocumentUploadOptions = {
@@ -212,7 +212,9 @@ export class ComplianceService {
     const algorithm =
       algorithmByHeader[(digestAlgHeader || 'HMAC_SHA256_HEX').toUpperCase()];
     if (!algorithm) {
-      throw new BadRequestException('Unsupported Sumsub webhook signature algorithm');
+      throw new BadRequestException(
+        'Unsupported Sumsub webhook signature algorithm',
+      );
     }
 
     const expected = crypto
@@ -300,7 +302,10 @@ export class ComplianceService {
   }
 
   /** Sumsub returns HTTP 404 or JSON body { code: 404, description: Applicant not found } depending on endpoint/version. */
-  private isSumsubApplicantNotFound(details: string, httpStatus: number): boolean {
+  private isSumsubApplicantNotFound(
+    details: string,
+    httpStatus: number,
+  ): boolean {
     if (httpStatus === 404) return true;
     try {
       const o = JSON.parse(details) as { code?: number; description?: string };
@@ -365,7 +370,9 @@ export class ComplianceService {
   ): string | null {
     if (!applicant || typeof applicant !== 'object') return null;
     const info = applicant.info as Record<string, unknown> | undefined;
-    const fixedInfo = applicant.fixedInfo as Record<string, unknown> | undefined;
+    const fixedInfo = applicant.fixedInfo as
+      | Record<string, unknown>
+      | undefined;
     for (const raw of [info?.dob, fixedInfo?.dob, applicant.dob]) {
       if (typeof raw !== 'string') continue;
       const dob = raw.trim().slice(0, 10);
@@ -389,7 +396,10 @@ export class ComplianceService {
   }
 
   /** Map Sumsub `idDocType` codes onto the app's document_type vocabulary. */
-  private mapSumsubDocType(raw: unknown, country: string | null): string | null {
+  private mapSumsubDocType(
+    raw: unknown,
+    country: string | null,
+  ): string | null {
     if (typeof raw !== 'string') return null;
     const v = raw.trim().toUpperCase();
     if (!v) return null;
@@ -436,21 +446,25 @@ export class ComplianceService {
       inspectionId: null,
     };
     if (!applicant || typeof applicant !== 'object') return empty;
-    const info = (applicant.info as Record<string, unknown> | undefined) ?? undefined;
+    const info =
+      (applicant.info as Record<string, unknown> | undefined) ?? undefined;
     const fixedInfo =
       (applicant.fixedInfo as Record<string, unknown> | undefined) ?? undefined;
     const review =
       (applicant.review as Record<string, unknown> | undefined) ?? undefined;
     const reviewResult =
-      (review?.reviewResult as Record<string, unknown> | undefined) ?? undefined;
+      (review?.reviewResult as Record<string, unknown> | undefined) ??
+      undefined;
     const idDocs = Array.isArray(info?.idDocs)
-      ? (info!.idDocs as Record<string, unknown>[])
+      ? (info.idDocs as Record<string, unknown>[])
       : [];
     const primaryDoc =
-      idDocs.find((d) => typeof d?.idDocType === 'string' && d.idDocType !== 'SELFIE') ??
-      null;
+      idDocs.find(
+        (d) => typeof d?.idDocType === 'string' && d.idDocType !== 'SELFIE',
+      ) ?? null;
 
-    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+    const str = (v: unknown) =>
+      typeof v === 'string' && v.trim() ? v.trim() : null;
     const nameFrom = (src?: Record<string, unknown>) => {
       if (!src) return null;
       const parts = [src.firstName, src.middleName, src.lastName]
@@ -476,21 +490,31 @@ export class ComplianceService {
 
     return {
       dateOfBirth: this.extractSumsubIsoDob(applicant),
-      fullName: nameFrom(info) ?? nameFrom(fixedInfo) ?? nameFrom(primaryDoc ?? undefined),
+      fullName:
+        nameFrom(info) ??
+        nameFrom(fixedInfo) ??
+        nameFrom(primaryDoc ?? undefined),
       nationality,
-      documentType: this.mapSumsubDocType(primaryDoc?.idDocType, documentCountry),
+      documentType: this.mapSumsubDocType(
+        primaryDoc?.idDocType,
+        documentCountry,
+      ),
       documentCountry,
       documentNumber: str(primaryDoc?.number)?.slice(0, 64) ?? null,
       // Expiry only — never use issuedDate (issue ≠ valid-until).
       documentValidUntil: this.normalizeIsoDob(str(primaryDoc?.validUntil)),
-      email: str(applicant.email)?.slice(0, 150) ?? str(info?.email)?.slice(0, 150) ?? null,
+      email:
+        str(applicant.email)?.slice(0, 150) ??
+        str(info?.email)?.slice(0, 150) ??
+        null,
       phone: str(applicant.phone)?.slice(0, 30) ?? null,
       levelName:
         str(review?.levelName)?.slice(0, 120) ??
         str(applicant.levelName)?.slice(0, 120) ??
         null,
       reviewStatus: str(review?.reviewStatus)?.slice(0, 40) ?? null,
-      reviewAnswer: str(reviewResult?.reviewAnswer)?.slice(0, 20)?.toUpperCase() ?? null,
+      reviewAnswer:
+        str(reviewResult?.reviewAnswer)?.slice(0, 20)?.toUpperCase() ?? null,
       attemptCnt,
       inspectionId: str(applicant.inspectionId)?.slice(0, 64) ?? null,
     };
@@ -499,11 +523,11 @@ export class ComplianceService {
   private kycIdentityIsComplete(kyc: KycProfile): boolean {
     return Boolean(
       this.normalizeIsoDob(kyc.date_of_birth) &&
-        kyc.full_name?.trim() &&
-        kyc.nationality?.trim() &&
-        kyc.document_type?.trim() &&
-        kyc.document_country?.trim() &&
-        kyc.national_id_number_extracted?.trim(),
+      kyc.full_name?.trim() &&
+      kyc.nationality?.trim() &&
+      kyc.document_type?.trim() &&
+      kyc.document_country?.trim() &&
+      kyc.national_id_number_extracted?.trim(),
     );
   }
 
@@ -523,20 +547,22 @@ export class ComplianceService {
   }): Promise<SumsubIdentityFields> {
     const fromPayload = this.extractSumsubIdentity(params.providerApplicant);
     if (!fromPayload.dateOfBirth) {
-      fromPayload.dateOfBirth = this.normalizeIsoDob(params.providerDateOfBirth ?? null);
+      fromPayload.dateOfBirth = this.normalizeIsoDob(
+        params.providerDateOfBirth ?? null,
+      );
     }
     if (this.kycIdentityIsComplete(params.kyc)) return fromPayload;
 
     const hasIdentityPii = Boolean(
       fromPayload.dateOfBirth ||
-        fromPayload.fullName ||
-        fromPayload.nationality ||
-        fromPayload.documentType ||
-        fromPayload.documentCountry ||
-        fromPayload.documentNumber ||
-        fromPayload.documentValidUntil ||
-        fromPayload.email ||
-        fromPayload.phone,
+      fromPayload.fullName ||
+      fromPayload.nationality ||
+      fromPayload.documentType ||
+      fromPayload.documentCountry ||
+      fromPayload.documentNumber ||
+      fromPayload.documentValidUntil ||
+      fromPayload.email ||
+      fromPayload.phone,
     );
     if (hasIdentityPii) return fromPayload;
 
@@ -557,7 +583,8 @@ export class ComplianceService {
         documentType: fromApi.documentType ?? fromPayload.documentType,
         documentCountry: fromApi.documentCountry ?? fromPayload.documentCountry,
         documentNumber: fromApi.documentNumber ?? fromPayload.documentNumber,
-        documentValidUntil: fromApi.documentValidUntil ?? fromPayload.documentValidUntil,
+        documentValidUntil:
+          fromApi.documentValidUntil ?? fromPayload.documentValidUntil,
         email: fromApi.email ?? fromPayload.email,
         phone: fromApi.phone ?? fromPayload.phone,
         levelName: fromPayload.levelName ?? fromApi.levelName,
@@ -575,13 +602,18 @@ export class ComplianceService {
   }
 
   /** Fill only empty KYC identity columns from provider data (form/verified data is never clobbered). */
-  private applyProviderIdentityToKyc(kyc: KycProfile, id: SumsubIdentityFields): void {
+  private applyProviderIdentityToKyc(
+    kyc: KycProfile,
+    id: SumsubIdentityFields,
+  ): void {
     if (id.dateOfBirth && !this.normalizeIsoDob(kyc.date_of_birth)) {
       kyc.date_of_birth = id.dateOfBirth;
     }
     if (id.fullName && !kyc.full_name?.trim()) kyc.full_name = id.fullName;
-    if (id.nationality && !kyc.nationality?.trim()) kyc.nationality = id.nationality;
-    if (id.documentType && !kyc.document_type?.trim()) kyc.document_type = id.documentType;
+    if (id.nationality && !kyc.nationality?.trim())
+      kyc.nationality = id.nationality;
+    if (id.documentType && !kyc.document_type?.trim())
+      kyc.document_type = id.documentType;
     if (id.documentCountry && !kyc.document_country?.trim()) {
       kyc.document_country = id.documentCountry;
     }
@@ -591,7 +623,10 @@ export class ComplianceService {
         kyc.national_id_number_hash = this.hashNationalId(id.documentNumber);
       }
     }
-    if (id.documentValidUntil && !this.normalizeIsoDob(kyc.document_valid_until)) {
+    if (
+      id.documentValidUntil &&
+      !this.normalizeIsoDob(kyc.document_valid_until)
+    ) {
       kyc.document_valid_until = id.documentValidUntil;
     }
     if (id.email && !kyc.email?.trim()) kyc.email = id.email;
@@ -599,7 +634,10 @@ export class ComplianceService {
   }
 
   /** Always refresh provider review meta from the latest applicant payload. */
-  private applyProviderMetaToKyc(kyc: KycProfile, id: SumsubIdentityFields): void {
+  private applyProviderMetaToKyc(
+    kyc: KycProfile,
+    id: SumsubIdentityFields,
+  ): void {
     if (id.levelName) kyc.provider_level_name = id.levelName;
     if (id.reviewStatus) kyc.provider_review_status = id.reviewStatus;
     if (id.reviewAnswer) kyc.provider_review_answer = id.reviewAnswer;
@@ -607,24 +645,29 @@ export class ComplianceService {
     if (id.inspectionId) kyc.provider_inspection_id = id.inspectionId;
   }
 
-  private async applySumsubReviewStatus(params: {
-    userId: string;
-    source: string;
-    applicantId?: string | null;
-    externalUserId?: string | null;
-    eventType?: string | null;
-    reviewStatus?: string | null;
-    reviewResult?: Record<string, unknown> | null;
-    /** Pre-extracted Sumsub ISO DOB from applicant sync (optional). */
-    providerDateOfBirth?: string | null;
-    /** Raw Sumsub applicant object (webhook `applicant` / sync GET) for identity backfill. */
-    providerApplicant?: Record<string, unknown> | null;
-  }, repositories: { kyc: Repository<KycProfile>; user: Repository<User> } = {
-    kyc: this.kycRepository,
-    user: this.userRepository,
-  }) {
-    const reviewAnswer = params.reviewResult?.reviewAnswer as string | undefined;
-    const rejectLabels = params.reviewResult?.rejectLabels as unknown;
+  private async applySumsubReviewStatus(
+    params: {
+      userId: string;
+      source: string;
+      applicantId?: string | null;
+      externalUserId?: string | null;
+      eventType?: string | null;
+      reviewStatus?: string | null;
+      reviewResult?: Record<string, unknown> | null;
+      /** Pre-extracted Sumsub ISO DOB from applicant sync (optional). */
+      providerDateOfBirth?: string | null;
+      /** Raw Sumsub applicant object (webhook `applicant` / sync GET) for identity backfill. */
+      providerApplicant?: Record<string, unknown> | null;
+    },
+    repositories: { kyc: Repository<KycProfile>; user: Repository<User> } = {
+      kyc: this.kycRepository,
+      user: this.userRepository,
+    },
+  ) {
+    const reviewAnswer = params.reviewResult?.reviewAnswer as
+      | string
+      | undefined;
+    const rejectLabels = params.reviewResult?.rejectLabels;
     let kyc = await repositories.kyc.findOne({
       where: { user_id: params.userId },
     });
@@ -645,7 +688,9 @@ export class ComplianceService {
     kyc.provider = 'SUMSUB';
     kyc.source = kyc.source || params.source;
     kyc.reference =
-      params.applicantId ?? params.externalUserId ?? `${kyc.source ?? 'PAY'}_${params.userId}`;
+      params.applicantId ??
+      params.externalUserId ??
+      `${kyc.source ?? 'PAY'}_${params.userId}`;
     kyc.last_webhook_event_type =
       (params.eventType ?? 'sumsubStatusSync').slice(0, 100) || null;
     kyc.last_webhook_received_at = new Date();
@@ -659,7 +704,9 @@ export class ComplianceService {
     this.applyProviderIdentityToKyc(kyc, providerIdentity);
     this.applyProviderMetaToKyc(kyc, providerIdentity);
 
-    const user = await repositories.user.findOne({ where: { id: params.userId } });
+    const user = await repositories.user.findOne({
+      where: { id: params.userId },
+    });
 
     let profileStatus =
       userKycStatus === 'APPROVED' ? 'VERIFIED' : userKycStatus;
@@ -691,7 +738,9 @@ export class ComplianceService {
       kyc.reviewed_by = 'sumsub';
     }
     if (userKycStatus === 'REJECTED') {
-      kyc.rejection_reason = JSON.stringify(rejectLabels ?? params.reviewResult ?? {}).slice(0, 2000);
+      kyc.rejection_reason = JSON.stringify(
+        rejectLabels ?? params.reviewResult ?? {},
+      ).slice(0, 2000);
     } else if (userKycStatus === 'APPROVED') {
       kyc.rejection_reason = null;
     }
@@ -719,10 +768,7 @@ export class ComplianceService {
       if (!user.nationality?.trim() && kyc.nationality?.trim()) {
         user.nationality = kyc.nationality.trim().slice(0, 10);
       }
-      if (
-        userRowKycStatus === 'VERIFIED' &&
-        !user.profile_locked_at
-      ) {
+      if (userRowKycStatus === 'VERIFIED' && !user.profile_locked_at) {
         user.profile_locked_at = new Date();
       }
       await repositories.user.save(user);
@@ -1005,7 +1051,9 @@ export class ComplianceService {
       });
     }
 
-    const kyc = await this.kycRepository.findOne({ where: { user_id: userId } });
+    const kyc = await this.kycRepository.findOne({
+      where: { user_id: userId },
+    });
     if (!kyc) return;
 
     if (docsStatus) {
@@ -1028,7 +1076,9 @@ export class ComplianceService {
     await this.kycRepository.update(
       {
         user_id: userId,
-        ...(params.providerEventAt ? { last_provider_event_at: params.providerEventAt } : {}),
+        ...(params.providerEventAt
+          ? { last_provider_event_at: params.providerEventAt }
+          : {}),
       },
       {
         documents: kyc.documents,
@@ -1048,7 +1098,8 @@ export class ComplianceService {
     docsStatus: Record<string, unknown> | null,
     status: { reviewStatus?: string; reviewResult?: Record<string, unknown> },
   ): Record<string, unknown> {
-    const review = (applicant.review as Record<string, unknown> | undefined) ?? {};
+    const review =
+      (applicant.review as Record<string, unknown> | undefined) ?? {};
     const info = (applicant.info as Record<string, unknown> | undefined) ?? {};
     const idDocs = Array.isArray(info.idDocs) ? info.idDocs : [];
     const trimDoc = (d: unknown) => {
@@ -1082,9 +1133,8 @@ export class ComplianceService {
       reviewStatus: status.reviewStatus ?? review.reviewStatus ?? null,
       reviewAnswer:
         (status.reviewResult?.reviewAnswer as string | undefined) ??
-        ((review.reviewResult as Record<string, unknown> | undefined)?.reviewAnswer as
-          | string
-          | undefined) ??
+        ((review.reviewResult as Record<string, unknown> | undefined)
+          ?.reviewAnswer as string | undefined) ??
         null,
       attemptCnt: review.attemptCnt ?? null,
       idDocs: idDocs.slice(0, 5).map(trimDoc).filter(Boolean),
@@ -1106,30 +1156,32 @@ export class ComplianceService {
   ): Promise<void> {
     const identity = docsStatus.IDENTITY as Record<string, unknown> | undefined;
     const selfie = docsStatus.SELFIE as Record<string, unknown> | undefined;
-    const phone = docsStatus.PHONE_VERIFICATION as Record<string, unknown> | undefined;
+    const phone = docsStatus.PHONE_VERIFICATION as
+      | Record<string, unknown>
+      | undefined;
 
     const answer = (set?: Record<string, unknown>) =>
       String(
-        ((set?.reviewResult as Record<string, unknown> | undefined)?.reviewAnswer as
-          | string
-          | undefined) ?? '',
+        ((set?.reviewResult as Record<string, unknown> | undefined)
+          ?.reviewAnswer as string | undefined) ?? '',
       ).toUpperCase() === 'GREEN';
 
     const docs = {
       ...(kyc.documents ?? {}),
       id_document: answer(identity) || Boolean(kyc.documents?.id_document),
       selfie: answer(selfie) || Boolean(kyc.documents?.selfie),
-      liveness:
-        answer(selfie) || Boolean(kyc.documents?.liveness),
-      phone: answer(phone) || Boolean((kyc.documents as { phone?: boolean } | null)?.phone),
+      liveness: answer(selfie) || Boolean(kyc.documents?.liveness),
+      phone:
+        answer(phone) ||
+        Boolean((kyc.documents as { phone?: boolean } | null)?.phone),
     };
     kyc.documents = docs;
 
     const identityIds = Array.isArray(identity?.imageIds)
-      ? (identity!.imageIds as unknown[]).filter((x) => x != null).map(String)
+      ? (identity.imageIds as unknown[]).filter((x) => x != null).map(String)
       : [];
     const selfieIds = Array.isArray(selfie?.imageIds)
-      ? (selfie!.imageIds as unknown[]).filter((x) => x != null).map(String)
+      ? (selfie.imageIds as unknown[]).filter((x) => x != null).map(String)
       : [];
 
     if (identityIds[0]) {
@@ -1205,7 +1257,8 @@ export class ComplianceService {
 
     const externalUserId =
       (payload.externalUserId as string | undefined) ||
-      ((payload.applicant as Record<string, unknown> | undefined)?.externalUserId as string | undefined);
+      ((payload.applicant as Record<string, unknown> | undefined)
+        ?.externalUserId as string | undefined);
     const eventType = payload.type as string | undefined;
     const reviewStatus = payload.reviewStatus as string | undefined;
     const applicantId = payload.applicantId as string | undefined;
@@ -1213,7 +1266,9 @@ export class ComplianceService {
       (payload.applicant as Record<string, unknown> | undefined) ?? null;
     const reviewResult =
       (payload.reviewResult as Record<string, unknown> | undefined) ||
-      ((payload.review as Record<string, unknown> | undefined)?.reviewResult as Record<string, unknown> | undefined);
+      ((payload.review as Record<string, unknown> | undefined)?.reviewResult as
+        | Record<string, unknown>
+        | undefined);
 
     // Sumsub puts levelName / inspectionId on the webhook root, not always under `applicant`.
     const providerApplicant: Record<string, unknown> | null = {
@@ -1227,7 +1282,9 @@ export class ComplianceService {
       ...(typeof payload.reviewStatus === 'string' || reviewResult
         ? {
             review: {
-              ...((applicantPayload?.review as Record<string, unknown> | undefined) ?? {}),
+              ...((applicantPayload?.review as
+                | Record<string, unknown>
+                | undefined) ?? {}),
               ...(typeof payload.levelName === 'string'
                 ? { levelName: payload.levelName }
                 : {}),
@@ -1243,7 +1300,11 @@ export class ComplianceService {
 
     const userId = this.extractUserIdFromExternalId(externalUserId);
     if (!userId) {
-      return { received: true, updated: false, reason: 'missing external user id' };
+      return {
+        received: true,
+        updated: false,
+        reason: 'missing external user id',
+      };
     }
 
     const source = this.extractSourceFromExternalId(externalUserId);
@@ -1256,17 +1317,22 @@ export class ComplianceService {
       /(?:Z|[+-]\d{2}:?\d{2})$/.test(eventTime) ? eventTime : `${eventTime}Z`,
     );
     if (!eventTime || !Number.isFinite(providerEventAt.getTime())) {
-      throw new BadRequestException('Missing or invalid Sumsub event timestamp');
+      throw new BadRequestException(
+        'Missing or invalid Sumsub event timestamp',
+      );
     }
     let result: Record<string, unknown> = { updated: false };
     try {
       result = await this.kycRepository.manager.transaction(async (manager) => {
         // Serialize even first-time profiles; a row lock alone cannot lock a missing row.
-        await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
-          `sumsub-kyc:${userId}`,
-        ]);
+        await manager.query(
+          'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+          [`sumsub-kyc:${userId}`],
+        );
         const kycRepository = manager.getRepository(KycProfile);
-        const previous = await kycRepository.findOne({ where: { user_id: userId } });
+        const previous = await kycRepository.findOne({
+          where: { user_id: userId },
+        });
         if (
           previous?.last_provider_event_at &&
           providerEventAt.getTime() <=
@@ -1286,7 +1352,9 @@ export class ComplianceService {
             providerDateOfBirth: this.extractSumsubIsoDob(
               hasProviderApplicantKeys ? providerApplicant : null,
             ),
-            providerApplicant: hasProviderApplicantKeys ? providerApplicant : null,
+            providerApplicant: hasProviderApplicantKeys
+              ? providerApplicant
+              : null,
           },
           { kyc: kycRepository, user: manager.getRepository(User) },
         );
@@ -1302,7 +1370,9 @@ export class ComplianceService {
       safeLogger.error('Sumsub webhook status apply failed', {
         eventType: eventType ?? null,
       });
-      throw new ServiceUnavailableException('KYC status update temporarily unavailable');
+      throw new ServiceUnavailableException(
+        'KYC status update temporarily unavailable',
+      );
     }
 
     if (result.updated === false) {
@@ -1311,16 +1381,15 @@ export class ComplianceService {
 
     // Same dossier/media path as admin Re-sync — so the drawer is populated without a click
     // once Sumsub can reach this webhook (sandbox/ngrok or production URL).
-    if (
-      applicantId &&
-      this.shouldSyncDossierMediaOnWebhook(eventType)
-    ) {
+    if (applicantId && this.shouldSyncDossierMediaOnWebhook(eventType)) {
       try {
         await this.persistSumsubDossierArtifacts({
           userId,
           applicantId,
           providerEventAt,
-          applicant: hasProviderApplicantKeys ? providerApplicant : applicantPayload,
+          applicant: hasProviderApplicantKeys
+            ? providerApplicant
+            : applicantPayload,
           reviewStatus: reviewStatus ?? null,
           reviewResult: reviewResult ?? null,
         });
@@ -1603,9 +1672,12 @@ export class ComplianceService {
       where: { phone_number: norm },
     });
     if (!user) {
-      const fallback = tryNormalizePhoneNumber(phoneNumber) !== phoneNumber
-        ? await this.userRepository.findOne({ where: { phone_number: phoneNumber } })
-        : null;
+      const fallback =
+        tryNormalizePhoneNumber(phoneNumber) !== phoneNumber
+          ? await this.userRepository.findOne({
+              where: { phone_number: phoneNumber },
+            })
+          : null;
       if (fallback) user = fallback;
     }
     if (!user) {

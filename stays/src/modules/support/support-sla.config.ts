@@ -39,7 +39,9 @@ export function slaStateFor(
   now: Date,
 ): SupportSlaState {
   if (completedAt) {
-    return completedAt.getTime() <= targetAt.getTime() ? 'ON_TRACK' : 'BREACHED';
+    return completedAt.getTime() <= targetAt.getTime()
+      ? 'ON_TRACK'
+      : 'BREACHED';
   }
   const windowMs = targetAt.getTime() - createdAt.getTime();
   if (windowMs <= 0) return 'BREACHED';
@@ -88,9 +90,7 @@ const PRIORITY_RANK: Record<SupportTicketPriority, number> = {
   URGENT: 4,
 };
 
-const CATEGORY_MIN_PRIORITY: Partial<
-  Record<string, SupportTicketPriority>
-> = {
+const CATEGORY_MIN_PRIORITY: Partial<Record<string, SupportTicketPriority>> = {
   FRAUD: 'HIGH',
   KYC: 'HIGH',
   PAYMENT: 'NORMAL',

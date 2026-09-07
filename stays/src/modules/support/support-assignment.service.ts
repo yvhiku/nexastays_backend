@@ -2,10 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 import { IdentityUserClient } from '../../common/identity/identity-user.client';
 import { StaysAuditService } from '../stays/services/stays-audit.service';
-import {
-  StaysSupportTicket,
-  SupportTicketPriority,
-} from './entities/stays-support-ticket.entity';
+import { StaysSupportTicket } from './entities/stays-support-ticket.entity';
 import { StaysSupportAgentSkills } from './entities/stays-support-agent-skills.entity';
 import { OperationalIntelligenceService } from './operational-intelligence.service';
 import {
@@ -53,7 +50,9 @@ export class SupportAssignmentService {
     const eligibleIds = roster
       .filter(
         (row) =>
-          row.status === 'ACTIVE' && row.staff_role === 'SUPPORT_AGENT' && row.id,
+          row.status === 'ACTIVE' &&
+          row.staff_role === 'SUPPORT_AGENT' &&
+          row.id,
       )
       .map((row) => row.id);
     if (eligibleIds.length === 0) return false;
@@ -93,7 +92,7 @@ export class SupportAssignmentService {
         eligibleIds,
       );
       const maxActive = maxActiveTicketsPerAgent();
-      const priority = ticket.priority as SupportTicketPriority;
+      const priority = ticket.priority;
       const remaining = capacityEligibleAgentIds({
         agentIds: eligibleIds,
         workloads,
@@ -102,9 +101,11 @@ export class SupportAssignmentService {
       });
       if (remaining.length === 0) return false;
 
-      const skillRows = await manager.getRepository(StaysSupportAgentSkills).find({
-        where: { agent_user_id: In(remaining) },
-      });
+      const skillRows = await manager
+        .getRepository(StaysSupportAgentSkills)
+        .find({
+          where: { agent_user_id: In(remaining) },
+        });
       const skills = new Map<string, RoutingAgentSkills>();
       for (const row of skillRows) {
         skills.set(row.agent_user_id, {

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
@@ -9,11 +13,19 @@ import { RpBillingPeriodsService } from './rp-billing-periods.service';
 
 const EARNING_RULES = [
   { source: 'category_selection', points: 50, label: 'Pick categories early' },
-  { source: 'first_category_purchase', points: 25, label: 'First purchase in a boosted category' },
+  {
+    source: 'first_category_purchase',
+    points: 25,
+    label: 'First purchase in a boosted category',
+  },
   { source: 'weekly_streak', points: 100, label: 'Weekly activity streak' },
   { source: 'referral', points: 200, label: 'Successful referral' },
   { source: 'kyc_completion', points: 100, label: 'Complete KYC' },
-  { source: 'merchant_discovery', points: 30, label: 'Try a featured merchant' },
+  {
+    source: 'merchant_discovery',
+    points: 30,
+    label: 'Try a featured merchant',
+  },
   { source: 'budgeting', points: 40, label: 'Budgeting milestone' },
   { source: 'redemption', points: 0, label: 'Redeem Nexa Points' },
 ];
@@ -198,9 +210,11 @@ export class RpPointsService {
   }
 
   async redeemForEcosystemReward(userId: string, ecosystemRewardId: number) {
-    const reward = await this.dataSource.getRepository(RpEcosystemReward).findOne({
-      where: { id: ecosystemRewardId, is_active: true },
-    });
+    const reward = await this.dataSource
+      .getRepository(RpEcosystemReward)
+      .findOne({
+        where: { id: ecosystemRewardId, is_active: true },
+      });
     if (!reward) throw new NotFoundException('Reward not found');
     const user = await this.dataSource.getRepository(User).findOne({
       where: { id: userId },

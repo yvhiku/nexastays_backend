@@ -54,7 +54,7 @@ export class SubmitHostOnboardingDto {
   @IsOptional()
   @IsString()
   @MaxLength(40)
-  @Matches(/^[A-Za-z0-9_\-]*$/, {
+  @Matches(/^[A-Za-z0-9_-]*$/, {
     message: 'host_type contains invalid characters',
   })
   host_type?: string;
@@ -66,7 +66,7 @@ export class SubmitHostOnboardingDto {
   @IsOptional()
   @IsString()
   @MaxLength(64)
-  @Matches(/^[A-Za-z0-9_\-]*$/, {
+  @Matches(/^[A-Za-z0-9_-]*$/, {
     message: 'submitted_from contains invalid characters',
   })
   submitted_from?: string;
@@ -89,7 +89,7 @@ export class SubmitHostOnboardingDto {
   @IsOptional()
   @IsString()
   @MaxLength(128)
-  @Matches(/^[A-Za-z0-9_\-]*$/, {
+  @Matches(/^[A-Za-z0-9_-]*$/, {
     message: 'sumsub_applicant_id contains invalid characters',
   })
   sumsub_applicant_id?: string;
@@ -101,7 +101,7 @@ export class SubmitHostOnboardingDto {
   @IsOptional()
   @IsString()
   @MaxLength(40)
-  @Matches(/^[A-Za-z0-9_\-]*$/, {
+  @Matches(/^[A-Za-z0-9_-]*$/, {
     message: 'document_type contains invalid characters',
   })
   document_type?: string;

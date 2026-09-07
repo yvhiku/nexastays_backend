@@ -65,7 +65,9 @@ export class ConversationRepairService {
       this.resolveBookingIdFromMessages(messages) ??
       (await this.resolveBookingIdFromParticipants(messages));
     if (!bookingId) {
-      this.logger.warn(`Orphan thread ${conversationId} has no booking reference`);
+      this.logger.warn(
+        `Orphan thread ${conversationId} has no booking reference`,
+      );
       return;
     }
 
@@ -97,8 +99,12 @@ export class ConversationRepairService {
       return;
     }
 
-    const hostName = await this.participants.resolveHostDisplayName(listing.host_user_id);
-    const guestName = await this.participants.resolveGuestDisplayName(booking.id);
+    const hostName = await this.participants.resolveHostDisplayName(
+      listing.host_user_id,
+    );
+    const guestName = await this.participants.resolveGuestDisplayName(
+      booking.id,
+    );
     const snapshot = this.timelineSeeder.buildSnapshot(booking, listing, {
       hostDisplayName: hostName,
       guestDisplayName: guestName,
@@ -140,10 +146,14 @@ export class ConversationRepairService {
       ],
     );
 
-    this.logger.log(`Repaired orphaned conversation ${conversationId} for booking ${bookingId}`);
+    this.logger.log(
+      `Repaired orphaned conversation ${conversationId} for booking ${bookingId}`,
+    );
   }
 
-  private resolveBookingIdFromMessages(messages: StaysMessage[]): string | null {
+  private resolveBookingIdFromMessages(
+    messages: StaysMessage[],
+  ): string | null {
     for (const message of messages) {
       const meta = message.metadata as Record<string, unknown> | null;
       const bookingId = meta?.bookingId;
@@ -175,7 +185,9 @@ export class ConversationRepairService {
       ...new Set(
         messages
           .map((m) => m.sender_id)
-          .filter((id): id is string => typeof id === 'string' && id.length > 0),
+          .filter(
+            (id): id is string => typeof id === 'string' && id.length > 0,
+          ),
       ),
     ];
     if (senderIds.length === 0) return null;
@@ -187,9 +199,13 @@ export class ConversationRepairService {
         listingId = meta.listingId;
         break;
       }
-      const snapshot = meta?.snapshot as { primaryPhotoUrl?: unknown } | undefined;
+      const snapshot = meta?.snapshot as
+        | { primaryPhotoUrl?: unknown }
+        | undefined;
       if (typeof snapshot?.primaryPhotoUrl === 'string') {
-        const match = /\/listings\/([0-9a-f-]{36})\//i.exec(snapshot.primaryPhotoUrl);
+        const match = /\/listings\/([0-9a-f-]{36})\//i.exec(
+          snapshot.primaryPhotoUrl,
+        );
         if (match?.[1]) {
           listingId = match[1];
           break;
@@ -207,7 +223,8 @@ export class ConversationRepairService {
 
     for (const senderId of senderIds) {
       const match = candidates.find(
-        (b) => MESSAGEABLE_STATUSES.has(b.status) && b.guest_user_id === senderId,
+        (b) =>
+          MESSAGEABLE_STATUSES.has(b.status) && b.guest_user_id === senderId,
       );
       if (match) return match.id;
     }

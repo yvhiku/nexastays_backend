@@ -328,7 +328,8 @@ export class AdminRiskService {
 
     const rows = await qb.getRawMany();
     return rows.map((row) => {
-      const fromAlert = row.alert_amount != null ? Number(row.alert_amount) : null;
+      const fromAlert =
+        row.alert_amount != null ? Number(row.alert_amount) : null;
       const fromTx = row.tx_amount != null ? Number(row.tx_amount) : null;
       const amount = fromAlert ?? fromTx ?? null;
       const reference =
@@ -464,11 +465,7 @@ export class AdminRiskService {
     return { success: true };
   }
 
-  async updateSarStatus(
-    id: string,
-    status: string,
-    adminUser?: RequestUser,
-  ) {
+  async updateSarStatus(id: string, status: string, adminUser?: RequestUser) {
     const row = await this.sarReportRepository.findOne({ where: { id } });
     if (!row) {
       throw new NotFoundException('SAR report not found');

@@ -163,9 +163,16 @@ export class AttachmentSessionService {
     conversationId: string,
     userId: string,
     sessionId: string,
-  ): Promise<{ session: StaysAttachmentSession; attachments: StaysMessageAttachment[] }> {
+  ): Promise<{
+    session: StaysAttachmentSession;
+    attachments: StaysMessageAttachment[];
+  }> {
     const session = await this.sessionRepo.findOne({
-      where: { id: sessionId, conversation_id: conversationId, owner_user_id: userId },
+      where: {
+        id: sessionId,
+        conversation_id: conversationId,
+        owner_user_id: userId,
+      },
     });
     if (!session) throw new BadRequestException('Invalid session');
     if (session.status !== 'READY') {
@@ -235,7 +242,9 @@ export class AttachmentSessionService {
     sessionId: string,
     userId: string,
   ): Promise<StaysAttachmentSession> {
-    const session = await this.sessionRepo.findOne({ where: { id: sessionId } });
+    const session = await this.sessionRepo.findOne({
+      where: { id: sessionId },
+    });
     if (!session || session.owner_user_id !== userId) {
       throw new NotFoundException('Session not found');
     }

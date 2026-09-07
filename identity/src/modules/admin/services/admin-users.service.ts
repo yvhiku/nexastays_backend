@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import * as crypto from 'crypto';
@@ -167,7 +173,10 @@ export class AdminUsersService {
     };
   }
 
-  async createSupportAgent(input: CreateSupportAgentDto, adminUser?: RequestUser) {
+  async createSupportAgent(
+    input: CreateSupportAgentDto,
+    adminUser?: RequestUser,
+  ) {
     const email = (input.email || '').trim().toLowerCase();
     const fullName = (input.fullName || '').trim();
     const password = input.password ?? '';
@@ -229,7 +238,8 @@ export class AdminUsersService {
     }
     return {
       success: true,
-      message: 'Invite sent (stub). Implement email delivery and pending admin record.',
+      message:
+        'Invite sent (stub). Implement email delivery and pending admin record.',
       email: email.trim(),
       role: role || 'ADMIN',
     };
@@ -638,7 +648,11 @@ export class AdminUsersService {
     return { success: true };
   }
 
-  async untrustDevice(userId: string, deviceId: string, adminUser?: RequestUser) {
+  async untrustDevice(
+    userId: string,
+    deviceId: string,
+    adminUser?: RequestUser,
+  ) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     const row = await this.trustedDeviceRepository.findOne({

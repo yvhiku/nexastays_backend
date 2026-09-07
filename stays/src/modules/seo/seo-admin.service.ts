@@ -28,7 +28,8 @@ export class SeoAdminService {
 
     const pageTypeBreakdown: Record<string, number> = {};
     for (const r of rows) {
-      pageTypeBreakdown[r.page_type] = (pageTypeBreakdown[r.page_type] ?? 0) + 1;
+      pageTypeBreakdown[r.page_type] =
+        (pageTypeBreakdown[r.page_type] ?? 0) + 1;
     }
 
     const missingHero = await this.destinationRepo.count({

@@ -27,11 +27,46 @@ function createService(deps: {
 
 describe('BOLA — payment intent ownership', () => {
   it('does not create intent for another guest booking', async () => {
+    const bookingRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 'booking-b',
+        guest_user_id: 'guest-b',
+        listing_id: 'listing-1',
+        status: 'PAYMENT_PENDING',
+        total_paid: 500,
+        currency: 'MAD',
+        checkin_date: '2026-08-01',
+        checkout_date: '2026-08-03',
+      }),
+    };
+    const intentRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      save: jest.fn(),
+    };
+    const service = createService({
+      bookingRepo,
+      intentRepo,
+    });
+
+    await expect(
+      service.createOrGetIntent('booking-b', 'guest-a'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(intentRepo.create).not.toHaveBeenCalled();
+    expect(intentRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('host cannot create payment intent for a guest booking on their listing (043)', async () => {
+    const intentRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      save: jest.fn(),
+    };
     const service = createService({
       bookingRepo: {
         findOne: jest.fn().mockResolvedValue({
-          id: 'booking-b',
-          guest_user_id: 'guest-b',
+          id: 'booking-a',
+          guest_user_id: 'guest-a',
           listing_id: 'listing-1',
           status: 'PAYMENT_PENDING',
           total_paid: 500,
@@ -40,11 +75,13 @@ describe('BOLA — payment intent ownership', () => {
           checkout_date: '2026-08-03',
         }),
       },
+      intentRepo,
     });
 
     await expect(
-      service.createOrGetIntent('booking-b', 'guest-a'),
+      service.createOrGetIntent('booking-a', 'host-a'),
     ).rejects.toBeInstanceOf(NotFoundException);
+    expect(intentRepo.save).not.toHaveBeenCalled();
   });
 
   it('rejects zero-total bookings', async () => {

@@ -1,9 +1,4 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  Index,
-} from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, Index } from 'typeorm';
 import type {
   OperationalSignalSeverity,
   OperationalSignalStatus,
@@ -63,12 +58,22 @@ export class StaysSupportOperationalSignal {
   @Column({ type: 'timestamptz', name: 'acknowledged_at', nullable: true })
   acknowledged_at: Date | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'acknowledged_by_admin_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'acknowledged_by_admin_id',
+    nullable: true,
+  })
   acknowledged_by_admin_id: string | null;
 
   @Column({ type: 'timestamptz', name: 'resolved_at', nullable: true })
   resolved_at: Date | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'resolved_by_admin_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'resolved_by_admin_id',
+    nullable: true,
+  })
   resolved_by_admin_id: string | null;
 }

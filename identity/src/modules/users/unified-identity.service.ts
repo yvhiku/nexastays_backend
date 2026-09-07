@@ -4,7 +4,10 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { UnifiedIdentity } from './entities/unified-identity.entity';
 import { User } from './entities/user.entity';
 import { IdentityPhoneNumbersService } from './identity-phone-numbers.service';
-import { tryNormalizePhoneNumber, phoneLookupCandidates } from '../../common/phone/phone-normalizer';
+import {
+  tryNormalizePhoneNumber,
+  phoneLookupCandidates,
+} from '../../common/phone/phone-normalizer';
 
 export interface UnifiedProfileResult {
   id: string;
@@ -66,10 +69,7 @@ export class UnifiedIdentityService {
   async findOrCreateByPhone(phoneNumber: string): Promise<UnifiedIdentity> {
     const norm = tryNormalizePhoneNumber(phoneNumber) ?? phoneNumber;
     return this.dataSource.transaction(async (manager) => {
-      await manager.query(
-        'SELECT pg_advisory_xact_lock(hashtext($1))',
-        [norm],
-      );
+      await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [norm]);
       const existing = await this.findIdentityByPhoneOrLegacy(phoneNumber);
       if (existing) {
         await this.linkUsersToIdentity(phoneNumber, existing.id);
@@ -79,7 +79,17 @@ export class UnifiedIdentityService {
       const candidates = phoneLookupCandidates(phoneNumber);
       const users = await this.userRepository
         .createQueryBuilder('u')
-        .select(['u.id', 'u.account_type', 'u.full_name', 'u.email', 'u.date_of_birth', 'u.city', 'u.profile_photo_url', 'u.kyc_status', 'u.status'])
+        .select([
+          'u.id',
+          'u.account_type',
+          'u.full_name',
+          'u.email',
+          'u.date_of_birth',
+          'u.city',
+          'u.profile_photo_url',
+          'u.kyc_status',
+          'u.status',
+        ])
         .where('u.phone_number IN (:...candidates)', { candidates })
         .orderBy("CASE WHEN u.account_type = 'CONSUMER' THEN 0 ELSE 1 END")
         .addOrderBy('u.created_at')
@@ -137,9 +147,8 @@ export class UnifiedIdentityService {
     phoneNumber: string,
   ): Promise<UnifiedIdentity | null> {
     for (const candidate of phoneLookupCandidates(phoneNumber)) {
-      const viaTable = await this.identityPhoneNumbersService.findIdentityByPhone(
-        candidate,
-      );
+      const viaTable =
+        await this.identityPhoneNumbersService.findIdentityByPhone(candidate);
       if (viaTable) return viaTable;
       const legacy = await this.unifiedIdentityRepo.findOne({
         where: { phone_number: candidate },
@@ -182,14 +191,16 @@ export class UnifiedIdentityService {
     const identity = await this.findIdentityByPhoneOrLegacy(phoneNumber);
     if (identity) {
       const ivStatus = (
-        identity.identity_verification_status ?? identity.kyc_status ?? 'PENDING'
+        identity.identity_verification_status ??
+        identity.kyc_status ??
+        'PENDING'
       ).toUpperCase();
       const kycStatus =
         ivStatus === 'APPROVED'
           ? 'VERIFIED'
           : ivStatus === 'REJECTED'
             ? 'REJECTED'
-            : identity.kyc_status ?? 'PENDING';
+            : (identity.kyc_status ?? 'PENDING');
       const phone =
         identity.phone_number ??
         (await this.identityPhoneNumbersService.getPrimaryPhone(identity.id)) ??
@@ -200,14 +211,15 @@ export class UnifiedIdentityService {
         full_name: identity.full_name ?? null,
         email: identity.email ?? null,
         date_of_birth: identity.date_of_birth
-          ? (identity.date_of_birth instanceof Date
-              ? identity.date_of_birth.toISOString().slice(0, 10)
-              : String(identity.date_of_birth).slice(0, 10))
+          ? identity.date_of_birth instanceof Date
+            ? identity.date_of_birth.toISOString().slice(0, 10)
+            : String(identity.date_of_birth).slice(0, 10)
           : null,
         city: identity.city ?? null,
         address: identity.address ?? null,
         kyc_status: kycStatus,
-        identity_verified: identity.identity_verified ?? ivStatus === 'APPROVED',
+        identity_verified:
+          identity.identity_verified ?? ivStatus === 'APPROVED',
         linked_services: Array.isArray(identity.linked_services)
           ? identity.linked_services
           : [],
@@ -259,7 +271,8 @@ export class UnifiedIdentityService {
     kycStatus: string,
   ): Promise<void> {
     const identityStatus =
-      identityVerified && ['APPROVED', 'VERIFIED'].includes((kycStatus ?? '').toUpperCase())
+      identityVerified &&
+      ['APPROVED', 'VERIFIED'].includes((kycStatus ?? '').toUpperCase())
         ? 'APPROVED'
         : (kycStatus ?? 'PENDING').toUpperCase() === 'REJECTED'
           ? 'REJECTED'

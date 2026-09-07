@@ -19,8 +19,7 @@ export const databaseConfig = {
   synchronize,
   ssl: isProd
     ? {
-        rejectUnauthorized:
-          process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
       }
     : undefined,
   logging: process.env.NODE_ENV === 'development',

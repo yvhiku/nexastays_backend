@@ -4,7 +4,6 @@ import {
   IsString,
   IsIn,
   IsNumber,
-  IsBoolean,
   IsObject,
   ValidateNested,
   Min,

@@ -4,7 +4,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StaysMessagingOutbox } from './entities/stays-messaging-outbox.entity';
 import { DomainEventsService } from '../../common/events/domain-events.service';
-import { isMessagingInternalEvent, MESSAGING_INTERNAL_EVENTS } from './messaging-internal.events';
+import {
+  isMessagingInternalEvent,
+  MESSAGING_INTERNAL_EVENTS,
+} from './messaging-internal.events';
 import { SnapshotRepairService } from './snapshot-repair.service';
 import { EVENTS, EventValidationError } from '@nexa/event-bus';
 
@@ -44,15 +47,11 @@ export class MessagingOutboxWorker {
           continue;
         }
         try {
-          const payload = this.normalizePayload(row.event_type, row.payload as Record<string, unknown>);
+          const payload = this.normalizePayload(row.event_type, row.payload);
           if (isMessagingInternalEvent(row.event_type)) {
             await this.handleInternalEvent(row.event_type, payload);
           } else {
-            await this.domainEvents.publish(
-              row.event_type as Parameters<DomainEventsService['publish']>[0],
-              'stays',
-              payload,
-            );
+            await this.domainEvents.publish(row.event_type, 'stays', payload);
           }
           await this.outboxRepo.update(row.id, {
             status: 'DONE',
@@ -61,13 +60,18 @@ export class MessagingOutboxWorker {
         } catch (err) {
           const attempts = (row.attempts ?? 0) + 1;
           const isValidationError = err instanceof EventValidationError;
-          const isPermanentFailure = isValidationError || attempts >= MAX_OUTBOX_ATTEMPTS;
+          const isPermanentFailure =
+            isValidationError || attempts >= MAX_OUTBOX_ATTEMPTS;
           const delayMs = Math.min(60_000, 1000 * 2 ** attempts);
-          this.logger.warn(`Outbox ${row.id} failed attempt ${attempts}: ${err}`);
+          this.logger.warn(
+            `Outbox ${row.id} failed attempt ${attempts}: ${err}`,
+          );
           await this.outboxRepo.update(row.id, {
             status: isPermanentFailure ? 'FAILED' : 'PENDING',
             attempts,
-            next_retry_at: isPermanentFailure ? row.next_retry_at : new Date(Date.now() + delayMs),
+            next_retry_at: isPermanentFailure
+              ? row.next_retry_at
+              : new Date(Date.now() + delayMs),
           });
         }
       }
@@ -132,13 +136,17 @@ export class MessagingOutboxWorker {
       payload.bookingId
     ) {
       const providerIntentId =
-        typeof payload.providerIntentId === 'string' ? payload.providerIntentId : undefined;
+        typeof payload.providerIntentId === 'string'
+          ? payload.providerIntentId
+          : undefined;
       return {
         ...payload,
         providerIntentId: resolveProviderIntentId(
           payload.bookingId,
           providerIntentId,
-          typeof payload.paymentIntentId === 'string' ? payload.paymentIntentId : undefined,
+          typeof payload.paymentIntentId === 'string'
+            ? payload.paymentIntentId
+            : undefined,
         ),
       };
     }

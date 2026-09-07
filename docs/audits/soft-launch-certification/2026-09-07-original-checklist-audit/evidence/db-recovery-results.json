@@ -1,0 +1,22 @@
+[
+  {
+    "name": "identity database connection recovery",
+    "result": "FAIL",
+    "details": {
+      "terminated_connections": 0,
+      "readiness_statuses": [
+        200
+      ]
+    }
+  },
+  {
+    "name": "stays database connection recovery",
+    "result": "PASS",
+    "details": {
+      "terminated_connections": 2,
+      "readiness_statuses": [
+        200
+      ]
+    }
+  }
+]

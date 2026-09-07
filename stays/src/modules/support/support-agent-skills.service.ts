@@ -65,10 +65,7 @@ export class SupportAgentSkillsService {
     }
   }
 
-  private toPayload(
-    agentUserId: string,
-    row: StaysSupportAgentSkills | null,
-  ) {
+  private toPayload(agentUserId: string, row: StaysSupportAgentSkills | null) {
     return {
       agentUserId,
       languages: row?.languages ?? [],

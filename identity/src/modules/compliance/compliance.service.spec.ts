@@ -45,14 +45,22 @@ describe('ComplianceService (KYC source)', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    mockKycRepo.manager.transaction.mockImplementation(async (work) => work({
-      query: jest.fn().mockResolvedValue([]),
-      getRepository: (entity: unknown) => entity === KycProfile ? mockKycRepo : mockUserRepo,
-    }));
+    mockKycRepo.manager.transaction.mockImplementation(async (work) =>
+      work({
+        query: jest.fn().mockResolvedValue([]),
+        getRepository: (entity: unknown) =>
+          entity === KycProfile ? mockKycRepo : mockUserRepo,
+      }),
+    );
     mockUserRepo.findOne.mockResolvedValue(mockUser);
     mockKycRepo.findOne.mockResolvedValue(null);
-    mockKycRepo.create.mockImplementation((dto) => ({ ...dto, user_id: mockUser.id }));
-    mockKycRepo.save.mockImplementation((entity) => Promise.resolve({ ...entity }));
+    mockKycRepo.create.mockImplementation((dto) => ({
+      ...dto,
+      user_id: mockUser.id,
+    }));
+    mockKycRepo.save.mockImplementation((entity) =>
+      Promise.resolve({ ...entity }),
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -243,9 +251,9 @@ describe('ComplianceService (KYC source)', () => {
         full_name: null,
         email: null,
       });
-      jest.spyOn(service as any, 'sumsubRequest').mockRejectedValue(
-        new Error('no applicant'),
-      );
+      jest
+        .spyOn(service as any, 'sumsubRequest')
+        .mockRejectedValue(new Error('no applicant'));
 
       await (service as any).applySumsubReviewStatus({
         userId: user.id,
@@ -307,7 +315,7 @@ describe('ComplianceService (KYC source)', () => {
     const applicant = {
       id: 'applicant-1',
       externalUserId: 'STAYS_user-123',
-        createdAtMs: '2026-09-06 12:00:00.000',
+      createdAtMs: '2026-09-06 12:00:00.000',
       info: {
         firstName: 'Mohamed',
         lastName: 'Fikri',
@@ -361,7 +369,9 @@ describe('ComplianceService (KYC source)', () => {
         attemptCnt: null,
         inspectionId: null,
       });
-      expect(service.extractSumsubIdentity(null)).toMatchObject({ fullName: null });
+      expect(service.extractSumsubIdentity(null)).toMatchObject({
+        fullName: null,
+      });
     });
 
     it('extractSumsubIdentity picks expiry, email, phone, and review meta', () => {
@@ -444,7 +454,12 @@ describe('ComplianceService (KYC source)', () => {
       const persistSpy = jest
         .spyOn(service as any, 'persistProviderImage')
         .mockImplementation(
-          async (_uid: string, _aid: string, _imageId: string, basename: string) => {
+          async (
+            _uid: string,
+            _aid: string,
+            _imageId: string,
+            basename: string,
+          ) => {
             return `user-123/${basename}.jpg`;
           },
         );
@@ -507,7 +522,10 @@ describe('ComplianceService (KYC source)', () => {
           },
         },
         {
-          IDENTITY: { imageIds: ['i1'], reviewResult: { reviewAnswer: 'GREEN' } },
+          IDENTITY: {
+            imageIds: ['i1'],
+            reviewResult: { reviewAnswer: 'GREEN' },
+          },
           SELFIE: { imageIds: ['i2'], reviewResult: { reviewAnswer: 'GREEN' } },
         },
         { reviewStatus: 'completed', reviewResult: { reviewAnswer: 'GREEN' } },
@@ -727,7 +745,10 @@ describe('ComplianceService (KYC source)', () => {
         '/resources/applicants/applicant-1/one',
       );
       expect(mockKycRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ full_name: 'Mohamed Fikri', document_type: 'CNIE' }),
+        expect.objectContaining({
+          full_name: 'Mohamed Fikri',
+          document_type: 'CNIE',
+        }),
       );
     });
   });
@@ -743,16 +764,25 @@ describe('ComplianceService (KYC source)', () => {
     it.each(['2026-09-06T12:00:00Z', '2026-09-06T13:00:00Z'])(
       'ignores replay or stale events after %s without status/media writes',
       async (watermark) => {
-        jest.spyOn(service as any, 'verifySumsubWebhookDigest').mockReturnValue(undefined);
+        jest
+          .spyOn(service as any, 'verifySumsubWebhookDigest')
+          .mockReturnValue(undefined);
         mockKycRepo.findOne.mockResolvedValue({
           user_id: 'user-123',
           status: 'REJECTED',
           last_provider_event_at: new Date(watermark),
         });
         const apply = jest.spyOn(service as any, 'applySumsubReviewStatus');
-        const media = jest.spyOn(service as any, 'persistSumsubDossierArtifacts');
-        await expect(service.processSumsubWebhook(event)).resolves.toMatchObject({
-          received: true, updated: false, reason: 'duplicate_or_stale_event',
+        const media = jest.spyOn(
+          service as any,
+          'persistSumsubDossierArtifacts',
+        );
+        await expect(
+          service.processSumsubWebhook(event),
+        ).resolves.toMatchObject({
+          received: true,
+          updated: false,
+          reason: 'duplicate_or_stale_event',
         });
         expect(apply).not.toHaveBeenCalled();
         expect(media).not.toHaveBeenCalled();
@@ -760,16 +790,25 @@ describe('ComplianceService (KYC source)', () => {
       },
     );
 
-    it.each([undefined, '', 'invalid-date'])('rejects an unordered event timestamp %s', async (createdAtMs) => {
-      jest.spyOn(service as any, 'verifySumsubWebhookDigest').mockReturnValue(undefined);
-      await expect(service.processSumsubWebhook({ ...event, createdAtMs })).rejects.toMatchObject({ status: 400 });
-      expect(mockKycRepo.manager.transaction).not.toHaveBeenCalled();
-    });
+    it.each([undefined, '', 'invalid-date'])(
+      'rejects an unordered event timestamp %s',
+      async (createdAtMs) => {
+        jest
+          .spyOn(service as any, 'verifySumsubWebhookDigest')
+          .mockReturnValue(undefined);
+        await expect(
+          service.processSumsubWebhook({ ...event, createdAtMs }),
+        ).rejects.toMatchObject({ status: 400 });
+        expect(mockKycRepo.manager.transaction).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe('Sumsub webhook dossier/media sync', () => {
     it('applicantReviewed triggers persistSumsubDossierArtifacts after status apply', async () => {
-      jest.spyOn(service as any, 'verifySumsubWebhookDigest').mockReturnValue(undefined);
+      jest
+        .spyOn(service as any, 'verifySumsubWebhookDigest')
+        .mockReturnValue(undefined);
       jest.spyOn(service as any, 'applySumsubReviewStatus').mockResolvedValue({
         updated: true,
         status: 'VERIFIED',
@@ -796,7 +835,9 @@ describe('ComplianceService (KYC source)', () => {
     });
 
     it('applicantPending also pulls dossier media once docs are uploaded', async () => {
-      jest.spyOn(service as any, 'verifySumsubWebhookDigest').mockReturnValue(undefined);
+      jest
+        .spyOn(service as any, 'verifySumsubWebhookDigest')
+        .mockReturnValue(undefined);
       jest.spyOn(service as any, 'applySumsubReviewStatus').mockResolvedValue({
         updated: true,
         status: 'PENDING',
@@ -817,7 +858,9 @@ describe('ComplianceService (KYC source)', () => {
     });
 
     it('does not pull media for unrelated webhook types', async () => {
-      jest.spyOn(service as any, 'verifySumsubWebhookDigest').mockReturnValue(undefined);
+      jest
+        .spyOn(service as any, 'verifySumsubWebhookDigest')
+        .mockReturnValue(undefined);
       jest.spyOn(service as any, 'applySumsubReviewStatus').mockResolvedValue({
         updated: true,
         status: 'PENDING',
@@ -837,7 +880,9 @@ describe('ComplianceService (KYC source)', () => {
     });
 
     it('returns a retryable 503 when status persistence fails without syncing media', async () => {
-      jest.spyOn(service as any, 'verifySumsubWebhookDigest').mockReturnValue(undefined);
+      jest
+        .spyOn(service as any, 'verifySumsubWebhookDigest')
+        .mockReturnValue(undefined);
       jest
         .spyOn(service as any, 'applySumsubReviewStatus')
         .mockRejectedValue(new Error('db down'));
@@ -850,7 +895,7 @@ describe('ComplianceService (KYC source)', () => {
           type: 'applicantReviewed',
           applicantId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
           externalUserId: 'STAYS_user-123',
-        createdAtMs: '2026-09-06 12:00:00.000',
+          createdAtMs: '2026-09-06 12:00:00.000',
           reviewStatus: 'completed',
           reviewResult: { reviewAnswer: 'GREEN' },
         }),

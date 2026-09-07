@@ -22,7 +22,9 @@ async function main(): Promise<void> {
       return;
     }
     const repository = dataSource.getRepository(KycProfile);
-    const profiles = await repository.findBy({ id: In(rows.map((row) => row.id)) });
+    const profiles = await repository.findBy({
+      id: In(rows.map((row) => row.id)),
+    });
     await repository.save(profiles, { chunk: 100 });
     process.stdout.write(`Encrypted ${profiles.length} KYC profile rows.\n`);
   } finally {

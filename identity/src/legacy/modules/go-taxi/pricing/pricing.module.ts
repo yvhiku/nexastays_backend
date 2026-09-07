@@ -13,11 +13,26 @@ import { CommonCacheModule } from '../../../common/cache/cache.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PricingRule, GoPricingConfig, GoPricingConfigAudit, Wallet]),
+    TypeOrmModule.forFeature([
+      PricingRule,
+      GoPricingConfig,
+      GoPricingConfigAudit,
+      Wallet,
+    ]),
     LedgerModule,
     CommonCacheModule,
   ],
-  providers: [PricingService, FareCalculatorService, GoPricingService, GoRideLedgerService],
-  exports: [PricingService, FareCalculatorService, GoPricingService, GoRideLedgerService],
+  providers: [
+    PricingService,
+    FareCalculatorService,
+    GoPricingService,
+    GoRideLedgerService,
+  ],
+  exports: [
+    PricingService,
+    FareCalculatorService,
+    GoPricingService,
+    GoRideLedgerService,
+  ],
 })
 export class PricingModule {}

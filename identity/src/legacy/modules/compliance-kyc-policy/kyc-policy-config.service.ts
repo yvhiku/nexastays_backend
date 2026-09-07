@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import type { GlobalKycPolicyDefaults, EffectiveTierLimits } from './kyc-policy.types';
+import type {
+  GlobalKycPolicyDefaults,
+  EffectiveTierLimits,
+} from './kyc-policy.types';
 import type { KycTierPolicy } from './entities/kyc-tier-policy.entity';
 
 const BUNDLED_DEFAULTS: GlobalKycPolicyDefaults = {
@@ -29,7 +32,11 @@ export class KycPolicyConfigService {
       return this.cached;
     }
     try {
-      const bundled = join(__dirname, 'config', 'kyc-tier-policy.defaults.json');
+      const bundled = join(
+        __dirname,
+        'config',
+        'kyc-tier-policy.defaults.json',
+      );
       if (existsSync(bundled)) {
         const raw = readFileSync(bundled, 'utf-8');
         this.cached = JSON.parse(raw) as GlobalKycPolicyDefaults;

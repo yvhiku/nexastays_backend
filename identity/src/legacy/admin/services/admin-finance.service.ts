@@ -175,10 +175,7 @@ export class AdminFinanceService {
     const subscriptionRevenueMonthlyTotal =
       subscriptionRevenueMonthly + subscriptionLegacyMonthly;
     const platformTotal =
-      total +
-      goRideRevenue +
-      goDeliveryRevenue +
-      subscriptionRevenueTotal;
+      total + goRideRevenue + goDeliveryRevenue + subscriptionRevenueTotal;
 
     return {
       total: platformTotal,
@@ -803,7 +800,9 @@ export class AdminFinanceService {
         (s, p) => s + Number(p.pending_balance ?? 0),
         0,
       ) +
-      (merchantSettlements as Array<{ amount?: number; status?: string }>).reduce(
+      (
+        merchantSettlements as Array<{ amount?: number; status?: string }>
+      ).reduce(
         (s, m) => s + (m.status === 'PENDING' ? Number(m.amount ?? 0) : 0),
         0,
       );
@@ -812,11 +811,14 @@ export class AdminFinanceService {
       (driverPayouts as Array<{ pending_balance?: number }>).filter(
         (p) => Number(p.pending_balance ?? 0) > 0,
       ).length +
-      (merchantSettlements as Array<{ amount?: number; status?: string }>).filter(
-        (m) => m.status === 'PENDING' && Number(m.amount ?? 0) > 0,
-      ).length;
+      (
+        merchantSettlements as Array<{ amount?: number; status?: string }>
+      ).filter((m) => m.status === 'PENDING' && Number(m.amount ?? 0) > 0)
+        .length;
     const nextBatch = new Date();
-    nextBatch.setDate(nextBatch.getDate() + ((1 + 7 - nextBatch.getDay()) % 7) || 7);
+    nextBatch.setDate(
+      nextBatch.getDate() + ((1 + 7 - nextBatch.getDay()) % 7) || 7,
+    );
     nextBatch.setHours(0, 0, 0, 0);
     return {
       pendingPayoutsAmount,

@@ -57,8 +57,19 @@ export class SubmitWaitlistDto {
   })
   @IsOptional()
   @IsString()
-  @IsIn(['consumer', 'merchant', 'investor', 'rider', 'driver_courier', 'merchant_partner'], {
-    message: 'user_type must be one of: consumer, merchant, investor, rider, driver_courier, merchant_partner',
-  })
+  @IsIn(
+    [
+      'consumer',
+      'merchant',
+      'investor',
+      'rider',
+      'driver_courier',
+      'merchant_partner',
+    ],
+    {
+      message:
+        'user_type must be one of: consumer, merchant, investor, rider, driver_courier, merchant_partner',
+    },
+  )
   user_type?: string;
 }

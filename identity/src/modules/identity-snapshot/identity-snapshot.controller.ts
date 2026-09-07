@@ -13,7 +13,9 @@ export class IdentitySnapshotController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get cached KYC/compliance snapshot for current user' })
+  @ApiOperation({
+    summary: 'Get cached KYC/compliance snapshot for current user',
+  })
   async getMySnapshot(@CurrentUser() user: { userId: string }) {
     return this.snapshotService.getSnapshot(user.userId);
   }

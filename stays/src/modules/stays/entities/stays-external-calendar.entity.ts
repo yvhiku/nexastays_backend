@@ -19,11 +19,7 @@ export type ExternalCalendarProvider =
   | 'DIRECT'
   | 'OTHER';
 
-export type ExternalCalendarStatus =
-  | 'ACTIVE'
-  | 'SYNCING'
-  | 'ERROR'
-  | 'PAUSED';
+export type ExternalCalendarStatus = 'ACTIVE' | 'SYNCING' | 'ERROR' | 'PAUSED';
 
 export type ExternalCalendarSyncResult = {
   imported_events?: number;

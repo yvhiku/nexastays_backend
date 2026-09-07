@@ -57,7 +57,9 @@ export class SeoListingService {
       for (const listing of batch) {
         if (!this.isListingEligibleForSitemap(listing)) continue;
 
-        const lastmod = (listing.updated_at ?? listing.created_at).toISOString();
+        const lastmod = (
+          listing.updated_at ?? listing.created_at
+        ).toISOString();
         for (const locale of LOCALES) {
           const path = `/${locale}/listings/${listing.id}`;
           byPath.set(path, {
@@ -69,7 +71,7 @@ export class SeoListingService {
         }
       }
 
-      afterId = idRows[idRows.length - 1]!.id;
+      afterId = idRows[idRows.length - 1].id;
       if (idRows.length < SITEMAP_BATCH_SIZE) break;
     }
 
@@ -90,7 +92,9 @@ export class SeoListingService {
     }
 
     const photos = (listing.media ?? []).filter((m) => m.kind === 'PHOTO');
-    const hasWalkthrough = (listing.media ?? []).some((m) => m.kind === 'WALKTHROUGH');
+    const hasWalkthrough = (listing.media ?? []).some(
+      (m) => m.kind === 'WALKTHROUGH',
+    );
     const description = listing.description?.trim() ?? '';
     const title = listing.title?.trim() ?? 'Stay in Morocco';
     const city = listing.city?.trim() ?? 'Morocco';
@@ -120,7 +124,9 @@ export class SeoListingService {
       city,
       listingType: listing.listing_type,
       description,
-      basePrice: listing.rate_plan ? Number(listing.rate_plan.base_price) : null,
+      basePrice: listing.rate_plan
+        ? Number(listing.rate_plan.base_price)
+        : null,
       currency: listing.rate_plan?.currency ?? 'MAD',
       hasWalkthrough,
     });
@@ -132,7 +138,7 @@ export class SeoListingService {
     ).replace(/\/$/, '');
     const ogImageUrl =
       photos.length > 0
-        ? `${apiBase}/stays/listings/${listing.id}/media/${photos[0]!.asset_id}`
+        ? `${apiBase}/stays/listings/${listing.id}/media/${photos[0].asset_id}`
         : null;
 
     const citySlug = city.toLowerCase().replace(/\s+/g, '-');
@@ -154,7 +160,9 @@ export class SeoListingService {
       listingType: listing.listing_type,
       city,
       neighborhood,
-      basePrice: listing.rate_plan ? Number(listing.rate_plan.base_price) : null,
+      basePrice: listing.rate_plan
+        ? Number(listing.rate_plan.base_price)
+        : null,
       currency: listing.rate_plan?.currency ?? 'MAD',
       avgRating: listing.avg_rating != null ? Number(listing.avg_rating) : null,
       reviewCount: listing.review_count ?? 0,
@@ -176,7 +184,9 @@ export class SeoListingService {
   /** Same gates as buildListingPage indexability. */
   private isListingEligibleForSitemap(listing: StaysListing): boolean {
     const photos = (listing.media ?? []).filter((m) => m.kind === 'PHOTO');
-    const hasWalkthrough = (listing.media ?? []).some((m) => m.kind === 'WALKTHROUGH');
+    const hasWalkthrough = (listing.media ?? []).some(
+      (m) => m.kind === 'WALKTHROUGH',
+    );
     const description = listing.description?.trim() ?? '';
     const title = listing.title?.trim() ?? '';
 

@@ -1,0 +1,22 @@
+[
+  {
+    "database": "identity",
+    "result": "PASS",
+    "dump_bytes": 91965,
+    "sha256": "5a07df0fdf89f4e18ed3558a2cef528043472d7887d9718a2b1603df90dbeab3",
+    "tables_with_identical_content": 30,
+    "extensions_match": true,
+    "seconds": 2.61,
+    "scope": "Synthetic local database; native pg_dump/pg_restore; not encrypted R2 backup pipeline"
+  },
+  {
+    "database": "stays",
+    "result": "PASS",
+    "dump_bytes": 246422,
+    "sha256": "86625089b6775aeca1a1d54fdc0b2c628f63f1421b5ad5a5b73997d014355026",
+    "tables_with_identical_content": 54,
+    "extensions_match": true,
+    "seconds": 4.07,
+    "scope": "Synthetic local database; native pg_dump/pg_restore; not encrypted R2 backup pipeline"
+  }
+]

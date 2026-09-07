@@ -44,10 +44,22 @@ export class StaysListing {
   @Column({ type: 'text', name: 'address_encrypted', nullable: true })
   address_encrypted: string | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7, name: 'geo_lat', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 7,
+    name: 'geo_lat',
+    nullable: true,
+  })
   geo_lat: number | null;
 
-  @Column({ type: 'decimal', precision: 11, scale: 8, name: 'geo_lng', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 11,
+    scale: 8,
+    name: 'geo_lng',
+    nullable: true,
+  })
   geo_lng: number | null;
 
   @Column({
@@ -87,7 +99,9 @@ export class StaysListing {
   @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updated_at: Date;
 
-  @OneToOne(() => StaysListingRules, (rules) => rules.listing, { cascade: true })
+  @OneToOne(() => StaysListingRules, (rules) => rules.listing, {
+    cascade: true,
+  })
   rules: StaysListingRules | null;
 
   @OneToMany(() => StaysListingMedia, (m) => m.listing)

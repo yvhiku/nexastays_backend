@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { EntityManager } from 'typeorm';
 import { Repository } from 'typeorm';
@@ -55,7 +59,11 @@ export class SubscriptionLimitsService {
     const tier = normalizeSubscriptionTier(params.rewardsTier);
     const cap = SUBSCRIPTION_TIER_LIMITS[tier].qrPaymentsDailyMad;
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const row = await params.manager
       .getRepository(AppTransaction)
       .createQueryBuilder('t')
@@ -95,7 +103,11 @@ export class SubscriptionLimitsService {
     }
 
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     let walletBalanceMad = 0;
@@ -139,7 +151,14 @@ export class SubscriptionLimitsService {
       .getRawOne();
     qrDailyMad = Number(qrRow?.total ?? 0);
 
-    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const periodEnd = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+    );
 
     let cashbackUsedMad = 0;
     let cashbackCapMad = policy.cashbackCapMad;

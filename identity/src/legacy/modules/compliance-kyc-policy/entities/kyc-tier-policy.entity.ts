@@ -21,7 +21,12 @@ export class KycTierPolicy {
   })
   max_single_transfer_mad: string | number;
 
-  @Column({ type: 'decimal', precision: 18, scale: 2, name: 'daily_outflow_mad' })
+  @Column({
+    type: 'decimal',
+    precision: 18,
+    scale: 2,
+    name: 'daily_outflow_mad',
+  })
   daily_outflow_mad: string | number;
 
   @Column({

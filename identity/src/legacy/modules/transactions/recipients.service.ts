@@ -16,9 +16,7 @@ export type RecipientPublicRow = {
   rewards_tier?: 'pro';
 };
 
-function publicRewardsTier(
-  raw: string | null | undefined,
-): 'pro' | undefined {
+function publicRewardsTier(raw: string | null | undefined): 'pro' | undefined {
   return normalizeSubscriptionTier(raw) === 'pro' ? 'pro' : undefined;
 }
 
@@ -86,7 +84,9 @@ export class RecipientsService {
     return user;
   }
 
-  async lookup(rawPhone: string): Promise<
+  async lookup(
+    rawPhone: string,
+  ): Promise<
     | ({ registered: true } & RecipientPublicRow)
     | { registered: false; phone_number: string }
   > {

@@ -116,14 +116,10 @@ export class GoPricingService {
     const fare = this.round2(Math.max(rawFare, minFare));
     const minFareApplied = rawFare < minFare;
 
-    const surgedFare = surgeActive
-      ? this.round2(fare * surgeMultiplier)
-      : fare;
+    const surgedFare = surgeActive ? this.round2(fare * surgeMultiplier) : fare;
 
     const rawCommission = surgedFare * commissionRate;
-    const commission = this.round2(
-      Math.max(rawCommission, commissionMin),
-    );
+    const commission = this.round2(Math.max(rawCommission, commissionMin));
 
     const driverPayout = this.round2(surgedFare - commission);
     const platformTake = this.round2(bookingFee + commission);

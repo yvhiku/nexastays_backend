@@ -20,7 +20,12 @@ const MIME_BY_DETECTED: Record<string, AllowedAttachmentMime> = {
 };
 
 function detectAudioMime(buffer: Buffer): AllowedAttachmentMime | null {
-  if (buffer.length >= 4 && buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf) {
+  if (
+    buffer.length >= 4 &&
+    buffer[0] === 0x1a &&
+    buffer[1] === 0x45 &&
+    buffer[2] === 0xdf
+  ) {
     return 'audio/webm';
   }
   if (buffer.length >= 4 && buffer.toString('ascii', 0, 4) === 'OggS') {
@@ -43,7 +48,9 @@ function detectAudioMime(buffer: Buffer): AllowedAttachmentMime | null {
   return null;
 }
 
-export function detectAttachmentMime(buffer: Buffer): AllowedAttachmentMime | null {
+export function detectAttachmentMime(
+  buffer: Buffer,
+): AllowedAttachmentMime | null {
   if (!buffer?.length) return null;
 
   const imageType = detectImageType(buffer);

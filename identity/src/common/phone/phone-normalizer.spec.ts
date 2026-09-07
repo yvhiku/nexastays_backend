@@ -37,7 +37,9 @@ describe('phone-normalizer', () => {
     it('strips national trunk 0 after +212 (+2120612345678 → +212612345678)', () => {
       expect(normalizePhoneNumber('+2120612345678')).toBe('+212612345678');
       expect(normalizePhoneNumber('2120612345678')).toBe('+212612345678');
-      expect(normalizePhoneOrThrow('+212 06 12 34 56 78')).toBe('+212612345678');
+      expect(normalizePhoneOrThrow('+212 06 12 34 56 78')).toBe(
+        '+212612345678',
+      );
     });
   });
 
@@ -113,14 +115,23 @@ describe('phone-normalizer', () => {
   describe('phoneLookupCandidates', () => {
     it('includes Morocco legacy variants for MA numbers', () => {
       const c = phoneLookupCandidates('+212612345678');
-      expect(c).toEqual(expect.arrayContaining(['+212612345678', '612345678', '0612345678', '212612345678']));
+      expect(c).toEqual(
+        expect.arrayContaining([
+          '+212612345678',
+          '612345678',
+          '0612345678',
+          '212612345678',
+        ]),
+      );
     });
 
     it('does not invent +212 variants for French numbers', () => {
       const c = phoneLookupCandidates('+33612345678');
       expect(c).toContain('+33612345678');
       expect(c).toContain('33612345678');
-      expect(c.some((x) => x.startsWith('+212') || x.startsWith('212'))).toBe(false);
+      expect(c.some((x) => x.startsWith('+212') || x.startsWith('212'))).toBe(
+        false,
+      );
     });
   });
 });

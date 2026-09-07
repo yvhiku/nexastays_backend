@@ -61,7 +61,9 @@ export class StaysCancellationService {
       throw new NotFoundException('Booking not found');
     }
 
-    const listing = booking.listing as StaysListing & { rules?: { cancellation_policy?: CancellationPolicy } };
+    const listing = booking.listing as StaysListing & {
+      rules?: { cancellation_policy?: CancellationPolicy };
+    };
     const isGuest = booking.guest_user_id === userId;
     const isHost = listing?.host_user_id === userId;
 
@@ -76,15 +78,24 @@ export class StaysCancellationService {
       throw new BadRequestException('Only the host can cancel as host');
     }
 
-    const nonCancellable = ['COMPLETED', 'CANCELLED_BY_GUEST', 'CANCELLED_BY_HOST', 'EXPIRED'];
+    const nonCancellable = [
+      'COMPLETED',
+      'CANCELLED_BY_GUEST',
+      'CANCELLED_BY_HOST',
+      'EXPIRED',
+    ];
     if (nonCancellable.includes(booking.status)) {
-      throw new BadRequestException(`Cannot cancel booking in status ${booking.status}`);
+      throw new BadRequestException(
+        `Cannot cancel booking in status ${booking.status}`,
+      );
     }
 
-    const policy: CancellationPolicy = listing?.rules?.cancellation_policy ?? 'MODERATE';
+    const policy: CancellationPolicy =
+      listing?.rules?.cancellation_policy ?? 'MODERATE';
     const checkinDate = new Date(booking.checkin_date);
     const now = new Date();
-    const hoursToCheckin = (checkinDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const hoursToCheckin =
+      (checkinDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
     const theoreticalRefund = this.calculateRefund(
       policy,
@@ -93,7 +104,8 @@ export class StaysCancellationService {
       Number(booking.guest_fee ?? 0),
     );
 
-    const status = cancelledBy === 'guest' ? 'CANCELLED_BY_GUEST' : 'CANCELLED_BY_HOST';
+    const status =
+      cancelledBy === 'guest' ? 'CANCELLED_BY_GUEST' : 'CANCELLED_BY_HOST';
 
     let refundAmount = 0;
     let hadSettledGuestPayment = false;
@@ -144,11 +156,7 @@ export class StaysCancellationService {
           })
         : null;
 
-      if (
-        settledGuestPayment &&
-        !existingRefund &&
-        theoreticalRefund > 0
-      ) {
+      if (settledGuestPayment && !existingRefund && theoreticalRefund > 0) {
         refundAmount = theoreticalRefund;
         await ledgerRepo.save(
           ledgerRepo.create({
@@ -177,7 +185,8 @@ export class StaysCancellationService {
           },
         });
         for (const row of openCmi) {
-          if (row.provider_intent_id) cmiVoidCandidates.push(row.provider_intent_id);
+          if (row.provider_intent_id)
+            cmiVoidCandidates.push(row.provider_intent_id);
         }
       }
 
@@ -252,7 +261,9 @@ export class StaysCancellationService {
 
     void this.messagingState.syncFromBooking(bookingId);
 
-    const updated = await this.bookingRepo.findOne({ where: { id: bookingId } });
+    const updated = await this.bookingRepo.findOne({
+      where: { id: bookingId },
+    });
     return {
       id: updated!.id,
       status: updated!.status,
@@ -269,19 +280,22 @@ export class StaysCancellationService {
     const totalPaid = subtotal + guestFee;
 
     switch (policy) {
-      case 'FLEXIBLE':
+      case 'FLEXIBLE': {
         if (hoursToCheckin >= 24) return totalPaid;
         // 1 night penalty - approximate as subtotal/nights, for simplicity use 10% min
         const penalty = Math.max(subtotal * 0.1, 0);
         return Math.max(0, Math.round((totalPaid - penalty) * 100) / 100);
+      }
 
       case 'MODERATE':
         if (hoursToCheckin >= 5 * 24) return totalPaid;
-        if (hoursToCheckin >= 24) return Math.round(totalPaid * 0.5 * 100) / 100;
+        if (hoursToCheckin >= 24)
+          return Math.round(totalPaid * 0.5 * 100) / 100;
         return 0;
 
       case 'STRICT':
-        if (hoursToCheckin >= 7 * 24) return Math.round(totalPaid * 0.5 * 100) / 100;
+        if (hoursToCheckin >= 7 * 24)
+          return Math.round(totalPaid * 0.5 * 100) / 100;
         return 0;
 
       default:

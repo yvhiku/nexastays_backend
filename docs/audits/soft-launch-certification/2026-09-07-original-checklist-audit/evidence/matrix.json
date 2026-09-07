@@ -1,0 +1,1502 @@
+[
+  {
+    "id": "001",
+    "requirement": "TypeScript compilation completes with zero errors",
+    "environment": "local repositories",
+    "result": "PASS",
+    "severity": "MAJOR",
+    "evidence": "evidence/web-final-tsc.log; evidence/dashboard-tsc.log; backend and platform build ledger",
+    "limitation": "Compile evidence covers participating TypeScript packages, not Flutter native builds.",
+    "next_action": "Repeat on immutable release checkout."
+  },
+  {
+    "id": "002",
+    "requirement": "Production web build completes successfully",
+    "environment": "local repositories",
+    "result": "PASS",
+    "severity": "MAJOR",
+    "evidence": "evidence/web-final-build.log; evidence/dashboard-build.log",
+    "limitation": "Explicit .example audit origins were supplied; no deployed build certified.",
+    "next_action": "Build again with approved release origins before deployment."
+  },
+  {
+    "id": "003",
+    "requirement": "Backend production build completes successfully",
+    "environment": "local repositories",
+    "result": "PASS",
+    "severity": "MAJOR",
+    "evidence": "evidence/identity-final-build.log; evidence/stays-build-retest.log; command-ledger.json platform builds",
+    "limitation": "Local production artifacts only.",
+    "next_action": "Build release images in staging."
+  },
+  {
+    "id": "004",
+    "requirement": "`npm test` / project test suite passes",
+    "environment": "local repositories",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/test-totals.json: 1219 passed across final selected suites; 10 default Stays skips separately passed on real PG",
+    "limitation": "Telemetry has zero tests; no media/consumer runtime suite coverage; project-wide test completeness not established.",
+    "next_action": "Add meaningful missing service integration coverage and execute all required release suites."
+  },
+  {
+    "id": "005",
+    "requirement": "ESLint/lint passes with zero errors",
+    "environment": "local repositories",
+    "result": "FAIL",
+    "severity": "MAJOR",
+    "evidence": "evidence/lint-summary.json: Identity 3172 errors/338 warnings; Stays 2696 errors/21 warnings; Flutter 128 issues",
+    "limitation": "Web/dashboard lint pass. Broad backend static debt remains after tool compatibility repair.",
+    "next_action": "Triage lint in focused changes; rerun non-mutating ESLint and flutter analyze. Do not blanket-disable rules."
+  },
+  {
+    "id": "006",
+    "requirement": "Locale/i18n validation passes",
+    "environment": "local repositories",
+    "result": "PASS",
+    "severity": "MAJOR",
+    "evidence": "evidence/web-final-tests.log: check:locales executed successfully",
+    "limitation": "Web locale consistency only; not native translations or visual correctness.",
+    "next_action": "Run device language checks separately."
+  },
+  {
+    "id": "007",
+    "requirement": "No broken imports or references to deleted components remain",
+    "environment": "local repositories",
+    "result": "PASS",
+    "severity": "MAJOR",
+    "evidence": "Successful TypeScript production builds and explicit frontend tsc; evidence/command-ledger.json",
+    "limitation": "Covers compiled participating TypeScript imports; external/native runtime resolution not certified.",
+    "next_action": "Repeat full compile on final release checkout."
+  },
+  {
+    "id": "008",
+    "requirement": "No debug code, `console.log`, temporary bypasses, or development-only hacks remain in production paths",
+    "environment": "local repositories",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "Foundational suites and source review; see VALIDATION.md",
+    "limitation": "No exhaustive production-path audit.",
+    "next_action": "Resolve static findings and rerun scoped checks against the final release revision."
+  },
+  {
+    "id": "009",
+    "requirement": "No secrets, API keys, passwords, tokens, or private credentials are committed",
+    "environment": "local repositories",
+    "result": "PASS",
+    "severity": "MAJOR",
+    "evidence": "evidence/secret-triage.json; six --all history Gitleaks scans in command ledger; no tracked non-example .env",
+    "limitation": "8 candidates manually classified as placeholders, translation keys or synthetic test literal; no credible secret found. Scanner coverage is bounded, not an absolute absence proof.",
+    "next_action": "Maintain history scanning on every change; investigate new findings without printing values."
+  },
+  {
+    "id": "010",
+    "requirement": "Git diff contains no accidental/unrelated production changes",
+    "environment": "local repositories",
+    "result": "PASS",
+    "severity": "MAJOR",
+    "evidence": "evidence/final-working-state.json; git diff --check on backend/web/db exited 0; REPORT.md change inventory",
+    "limitation": "Concurrent commits preserved and documented; no immutable multi-repository revision exists for this run.",
+    "next_action": "Review the small uncommitted patch set and preserve concurrent work before creating a release revision."
+  },
+  {
+    "id": "011",
+    "requirement": "Production environment variables are complete",
+    "environment": "production (not accessed)",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Deployment templates inspected; no live infrastructure evidence collected.",
+    "limitation": "Local execution cannot establish deployed configuration.",
+    "next_action": "On an authorized staging/release host, inspect effective environment, TLS/routes, port bindings/firewall and restart behavior for this exact requirement."
+  },
+  {
+    "id": "012",
+    "requirement": "No production service points to localhost/development services",
+    "environment": "production (not accessed)",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Deployment templates inspected; no live infrastructure evidence collected.",
+    "limitation": "Local execution cannot establish deployed configuration.",
+    "next_action": "On an authorized staging/release host, inspect effective environment, TLS/routes, port bindings/firewall and restart behavior for this exact requirement."
+  },
+  {
+    "id": "013",
+    "requirement": "HTTPS works on every public Nexa Stays endpoint",
+    "environment": "production (not accessed)",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Deployment templates inspected; no live infrastructure evidence collected.",
+    "limitation": "Local execution cannot establish deployed configuration.",
+    "next_action": "On an authorized staging/release host, inspect effective environment, TLS/routes, port bindings/firewall and restart behavior for this exact requirement."
+  },
+  {
+    "id": "014",
+    "requirement": "HTTP redirects correctly to HTTPS",
+    "environment": "production (not accessed)",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Deployment templates inspected; no live infrastructure evidence collected.",
+    "limitation": "Local execution cannot establish deployed configuration.",
+    "next_action": "On an authorized staging/release host, inspect effective environment, TLS/routes, port bindings/firewall and restart behavior for this exact requirement."
+  },
+  {
+    "id": "015",
+    "requirement": "Cloudflare configuration is correct for production",
+    "environment": "production (not accessed)",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Deployment templates inspected; no live infrastructure evidence collected.",
+    "limitation": "Local execution cannot establish deployed configuration.",
+    "next_action": "On an authorized staging/release host, inspect effective environment, TLS/routes, port bindings/firewall and restart behavior for this exact requirement."
+  },
+  {
+    "id": "016",
+    "requirement": "Nginx/reverse proxy routes all production services correctly",
+    "environment": "production (not accessed)",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Deployment templates inspected; no live infrastructure evidence collected.",
+    "limitation": "Local execution cannot establish deployed configuration.",
+    "next_action": "On an authorized staging/release host, inspect effective environment, TLS/routes, port bindings/firewall and restart behavior for this exact requirement."
+  },
+  {
+    "id": "017",
+    "requirement": "PostgreSQL databases are not publicly exposed",
+    "environment": "production (not accessed)",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Deployment templates inspected; no live infrastructure evidence collected.",
+    "limitation": "Local execution cannot establish deployed configuration.",
+    "next_action": "On an authorized staging/release host, inspect effective environment, TLS/routes, port bindings/firewall and restart behavior for this exact requirement."
+  },
+  {
+    "id": "018",
+    "requirement": "Redis is not publicly exposed",
+    "environment": "production (not accessed)",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Deployment templates inspected; no live infrastructure evidence collected.",
+    "limitation": "Local execution cannot establish deployed configuration.",
+    "next_action": "On an authorized staging/release host, inspect effective environment, TLS/routes, port bindings/firewall and restart behavior for this exact requirement."
+  },
+  {
+    "id": "019",
+    "requirement": "Firewall exposes only required ports/services",
+    "environment": "production (not accessed)",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Deployment templates inspected; no live infrastructure evidence collected.",
+    "limitation": "Local execution cannot establish deployed configuration.",
+    "next_action": "On an authorized staging/release host, inspect effective environment, TLS/routes, port bindings/firewall and restart behavior for this exact requirement."
+  },
+  {
+    "id": "020",
+    "requirement": "Docker containers restart correctly after service/server restart",
+    "environment": "production (not accessed)",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Deployment templates inspected; no live infrastructure evidence collected.",
+    "limitation": "Local execution cannot establish deployed configuration.",
+    "next_action": "On an authorized staging/release host, inspect effective environment, TLS/routes, port bindings/firewall and restart behavior for this exact requirement."
+  },
+  {
+    "id": "021",
+    "requirement": "All production migrations execute successfully",
+    "environment": "disposable PostgreSQL 16",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Identity migrations executed on disposable PG: 41 initial plus new 067 (42 total); Stays 59. Migration logs archived.",
+    "limitation": "Production was not accessed; local migrations do not certify production execution.",
+    "next_action": "Back up and run the same migration set on an isolated production-schema clone; then approved release procedure."
+  },
+  {
+    "id": "022",
+    "requirement": "Production schema matches expected application schema",
+    "environment": "disposable PostgreSQL 16",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/schema-results.json: Identity 21 entities/245 columns; Stays 48/609; zero missing mapped columns",
+    "limitation": "Column presence only, not type/default/index/full schema equality; no production connection.",
+    "next_action": "Compare full release entity/schema definitions against an isolated production-schema snapshot."
+  },
+  {
+    "id": "023",
+    "requirement": "Foreign-key relationships are intact",
+    "environment": "disposable PostgreSQL 16",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/pg-integrity-results.json: Stays validated FKs and orphan payment rejection",
+    "limitation": "Not a complete cross-repository orphan/foreign-key audit.",
+    "next_action": "Verify all declared constraints and orphan checks in both complete schemas."
+  },
+  {
+    "id": "024",
+    "requirement": "Required uniqueness constraints exist",
+    "environment": "disposable PostgreSQL 16",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/pg-integrity-results.json: duplicate settled payment rejected; real PG exclusion cases passed",
+    "limitation": "Required uniqueness beyond booking/payment was not exhaustively enumerated.",
+    "next_action": "Inventory all business uniqueness requirements and execute negative insert/update cases."
+  },
+  {
+    "id": "025",
+    "requirement": "Booking/date inventory cannot be double-booked",
+    "environment": "disposable PostgreSQL 16",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/postgres-concurrency-assertions.json: exact/partial overlaps; 20 concurrent attempts, one winner",
+    "limitation": "Disposable PostgreSQL only. CMI callbacks, full outage, encrypted R2 pipeline and production recovery are not certified.",
+    "next_action": "Repeat relevant invariant/recovery test on an isolated release clone; execute encrypted backup retrieval/decryption/restore and operator drill before production."
+  },
+  {
+    "id": "026",
+    "requirement": "Payment records cannot be duplicated through repeated callbacks",
+    "environment": "disposable PostgreSQL 16",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json: duplicate mock confirmation, one ledger row; evidence/pg-integrity-results.json: unique constraint",
+    "limitation": "Disposable PostgreSQL only. CMI callbacks, full outage, encrypted R2 pipeline and production recovery are not certified.",
+    "next_action": "Repeat relevant invariant/recovery test on an isolated release clone; execute encrypted backup retrieval/decryption/restore and operator drill before production."
+  },
+  {
+    "id": "027",
+    "requirement": "Database transactions correctly roll back on failure",
+    "environment": "disposable PostgreSQL 16",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/pg-integrity-results.json; evidence/kyc-transaction-results.json: injected failure returns 503 and all KYC/user changes roll back",
+    "limitation": "Disposable PostgreSQL only. CMI callbacks, full outage, encrypted R2 pipeline and production recovery are not certified.",
+    "next_action": "Repeat relevant invariant/recovery test on an isolated release clone; execute encrypted backup retrieval/decryption/restore and operator drill before production."
+  },
+  {
+    "id": "028",
+    "requirement": "Database connection recovery works after temporary DB interruption",
+    "environment": "disposable PostgreSQL 16",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/db-recovery-final-results.json: Identity 1 and Stays 2 live DB connections terminated; next readiness 200",
+    "limitation": "Disposable PostgreSQL only. CMI callbacks, full outage, encrypted R2 pipeline and production recovery are not certified.",
+    "next_action": "Repeat relevant invariant/recovery test on an isolated release clone; execute encrypted backup retrieval/decryption/restore and operator drill before production."
+  },
+  {
+    "id": "029",
+    "requirement": "Backup completes successfully",
+    "environment": "disposable PostgreSQL 16",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/restore-results.json: pg_dump succeeded for both synthetic databases",
+    "limitation": "Disposable PostgreSQL only. CMI callbacks, full outage, encrypted R2 pipeline and production recovery are not certified.",
+    "next_action": "Repeat relevant invariant/recovery test on an isolated release clone; execute encrypted backup retrieval/decryption/restore and operator drill before production."
+  },
+  {
+    "id": "030",
+    "requirement": "A backup has been successfully restored into a test environment",
+    "environment": "disposable PostgreSQL 16",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/restore-results.json: pg_restore exit zero; all 30 Identity and 54 Stays public-table contents match; extensions match",
+    "limitation": "Disposable PostgreSQL only. CMI callbacks, full outage, encrypted R2 pipeline and production recovery are not certified.",
+    "next_action": "Repeat relevant invariant/recovery test on an isolated release clone; execute encrypted backup retrieval/decryption/restore and operator drill before production."
+  },
+  {
+    "id": "031",
+    "requirement": "New user can register successfully",
+    "environment": "isolated Identity + Redis; dogfood",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json: DEMO OTP verify created one synthetic consumer",
+    "limitation": "Frozen dogfood only; no real SMS delivery or full profile/onboarding journey.",
+    "next_action": "Keep freeze; verify real provider separately after authorization."
+  },
+  {
+    "id": "032",
+    "requirement": "OTP can be requested successfully",
+    "environment": "isolated Identity + Redis; dogfood",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json: DEMO OTP send returned 200",
+    "limitation": "Frozen dogfood only; no real SMS delivery or full profile/onboarding journey.",
+    "next_action": "Keep freeze; verify real provider separately after authorization."
+  },
+  {
+    "id": "033",
+    "requirement": "Valid OTP verifies the account",
+    "environment": "isolated Identity + Redis; dogfood",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json: Valid DEMO OTP returned verified=true and access token",
+    "limitation": "Frozen dogfood only; no real SMS delivery or full profile/onboarding journey.",
+    "next_action": "Keep freeze; verify real provider separately after authorization."
+  },
+  {
+    "id": "034",
+    "requirement": "Expired OTP is rejected",
+    "environment": "isolated Identity + Redis; dogfood",
+    "result": "FAIL",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json: expired/consumed DEMO OTP still verified=true",
+    "limitation": "Explicit frozen DEMO behavior; preserved, not changed. This does not pass the original expiry requirement.",
+    "next_action": "Keep dogfood isolated; prove generated-code expiry in a separately authorized non-DEMO environment before production."
+  },
+  {
+    "id": "035",
+    "requirement": "Incorrect OTP is rejected",
+    "environment": "isolated Identity + Redis; dogfood",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json: Incorrect OTP returned verified=false",
+    "limitation": "Frozen dogfood only; no real SMS delivery or full profile/onboarding journey.",
+    "next_action": "Keep freeze; verify real provider separately after authorization."
+  },
+  {
+    "id": "036",
+    "requirement": "OTP brute-force/attempt limits work",
+    "environment": "isolated Identity + Redis; dogfood",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json; evidence/identity-assertions.json",
+    "limitation": "DEMO bypasses expiry; production SMS and thresholds not exercised.",
+    "next_action": "Test generated OTP expiry/attempt policy and full token lifecycle in a separately authorized non-DEMO environment; keep current freeze."
+  },
+  {
+    "id": "037",
+    "requirement": "OTP resend rate limiting works",
+    "environment": "isolated Identity + Redis; dogfood",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/authorization-rate-results.json: 30 allowed sends then HTTP 429",
+    "limitation": "NODE_ENV=test threshold only; production threshold not runtime-tested.",
+    "next_action": "Verify production threshold in isolated release configuration before production."
+  },
+  {
+    "id": "038",
+    "requirement": "Access/refresh token lifecycle works correctly",
+    "environment": "isolated Identity + Redis; dogfood",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/browser-auth-http-results.json: HttpOnly refresh, JSON refresh stripped, rotation succeeded",
+    "limitation": "Access-token expiry/replay and complete transport lifecycle not all exercised; production Secure flags not runtime-tested.",
+    "next_action": "Execute expiry, refresh replay, concurrent refresh, cookie transport and all-client residue cases under release settings."
+  },
+  {
+    "id": "039",
+    "requirement": "Logout/revocation behavior works correctly",
+    "environment": "isolated Identity + Redis; dogfood",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/browser-auth-http-results.json: logout 200; revoked refresh 401",
+    "limitation": "Local browser-like HTTP transport, not every native session/cache scenario.",
+    "next_action": "Run mobile and multi-session revocation journeys."
+  },
+  {
+    "id": "040",
+    "requirement": "Unauthorized users cannot access protected APIs",
+    "environment": "isolated Identity + Redis; dogfood",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json: anonymous and forged bearer admin requests rejected with 401 in both APIs",
+    "limitation": "Sampled protected admin routes only; full BOLA/role matrix remains UNVERIFIED.",
+    "next_action": "Expand route inventory and per-role ownership tests."
+  },
+  {
+    "id": "041",
+    "requirement": "Guest cannot access host-only APIs",
+    "environment": "isolated APIs; partial unit coverage",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/authorization-rate-results.json: authenticated consumer GET /stays/host/listings returned 200",
+    "limitation": "May be intended self-scoped listing access in unified account model; no cross-user disclosure proven.",
+    "next_action": "Resolve host-only route policy and test actual host mutations with two accounts; do not add speculative blanket role restriction."
+  },
+  {
+    "id": "042",
+    "requirement": "Host cannot access admin APIs",
+    "environment": "isolated APIs; partial unit coverage",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/authorization-rate-results.json; evidence/stays-assertions.json",
+    "limitation": "No complete multi-account role/ownership HTTP matrix.",
+    "next_action": "Create synthetic guest, two hosts, admin and suspended accounts; test read/write routes with cross-account IDs and verify no state changes on denial."
+  },
+  {
+    "id": "043",
+    "requirement": "Normal user cannot access another user's private data",
+    "environment": "isolated APIs; partial unit coverage",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/authorization-rate-results.json; evidence/stays-assertions.json",
+    "limitation": "No complete multi-account role/ownership HTTP matrix.",
+    "next_action": "Create synthetic guest, two hosts, admin and suspended accounts; test read/write routes with cross-account IDs and verify no state changes on denial."
+  },
+  {
+    "id": "044",
+    "requirement": "Host cannot modify another host's listing",
+    "environment": "isolated APIs; partial unit coverage",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/authorization-rate-results.json; evidence/stays-assertions.json",
+    "limitation": "No complete multi-account role/ownership HTTP matrix.",
+    "next_action": "Create synthetic guest, two hosts, admin and suspended accounts; test read/write routes with cross-account IDs and verify no state changes on denial."
+  },
+  {
+    "id": "045",
+    "requirement": "Host cannot modify another host's booking",
+    "environment": "isolated APIs; partial unit coverage",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/authorization-rate-results.json; evidence/stays-assertions.json",
+    "limitation": "No complete multi-account role/ownership HTTP matrix.",
+    "next_action": "Create synthetic guest, two hosts, admin and suspended accounts; test read/write routes with cross-account IDs and verify no state changes on denial."
+  },
+  {
+    "id": "046",
+    "requirement": "Admin permissions are correctly enforced server-side",
+    "environment": "isolated APIs; partial unit coverage",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/authorization-rate-results.json; evidence/stays-assertions.json",
+    "limitation": "No complete multi-account role/ownership HTTP matrix.",
+    "next_action": "Create synthetic guest, two hosts, admin and suspended accounts; test read/write routes with cross-account IDs and verify no state changes on denial."
+  },
+  {
+    "id": "047",
+    "requirement": "Suspended users cannot perform restricted actions",
+    "environment": "isolated APIs; partial unit coverage",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/authorization-rate-results.json; evidence/stays-assertions.json",
+    "limitation": "No complete multi-account role/ownership HTTP matrix.",
+    "next_action": "Create synthetic guest, two hosts, admin and suspended accounts; test read/write routes with cross-account IDs and verify no state changes on denial."
+  },
+  {
+    "id": "048",
+    "requirement": "API authorization cannot be bypassed by manipulating IDs",
+    "environment": "isolated APIs; partial unit coverage",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/authorization-rate-results.json; evidence/stays-assertions.json",
+    "limitation": "No complete multi-account role/ownership HTTP matrix.",
+    "next_action": "Create synthetic guest, two hosts, admin and suspended accounts; test read/write routes with cross-account IDs and verify no state changes on denial."
+  },
+  {
+    "id": "049",
+    "requirement": "Sumsub production credentials are configured",
+    "environment": "signed local Sumsub simulations",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/identity-assertions.json; evidence/kyc-transaction-results.json",
+    "limitation": "No actual Sumsub sandbox SDK/applicant delivery or production credentials used.",
+    "next_action": "Run an authorized sandbox applicant through SDK, approval, rejection and retry; capture signed event and permission transitions. Production access remains deferred."
+  },
+  {
+    "id": "050",
+    "requirement": "Production applicant creation works",
+    "environment": "signed local Sumsub simulations",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/identity-assertions.json; evidence/kyc-transaction-results.json",
+    "limitation": "No actual Sumsub sandbox SDK/applicant delivery or production credentials used.",
+    "next_action": "Run an authorized sandbox applicant through SDK, approval, rejection and retry; capture signed event and permission transitions. Production access remains deferred."
+  },
+  {
+    "id": "051",
+    "requirement": "KYC status is synchronized correctly",
+    "environment": "signed local Sumsub simulations",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/identity-assertions.json; evidence/kyc-transaction-results.json",
+    "limitation": "No actual Sumsub sandbox SDK/applicant delivery or production credentials used.",
+    "next_action": "Run an authorized sandbox applicant through SDK, approval, rejection and retry; capture signed event and permission transitions. Production access remains deferred."
+  },
+  {
+    "id": "052",
+    "requirement": "Approved applicant receives the correct platform permissions",
+    "environment": "signed local Sumsub simulations",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/identity-assertions.json; evidence/kyc-transaction-results.json",
+    "limitation": "No actual Sumsub sandbox SDK/applicant delivery or production credentials used.",
+    "next_action": "Run an authorized sandbox applicant through SDK, approval, rejection and retry; capture signed event and permission transitions. Production access remains deferred."
+  },
+  {
+    "id": "053",
+    "requirement": "Rejected applicant is handled correctly",
+    "environment": "signed local Sumsub simulations",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/identity-assertions.json; evidence/kyc-transaction-results.json",
+    "limitation": "No actual Sumsub sandbox SDK/applicant delivery or production credentials used.",
+    "next_action": "Run an authorized sandbox applicant through SDK, approval, rejection and retry; capture signed event and permission transitions. Production access remains deferred."
+  },
+  {
+    "id": "054",
+    "requirement": "Applicant retry/reverification flow works",
+    "environment": "signed local Sumsub simulations",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/identity-assertions.json; evidence/kyc-transaction-results.json",
+    "limitation": "No actual Sumsub sandbox SDK/applicant delivery or production credentials used.",
+    "next_action": "Run an authorized sandbox applicant through SDK, approval, rejection and retry; capture signed event and permission transitions. Production access remains deferred."
+  },
+  {
+    "id": "055",
+    "requirement": "Sumsub webhook signature/authentication is verified",
+    "environment": "signed local Sumsub simulations",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/identity-assertions.json: 10 HMAC cases; unsigned local HTTP 400, signed 201",
+    "limitation": "Locally generated SHA256/SHA512/SHA1 digests, no provider-origin sandbox delivery.",
+    "next_action": "Confirm provider-configured algorithm and signed sandbox event end to end without enabling live KYC."
+  },
+  {
+    "id": "056",
+    "requirement": "Duplicate/out-of-order Sumsub webhooks do not corrupt KYC state",
+    "environment": "signed local Sumsub simulations",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/kyc-order-results.json; evidence/kyc-transaction-results.json: stale, duplicate, concurrency and rollback/retry executed on PG",
+    "limitation": "Equal timestamps are treated as duplicates; provider delivery and manual resync races remain unverified.",
+    "next_action": "Exercise actual sandbox retries/reverification and timestamp collisions; migrate 067 before shipping Identity code."
+  },
+  {
+    "id": "057",
+    "requirement": "New host can complete host onboarding",
+    "environment": "source/unit coverage only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json; evidence/identity-assertions.json",
+    "limitation": "No complete host onboarding/upload/moderation journey.",
+    "next_action": "Use a fresh synthetic host; complete KYC, create/validate listing, upload valid and malicious fixtures, moderate, then verify public visibility."
+  },
+  {
+    "id": "058",
+    "requirement": "Host cannot publish before required verification",
+    "environment": "source/unit coverage only",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/stays-assertions.json; evidence/identity-assertions.json",
+    "limitation": "No complete host onboarding/upload/moderation journey.",
+    "next_action": "Use a fresh synthetic host; complete KYC, create/validate listing, upload valid and malicious fixtures, moderate, then verify public visibility."
+  },
+  {
+    "id": "059",
+    "requirement": "Host can create a listing",
+    "environment": "source/unit coverage only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json; evidence/identity-assertions.json",
+    "limitation": "No complete host onboarding/upload/moderation journey.",
+    "next_action": "Use a fresh synthetic host; complete KYC, create/validate listing, upload valid and malicious fixtures, moderate, then verify public visibility."
+  },
+  {
+    "id": "060",
+    "requirement": "Listing validation rejects invalid/incomplete data",
+    "environment": "source/unit coverage only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json; evidence/identity-assertions.json",
+    "limitation": "No complete host onboarding/upload/moderation journey.",
+    "next_action": "Use a fresh synthetic host; complete KYC, create/validate listing, upload valid and malicious fixtures, moderate, then verify public visibility."
+  },
+  {
+    "id": "061",
+    "requirement": "Listing images upload successfully",
+    "environment": "source/unit coverage only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json; evidence/identity-assertions.json",
+    "limitation": "No complete host onboarding/upload/moderation journey.",
+    "next_action": "Use a fresh synthetic host; complete KYC, create/validate listing, upload valid and malicious fixtures, moderate, then verify public visibility."
+  },
+  {
+    "id": "062",
+    "requirement": "Unsafe/invalid file uploads are rejected",
+    "environment": "source/unit coverage only",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/stays-assertions.json; evidence/identity-assertions.json",
+    "limitation": "No complete host onboarding/upload/moderation journey.",
+    "next_action": "Use a fresh synthetic host; complete KYC, create/validate listing, upload valid and malicious fixtures, moderate, then verify public visibility."
+  },
+  {
+    "id": "063",
+    "requirement": "Listing moderation workflow works",
+    "environment": "source/unit coverage only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json; evidence/identity-assertions.json",
+    "limitation": "No complete host onboarding/upload/moderation journey.",
+    "next_action": "Use a fresh synthetic host; complete KYC, create/validate listing, upload valid and malicious fixtures, moderate, then verify public visibility."
+  },
+  {
+    "id": "064",
+    "requirement": "Approved listing becomes publicly visible correctly",
+    "environment": "source/unit coverage only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json; evidence/identity-assertions.json",
+    "limitation": "No complete host onboarding/upload/moderation journey.",
+    "next_action": "Use a fresh synthetic host; complete KYC, create/validate listing, upload valid and malicious fixtures, moderate, then verify public visibility."
+  },
+  {
+    "id": "065",
+    "requirement": "Guest can search available properties",
+    "environment": "isolated Stays + PostgreSQL",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json: explore returned 200",
+    "limitation": "HTTP success alone does not prove availability-correct search results.",
+    "next_action": "Seed known available/unavailable inventory and assert returned IDs for each date/filter combination."
+  },
+  {
+    "id": "066",
+    "requirement": "Search filters return correct results",
+    "environment": "isolated Stays + PostgreSQL",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json; evidence/postgres-concurrency-assertions.json",
+    "limitation": "Limited synthetic inventory; not broad filter/load/browser coverage.",
+    "next_action": "Exercise date boundaries, all filters and scheduler timing against controlled inventory and reconcile persisted rows."
+  },
+  {
+    "id": "067",
+    "requirement": "Listing availability matches actual booking inventory",
+    "environment": "isolated Stays + PostgreSQL",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json; evidence/postgres-concurrency-assertions.json",
+    "limitation": "Limited synthetic inventory; not broad filter/load/browser coverage.",
+    "next_action": "Exercise date boundaries, all filters and scheduler timing against controlled inventory and reconcile persisted rows."
+  },
+  {
+    "id": "068",
+    "requirement": "Unavailable dates cannot be booked",
+    "environment": "isolated Stays + PostgreSQL",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json: executed overlapping dates, two-night server-side pricing, fee, cancellation and rebooking assertions",
+    "limitation": "Synthetic preverified guest, one representative price fixture and mock payment only; not broad policy/FX/device coverage.",
+    "next_action": "Repeat boundary and pricing cases for representative release data; keep CMI requirements separate."
+  },
+  {
+    "id": "069",
+    "requirement": "Booking calculates the correct number of nights",
+    "environment": "isolated Stays + PostgreSQL",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json: executed overlapping dates, two-night server-side pricing, fee, cancellation and rebooking assertions",
+    "limitation": "Synthetic preverified guest, one representative price fixture and mock payment only; not broad policy/FX/device coverage.",
+    "next_action": "Repeat boundary and pricing cases for representative release data; keep CMI requirements separate."
+  },
+  {
+    "id": "070",
+    "requirement": "Booking calculates the correct subtotal",
+    "environment": "isolated Stays + PostgreSQL",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json: executed overlapping dates, two-night server-side pricing, fee, cancellation and rebooking assertions",
+    "limitation": "Synthetic preverified guest, one representative price fixture and mock payment only; not broad policy/FX/device coverage.",
+    "next_action": "Repeat boundary and pricing cases for representative release data; keep CMI requirements separate."
+  },
+  {
+    "id": "071",
+    "requirement": "Platform fees/commission are calculated correctly",
+    "environment": "isolated Stays + PostgreSQL",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json: executed overlapping dates, two-night server-side pricing, fee, cancellation and rebooking assertions",
+    "limitation": "Synthetic preverified guest, one representative price fixture and mock payment only; not broad policy/FX/device coverage.",
+    "next_action": "Repeat boundary and pricing cases for representative release data; keep CMI requirements separate."
+  },
+  {
+    "id": "072",
+    "requirement": "Concurrent booking attempts cannot create conflicting confirmed bookings",
+    "environment": "isolated Stays + PostgreSQL",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/postgres-concurrency-assertions.json: executed overlapping dates, two-night server-side pricing, fee, cancellation and rebooking assertions",
+    "limitation": "Synthetic preverified guest, one representative price fixture and mock payment only; not broad policy/FX/device coverage.",
+    "next_action": "Repeat boundary and pricing cases for representative release data; keep CMI requirements separate."
+  },
+  {
+    "id": "073",
+    "requirement": "Booking lock expires/release behavior works correctly",
+    "environment": "isolated Stays + PostgreSQL",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json; evidence/postgres-concurrency-assertions.json",
+    "limitation": "Limited synthetic inventory; not broad filter/load/browser coverage.",
+    "next_action": "Exercise date boundaries, all filters and scheduler timing against controlled inventory and reconcile persisted rows."
+  },
+  {
+    "id": "074",
+    "requirement": "Booking cancellation correctly updates availability",
+    "environment": "isolated Stays + PostgreSQL",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json: executed overlapping dates, two-night server-side pricing, fee, cancellation and rebooking assertions",
+    "limitation": "Synthetic preverified guest, one representative price fixture and mock payment only; not broad policy/FX/device coverage.",
+    "next_action": "Repeat boundary and pricing cases for representative release data; keep CMI requirements separate."
+  },
+  {
+    "id": "075",
+    "requirement": "CMI sandbox payment flow works end-to-end",
+    "environment": "CMI deferred; mock preserved",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Mock counterpart only: evidence/booking-http-results.json",
+    "limitation": "Original CMI requirement is unverified. Mock confirmation is not CMI or real settled money.",
+    "next_action": "After separate authorization and provider access, execute the original CMI sandbox/production case with callback signatures, replay and ledger reconciliation; do not activate during this audit."
+  },
+  {
+    "id": "076",
+    "requirement": "Production CMI credentials are available",
+    "environment": "CMI deferred; mock preserved",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Mock counterpart only: evidence/booking-http-results.json",
+    "limitation": "Original CMI requirement is unverified. Mock confirmation is not CMI or real settled money.",
+    "next_action": "After separate authorization and provider access, execute the original CMI sandbox/production case with callback signatures, replay and ledger reconciliation; do not activate during this audit."
+  },
+  {
+    "id": "077",
+    "requirement": "Production payment callback/webhook works",
+    "environment": "CMI deferred; mock preserved",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Mock counterpart only: evidence/booking-http-results.json",
+    "limitation": "Original CMI requirement is unverified. Mock confirmation is not CMI or real settled money.",
+    "next_action": "After separate authorization and provider access, execute the original CMI sandbox/production case with callback signatures, replay and ledger reconciliation; do not activate during this audit."
+  },
+  {
+    "id": "078",
+    "requirement": "Payment signature/authenticity validation works",
+    "environment": "CMI deferred; mock preserved",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Mock counterpart only: evidence/booking-http-results.json",
+    "limitation": "Original CMI requirement is unverified. Mock confirmation is not CMI or real settled money.",
+    "next_action": "After separate authorization and provider access, execute the original CMI sandbox/production case with callback signatures, replay and ledger reconciliation; do not activate during this audit."
+  },
+  {
+    "id": "079",
+    "requirement": "Successful payment creates the correct payment ledger entry",
+    "environment": "CMI deferred; mock preserved",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Mock counterpart only: evidence/booking-http-results.json",
+    "limitation": "Original CMI requirement is unverified. Mock confirmation is not CMI or real settled money.",
+    "next_action": "After separate authorization and provider access, execute the original CMI sandbox/production case with callback signatures, replay and ledger reconciliation; do not activate during this audit."
+  },
+  {
+    "id": "080",
+    "requirement": "Failed payment does not create a settled payment",
+    "environment": "CMI deferred; mock preserved",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Mock counterpart only: evidence/booking-http-results.json",
+    "limitation": "Original CMI requirement is unverified. Mock confirmation is not CMI or real settled money.",
+    "next_action": "After separate authorization and provider access, execute the original CMI sandbox/production case with callback signatures, replay and ledger reconciliation; do not activate during this audit."
+  },
+  {
+    "id": "081",
+    "requirement": "Duplicate CMI callback is idempotent",
+    "environment": "CMI deferred; mock preserved",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Mock counterpart only: evidence/booking-http-results.json",
+    "limitation": "Original CMI requirement is unverified. Mock confirmation is not CMI or real settled money.",
+    "next_action": "After separate authorization and provider access, execute the original CMI sandbox/production case with callback signatures, replay and ledger reconciliation; do not activate during this audit."
+  },
+  {
+    "id": "082",
+    "requirement": "Late CMI callback is handled correctly",
+    "environment": "CMI deferred; mock preserved",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Mock counterpart only: evidence/booking-http-results.json",
+    "limitation": "Original CMI requirement is unverified. Mock confirmation is not CMI or real settled money.",
+    "next_action": "After separate authorization and provider access, execute the original CMI sandbox/production case with callback signatures, replay and ledger reconciliation; do not activate during this audit."
+  },
+  {
+    "id": "083",
+    "requirement": "User abandoning payment does not incorrectly confirm booking",
+    "environment": "CMI deferred; mock preserved",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Mock counterpart only: evidence/booking-http-results.json",
+    "limitation": "Original CMI requirement is unverified. Mock confirmation is not CMI or real settled money.",
+    "next_action": "After separate authorization and provider access, execute the original CMI sandbox/production case with callback signatures, replay and ledger reconciliation; do not activate during this audit."
+  },
+  {
+    "id": "084",
+    "requirement": "Refund flow correctly updates payment/booking/ledger state",
+    "environment": "CMI deferred; mock preserved",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "Mock counterpart only: evidence/booking-http-results.json",
+    "limitation": "Original CMI requirement is unverified. Mock confirmation is not CMI or real settled money.",
+    "next_action": "After separate authorization and provider access, execute the original CMI sandbox/production case with callback signatures, replay and ledger reconciliation; do not activate during this audit."
+  },
+  {
+    "id": "085",
+    "requirement": "Guest receives booking confirmation after successful payment",
+    "environment": "local simulated finance",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json; evidence/stays-assertions.json",
+    "limitation": "No real payout, settlement reconciliation or full admin finance journey.",
+    "next_action": "Reconcile synthetic bookings, payment/refund entries, commission and host balances across policies; verify admin payout status before any live finance use."
+  },
+  {
+    "id": "086",
+    "requirement": "Host receives new-booking notification",
+    "environment": "local simulated finance",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json; evidence/stays-assertions.json",
+    "limitation": "No real payout, settlement reconciliation or full admin finance journey.",
+    "next_action": "Reconcile synthetic bookings, payment/refund entries, commission and host balances across policies; verify admin payout status before any live finance use."
+  },
+  {
+    "id": "087",
+    "requirement": "Guest cancellation follows configured cancellation policy",
+    "environment": "local simulated finance",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/stays-assertions.json: cancellation policy boundaries; evidence/booking-http-results.json: refund 210 after cancellation",
+    "limitation": "Service units cover additional policies; HTTP covers one full refund, all money simulated.",
+    "next_action": "Execute partial/zero refund and host earnings reconciliation through API before live payment launch."
+  },
+  {
+    "id": "088",
+    "requirement": "Refund amount is calculated correctly",
+    "environment": "local simulated finance",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/stays-assertions.json: cancellation policy boundaries; evidence/booking-http-results.json: refund 210 after cancellation",
+    "limitation": "Service units cover additional policies; HTTP covers one full refund, all money simulated.",
+    "next_action": "Execute partial/zero refund and host earnings reconciliation through API before live payment launch."
+  },
+  {
+    "id": "089",
+    "requirement": "Cancelled booking releases inventory correctly",
+    "environment": "local simulated finance",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json: executed overlapping dates, two-night server-side pricing, fee, cancellation and rebooking assertions",
+    "limitation": "Synthetic preverified guest, one representative price fixture and mock payment only; not broad policy/FX/device coverage.",
+    "next_action": "Repeat boundary and pricing cases for representative release data; keep CMI requirements separate."
+  },
+  {
+    "id": "090",
+    "requirement": "Host earnings are calculated correctly",
+    "environment": "local simulated finance",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json; evidence/stays-assertions.json",
+    "limitation": "No real payout, settlement reconciliation or full admin finance journey.",
+    "next_action": "Reconcile synthetic bookings, payment/refund entries, commission and host balances across policies; verify admin payout status before any live finance use."
+  },
+  {
+    "id": "091",
+    "requirement": "Nexa commission is calculated correctly",
+    "environment": "local simulated finance",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json; evidence/stays-assertions.json",
+    "limitation": "No real payout, settlement reconciliation or full admin finance journey.",
+    "next_action": "Reconcile synthetic bookings, payment/refund entries, commission and host balances across policies; verify admin payout status before any live finance use."
+  },
+  {
+    "id": "092",
+    "requirement": "Refunds/cancellations correctly affect host earnings",
+    "environment": "local simulated finance",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json; evidence/stays-assertions.json",
+    "limitation": "No real payout, settlement reconciliation or full admin finance journey.",
+    "next_action": "Reconcile synthetic bookings, payment/refund entries, commission and host balances across policies; verify admin payout status before any live finance use."
+  },
+  {
+    "id": "093",
+    "requirement": "Payout status can be tracked by admin",
+    "environment": "local simulated finance",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json; evidence/stays-assertions.json",
+    "limitation": "No real payout, settlement reconciliation or full admin finance journey.",
+    "next_action": "Reconcile synthetic bookings, payment/refund entries, commission and host balances across policies; verify admin payout status before any live finance use."
+  },
+  {
+    "id": "094",
+    "requirement": "Payment/booking/ledger records can be reconciled",
+    "environment": "local simulated finance",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/booking-http-results.json; evidence/stays-assertions.json",
+    "limitation": "No real payout, settlement reconciliation or full admin finance journey.",
+    "next_action": "Reconcile synthetic bookings, payment/refund entries, commission and host balances across policies; verify admin payout status before any live finance use."
+  },
+  {
+    "id": "095",
+    "requirement": "OTP delivery works in production",
+    "environment": "unit notification mapping only",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/notifications-current-tests.log",
+    "limitation": "Mapping assertions do not prove delivery to a recipient.",
+    "next_action": "Use approved sandbox/test destinations; trigger the named event and capture provider acceptance, delivery, retry and recipient evidence. Production OTP remains deferred."
+  },
+  {
+    "id": "096",
+    "requirement": "Booking confirmation notification works",
+    "environment": "unit notification mapping only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/notifications-current-tests.log",
+    "limitation": "Mapping assertions do not prove delivery to a recipient.",
+    "next_action": "Use approved sandbox/test destinations; trigger the named event and capture provider acceptance, delivery, retry and recipient evidence. Production OTP remains deferred."
+  },
+  {
+    "id": "097",
+    "requirement": "Payment confirmation notification works",
+    "environment": "unit notification mapping only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/notifications-current-tests.log",
+    "limitation": "Mapping assertions do not prove delivery to a recipient.",
+    "next_action": "Use approved sandbox/test destinations; trigger the named event and capture provider acceptance, delivery, retry and recipient evidence. Production OTP remains deferred."
+  },
+  {
+    "id": "098",
+    "requirement": "Cancellation/refund notification works",
+    "environment": "unit notification mapping only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/notifications-current-tests.log",
+    "limitation": "Mapping assertions do not prove delivery to a recipient.",
+    "next_action": "Use approved sandbox/test destinations; trigger the named event and capture provider acceptance, delivery, retry and recipient evidence. Production OTP remains deferred."
+  },
+  {
+    "id": "099",
+    "requirement": "Host booking notification works",
+    "environment": "unit notification mapping only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/notifications-current-tests.log",
+    "limitation": "Mapping assertions do not prove delivery to a recipient.",
+    "next_action": "Use approved sandbox/test destinations; trigger the named event and capture provider acceptance, delivery, retry and recipient evidence. Production OTP remains deferred."
+  },
+  {
+    "id": "100",
+    "requirement": "Support/message notifications work correctly",
+    "environment": "unit notification mapping only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/notifications-current-tests.log",
+    "limitation": "Mapping assertions do not prove delivery to a recipient.",
+    "next_action": "Use approved sandbox/test destinations; trigger the named event and capture provider acceptance, delivery, retry and recipient evidence. Production OTP remains deferred."
+  },
+  {
+    "id": "101",
+    "requirement": "Admin can find a user",
+    "environment": "service units; no full admin UI journey",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json",
+    "limitation": "Admin pagination, seeded large datasets and cross-role browser state transitions not exercised end to end.",
+    "next_action": "Seed over 1000 synthetic records; exercise authorized search/pagination/filtering and the named support or moderation transition through UI and API."
+  },
+  {
+    "id": "102",
+    "requirement": "Admin can view user account/KYC status",
+    "environment": "service units; no full admin UI journey",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json",
+    "limitation": "Admin pagination, seeded large datasets and cross-role browser state transitions not exercised end to end.",
+    "next_action": "Seed over 1000 synthetic records; exercise authorized search/pagination/filtering and the named support or moderation transition through UI and API."
+  },
+  {
+    "id": "103",
+    "requirement": "Admin can find a booking",
+    "environment": "service units; no full admin UI journey",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json",
+    "limitation": "Admin pagination, seeded large datasets and cross-role browser state transitions not exercised end to end.",
+    "next_action": "Seed over 1000 synthetic records; exercise authorized search/pagination/filtering and the named support or moderation transition through UI and API."
+  },
+  {
+    "id": "104",
+    "requirement": "Admin can inspect booking/payment history",
+    "environment": "service units; no full admin UI journey",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/stays-assertions.json",
+    "limitation": "Admin pagination, seeded large datasets and cross-role browser state transitions not exercised end to end.",
+    "next_action": "Seed over 1000 synthetic records; exercise authorized search/pagination/filtering and the named support or moderation transition through UI and API."
+  },
+  {
+    "id": "105",
+    "requirement": "Admin can review listings",
+    "environment": "service units; no full admin UI journey",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json",
+    "limitation": "Admin pagination, seeded large datasets and cross-role browser state transitions not exercised end to end.",
+    "next_action": "Seed over 1000 synthetic records; exercise authorized search/pagination/filtering and the named support or moderation transition through UI and API."
+  },
+  {
+    "id": "106",
+    "requirement": "Admin can approve/reject/suspend listings",
+    "environment": "service units; no full admin UI journey",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/stays-assertions.json",
+    "limitation": "Admin pagination, seeded large datasets and cross-role browser state transitions not exercised end to end.",
+    "next_action": "Seed over 1000 synthetic records; exercise authorized search/pagination/filtering and the named support or moderation transition through UI and API."
+  },
+  {
+    "id": "107",
+    "requirement": "Guest can submit a report",
+    "environment": "service units; no full admin UI journey",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json",
+    "limitation": "Admin pagination, seeded large datasets and cross-role browser state transitions not exercised end to end.",
+    "next_action": "Seed over 1000 synthetic records; exercise authorized search/pagination/filtering and the named support or moderation transition through UI and API."
+  },
+  {
+    "id": "108",
+    "requirement": "Support ticket is created correctly",
+    "environment": "service units; no full admin UI journey",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/stays-assertions.json",
+    "limitation": "Admin pagination, seeded large datasets and cross-role browser state transitions not exercised end to end.",
+    "next_action": "Seed over 1000 synthetic records; exercise authorized search/pagination/filtering and the named support or moderation transition through UI and API."
+  },
+  {
+    "id": "109",
+    "requirement": "Closed support tickets reject inappropriate replies",
+    "environment": "service units; no full admin UI journey",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/stays-assertions.json: CLOSED send rejected before insertion; nextStatusAfterCustomerMessage preserves ESCALATED",
+    "limitation": "Executed service/state-machine units with mocked dependencies; not end-to-end support UI or database atomicity certification.",
+    "next_action": "Run multi-role support/safety browser and transaction-failure journeys."
+  },
+  {
+    "id": "110",
+    "requirement": "Escalated safety/support cases remain correctly escalated",
+    "environment": "service units; no full admin UI journey",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/stays-assertions.json: CLOSED send rejected before insertion; nextStatusAfterCustomerMessage preserves ESCALATED",
+    "limitation": "Executed service/state-machine units with mocked dependencies; not end-to-end support UI or database atomicity certification.",
+    "next_action": "Run multi-role support/safety browser and transaction-failure journeys."
+  },
+  {
+    "id": "111",
+    "requirement": "CSP is correctly configured",
+    "environment": "partial local security probes",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json; evidence/authorization-rate-results.json; evidence/identity-assertions.json",
+    "limitation": "No complete attack corpus, deployed headers, log audit or security assessment.",
+    "next_action": "Run the named security control with malicious and valid fixtures against each exposed route; inspect sanitized errors, logs and persisted effects."
+  },
+  {
+    "id": "112",
+    "requirement": "Security headers are present",
+    "environment": "partial local security probes",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json; evidence/authorization-rate-results.json; evidence/identity-assertions.json",
+    "limitation": "No complete attack corpus, deployed headers, log audit or security assessment.",
+    "next_action": "Run the named security control with malicious and valid fixtures against each exposed route; inspect sanitized errors, logs and persisted effects."
+  },
+  {
+    "id": "113",
+    "requirement": "CORS allows only intended origins",
+    "environment": "partial local security probes",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json; evidence/authorization-rate-results.json; evidence/identity-assertions.json",
+    "limitation": "No complete attack corpus, deployed headers, log audit or security assessment.",
+    "next_action": "Run the named security control with malicious and valid fixtures against each exposed route; inspect sanitized errors, logs and persisted effects."
+  },
+  {
+    "id": "114",
+    "requirement": "API rate limiting works",
+    "environment": "partial local security probes",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json; evidence/authorization-rate-results.json; evidence/identity-assertions.json",
+    "limitation": "No complete attack corpus, deployed headers, log audit or security assessment.",
+    "next_action": "Run the named security control with malicious and valid fixtures against each exposed route; inspect sanitized errors, logs and persisted effects."
+  },
+  {
+    "id": "115",
+    "requirement": "Sensitive information is not exposed in API errors",
+    "environment": "partial local security probes",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json; evidence/authorization-rate-results.json; evidence/identity-assertions.json",
+    "limitation": "No complete attack corpus, deployed headers, log audit or security assessment.",
+    "next_action": "Run the named security control with malicious and valid fixtures against each exposed route; inspect sanitized errors, logs and persisted effects."
+  },
+  {
+    "id": "116",
+    "requirement": "Password/OTP/token secrets never appear in logs",
+    "environment": "partial local security probes",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json; evidence/authorization-rate-results.json; evidence/identity-assertions.json",
+    "limitation": "No complete attack corpus, deployed headers, log audit or security assessment.",
+    "next_action": "Run the named security control with malicious and valid fixtures against each exposed route; inspect sanitized errors, logs and persisted effects."
+  },
+  {
+    "id": "117",
+    "requirement": "File upload validation prevents dangerous file types",
+    "environment": "partial local security probes",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json; evidence/authorization-rate-results.json; evidence/identity-assertions.json",
+    "limitation": "No complete attack corpus, deployed headers, log audit or security assessment.",
+    "next_action": "Run the named security control with malicious and valid fixtures against each exposed route; inspect sanitized errors, logs and persisted effects."
+  },
+  {
+    "id": "118",
+    "requirement": "SQL injection testing passes",
+    "environment": "partial local security probes",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json; evidence/authorization-rate-results.json; evidence/identity-assertions.json",
+    "limitation": "No complete attack corpus, deployed headers, log audit or security assessment.",
+    "next_action": "Run the named security control with malicious and valid fixtures against each exposed route; inspect sanitized errors, logs and persisted effects."
+  },
+  {
+    "id": "119",
+    "requirement": "XSS testing passes",
+    "environment": "partial local security probes",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json; evidence/authorization-rate-results.json; evidence/identity-assertions.json",
+    "limitation": "No complete attack corpus, deployed headers, log audit or security assessment.",
+    "next_action": "Run the named security control with malicious and valid fixtures against each exposed route; inspect sanitized errors, logs and persisted effects."
+  },
+  {
+    "id": "120",
+    "requirement": "Admin endpoints cannot be accessed without proper authorization",
+    "environment": "partial local security probes",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json: anonymous/forged 401; evidence/authorization-rate-results.json: valid consumer session 200 then both admin APIs 403",
+    "limitation": "Sampled admin listings/users routes; complete admin permissions remain UNVERIFIED at 046.",
+    "next_action": "Test every admin route and permissions subset with synthetic roles."
+  },
+  {
+    "id": "121",
+    "requirement": "iOS Safari guest flow works",
+    "environment": "desktop browser emulation + Flutter unit tests",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/browser-observations.md; evidence/mobile-tests.log",
+    "limitation": "Actual iOS Safari/Android Chrome/native Flutter devices not exercised.",
+    "next_action": "Run the original journey on physical iOS and Android devices, including keyboard, safe areas, checkout and RTL; retain device/version evidence."
+  },
+  {
+    "id": "122",
+    "requirement": "Android Chrome guest flow works",
+    "environment": "desktop browser emulation + Flutter unit tests",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/browser-observations.md; evidence/mobile-tests.log",
+    "limitation": "Actual iOS Safari/Android Chrome/native Flutter devices not exercised.",
+    "next_action": "Run the original journey on physical iOS and Android devices, including keyboard, safe areas, checkout and RTL; retain device/version evidence."
+  },
+  {
+    "id": "123",
+    "requirement": "Mobile login/OTP flow works",
+    "environment": "desktop browser emulation + Flutter unit tests",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/browser-observations.md; evidence/mobile-tests.log",
+    "limitation": "Actual iOS Safari/Android Chrome/native Flutter devices not exercised.",
+    "next_action": "Run the original journey on physical iOS and Android devices, including keyboard, safe areas, checkout and RTL; retain device/version evidence."
+  },
+  {
+    "id": "124",
+    "requirement": "Mobile listing/search flow works",
+    "environment": "desktop browser emulation + Flutter unit tests",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/browser-observations.md; evidence/mobile-tests.log",
+    "limitation": "Actual iOS Safari/Android Chrome/native Flutter devices not exercised.",
+    "next_action": "Run the original journey on physical iOS and Android devices, including keyboard, safe areas, checkout and RTL; retain device/version evidence."
+  },
+  {
+    "id": "125",
+    "requirement": "Mobile checkout/payment CTA is not obscured",
+    "environment": "desktop browser emulation + Flutter unit tests",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/browser-observations.md; evidence/mobile-tests.log",
+    "limitation": "Actual iOS Safari/Android Chrome/native Flutter devices not exercised.",
+    "next_action": "Run the original journey on physical iOS and Android devices, including keyboard, safe areas, checkout and RTL; retain device/version evidence."
+  },
+  {
+    "id": "126",
+    "requirement": "Safe-area/notch handling works",
+    "environment": "desktop browser emulation + Flutter unit tests",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/browser-observations.md; evidence/mobile-tests.log",
+    "limitation": "Actual iOS Safari/Android Chrome/native Flutter devices not exercised.",
+    "next_action": "Run the original journey on physical iOS and Android devices, including keyboard, safe areas, checkout and RTL; retain device/version evidence."
+  },
+  {
+    "id": "127",
+    "requirement": "Keyboard does not break forms/sheets",
+    "environment": "desktop browser emulation + Flutter unit tests",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/browser-observations.md; evidence/mobile-tests.log",
+    "limitation": "Actual iOS Safari/Android Chrome/native Flutter devices not exercised.",
+    "next_action": "Run the original journey on physical iOS and Android devices, including keyboard, safe areas, checkout and RTL; retain device/version evidence."
+  },
+  {
+    "id": "128",
+    "requirement": "RTL/language switching works on mobile",
+    "environment": "desktop browser emulation + Flutter unit tests",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/browser-observations.md; evidence/mobile-tests.log",
+    "limitation": "Actual iOS Safari/Android Chrome/native Flutter devices not exercised.",
+    "next_action": "Run the original journey on physical iOS and Android devices, including keyboard, safe areas, checkout and RTL; retain device/version evidence."
+  },
+  {
+    "id": "129",
+    "requirement": "`robots.txt` is production-correct",
+    "environment": "isolated production web build",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/web-http-results.json",
+    "limitation": "Audit .example origins; sampled home pages only, not live domain or all listings/SEO pages.",
+    "next_action": "Crawl release-equivalent public and listing URLs; compare canonical, robots, sitemap, OG and status codes with intended production origins."
+  },
+  {
+    "id": "130",
+    "requirement": "Sitemap is generated and accessible",
+    "environment": "isolated production web build",
+    "result": "PASS",
+    "severity": "MAJOR",
+    "evidence": "evidence/web-http-results.json: /sitemap.xml 200 (15501 bytes); Stays sitemap registry 200",
+    "limitation": "Local production build with audit domain; full URL correctness and production crawlability unverified.",
+    "next_action": "Crawl sitemap URLs on release-equivalent origin and validate all canonical destinations."
+  },
+  {
+    "id": "131",
+    "requirement": "Canonical URLs are correct",
+    "environment": "isolated production web build",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/web-http-results.json",
+    "limitation": "Audit .example origins; sampled home pages only, not live domain or all listings/SEO pages.",
+    "next_action": "Crawl release-equivalent public and listing URLs; compare canonical, robots, sitemap, OG and status codes with intended production origins."
+  },
+  {
+    "id": "132",
+    "requirement": "Listing pages contain correct metadata",
+    "environment": "isolated production web build",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/web-http-results.json",
+    "limitation": "Audit .example origins; sampled home pages only, not live domain or all listings/SEO pages.",
+    "next_action": "Crawl release-equivalent public and listing URLs; compare canonical, robots, sitemap, OG and status codes with intended production origins."
+  },
+  {
+    "id": "133",
+    "requirement": "Open Graph metadata works",
+    "environment": "isolated production web build",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/web-http-results.json",
+    "limitation": "Audit .example origins; sampled home pages only, not live domain or all listings/SEO pages.",
+    "next_action": "Crawl release-equivalent public and listing URLs; compare canonical, robots, sitemap, OG and status codes with intended production origins."
+  },
+  {
+    "id": "134",
+    "requirement": "Public pages are not accidentally `noindex`",
+    "environment": "isolated production web build",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/web-http-results.json",
+    "limitation": "Audit .example origins; sampled home pages only, not live domain or all listings/SEO pages.",
+    "next_action": "Crawl release-equivalent public and listing URLs; compare canonical, robots, sitemap, OG and status codes with intended production origins."
+  },
+  {
+    "id": "135",
+    "requirement": "404/redirect behavior is correct",
+    "environment": "isolated production web build",
+    "result": "PASS",
+    "severity": "MAJOR",
+    "evidence": "evidence/web-http-results.json: / returns 307 to /en; missing page returns 404 with noindex",
+    "limitation": "Sampled locale redirect and one nonexistent route; not every migration/redirect or live HTTPS.",
+    "next_action": "Run canonical/legacy URL redirect corpus before release."
+  },
+  {
+    "id": "136",
+    "requirement": "Homepage performance is acceptable",
+    "environment": "local synthetic tests only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/postgres-concurrency-assertions.json",
+    "limitation": "No production-scale load profile, CWV budget, query plan review or container restart proof.",
+    "next_action": "Define latency/CWV/error budgets; run isolated representative-scale search and booking load, record p95/p99 and plans, then test controlled restart recovery."
+  },
+  {
+    "id": "137",
+    "requirement": "Listing page performance is acceptable",
+    "environment": "local synthetic tests only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/postgres-concurrency-assertions.json",
+    "limitation": "No production-scale load profile, CWV budget, query plan review or container restart proof.",
+    "next_action": "Define latency/CWV/error budgets; run isolated representative-scale search and booking load, record p95/p99 and plans, then test controlled restart recovery."
+  },
+  {
+    "id": "138",
+    "requirement": "Search performance is acceptable with production-scale data",
+    "environment": "local synthetic tests only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/postgres-concurrency-assertions.json",
+    "limitation": "No production-scale load profile, CWV budget, query plan review or container restart proof.",
+    "next_action": "Define latency/CWV/error budgets; run isolated representative-scale search and booking load, record p95/p99 and plans, then test controlled restart recovery."
+  },
+  {
+    "id": "139",
+    "requirement": "Image loading is optimized",
+    "environment": "local synthetic tests only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/postgres-concurrency-assertions.json",
+    "limitation": "No production-scale load profile, CWV budget, query plan review or container restart proof.",
+    "next_action": "Define latency/CWV/error budgets; run isolated representative-scale search and booking load, record p95/p99 and plans, then test controlled restart recovery."
+  },
+  {
+    "id": "140",
+    "requirement": "API response times are acceptable under normal load",
+    "environment": "local synthetic tests only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/postgres-concurrency-assertions.json",
+    "limitation": "No production-scale load profile, CWV budget, query plan review or container restart proof.",
+    "next_action": "Define latency/CWV/error budgets; run isolated representative-scale search and booking load, record p95/p99 and plans, then test controlled restart recovery."
+  },
+  {
+    "id": "141",
+    "requirement": "Database queries have no obvious production-scale bottlenecks",
+    "environment": "local synthetic tests only",
+    "result": "UNVERIFIED",
+    "severity": "MAJOR",
+    "evidence": "evidence/postgres-concurrency-assertions.json",
+    "limitation": "No production-scale load profile, CWV budget, query plan review or container restart proof.",
+    "next_action": "Define latency/CWV/error budgets; run isolated representative-scale search and booking load, record p95/p99 and plans, then test controlled restart recovery."
+  },
+  {
+    "id": "142",
+    "requirement": "Application remains stable under concurrent booking traffic",
+    "environment": "local synthetic tests only",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/postgres-concurrency-assertions.json",
+    "limitation": "No production-scale load profile, CWV budget, query plan review or container restart proof.",
+    "next_action": "Define latency/CWV/error budgets; run isolated representative-scale search and booking load, record p95/p99 and plans, then test controlled restart recovery."
+  },
+  {
+    "id": "143",
+    "requirement": "Application recovers correctly after container restart",
+    "environment": "local synthetic tests only",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "evidence/postgres-concurrency-assertions.json",
+    "limitation": "No production-scale load profile, CWV budget, query plan review or container restart proof.",
+    "next_action": "Define latency/CWV/error budgets; run isolated representative-scale search and booking load, record p95/p99 and plans, then test controlled restart recovery."
+  },
+  {
+    "id": "144",
+    "requirement": "Application health checks work",
+    "environment": "operations source/local probes only",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "evidence/http-results.json: Identity and Stays readiness including DB probes returned 200",
+    "limitation": "Only two locally started APIs; deployed routing, alerting and all platform services unverified.",
+    "next_action": "Verify all service health checks from deployed orchestrator and monitoring network."
+  },
+  {
+    "id": "145",
+    "requirement": "Database health monitoring works",
+    "environment": "operations source/local probes only",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "SOFT_LAUNCH_OPS.md and local health evidence",
+    "limitation": "No deployed monitoring, alert delivery or operational rehearsal.",
+    "next_action": "On authorized staging, trigger the named failure, verify monitoring and on-call notification, record owner, timing and recovery evidence."
+  },
+  {
+    "id": "146",
+    "requirement": "Disk/CPU/RAM monitoring exists",
+    "environment": "operations source/local probes only",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "SOFT_LAUNCH_OPS.md and local health evidence",
+    "limitation": "No deployed monitoring, alert delivery or operational rehearsal.",
+    "next_action": "On authorized staging, trigger the named failure, verify monitoring and on-call notification, record owner, timing and recovery evidence."
+  },
+  {
+    "id": "147",
+    "requirement": "Production logs are accessible and useful",
+    "environment": "operations source/local probes only",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "SOFT_LAUNCH_OPS.md and local health evidence",
+    "limitation": "No deployed monitoring, alert delivery or operational rehearsal.",
+    "next_action": "On authorized staging, trigger the named failure, verify monitoring and on-call notification, record owner, timing and recovery evidence."
+  },
+  {
+    "id": "148",
+    "requirement": "Critical payment/booking errors are observable",
+    "environment": "operations source/local probes only",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "SOFT_LAUNCH_OPS.md and local health evidence",
+    "limitation": "No deployed monitoring, alert delivery or operational rehearsal.",
+    "next_action": "On authorized staging, trigger the named failure, verify monitoring and on-call notification, record owner, timing and recovery evidence."
+  },
+  {
+    "id": "149",
+    "requirement": "Backup failures generate an alert",
+    "environment": "operations source/local probes only",
+    "result": "UNVERIFIED",
+    "severity": "BLOCKER",
+    "evidence": "SOFT_LAUNCH_OPS.md and local health evidence",
+    "limitation": "No deployed monitoring, alert delivery or operational rehearsal.",
+    "next_action": "On authorized staging, trigger the named failure, verify monitoring and on-call notification, record owner, timing and recovery evidence."
+  },
+  {
+    "id": "150",
+    "requirement": "There is a documented incident-response procedure",
+    "environment": "operations source/local probes only",
+    "result": "PASS",
+    "severity": "BLOCKER",
+    "evidence": "Repository docs/ops/SOFT_LAUNCH_OPS.md: incident lead, safety escalation and named trace procedure",
+    "limitation": "Procedure exists, but named owners/contact details/SLA and rehearsal incomplete.",
+    "next_action": "Assign owners/contact details and response SLA; rehearse incident and backup-failure escalation."
+  }
+]

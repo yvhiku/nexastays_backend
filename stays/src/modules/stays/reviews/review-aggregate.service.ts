@@ -36,8 +36,7 @@ export class ReviewAggregateService {
     }
 
     const count = rows.length;
-    const avg =
-      count > 0 ? Math.round((sum / count) * 100) / 100 : null;
+    const avg = count > 0 ? Math.round((sum / count) * 100) / 100 : null;
 
     await manager.update(
       StaysListing,

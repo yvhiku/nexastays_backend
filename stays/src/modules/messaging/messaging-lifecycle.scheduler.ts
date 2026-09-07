@@ -35,7 +35,9 @@ export class MessagingLifecycleScheduler {
       try {
         await this.messagingState.syncFromBooking(conv.booking_id);
       } catch (err) {
-        this.logger.warn(`Failed to sync messaging state for ${conv.booking_id}: ${err}`);
+        this.logger.warn(
+          `Failed to sync messaging state for ${conv.booking_id}: ${err}`,
+        );
       }
     }
   }

@@ -14,7 +14,12 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { multerLimits } from '../../common/security/multer-limits';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ConversationsService } from './conversations.service';
@@ -55,13 +60,19 @@ export class MessagingController {
     @Query('filter') filter?: string,
     @Query('q') q?: string,
   ) {
-    return this.conversations.listConversations(user.userId, filter ?? 'active', q);
+    return this.conversations.listConversations(
+      user.userId,
+      filter ?? 'active',
+      q,
+    );
   }
 
   @Get('conversations/unread-count')
   @ApiOperation({ summary: 'Unread conversation count' })
   unreadCount(@CurrentUser() user: { userId: string }) {
-    return this.conversations.getUnreadCount(user.userId).then((count) => ({ count }));
+    return this.conversations
+      .getUnreadCount(user.userId)
+      .then((count) => ({ count }));
   }
 
   @Get('conversations/by-booking/:bookingId')
@@ -123,7 +134,9 @@ export class MessagingController {
     @Query('types') types?: string,
   ) {
     const parsedTypes = types
-      ? (types.split(',').filter(Boolean) as Array<'message' | 'file' | 'photo' | 'link' | 'card'>)
+      ? (types.split(',').filter(Boolean) as Array<
+          'message' | 'file' | 'photo' | 'link' | 'card'
+        >)
       : undefined;
     return this.search.search(id, user.userId, q ?? '', parsedTypes);
   }
@@ -160,7 +173,11 @@ export class MessagingController {
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.attachmentSessions.uploadToSession(sessionId, user.userId, file);
+    return this.attachmentSessions.uploadToSession(
+      sessionId,
+      user.userId,
+      file,
+    );
   }
 
   @Post('attachment-sessions/:sessionId/complete')
@@ -185,16 +202,22 @@ export class MessagingController {
   }
 
   @Delete('attachment-sessions/:sessionId')
-  @ApiOperation({ summary: 'Abandon attachment session and delete staged uploads' })
+  @ApiOperation({
+    summary: 'Abandon attachment session and delete staged uploads',
+  })
   abandonAttachmentSession(
     @CurrentUser() user: { userId: string },
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
   ) {
-    return this.attachmentSessions.abandonSession(sessionId, user.userId).then(() => ({ ok: true }));
+    return this.attachmentSessions
+      .abandonSession(sessionId, user.userId)
+      .then(() => ({ ok: true }));
   }
 
   @Post('conversations/:id/attachments')
-  @ApiOperation({ summary: 'Upload attachment (legacy — prefer attachment sessions)' })
+  @ApiOperation({
+    summary: 'Upload attachment (legacy — prefer attachment sessions)',
+  })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -211,7 +234,9 @@ export class MessagingController {
   }
 
   @Post('conversations/:id/report-evidence')
-  @ApiOperation({ summary: 'Upload screenshot evidence for report or safety issue' })
+  @ApiOperation({
+    summary: 'Upload screenshot evidence for report or safety issue',
+  })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -238,14 +263,21 @@ export class MessagingController {
   }
 
   @Post('conversations/:id/messages')
-  @ApiOperation({ summary: 'Send a message (text or with attachment references)' })
+  @ApiOperation({
+    summary: 'Send a message (text or with attachment references)',
+  })
   send(
     @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SendMessageDto,
   ) {
     if (dto.body && !dto.type && !dto.attachment_ids?.length) {
-      return this.messages.sendText(id, user.userId, dto.body, dto.client_message_id);
+      return this.messages.sendText(
+        id,
+        user.userId,
+        dto.body,
+        dto.client_message_id,
+      );
     }
     return this.messages.sendMessage(id, user.userId, dto);
   }
@@ -260,7 +292,9 @@ export class MessagingController {
   }
 
   @Patch('conversations/:id/visibility')
-  @ApiOperation({ summary: 'Archive, delete, or restore conversation for caller' })
+  @ApiOperation({
+    summary: 'Archive, delete, or restore conversation for caller',
+  })
   visibility(
     @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -290,7 +324,11 @@ export class MessagingController {
   ) {
     const attachmentIds = dto.attachmentIds ?? [];
     if (attachmentIds.length) {
-      await this.attachments.assertEvidenceReady(id, user.userId, attachmentIds);
+      await this.attachments.assertEvidenceReady(
+        id,
+        user.userId,
+        attachmentIds,
+      );
       await this.attachments.markAsReportEvidence(attachmentIds);
     }
     const result = await this.conversations.report(
@@ -324,7 +362,11 @@ export class MessagingController {
   ) {
     const attachmentIds = dto.attachmentIds ?? [];
     if (attachmentIds.length) {
-      await this.attachments.assertEvidenceReady(id, user.userId, attachmentIds);
+      await this.attachments.assertEvidenceReady(
+        id,
+        user.userId,
+        attachmentIds,
+      );
       await this.attachments.markAsReportEvidence(attachmentIds);
     }
     return this.conversations.safety(id, user.userId, {

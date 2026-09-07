@@ -1,4 +1,7 @@
-import type { MediaStorageBackend, StoredMediaObject } from './media-storage.interface';
+import type {
+  MediaStorageBackend,
+  StoredMediaObject,
+} from './media-storage.interface';
 import { normalizeRelativeMediaKey } from './media-storage-policy';
 
 /**

@@ -57,8 +57,13 @@ export class StaysReviewsService {
     limit: number;
     total: number;
   }> {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
-    if (!listing || (listing.status !== 'LIVE' && listing.status !== 'APPROVED')) {
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+    });
+    if (
+      !listing ||
+      (listing.status !== 'LIVE' && listing.status !== 'APPROVED')
+    ) {
       throw new NotFoundException('Listing not found');
     }
 
@@ -292,9 +297,7 @@ export class StaysReviewsService {
       countAll += c;
     }
     const overall =
-      countAll > 0
-        ? Math.round((sumWeighted / countAll) * 100) / 100
-        : null;
+      countAll > 0 ? Math.round((sumWeighted / countAll) * 100) / 100 : null;
 
     const distribution_pct: Record<string, number> = {};
     for (let s = 5; s >= 1; s--) {
@@ -328,7 +331,10 @@ export class StaysReviewsService {
     };
   }
 
-  private async recalcListingAggregates(manager: EntityManager, listingId: string) {
+  private async recalcListingAggregates(
+    manager: EntityManager,
+    listingId: string,
+  ) {
     const raw = await manager
       .createQueryBuilder(StaysListingReview, 'r')
       .select('COUNT(r.id)::int', 'cnt')

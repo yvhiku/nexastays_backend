@@ -27,7 +27,10 @@ export class MessagingOutboxService {
     );
   }
 
-  async enqueueDirect(eventType: string, payload: Record<string, unknown>): Promise<void> {
+  async enqueueDirect(
+    eventType: string,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
     await this.outboxRepo.save(
       this.outboxRepo.create({
         event_type: eventType,

@@ -1,7 +1,6 @@
 import {
   IsString,
   IsOptional,
-  IsBoolean,
   IsNumber,
   IsArray,
   IsIn,
@@ -65,7 +64,6 @@ class UpdateRatePlanDto {
   @Min(0)
   @Max(10_000_000)
   weekend_price?: number;
-
 }
 
 class UpdateCheckInContactDto {

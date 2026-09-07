@@ -11,15 +11,21 @@ export function computeSeoQualityScore(args: {
   nearbyCount?: number;
   contentRichness?: number;
 }): number {
-  const { intelligence: intel, destination, hasHeroImage, nearbyCount, contentRichness } = args;
+  const {
+    intelligence: intel,
+    destination,
+    hasHeroImage,
+    nearbyCount,
+    contentRichness,
+  } = args;
   const listingScore = Math.min(100, (intel.listingCount / 20) * 100);
   const contentScore =
-    contentRichness ??
-    (destination?.hero_image_url || hasHeroImage ? 80 : 60);
+    contentRichness ?? (destination?.hero_image_url || hasHeroImage ? 80 : 60);
   const reviewScore =
     intel.avgRating != null ? Math.min(100, (intel.avgRating / 5) * 100) : 40;
   const imageScore = destination?.hero_image_url || hasHeroImage ? 90 : 50;
-  const linkScore = (nearbyCount ?? destination?.nearby_city_slugs?.length ?? 0) > 0 ? 70 : 40;
+  const linkScore =
+    (nearbyCount ?? destination?.nearby_city_slugs?.length ?? 0) > 0 ? 70 : 40;
 
   return Math.round(
     listingScore * 0.4 +
@@ -51,7 +57,10 @@ export function computeListingSeoScore(args: {
   avgRating: number | null;
   hasWalkthrough: boolean;
 }): number {
-  const photoScore = Math.min(100, args.photoCount >= 5 ? 100 : args.photoCount >= 1 ? 70 : 0);
+  const photoScore = Math.min(
+    100,
+    args.photoCount >= 5 ? 100 : args.photoCount >= 1 ? 70 : 0,
+  );
   const descScore = Math.min(100, (args.descriptionLength / 200) * 100);
   const reviewScore =
     args.avgRating != null
@@ -62,7 +71,10 @@ export function computeListingSeoScore(args: {
   const walkthroughScore = args.hasWalkthrough ? 100 : 40;
 
   return Math.round(
-    photoScore * 0.35 + descScore * 0.3 + reviewScore * 0.2 + walkthroughScore * 0.15,
+    photoScore * 0.35 +
+      descScore * 0.3 +
+      reviewScore * 0.2 +
+      walkthroughScore * 0.15,
   );
 }
 
@@ -82,4 +94,8 @@ export function isListingIndexable(args: {
   );
 }
 
-export { INDEXABLE_SCORE_THRESHOLD, MIN_LISTINGS_INDEXABLE, LISTING_INDEXABLE_SCORE_THRESHOLD };
+export {
+  INDEXABLE_SCORE_THRESHOLD,
+  MIN_LISTINGS_INDEXABLE,
+  LISTING_INDEXABLE_SCORE_THRESHOLD,
+};

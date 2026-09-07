@@ -11,7 +11,9 @@ export class StaysKycPolicyService {
   /**
    * Identity snapshot is the only source for KYC data — never read from JWT.
    */
-  meetsGuestBookingPolicy(snapshot: IdentitySnapshot | null | undefined): boolean {
+  meetsGuestBookingPolicy(
+    snapshot: IdentitySnapshot | null | undefined,
+  ): boolean {
     if (!snapshot) return false;
     return (
       VERIFIED_STATUSES.has(snapshot.kycStatus.toUpperCase()) &&
@@ -19,7 +21,9 @@ export class StaysKycPolicyService {
     );
   }
 
-  meetsHostIdentityReuse(snapshot: IdentitySnapshot | null | undefined): boolean {
+  meetsHostIdentityReuse(
+    snapshot: IdentitySnapshot | null | undefined,
+  ): boolean {
     if (!snapshot) return false;
     return VERIFIED_STATUSES.has(snapshot.kycStatus.toUpperCase());
   }

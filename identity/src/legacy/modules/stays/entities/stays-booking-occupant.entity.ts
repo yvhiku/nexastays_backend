@@ -38,10 +38,20 @@ export class StaysBookingOccupant {
   @Column({ type: 'varchar', length: 20, nullable: true })
   gender: string | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'id_document_front_asset_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'id_document_front_asset_id',
+    nullable: true,
+  })
   id_document_front_asset_id: string | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'id_document_back_asset_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'id_document_back_asset_id',
+    nullable: true,
+  })
   id_document_back_asset_id: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })

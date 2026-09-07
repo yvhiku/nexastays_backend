@@ -60,7 +60,10 @@ export class UserNotificationsService {
     return this.repo.count({ where: { user_id: userId, is_read: false } });
   }
 
-  async markRead(userId: string, notificationId: string): Promise<UserNotificationDto> {
+  async markRead(
+    userId: string,
+    notificationId: string,
+  ): Promise<UserNotificationDto> {
     const row = await this.repo.findOne({
       where: { id: notificationId, user_id: userId },
     });

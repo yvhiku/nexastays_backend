@@ -31,7 +31,11 @@ export class MoneyMovementIdempotencyRecord {
   @Column({ type: 'varchar', length: 24 })
   status: MoneyMovementIdempotencyStatus;
 
-  @Column({ type: 'smallint', name: 'response_contract_version', nullable: true })
+  @Column({
+    type: 'smallint',
+    name: 'response_contract_version',
+    nullable: true,
+  })
   response_contract_version: number | null;
 
   @Column({ type: 'int', name: 'http_status', nullable: true })

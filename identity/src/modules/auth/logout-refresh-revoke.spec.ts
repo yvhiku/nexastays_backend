@@ -115,7 +115,10 @@ describe('AuthService — logout refresh session revocation', () => {
       deviceId: 'device-a',
     });
     expect(refreshTokenRepository.save).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'rt-device-a', revoked_at: expect.any(Date) }),
+      expect.objectContaining({
+        id: 'rt-device-a',
+        revoked_at: expect.any(Date),
+      }),
     ]);
   });
 

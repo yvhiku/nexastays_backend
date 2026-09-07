@@ -1,0 +1,466 @@
+
+> @nexa/stays@0.0.1 lint:check
+> eslint "src/**/*.ts" --max-warnings 9999
+
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/cache/http-cache.interceptor.ts
+  74:11  warning  Unsafe assignment of an `any` value                                                                                                                                                              @typescript-eslint/no-unsafe-assignment
+  75:17  warning  Unsafe member access .method on an `any` value                                                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  79:31  warning  Unsafe argument of type `any` assigned to a parameter of type `{ url?: string | undefined; user?: { userId?: string | undefined; } | undefined; query?: Record<string, unknown> | undefined; }`  @typescript-eslint/no-unsafe-argument
+  95:11  error    Promise returned in function argument where a void return was expected                                                                                                                           @typescript-eslint/no-misused-promises
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/decorators/current-user.decorator.ts
+  5:11  warning  Unsafe assignment of an `any` value           @typescript-eslint/no-unsafe-assignment
+  6:5   warning  Unsafe return of a value of type `any`        @typescript-eslint/no-unsafe-return
+  6:20  warning  Unsafe member access .user on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/events/domain-events.service.ts
+  36:63  error  Invalid type "unknown" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/filters/http-exception.filter.ts
+  98:66  warning  Unsafe member access .path on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/account-type.guard.ts
+  23:11  warning  Unsafe assignment of an `any` value           @typescript-eslint/no-unsafe-assignment
+  24:33  warning  Unsafe member access .user on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/db-circuit-breaker.guard.ts
+  17:15  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/jwt-auth.guard.ts
+  22:11  warning  Unsafe assignment of an `any` value                 @typescript-eslint/no-unsafe-assignment
+  23:11  warning  Unsafe assignment of an `any` value                 @typescript-eslint/no-unsafe-assignment
+  23:32  warning  Unsafe member access .headers on an `any` value     @typescript-eslint/no-unsafe-member-access
+  33:10  warning  Unsafe call of an `any` typed value                 @typescript-eslint/no-unsafe-call
+  33:21  warning  Unsafe member access .startsWith on an `any` value  @typescript-eslint/no-unsafe-member-access
+  40:38  error    '_info' is defined but never used                   @typescript-eslint/no-unused-vars
+  42:13  warning  Unsafe assignment of an `any` value                 @typescript-eslint/no-unsafe-assignment
+  43:14  warning  Unsafe member access .message on an `any` value     @typescript-eslint/no-unsafe-member-access
+  44:15  warning  Unsafe member access .name on an `any` value        @typescript-eslint/no-unsafe-member-access
+  46:18  warning  Unsafe member access .name on an `any` value        @typescript-eslint/no-unsafe-member-access
+  49:24  warning  Unsafe member access .statusCode on an `any` value  @typescript-eslint/no-unsafe-member-access
+  51:5   warning  Unsafe return of a value of type `any`              @typescript-eslint/no-unsafe-return
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/optional-jwt-auth.guard.ts
+   4:3   error    'UnauthorizedException' is defined but never used  @typescript-eslint/no-unused-vars
+  16:11  warning  Unsafe assignment of an `any` value                @typescript-eslint/no-unsafe-assignment
+  17:32  warning  Unsafe member access .headers on an `any` value    @typescript-eslint/no-unsafe-member-access
+  29:5   warning  Unsafe return of a value of type `any`             @typescript-eslint/no-unsafe-return
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/roles.guard.ts
+  40:11  warning  Unsafe assignment of an `any` value                                                                                           @typescript-eslint/no-unsafe-assignment
+  41:11  warning  Unsafe assignment of an `any` value                                                                                           @typescript-eslint/no-unsafe-assignment
+  41:26  warning  Unsafe member access .user on an `any` value                                                                                  @typescript-eslint/no-unsafe-member-access
+  47:32  warning  Unsafe argument of type `any` assigned to a parameter of type `{ roles?: string[] | undefined; role?: string | undefined; }`  @typescript-eslint/no-unsafe-argument
+  59:58  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                        @typescript-eslint/no-unsafe-argument
+  59:63  warning  Unsafe member access .userId on an `any` value                                                                                @typescript-eslint/no-unsafe-member-access
+  63:40  warning  Unsafe member access .authz_version on an `any` value                                                                         @typescript-eslint/no-unsafe-member-access
+  63:62  warning  Unsafe member access .av on an `any` value                                                                                    @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/throttler-key.guard.ts
+  11:11  warning  Unsafe assignment of an `any` value                                                                                                                                                                                                                                                                                @typescript-eslint/no-unsafe-assignment
+  12:11  warning  Unsafe assignment of an `any` value                                                                                                                                                                                                                                                                                @typescript-eslint/no-unsafe-assignment
+  12:18  warning  Unsafe call of an `any` typed value                                                                                                                                                                                                                                                                                @typescript-eslint/no-unsafe-call
+  12:27  warning  Unsafe member access .url on an `any` value                                                                                                                                                                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  12:42  warning  Unsafe member access .path on an `any` value                                                                                                                                                                                                                                                                       @typescript-eslint/no-unsafe-member-access
+  12:54  warning  Unsafe member access .split on an `any` value                                                                                                                                                                                                                                                                      @typescript-eslint/no-unsafe-member-access
+  12:65  warning  Unsafe member access [0] on an `any` value                                                                                                                                                                                                                                                                         @typescript-eslint/no-unsafe-member-access
+  13:9   warning  Unsafe call of an `any` typed value                                                                                                                                                                                                                                                                                @typescript-eslint/no-unsafe-call
+  13:14  warning  Unsafe member access .includes on an `any` value                                                                                                                                                                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  13:47  warning  Unsafe member access .method on an `any` value                                                                                                                                                                                                                                                                     @typescript-eslint/no-unsafe-member-access
+  14:9   warning  Unsafe call of an `any` typed value                                                                                                                                                                                                                                                                                @typescript-eslint/no-unsafe-call
+  14:14  warning  Unsafe member access .includes on an `any` value                                                                                                                                                                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  14:62  warning  Unsafe member access .method on an `any` value                                                                                                                                                                                                                                                                     @typescript-eslint/no-unsafe-member-access
+  21:25  warning  Unsafe argument of type `any` assigned to a parameter of type `{ ip?: string | undefined; headers?: Record<string, string | string[] | undefined> | undefined; socket?: { remoteAddress?: string | undefined; } | undefined; method?: string | undefined; url?: string | undefined; path?: string | undefined; }`  @typescript-eslint/no-unsafe-argument
+  27:3   error    Async method 'getTracker' has no 'await' expression                                                                                                                                                                                                                                                                @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/identity/identity-authz.client.ts
+  27:14  error  '_userId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/media/local-media-storage.ts
+  49:3  error  Async method 'resolveDelivery' has no 'await' expression  @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/media/s3-media-storage.ts
+  15:3   error    Async method 'getClient' has no 'await' expression        @typescript-eslint/require-await
+  26:13  warning  Unsafe assignment of an `any` value                       @typescript-eslint/no-unsafe-assignment
+  27:21  warning  Unsafe construction of an `any` typed value               @typescript-eslint/no-unsafe-call
+  57:11  warning  Unsafe assignment of an `any` value                       @typescript-eslint/no-unsafe-assignment
+  59:7   warning  Unsafe construction of an `any` typed value               @typescript-eslint/no-unsafe-call
+  74:3   error    Async method 'exists' has no 'await' expression           @typescript-eslint/require-await
+  74:16  error    '_relativeKey' is defined but never used                  @typescript-eslint/no-unused-vars
+  79:3   error    Async method 'resolveDelivery' has no 'await' expression  @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/metrics/metrics.interceptor.ts
+  16:11  warning  Unsafe assignment of an `any` value                 @typescript-eslint/no-unsafe-assignment
+  21:28  warning  Unsafe member access .statusCode on an `any` value  @typescript-eslint/no-unsafe-member-access
+  26:28  warning  Unsafe member access .statusCode on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/security/outbound-https-fetch.ts
+  85:13  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/security/outbound-url.ts
+  75:7  warning  Unsafe spread of an `any` value in an array  @typescript-eslint/no-unsafe-assignment
+  85:5  warning  Unsafe return of a value of type `any[]`     @typescript-eslint/no-unsafe-return
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/admin/admin-stays.service.ts
+   26:10  error    'SeoAdminService' is defined but never used                                             @typescript-eslint/no-unused-vars
+  160:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  161:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  162:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  170:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  171:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  172:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  185:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  186:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  410:44  warning  Unsafe member access .avg on an `any` value                                             @typescript-eslint/no-unsafe-member-access
+  422:38  warning  Unsafe member access .count on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  460:11  warning  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  460:44  warning  Unsafe member access .avg on an `any` value                                             @typescript-eslint/no-unsafe-member-access
+  461:11  warning  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  461:40  warning  Unsafe member access .avg on an `any` value                                             @typescript-eslint/no-unsafe-member-access
+  463:54  warning  Unsafe member access .waiting_since on an `any` value                                   @typescript-eslint/no-unsafe-member-access
+  464:18  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+  464:42  warning  Unsafe member access .waiting_since on an `any` value                                   @typescript-eslint/no-unsafe-member-access
+  466:48  warning  Unsafe member access .waiting_since on an `any` value                                   @typescript-eslint/no-unsafe-member-access
+  467:18  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+  467:39  warning  Unsafe member access .waiting_since on an `any` value                                   @typescript-eslint/no-unsafe-member-access
+  482:47  warning  Unsafe member access .total on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  483:47  warning  Unsafe member access .total on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  611:11  warning  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  619:11  warning  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  631:11  warning  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  651:40  warning  Unsafe member access .total on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  652:45  warning  Unsafe member access .total on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  653:55  warning  Unsafe member access .total on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/entities/stays-conversation.entity.ts
+  170:19  error  "SUPPORT" | "AUTO" | "MANUAL" | "DISPUTE" | "SPAM" | "MERGED" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/message-payload.mapper.ts
+  60:20  error  'meta.kind ?? type.replace(/_CARD$/, '').toLowerCase()' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  61:21  error  'meta.title ?? body ?? ''' will use Object's default stringification format ('[object Object]') when stringified                               @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/message-preview.util.ts
+  5:9  error  "VIDEO" | "SYSTEM" | "TEXT" | "SYSTEM_EVENT" | "SYSTEM_NOTICE" | "SYSTEM_INTERNAL" | "PROPERTY_CARD" | "BOOKING_CARD" | "CHECKIN_CARD" | "WIFI_CARD" | "LOCATION_CARD" | "REVIEW_CARD" | "PAYMENT_CARD" | "IMAGE" | "FILE" | "VOICE" | "LOCATION" | "CARD" | "CUSTOM" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/messaging-state.service.ts
+  150:13  error  "SUPPORT" | "AUTO" | "MANUAL" | "DISPUTE" | "SPAM" | "MERGED" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/outbox.worker.ts
+   52:13  error    This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+   58:15  error    This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  107:11  warning  Unsafe assignment of an `any` value                                                @typescript-eslint/no-unsafe-assignment
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/rate-limit.service.ts
+  23:3  error  Async method 'assertCanSend' has no 'await' expression  @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/timeline-seeder.service.ts
+  268:18  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/seo/seo-freshness-engine.service.ts
+  166:7  warning  Unsafe assignment of an `any` value  @typescript-eslint/no-unsafe-assignment
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/seo/seo-geo-monitoring.service.ts
+  14:3  error  Async method 'logRequest' has no 'await' expression  @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/seo/seo-landing-content.seed-data.ts
+  290:3  error  '_locale' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/seo/seo-listing.service.ts
+   74:17  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  141:60  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/dto/create-host-listing.dto.ts
+  4:3  error  'IsBoolean' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/dto/replace-listing-media.dto.ts
+  6:3  error  'IsNumber' is defined but never used   @typescript-eslint/no-unused-vars
+  7:3  error  'IsBoolean' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/dto/replace-listing-unit-types.dto.ts
+  7:3  error  'IsBoolean' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/dto/search-listings.dto.ts
+  63:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/dto/submit-host-onboarding.dto.ts
+   57:25  error  Unnecessary escape character: \-  no-useless-escape
+   69:25  error  Unnecessary escape character: \-  no-useless-escape
+   92:25  error  Unnecessary escape character: \-  no-useless-escape
+  104:25  error  Unnecessary escape character: \-  no-useless-escape
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/dto/update-host-listing.dto.ts
+  4:3  error  'IsBoolean' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/explore/explore.service.ts
+  826:3  error  Async method 'safeCacheGet' has no 'await' expression  @typescript-eslint/require-await
+  836:3  error  Async method 'safeCacheSet' has no 'await' expression  @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/hosts/host-onboarding.service.ts
+  401:11  warning  Unsafe assignment of an `any` value                                                @typescript-eslint/no-unsafe-assignment
+  405:31  warning  Unsafe member access [0] on an `any` value                                         @typescript-eslint/no-unsafe-member-access
+  483:27  error    This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  484:24  error    This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/payments/cmi-payment.provider.ts
+  148:24  error  'body.oid ?? body.OID ?? ''' will use Object's default stringification format ('[object Object]') when stringified                        @typescript-eslint/no-base-to-string
+  149:27  error  'body.amount ?? ''' will use Object's default stringification format ('[object Object]') when stringified                                 @typescript-eslint/no-base-to-string
+  151:7   error  'body.ProcReturnCode ?? body.procReturnCode ?? ''' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  153:36  error  'body.HASH ?? body.hash ?? ''' will use Object's default stringification format ('[object Object]') when stringified                      @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/booking-lifecycle-scheduler.service.ts
+  195:25  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/calendar-sync.service.ts
+  684:42  error  'vevent.summary' may use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/host-analytics.service.ts
+  125:60  error  Invalid type "never" of template literal expression                                @typescript-eslint/restrict-template-expressions
+  345:29  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/host-bookings-list.service.ts
+  322:9  error  'this.rawField(raw, 'guest_sort_name') ?? ''' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/host-dashboard.service.ts
+  199:7   error  'bookedNightsPrevMonth' is assigned a value but never used                         @typescript-eslint/no-unused-vars
+  388:23  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/host-listings.service.ts
+  429:75  error  'v' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/stays-cancellation.service.ts
+  286:9  error  Unexpected lexical declaration in case block  no-case-declarations
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/stays-reviews.service.ts
+  202:23  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  412:25  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  501:20  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  564:21  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/stays.controller.ts
+  18:3   error  'Header' is defined but never used        @typescript-eslint/no-unused-vars
+  57:10  error  'AccountTypes' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/stays.service.ts
+  736:21  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/utils/csv.util.ts
+  5:30  error  'value' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/dto/support-ticket.dto.ts
+  218:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  234:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  245:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  354:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  401:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/operational-intelligence.service.ts
+   754:11  warning  Unsafe assignment of an `any` value                                                @typescript-eslint/no-unsafe-assignment
+   805:11  warning  Unsafe assignment of an `any` value                                                @typescript-eslint/no-unsafe-assignment
+   815:37  warning  Unsafe member access .active_tickets on an `any` value                             @typescript-eslint/no-unsafe-member-access
+   816:35  warning  Unsafe member access .open_tickets on an `any` value                               @typescript-eslint/no-unsafe-member-access
+   817:41  warning  Unsafe member access .in_progress_tickets on an `any` value                        @typescript-eslint/no-unsafe-member-access
+   818:38  warning  Unsafe member access .waiting_tickets on an `any` value                            @typescript-eslint/no-unsafe-member-access
+   819:40  warning  Unsafe member access .escalated_tickets on an `any` value                          @typescript-eslint/no-unsafe-member-access
+   820:41  warning  Unsafe member access .unassigned_tickets on an `any` value                         @typescript-eslint/no-unsafe-member-access
+   821:43  warning  Unsafe member access .high_priority_tickets on an `any` value                      @typescript-eslint/no-unsafe-member-access
+   822:46  warning  Unsafe member access .high_priority_unassigned on an `any` value                   @typescript-eslint/no-unsafe-member-access
+   823:37  warning  Unsafe member access .urgent_tickets on an `any` value                             @typescript-eslint/no-unsafe-member-access
+   824:34  warning  Unsafe member access .sla_on_track on an `any` value                               @typescript-eslint/no-unsafe-member-access
+   825:33  warning  Unsafe member access .sla_at_risk on an `any` value                                @typescript-eslint/no-unsafe-member-access
+   826:35  warning  Unsafe member access .sla_breached on an `any` value                               @typescript-eslint/no-unsafe-member-access
+   827:43  warning  Unsafe member access .active_signals on an `any` value                             @typescript-eslint/no-unsafe-member-access
+   828:49  warning  Unsafe member access .acknowledged_signals on an `any` value                       @typescript-eslint/no-unsafe-member-access
+   882:11  warning  Unsafe assignment of an `any` value                                                @typescript-eslint/no-unsafe-assignment
+   886:11  warning  Unsafe assignment of an `any` value                                                @typescript-eslint/no-unsafe-assignment
+   924:36  warning  Unsafe member access .total on an `any` value                                      @typescript-eslint/no-unsafe-member-access
+   977:24  error    This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  1096:11  warning  Unsafe assignment of an `any` value                                                @typescript-eslint/no-unsafe-assignment
+  1180:18  error    This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/operational-signals.constants.ts
+  122:38   error  'metadata.averageAgentRating ?? '—'' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  122:38   error  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  124:37   error  'metadata.problemSolvedRate ?? '—'' will use Object's default stringification format ('[object Object]') when stringified   @typescript-eslint/no-base-to-string
+  124:37   error  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  126:48   error  'metadata.recentSla ?? '—'' will use Object's default stringification format ('[object Object]') when stringified           @typescript-eslint/no-base-to-string
+  126:48   error  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  126:82   error  'metadata.baselineSla ?? '—'' will use Object's default stringification format ('[object Object]') when stringified         @typescript-eslint/no-base-to-string
+  126:82   error  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  128:33   error  'metadata.category ?? 'category'' will use Object's default stringification format ('[object Object]') when stringified     @typescript-eslint/no-base-to-string
+  128:33   error  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  128:80   error  'metadata.solvedRate ?? '—'' will use Object's default stringification format ('[object Object]') when stringified          @typescript-eslint/no-base-to-string
+  128:80   error  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  128:115  error  'metadata.previousSolvedRate ?? '—'' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  128:115  error  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/support-assignment.service.ts
+  98:24  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/support-performance.service.ts
+  329:18  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  369:18  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  399:22  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  412:20  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  450:22  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  464:22  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  491:24  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  522:18  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  649:18  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  678:20  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  706:17  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  794:18  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  874:18  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/support-routing.config.ts
+  122:13  error  "HOST" | "LISTING" | "BOOKING" | "OTHER" | "GUEST" | "PAYMENT" | "REFUND" | "CANCELLATION" | "KYC" | "TECHNICAL" | "FRAUD" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/support-tickets.service.ts
+    54:10  error    'StaysSupportTicketRefCounter' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   852:57  warning  Unsafe argument of type `any` assigned to a parameter of type `Record<string, unknown>`                                              @typescript-eslint/no-unsafe-argument
+  1338:18  error    This assertion is unnecessary since it does not change the type of the expression                                                    @typescript-eslint/no-unnecessary-type-assertion
+  1741:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  1745:38  warning  Unsafe member access [0] on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  1961:25  error    'row.ticket_id ?? row.ticketId ?? ''' will use Object's default stringification format ('[object Object]') when stringified          @typescript-eslint/no-base-to-string
+  1962:29  error    'row.ticket_number ?? row.ticketNumber ?? ''' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  1963:22  error    'row.status ?? ''' will use Object's default stringification format ('[object Object]') when stringified                             @typescript-eslint/no-base-to-string
+  1978:20  error    'submitted ?? ''' will use Object's default stringification format ('[object Object]') when stringified                              @typescript-eslint/no-base-to-string
+  1982:20  error    'reviewAgentId' will use Object's default stringification format ('[object Object]') when stringified                                @typescript-eslint/no-base-to-string
+  1986:20  error    'reviewAgentName' will use Object's default stringification format ('[object Object]') when stringified                              @typescript-eslint/no-base-to-string
+  1987:67  error    'agentId' will use Object's default stringification format ('[object Object]') when stringified                                      @typescript-eslint/no-base-to-string
+  2204:9   error    'from' is never reassigned. Use 'const' instead                                                                                      prefer-const
+  2205:9   error    'toExclusive' is never reassigned. Use 'const' instead                                                                               prefer-const
+  2280:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2312:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2347:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2365:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2377:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2389:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2401:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2437:34  warning  Unsafe member access .created on an `any` value                                                                                      @typescript-eslint/no-unsafe-member-access
+  2438:31  warning  Unsafe member access .open on an `any` value                                                                                         @typescript-eslint/no-unsafe-member-access
+  2439:35  warning  Unsafe member access .resolved on an `any` value                                                                                     @typescript-eslint/no-unsafe-member-access
+  2440:33  warning  Unsafe member access .closed on an `any` value                                                                                       @typescript-eslint/no-unsafe-member-access
+  2441:36  warning  Unsafe member access .escalated on an `any` value                                                                                    @typescript-eslint/no-unsafe-member-access
+  2444:51  warning  Unsafe member access .avg_first_response_seconds on an `any` value                                                                   @typescript-eslint/no-unsafe-member-access
+  2445:50  warning  Unsafe member access .median_first_response_seconds on an `any` value                                                                @typescript-eslint/no-unsafe-member-access
+  2448:38  warning  Unsafe member access .avg_first_resolution_seconds on an `any` value                                                                 @typescript-eslint/no-unsafe-member-access
+  2449:37  warning  Unsafe member access .median_first_resolution_seconds on an `any` value                                                              @typescript-eslint/no-unsafe-member-access
+  2452:38  warning  Unsafe member access .avg_closure_seconds on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  2453:37  warning  Unsafe member access .median_closure_seconds on an `any` value                                                                       @typescript-eslint/no-unsafe-member-access
+  2460:33  warning  Unsafe member access .responses on an `any` value                                                                                    @typescript-eslint/no-unsafe-member-access
+  2461:34  warning  Unsafe member access .average_rating on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  2463:29  warning  Unsafe member access .r1 on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  2464:29  warning  Unsafe member access .r2 on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  2465:29  warning  Unsafe member access .r3 on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  2466:29  warning  Unsafe member access .r4 on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  2467:29  warning  Unsafe member access .r5 on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  2480:35  warning  Unsafe member access .assigned on an `any` value                                                                                     @typescript-eslint/no-unsafe-member-access
+  2481:37  warning  Unsafe member access .unassigned on an `any` value                                                                                   @typescript-eslint/no-unsafe-member-access
+  3063:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  3067:35  warning  Unsafe member access [0] on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/backfill-pii-encryption.ts
+  13:16  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-morocco-listings.ts
+  171:11  warning  Unsafe assignment of an error typed value                               @typescript-eslint/no-unsafe-assignment
+  171:28  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  171:35  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  176:18  warning  Unsafe member access .rowCount on a type that cannot be resolved        @typescript-eslint/no-unsafe-member-access
+  182:9   warning  Unsafe assignment of an error typed value                               @typescript-eslint/no-unsafe-assignment
+  182:25  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  182:32  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  189:15  warning  Unsafe member access .rows on a type that cannot be resolved            @typescript-eslint/no-unsafe-member-access
+  190:5   warning  Unsafe return of a value of type error                                  @typescript-eslint/no-unsafe-return
+  190:20  warning  Unsafe member access .rows on a type that cannot be resolved            @typescript-eslint/no-unsafe-member-access
+  200:9   warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  200:16  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  230:9   warning  Unsafe assignment of an error typed value                               @typescript-eslint/no-unsafe-assignment
+  230:18  warning  Unsafe construction of a type that could not be resolved                @typescript-eslint/no-unsafe-call
+  238:9   warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  238:16  warning  Unsafe member access .connect on a type that cannot be resolved         @typescript-eslint/no-unsafe-member-access
+  244:13  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  244:20  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  246:15  warning  Unsafe assignment of an error typed value                               @typescript-eslint/no-unsafe-assignment
+  246:27  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  246:34  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  250:15  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  250:22  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  251:36  warning  Unsafe member access .rowCount on a type that cannot be resolved        @typescript-eslint/no-unsafe-member-access
+  253:15  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  253:15  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  253:22  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  253:40  warning  Unsafe member access .catch on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  266:13  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  266:20  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  334:15  warning  Unsafe assignment of an error typed value                               @typescript-eslint/no-unsafe-assignment
+  334:34  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  334:41  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  379:15  warning  Unsafe assignment of an error typed value                               @typescript-eslint/no-unsafe-assignment
+  379:30  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  379:41  warning  Unsafe member access .rows on a type that cannot be resolved            @typescript-eslint/no-unsafe-member-access
+  380:35  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  380:39  warning  Unsafe member access .title on an `any` value                           @typescript-eslint/no-unsafe-member-access
+  382:13  warning  Unsafe assignment of an `any` value                                     @typescript-eslint/no-unsafe-assignment
+  382:29  warning  Unsafe member access .id on an `any` value                              @typescript-eslint/no-unsafe-member-access
+  396:15  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  396:22  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  422:15  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  422:22  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  439:15  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  439:22  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  453:15  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  453:22  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  479:9   warning  Unsafe assignment of an error typed value                               @typescript-eslint/no-unsafe-assignment
+  479:35  warning  Unsafe member access .rows on a type that cannot be resolved            @typescript-eslint/no-unsafe-member-access
+  480:15  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  480:22  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  482:15  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  482:15  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  482:22  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  482:40  warning  Unsafe member access .catch on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  503:11  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  503:11  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  503:18  warning  Unsafe member access .query on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  503:36  warning  Unsafe member access .catch on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  506:11  warning  Unsafe call of a type that could not be resolved                        @typescript-eslint/no-unsafe-call
+  506:18  warning  Unsafe member access .end on a type that cannot be resolved             @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-random-bookings.ts
+   72:10  error    This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  103:9   warning  Unsafe assignment of an error typed value                                          @typescript-eslint/no-unsafe-assignment
+  103:18  warning  Unsafe construction of a type that could not be resolved                           @typescript-eslint/no-unsafe-call
+  111:9   warning  Unsafe call of a type that could not be resolved                                   @typescript-eslint/no-unsafe-call
+  111:16  warning  Unsafe member access .connect on a type that cannot be resolved                    @typescript-eslint/no-unsafe-member-access
+  114:11  warning  Unsafe call of a type that could not be resolved                                   @typescript-eslint/no-unsafe-call
+  114:18  warning  Unsafe member access .query on a type that cannot be resolved                      @typescript-eslint/no-unsafe-member-access
+  117:13  warning  Unsafe assignment of an error typed value                                          @typescript-eslint/no-unsafe-assignment
+  117:25  warning  Unsafe call of a type that could not be resolved                                   @typescript-eslint/no-unsafe-call
+  117:32  warning  Unsafe member access .query on a type that cannot be resolved                      @typescript-eslint/no-unsafe-member-access
+  122:34  warning  Unsafe member access .rowCount on a type that cannot be resolved                   @typescript-eslint/no-unsafe-member-access
+  147:11  warning  Unsafe assignment of an error typed value                                          @typescript-eslint/no-unsafe-assignment
+  147:31  warning  Unsafe call of a type that could not be resolved                                   @typescript-eslint/no-unsafe-call
+  147:38  warning  Unsafe member access .query on a type that cannot be resolved                      @typescript-eslint/no-unsafe-member-access
+  148:34  warning  Unsafe member access .rows on a type that cannot be resolved                       @typescript-eslint/no-unsafe-member-access
+  163:11  warning  Unsafe assignment of an error typed value                                          @typescript-eslint/no-unsafe-assignment
+  163:28  warning  Unsafe call of a type that could not be resolved                                   @typescript-eslint/no-unsafe-call
+  163:35  warning  Unsafe member access .query on a type that cannot be resolved                      @typescript-eslint/no-unsafe-member-access
+  174:32  warning  Unsafe member access .rows on a type that cannot be resolved                       @typescript-eslint/no-unsafe-member-access
+  176:9   warning  Unsafe argument of type error typed assigned to a parameter of type `string`       @typescript-eslint/no-unsafe-argument
+  176:13  warning  Unsafe member access .listing_id on a type that cannot be resolved                 @typescript-eslint/no-unsafe-member-access
+  177:33  warning  Unsafe member access .checkout_date on a type that cannot be resolved              @typescript-eslint/no-unsafe-member-access
+  234:15  warning  Unsafe call of a type that could not be resolved                                   @typescript-eslint/no-unsafe-call
+  234:22  warning  Unsafe member access .query on a type that cannot be resolved                      @typescript-eslint/no-unsafe-member-access
+  267:15  warning  Unsafe call of a type that could not be resolved                                   @typescript-eslint/no-unsafe-call
+  267:22  warning  Unsafe member access .query on a type that cannot be resolved                      @typescript-eslint/no-unsafe-member-access
+  301:11  warning  Unsafe call of a type that could not be resolved                                   @typescript-eslint/no-unsafe-call
+  301:18  warning  Unsafe member access .query on a type that cannot be resolved                      @typescript-eslint/no-unsafe-member-access
+  306:11  warning  Unsafe call of a type that could not be resolved                                   @typescript-eslint/no-unsafe-call
+  306:18  warning  Unsafe member access .query on a type that cannot be resolved                      @typescript-eslint/no-unsafe-member-access
+  309:11  warning  Unsafe call of a type that could not be resolved                                   @typescript-eslint/no-unsafe-call
+  309:18  warning  Unsafe member access .end on a type that cannot be resolved                        @typescript-eslint/no-unsafe-member-access
+
+✖ 342 problems (105 errors, 237 warnings)
+  37 errors and 0 warnings potentially fixable with the `--fix` option.
+

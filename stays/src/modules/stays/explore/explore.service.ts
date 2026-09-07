@@ -1,9 +1,5 @@
 import { createHash } from 'crypto';
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StaysListing } from '../entities/stays-listing.entity';
@@ -28,7 +24,10 @@ const MAP_PIN_MAX = Math.min(
 );
 /** Reject / truncate map boxes larger than this span (degrees). Morocco-wide ~12°. */
 const MAX_BOUNDS_SPAN_DEG = Math.min(
-  Math.max(parseInt(process.env.EXPLORE_MAX_BOUNDS_SPAN_DEG || '15', 10) || 15, 1),
+  Math.max(
+    parseInt(process.env.EXPLORE_MAX_BOUNDS_SPAN_DEG || '15', 10) || 15,
+    1,
+  ),
   40,
 );
 const CACHE_TTL_MS = 45_000;
@@ -133,7 +132,9 @@ export class ExploreService {
     private readonly metrics: MetricsService,
   ) {}
 
-  async exploreListings(params: ExploreQueryParams): Promise<ExploreListEnvelope> {
+  async exploreListings(
+    params: ExploreQueryParams,
+  ): Promise<ExploreListEnvelope> {
     const started = Date.now();
     const sort = normalizeExploreSort(params.sort);
     const limit = Math.min(
@@ -155,10 +156,21 @@ export class ExploreService {
       throw err;
     }
 
-    if (params.north != null || params.south != null || params.east != null || params.west != null) {
-      this.validateBounds(params.north!, params.south!, params.east!, params.west!, {
-        allowTruncate: false,
-      });
+    if (
+      params.north != null ||
+      params.south != null ||
+      params.east != null ||
+      params.west != null
+    ) {
+      this.validateBounds(
+        params.north!,
+        params.south!,
+        params.east!,
+        params.west!,
+        {
+          allowTruncate: false,
+        },
+      );
     }
 
     const cacheKey = this.buildCacheKey('list', { ...params, sort, limit });
@@ -194,12 +206,16 @@ export class ExploreService {
     const ids = page.map((r) => r.id);
     const { covers, walkthroughs } = await this.loadMediaHints(ids);
 
-    const items: ExploreCard[] = page.map((l) => this.toCard(l, covers, walkthroughs));
+    const items: ExploreCard[] = page.map((l) =>
+      this.toCard(l, covers, walkthroughs),
+    );
 
     let nextCursor: string | null = null;
     if (hasMore && page.length > 0) {
       const last = page[page.length - 1];
-      nextCursor = encodeExploreCursor(this.buildNextCursor(sort, snapshot, last));
+      nextCursor = encodeExploreCursor(
+        this.buildNextCursor(sort, snapshot, last),
+      );
     }
 
     const envelope: ExploreListEnvelope = {
@@ -273,8 +289,7 @@ export class ExploreService {
       forMap: true,
     });
 
-    const truncated =
-      boundsCheck.forceTruncate || rows.length > MAP_PIN_MAX;
+    const truncated = boundsCheck.forceTruncate || rows.length > MAP_PIN_MAX;
     const page = truncated ? rows.slice(0, MAP_PIN_MAX) : rows;
     const ids = page.map((r) => r.id);
     const { covers, walkthroughs } = await this.loadMediaHints(ids);
@@ -406,7 +421,9 @@ export class ExploreService {
     }
 
     if (opts.pets_allowed) {
-      qb.andWhere("rules.pets_policy IS NOT NULL AND rules.pets_policy <> 'NO'");
+      qb.andWhere(
+        "rules.pets_policy IS NOT NULL AND rules.pets_policy <> 'NO'",
+      );
     }
 
     if (opts.family_friendly) {
@@ -477,10 +494,10 @@ export class ExploreService {
         });
       } else {
         // Antimeridian wrap (rare for Morocco; still handle)
-        qb.andWhere(
-          '(l.geo_lng >= :west OR l.geo_lng <= :east)',
-          { west: opts.west, east: opts.east },
-        );
+        qb.andWhere('(l.geo_lng >= :west OR l.geo_lng <= :east)', {
+          west: opts.west,
+          east: opts.east,
+        });
       }
     }
 
@@ -630,8 +647,7 @@ export class ExploreService {
       i: last.id,
     };
     if (sort === 'rating') {
-      base.r =
-        last.avg_rating != null ? Number(last.avg_rating) : null;
+      base.r = last.avg_rating != null ? Number(last.avg_rating) : null;
       base.n = last.review_count ?? 0;
     }
     if (sort === 'price_asc' || sort === 'price_desc') {
@@ -662,7 +678,8 @@ export class ExploreService {
       avg_rating: l.avg_rating != null ? Number(l.avg_rating) : null,
       review_count: l.review_count ?? 0,
       bedrooms: this.bedroomCount(l.property_details),
-      max_guests: l.rules?.max_guests != null ? Number(l.rules.max_guests) : null,
+      max_guests:
+        l.rules?.max_guests != null ? Number(l.rules.max_guests) : null,
       has_wifi: amenities.some(
         (a) => a === 'wifi' || a.includes('wifi') || a.includes('wi-fi'),
       ),
@@ -717,9 +734,7 @@ export class ExploreService {
             currency: l.rate_plan.currency || 'MAD',
           }
         : null,
-      cover: coverId
-        ? { asset_id: coverId, kind: 'PHOTO' }
-        : null,
+      cover: coverId ? { asset_id: coverId, kind: 'PHOTO' } : null,
     };
   }
 
@@ -764,7 +779,10 @@ export class ExploreService {
     params: ExploreQueryParams & { sort?: ExploreSort; limit?: number },
   ): string {
     const normalized: Record<string, string> = { kind };
-    const put = (k: string, v: string | number | boolean | undefined | null) => {
+    const put = (
+      k: string,
+      v: string | number | boolean | undefined | null,
+    ) => {
       if (v === undefined || v === null || v === '') return;
       if (typeof v === 'string' && v.trim() === '') return;
       // Drop defaults
@@ -824,7 +842,9 @@ export class ExploreService {
       const json = JSON.stringify(value);
       if (Buffer.byteLength(json, 'utf8') > CACHE_MAX_BYTES) {
         this.metrics.incrementExploreCacheBypass();
-        this.logger.warn(`explore cache bypass: payload > ${CACHE_MAX_BYTES} bytes`);
+        this.logger.warn(
+          `explore cache bypass: payload > ${CACHE_MAX_BYTES} bytes`,
+        );
         return;
       }
       // Bound memory: drop expired entries occasionally.

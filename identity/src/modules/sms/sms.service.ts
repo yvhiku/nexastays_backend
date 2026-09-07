@@ -1,4 +1,10 @@
-import { Injectable, Logger, OnModuleInit, Inject, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  Inject,
+  Optional,
+} from '@nestjs/common';
 import { Twilio } from 'twilio';
 import type { AlertingService } from '@nexa/telemetry';
 import { ObsEvents } from '@nexa/telemetry';
@@ -123,7 +129,9 @@ export class SmsService implements OnModuleInit {
         return true;
       }
 
-      this.logger.error(`SMS provider "${this.provider}" is not ready (${masked})`);
+      this.logger.error(
+        `SMS provider "${this.provider}" is not ready (${masked})`,
+      );
       return false;
     } catch {
       // Never log provider error bodies — they may echo message content/OTP.
@@ -180,9 +188,9 @@ export class SmsService implements OnModuleInit {
       throw new Error(`EnvoiSMS HTTP ${res.status}`);
     }
 
-    const payload = (await res.json().catch(() => null)) as
-      | { id?: string }
-      | null;
+    const payload = (await res.json().catch(() => null)) as {
+      id?: string;
+    } | null;
     return payload?.id;
   }
 }

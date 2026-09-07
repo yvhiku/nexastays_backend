@@ -17,6 +17,11 @@ export class StaysSupportTicketViewer {
   @Column({ type: 'timestamptz', name: 'last_activity_at', nullable: true })
   last_activity_at: Date | null;
 
-  @Column({ type: 'varchar', length: 16, name: 'activity_state', default: 'VIEWING' })
+  @Column({
+    type: 'varchar',
+    length: 16,
+    name: 'activity_state',
+    default: 'VIEWING',
+  })
   activity_state: 'VIEWING' | 'HANDLING';
 }

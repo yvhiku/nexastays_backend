@@ -159,7 +159,8 @@ export class AdminTransactionsService {
     if (!adminId) {
       throw new BadRequestException({
         code: 'ADMIN_CONTEXT_REQUIRED',
-        message: 'Authenticated admin user id required for reversal idempotency.',
+        message:
+          'Authenticated admin user id required for reversal idempotency.',
       });
     }
 
@@ -172,10 +173,12 @@ export class AdminTransactionsService {
         requestPayload: { original_transaction_id: id, reason },
       },
       async (manager) => {
-        const transaction = await manager.getRepository(AppTransaction).findOne({
-          where: { id },
-          lock: { mode: 'pessimistic_write' },
-        });
+        const transaction = await manager
+          .getRepository(AppTransaction)
+          .findOne({
+            where: { id },
+            lock: { mode: 'pessimistic_write' },
+          });
         if (!transaction) {
           throw new NotFoundException('Transaction not found');
         }

@@ -53,7 +53,9 @@ describe('AdminUsersService.updateStaffRole', () => {
 
   it('rejects changing own staff role', async () => {
     await expect(
-      service.updateStaffRole('admin-1', 'SUPPORT_AGENT', { userId: 'admin-1' }),
+      service.updateStaffRole('admin-1', 'SUPPORT_AGENT', {
+        userId: 'admin-1',
+      }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(usersRepository.findOne).not.toHaveBeenCalled();
   });
@@ -73,7 +75,9 @@ describe('AdminUsersService.updateStaffRole', () => {
   it('rejects missing users', async () => {
     usersRepository.findOne.mockResolvedValue(null);
     await expect(
-      service.updateStaffRole('missing', 'SUPPORT_AGENT', { userId: 'admin-1' }),
+      service.updateStaffRole('missing', 'SUPPORT_AGENT', {
+        userId: 'admin-1',
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 

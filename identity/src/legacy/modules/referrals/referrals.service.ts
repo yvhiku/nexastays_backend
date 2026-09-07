@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { RpPointsService } from '../rewards-program/rp-points.service';
@@ -60,7 +64,9 @@ export class ReferralsService {
         throw new BadRequestException('Referral accounts must be active');
       }
       if (!isKycVerifiedForMoneyMovement(referredUser.kyc_status)) {
-        throw new BadRequestException('KYC approval required to apply referral');
+        throw new BadRequestException(
+          'KYC approval required to apply referral',
+        );
       }
 
       const existing = await manager.getRepository(Referral).findOne({

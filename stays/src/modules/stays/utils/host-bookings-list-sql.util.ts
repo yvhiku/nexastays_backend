@@ -37,7 +37,9 @@ CASE
   WHEN ${alias}.status = 'COMPLETED' THEN 6
   WHEN ${alias}.status IN ${CANCELLED_SQL} THEN 7
   ELSE 8
-END`.replace(/\s+/g, ' ').trim();
+END`
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** Primary guest display name — parity with resolveGuestDisplayName. */

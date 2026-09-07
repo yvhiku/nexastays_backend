@@ -185,7 +185,11 @@ export class KycPolicyValidationService {
       (kyc?.document_country ?? user.nationality ?? '').trim().toUpperCase() ||
       null;
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const dailyRow = await manager
@@ -302,7 +306,9 @@ export class KycPolicyValidationService {
     }
   }
 
-  private async loadMergedOverrides(userId: string): Promise<AdminOverrideEffective | null> {
+  private async loadMergedOverrides(
+    userId: string,
+  ): Promise<AdminOverrideEffective | null> {
     const rows = await this.overrideRepo.find({
       where: { user_id: userId, active: true },
       order: { created_at: 'DESC' },
@@ -321,7 +327,9 @@ export class KycPolicyValidationService {
     return this.mergeOverrideRows(rows);
   }
 
-  private mergeOverrideRows(rows: KycAdminOverride[]): AdminOverrideEffective | null {
+  private mergeOverrideRows(
+    rows: KycAdminOverride[],
+  ): AdminOverrideEffective | null {
     const now = Date.now();
     const active = rows.filter(
       (r) => !r.expires_at || r.expires_at.getTime() > now,

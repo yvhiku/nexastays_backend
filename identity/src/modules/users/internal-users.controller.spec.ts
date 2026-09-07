@@ -19,15 +19,11 @@ describe('InternalUsersController.listActiveSupportAgents', () => {
 
   it('returns the ACTIVE-only S2S roster', async () => {
     usersService.listActiveSupportAgents.mockResolvedValue({
-      items: [
-        { id: 'agent-1', status: 'ACTIVE', staff_role: 'SUPPORT_AGENT' },
-      ],
+      items: [{ id: 'agent-1', status: 'ACTIVE', staff_role: 'SUPPORT_AGENT' }],
     });
 
     await expect(controller.listActiveSupportAgents()).resolves.toEqual({
-      items: [
-        { id: 'agent-1', status: 'ACTIVE', staff_role: 'SUPPORT_AGENT' },
-      ],
+      items: [{ id: 'agent-1', status: 'ACTIVE', staff_role: 'SUPPORT_AGENT' }],
     });
   });
 
@@ -84,15 +80,13 @@ describe('InternalServiceGuard (S2S support-agent roster)', () => {
 
   it('rejects a SUPPORT_AGENT JWT with no internal key', () => {
     expect(() =>
-      guard.canActivate(
-        ctx({ authorization: 'Bearer agent-jwt' }),
-      ),
+      guard.canActivate(ctx({ authorization: 'Bearer agent-jwt' })),
     ).toThrow(ForbiddenException);
   });
 
   it('rejects a wrong internal key', () => {
-    expect(() =>
-      guard.canActivate(ctx({ 'x-internal-key': 'nope' })),
-    ).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(ctx({ 'x-internal-key': 'nope' }))).toThrow(
+      ForbiddenException,
+    );
   });
 });

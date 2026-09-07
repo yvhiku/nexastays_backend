@@ -1,0 +1,263 @@
+{
+  "actors_obtained": {
+    "guest": true,
+    "hostA": true,
+    "hostB": true,
+    "admin": true
+  },
+  "probes": [
+    {
+      "name": "consumer GET host/listings",
+      "actor": "guest",
+      "method": "GET",
+      "path": "/stays/host/listings",
+      "http_status": 200,
+      "pass": true,
+      "message": "items=0 ",
+      "expect": [
+        200
+      ]
+    },
+    {
+      "name": "hostA GET host/listings",
+      "actor": "hostA",
+      "method": "GET",
+      "path": "/stays/host/listings",
+      "http_status": 200,
+      "pass": true,
+      "message": "items=0 ",
+      "expect": [
+        200
+      ]
+    },
+    {
+      "name": "hostB GET host/listings",
+      "actor": "hostB",
+      "method": "GET",
+      "path": "/stays/host/listings",
+      "http_status": 200,
+      "pass": true,
+      "message": "items=0 ",
+      "expect": [
+        200
+      ]
+    },
+    {
+      "name": "guest POST host/listings (typed)",
+      "actor": "guest",
+      "method": "POST",
+      "path": "/stays/host/listings",
+      "http_status": 400,
+      "pass": true,
+      "message": "Host verification required. Your host application must be approved before creating listings.",
+      "expect": [
+        400,
+        403
+      ]
+    },
+    {
+      "name": "guest GET foreign host listing",
+      "actor": "guest",
+      "method": "GET",
+      "path": "/stays/host/listings/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "http_status": 404,
+      "pass": true,
+      "message": "Listing not found",
+      "expect": [
+        404
+      ]
+    },
+    {
+      "name": "hostA pause foreign listing",
+      "actor": "hostA",
+      "method": "POST",
+      "path": "/stays/host/listings/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/pause",
+      "http_status": 404,
+      "pass": true,
+      "message": "Listing not found",
+      "expect": [
+        404
+      ]
+    },
+    {
+      "name": "hostB pause foreign listing",
+      "actor": "hostB",
+      "method": "POST",
+      "path": "/stays/host/listings/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/pause",
+      "http_status": 404,
+      "pass": true,
+      "message": "Listing not found",
+      "expect": [
+        404
+      ]
+    },
+    {
+      "name": "hostA PATCH foreign listing",
+      "actor": "hostA",
+      "method": "PATCH",
+      "path": "/stays/host/listings/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "http_status": 400,
+      "pass": true,
+      "message": "Host verification required. Your host application must be approved before creating listings.",
+      "expect": [
+        400,
+        403,
+        404
+      ]
+    },
+    {
+      "name": "guest admin stays",
+      "actor": "guest",
+      "method": "GET",
+      "path": "/admin/stays/listings",
+      "http_status": 403,
+      "pass": true,
+      "message": "Insufficient permissions. Required roles: ADMIN",
+      "expect": [
+        403
+      ]
+    },
+    {
+      "name": "hostA admin stays",
+      "actor": "hostA",
+      "method": "GET",
+      "path": "/admin/stays/listings",
+      "http_status": 403,
+      "pass": true,
+      "message": "Insufficient permissions. Required roles: ADMIN",
+      "expect": [
+        403
+      ]
+    },
+    {
+      "name": "hostB admin stays",
+      "actor": "hostB",
+      "method": "GET",
+      "path": "/admin/stays/listings",
+      "http_status": 403,
+      "pass": true,
+      "message": "Insufficient permissions. Required roles: ADMIN",
+      "expect": [
+        403
+      ]
+    },
+    {
+      "name": "guest identity admin",
+      "actor": "guest",
+      "method": "GET",
+      "path": "/admin/users",
+      "http_status": 403,
+      "pass": true,
+      "message": "Insufficient permissions. Required roles: ADMIN",
+      "expect": [
+        403
+      ]
+    },
+    {
+      "name": "hostA identity admin",
+      "actor": "hostA",
+      "method": "GET",
+      "path": "/admin/users",
+      "http_status": 403,
+      "pass": true,
+      "message": "Insufficient permissions. Required roles: ADMIN",
+      "expect": [
+        403
+      ]
+    },
+    {
+      "name": "admin stays listings",
+      "actor": "admin",
+      "method": "GET",
+      "path": "/admin/stays/listings",
+      "http_status": 200,
+      "pass": true,
+      "message": "items=50 ",
+      "expect": [
+        200
+      ]
+    },
+    {
+      "name": "admin identity users",
+      "actor": "admin",
+      "method": "GET",
+      "path": "/admin/users",
+      "http_status": 200,
+      "pass": true,
+      "message": "",
+      "expect": [
+        200
+      ]
+    },
+    {
+      "name": "guest foreign booking",
+      "actor": "guest",
+      "method": "GET",
+      "path": "/stays/bookings/bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+      "http_status": 404,
+      "pass": true,
+      "message": "Booking not found",
+      "expect": [
+        404
+      ]
+    },
+    {
+      "name": "hostA foreign booking",
+      "actor": "hostA",
+      "method": "GET",
+      "path": "/stays/bookings/bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+      "http_status": 404,
+      "pass": true,
+      "message": "Booking not found",
+      "expect": [
+        404
+      ]
+    },
+    {
+      "name": "hostB cancel foreign",
+      "actor": "hostB",
+      "method": "POST",
+      "path": "/stays/bookings/bbbbbbbb-cccc-4ddd-8eee-ffffffffffff/cancel",
+      "http_status": 404,
+      "pass": true,
+      "message": "Booking not found",
+      "expect": [
+        404
+      ]
+    },
+    {
+      "name": "hostA reject injected hostId query",
+      "actor": "hostA",
+      "method": "GET",
+      "path": "/stays/host/listings?hostId=host-b-inject&host_user_id=host-b-inject",
+      "http_status": 400,
+      "pass": true,
+      "message": "property hostId should not exist, property host_user_id should not exist",
+      "expect": [
+        400
+      ]
+    },
+    {
+      "name": "hostA listings clean",
+      "actor": "hostA",
+      "method": "GET",
+      "path": "/stays/host/listings",
+      "http_status": 200,
+      "pass": true,
+      "message": "items=0 ",
+      "expect": [
+        200
+      ]
+    }
+  ],
+  "summary": {
+    "pass": 20,
+    "fail": 0,
+    "total": 20
+  },
+  "notes": [
+    "DEMO OTP + admin login. Tokens omitted.",
+    "GET host/listings 200 for consumers is intended self-scoped portal list.",
+    "Suspended consumer not mutated in shared DB; staff freeze/suspend covered in RolesGuard jest."
+  ]
+}

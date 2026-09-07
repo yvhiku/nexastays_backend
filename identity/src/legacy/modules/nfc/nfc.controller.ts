@@ -25,11 +25,7 @@ export class NfcController {
 
   @Post('pay')
   @RequireMoneyIdempotencyHeader(MoneyMovementScope.NFC_PAYMENT)
-  pay(
-    @Body() body: NfcPayDto,
-    @CurrentUser() user: any,
-    @Req() req: Request,
-  ) {
+  pay(@Body() body: NfcPayDto, @CurrentUser() user: any, @Req() req: Request) {
     return this.nfcService.pay(
       user.userId,
       body,

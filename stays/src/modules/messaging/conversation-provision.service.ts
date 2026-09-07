@@ -53,7 +53,9 @@ export class ConversationProvisionService {
   ): Promise<StaysConversation | null> {
     const convRepo = manager.getRepository(StaysConversation);
     const listingRepo = manager.getRepository(StaysListing);
-    const existing = await convRepo.findOne({ where: { booking_id: booking.id } });
+    const existing = await convRepo.findOne({
+      where: { booking_id: booking.id },
+    });
     if (existing) return existing;
 
     const listing = await listingRepo.findOne({
@@ -63,12 +65,18 @@ export class ConversationProvisionService {
     if (!listing) return null;
 
     if (!listing.host_user_id) {
-      this.logger.warn(`No host for booking ${booking.id}; skipping conversation`);
+      this.logger.warn(
+        `No host for booking ${booking.id}; skipping conversation`,
+      );
       return null;
     }
 
-    const hostName = await this.participants.resolveHostDisplayName(listing.host_user_id);
-    const guestName = await this.participants.resolveGuestDisplayName(booking.id);
+    const hostName = await this.participants.resolveHostDisplayName(
+      listing.host_user_id,
+    );
+    const guestName = await this.participants.resolveGuestDisplayName(
+      booking.id,
+    );
 
     const snapshot = this.timelineSeeder.buildSnapshot(booking, listing, {
       hostDisplayName: hostName,
@@ -89,7 +97,12 @@ export class ConversationProvisionService {
       }),
     );
 
-    await this.timelineSeeder.seedBookingConfirmed(manager, conversation, snapshot, listing);
+    await this.timelineSeeder.seedBookingConfirmed(
+      manager,
+      conversation,
+      snapshot,
+      listing,
+    );
 
     const total = Number(booking.total_paid ?? 0);
     const currency = booking.currency ?? 'MAD';
@@ -127,7 +140,9 @@ export class ConversationProvisionService {
   ): Promise<StaysConversation> {
     const conv = await this.dataSource.transaction(async (manager) => {
       const convRepo = manager.getRepository(StaysConversation);
-      const existing = await convRepo.findOne({ where: { booking_id: bookingId } });
+      const existing = await convRepo.findOne({
+        where: { booking_id: bookingId },
+      });
       if (existing) {
         if (
           existing.guest_user_id !== userId &&
@@ -135,9 +150,13 @@ export class ConversationProvisionService {
         ) {
           throw new ForbiddenException('Not a participant on this booking');
         }
-        await this.outbox.enqueue(manager, MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED, {
-          conversationId: existing.id,
-        });
+        await this.outbox.enqueue(
+          manager,
+          MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED,
+          {
+            conversationId: existing.id,
+          },
+        );
         return existing;
       }
 
@@ -180,9 +199,12 @@ export class ConversationProvisionService {
       return created;
     });
 
-    await this.outbox.enqueueDirect(MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED, {
-      conversationId: conv.id,
-    });
+    await this.outbox.enqueueDirect(
+      MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED,
+      {
+        conversationId: conv.id,
+      },
+    );
 
     return conv;
   }

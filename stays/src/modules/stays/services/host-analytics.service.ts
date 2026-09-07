@@ -189,14 +189,7 @@ export class HostAnalyticsService {
 
     const listings = await this.listingRepo.find({
       where: { host_user_id: hostUserId },
-      select: [
-        'id',
-        'title',
-        'city',
-        'status',
-        'avg_rating',
-        'review_count',
-      ],
+      select: ['id', 'title', 'city', 'status', 'avg_rating', 'review_count'],
       order: { created_at: 'DESC' },
     });
     const listingIds = listings.map((l) => l.id);
@@ -218,17 +211,19 @@ export class HostAnalyticsService {
       return empty;
     }
 
-    const [bookings, calendars, summaries, payoutByListing] = await Promise.all([
-      this.bookingRepo.find({
-        where: { listing_id: In(listingIds) },
-      }),
-      this.calendarRepo.find({
-        where: { listing_id: In(listingIds) },
-        select: ['listing_id', 'status'],
-      }),
-      this.hostListingsService.getHostListings(hostUserId),
-      this.sumPayoutsByListing(hostUserId),
-    ]);
+    const [bookings, calendars, summaries, payoutByListing] = await Promise.all(
+      [
+        this.bookingRepo.find({
+          where: { listing_id: In(listingIds) },
+        }),
+        this.calendarRepo.find({
+          where: { listing_id: In(listingIds) },
+          select: ['listing_id', 'status'],
+        }),
+        this.hostListingsService.getHostListings(hostUserId),
+        this.sumPayoutsByListing(hostUserId),
+      ],
+    );
 
     const accById = new Map<string, Acc>();
     for (const listing of listings) {
@@ -346,21 +341,19 @@ export class HostAnalyticsService {
       }
     }
 
-    const summaryById = new Map(
-      summaries.map((s) => [s.id as string, s] as const),
-    );
+    const summaryById = new Map(summaries.map((s) => [s.id, s] as const));
     const calendarByListing = this.calendarStatusByListing(calendars);
 
-    const currency =
-      bookings.find((b) => b.currency)?.currency ??
-      'MAD';
+    const currency = bookings.find((b) => b.currency)?.currency ?? 'MAD';
 
     const properties: HostAnalyticsPropertyDto[] = listings.map((listing) => {
       const acc = accById.get(listing.id)!;
       const summary = summaryById.get(listing.id);
       const cal = calendarByListing.get(listing.id) ?? 'NONE';
       const completionPct = summary?.completion_percentage ?? 0;
-      const photosComplete = Boolean(summary?.completion_flags?.photos_complete);
+      const photosComplete = Boolean(
+        summary?.completion_flags?.photos_complete,
+      );
       const missing = (summary?.missing ?? []).map(
         (m: { key?: string; code?: string; label: string }) => ({
           code: m.code ?? m.key ?? 'missing',
@@ -383,14 +376,14 @@ export class HostAnalyticsService {
         period.period_days != null && period.period_days > 0
           ? Math.min(
               100,
-              Math.round(
-                (acc.booked_in_period / period.period_days) * 1000,
-              ) / 10,
+              Math.round((acc.booked_in_period / period.period_days) * 1000) /
+                10,
             )
           : null;
 
       const avgRating =
-        listing.avg_rating != null && Number.isFinite(Number(listing.avg_rating))
+        listing.avg_rating != null &&
+        Number.isFinite(Number(listing.avg_rating))
           ? Number(listing.avg_rating)
           : null;
       const reviewCount = listing.review_count ?? 0;

@@ -36,9 +36,12 @@ export class StaysAvailabilityService {
       .where('b.status IN (:...statuses)', { statuses: BOOKED_STATUSES })
       .andWhere('b.checkin_date < :checkout', { checkout })
       .andWhere('b.checkout_date > :checkin', { checkin })
-      .andWhere(listingIds?.length ? 'b.listing_id IN (:...listingIds)' : '1=1', {
-        listingIds: listingIds ?? [],
-      })
+      .andWhere(
+        listingIds?.length ? 'b.listing_id IN (:...listingIds)' : '1=1',
+        {
+          listingIds: listingIds ?? [],
+        },
+      )
       .getRawMany<{ listing_id: string }>()
       .then((rows) => rows.map((r) => r.listing_id));
 
@@ -48,9 +51,12 @@ export class StaysAvailabilityService {
       .where('ab.is_blocked = true')
       .andWhere('ab.date >= :checkin', { checkin })
       .andWhere('ab.date < :checkout', { checkout })
-      .andWhere(listingIds?.length ? 'ab.listing_id IN (:...listingIds)' : '1=1', {
-        listingIds: listingIds ?? [],
-      })
+      .andWhere(
+        listingIds?.length ? 'ab.listing_id IN (:...listingIds)' : '1=1',
+        {
+          listingIds: listingIds ?? [],
+        },
+      )
       .getRawMany<{ listing_id: string }>()
       .then((rows) => rows.map((r) => r.listing_id));
 

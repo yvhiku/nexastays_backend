@@ -89,7 +89,9 @@ export class MessagesService {
         .andWhere("status = 'PERSISTED'")
         .execute();
       if ((delivered.affected ?? 0) > 0) {
-        for (const senderId of new Set(unreadFromOther.map((message) => message.sender_id))) {
+        for (const senderId of new Set(
+          unreadFromOther.map((message) => message.sender_id),
+        )) {
           this.realtime.publish(senderId, {
             conversationId: conv.id,
             reason: 'MESSAGE_DELIVERED',
@@ -119,7 +121,12 @@ export class MessagesService {
     const attachmentIds = dto.attachment_ids ?? [];
 
     if (type === 'TEXT') {
-      return this.sendText(conversationId, userId, dto.body ?? '', dto.client_message_id);
+      return this.sendText(
+        conversationId,
+        userId,
+        dto.body ?? '',
+        dto.client_message_id,
+      );
     }
 
     if (type === 'IMAGE' || type === 'FILE') {
@@ -157,7 +164,8 @@ export class MessagesService {
   ): Promise<MessageDto> {
     const trimmed = body?.trim();
     if (!trimmed) throw new BadRequestException('Message body required');
-    if (trimmed.length > 2000) throw new BadRequestException('Message too long');
+    if (trimmed.length > 2000)
+      throw new BadRequestException('Message too long');
 
     const conv = await this.getParticipantConversation(conversationId, userId);
     const perms = this.permissions.resolve(conv, userId);
@@ -179,11 +187,19 @@ export class MessagesService {
         userId,
       );
 
-      const senderDisplayName = await this.resolveSenderDisplayName(conv, userId);
+      const senderDisplayName = await this.resolveSenderDisplayName(
+        conv,
+        userId,
+      );
       const message = await this.timelineSeeder.insertMessage(manager, conv, {
         type: 'TEXT',
         body: trimmed,
-        metadata: { source: 'USER', schemaVersion: 1, cardVersion: 1, presentationVersion: 1 },
+        metadata: {
+          source: 'USER',
+          schemaVersion: 1,
+          cardVersion: 1,
+          presentationVersion: 1,
+        },
         senderId: userId,
         clientMessageId: clientMessageId ?? null,
         senderDisplayName,
@@ -263,7 +279,12 @@ export class MessagesService {
         senderDisplayName,
       });
 
-      await this.attachments.linkToMessage(message.id, attachmentIds, conv.id, manager);
+      await this.attachments.linkToMessage(
+        message.id,
+        attachmentIds,
+        conv.id,
+        manager,
+      );
       await this.enqueueDeliveryEvents(manager, conv, message, userId, preview);
       if (supportTicket) {
         await this.supportTickets.applyCustomerSupportMessageEffects(
@@ -348,7 +369,12 @@ export class MessagesService {
         senderDisplayName,
       });
 
-      await this.attachments.linkToMessage(message.id, attachmentIds, conv.id, manager);
+      await this.attachments.linkToMessage(
+        message.id,
+        attachmentIds,
+        conv.id,
+        manager,
+      );
       await this.attachmentSessions.finalizeSession(session.id);
       await this.enqueueDeliveryEvents(manager, conv, message, userId, preview);
       if (supportTicket) {
@@ -372,7 +398,10 @@ export class MessagesService {
     return this.toDto(saved, userId, atts.get(saved.id) ?? []);
   }
 
-  async markRead(conversationId: string, userId: string): Promise<{ conversationVersion: number }> {
+  async markRead(
+    conversationId: string,
+    userId: string,
+  ): Promise<{ conversationVersion: number }> {
     const conv = await this.getParticipantConversation(conversationId, userId);
     const isGuest = conv.guest_user_id === userId;
     const now = new Date();
@@ -420,7 +449,9 @@ export class MessagesService {
       });
     });
 
-    const unreadWas = isGuest ? conv.unread_guest ?? 0 : conv.unread_host ?? 0;
+    const unreadWas = isGuest
+      ? (conv.unread_guest ?? 0)
+      : (conv.unread_host ?? 0);
     if (unreadWas > 0 || changedMessages > 0) {
       const counterpartUserId =
         userId === conv.guest_user_id ? conv.host_user_id : conv.guest_user_id;
@@ -488,9 +519,11 @@ export class MessagesService {
 
     const senderName =
       userId === conv.guest_user_id
-        ? (await this.guestDisplayName(conv, userId))
+        ? await this.guestDisplayName(conv, userId)
         : conv.host_user_id
-          ? (await this.participants.resolveHostDisplayName(conv.host_user_id)) ?? 'Host'
+          ? ((await this.participants.resolveHostDisplayName(
+              conv.host_user_id,
+            )) ?? 'Host')
           : 'Host';
 
     const snapshot = conv.reservation_snapshot as { listingTitle?: string };
@@ -504,7 +537,8 @@ export class MessagesService {
         senderName,
         preview: preview.slice(0, 120),
         bookingId: conv.booking_id,
-        conversationVersion: refreshed?.conversation_version ?? conv.conversation_version + 1,
+        conversationVersion:
+          refreshed?.conversation_version ?? conv.conversation_version + 1,
         lastMessageId: message.id,
         lastMessageSequence: Number(message.conversation_sequence),
         listingTitle: snapshot.listingTitle ?? '',
@@ -517,7 +551,8 @@ export class MessagesService {
       senderUserId: userId,
     });
 
-    const visField = userId === conv.guest_user_id ? 'host_visibility' : 'guest_visibility';
+    const visField =
+      userId === conv.guest_user_id ? 'host_visibility' : 'guest_visibility';
     await manager
       .getRepository(StaysConversation)
       .createQueryBuilder()
@@ -534,8 +569,10 @@ export class MessagesService {
   ): Promise<string> {
     if (!conv.booking_id) return 'Guest';
     return (
-      (await this.participants.resolveGuestDisplayName(conv.booking_id, userId)) ??
-      'Guest'
+      (await this.participants.resolveGuestDisplayName(
+        conv.booking_id,
+        userId,
+      )) ?? 'Guest'
     );
   }
 
@@ -594,7 +631,8 @@ export class MessagesService {
     }
     if (conv.host_user_id) {
       return (
-        (await this.participants.resolveHostDisplayName(conv.host_user_id)) ?? 'Host'
+        (await this.participants.resolveHostDisplayName(conv.host_user_id)) ??
+        'Host'
       );
     }
     return 'Host';

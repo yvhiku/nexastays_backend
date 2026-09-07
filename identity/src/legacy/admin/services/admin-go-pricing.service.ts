@@ -210,7 +210,8 @@ export class AdminGoPricingService {
       min_fare: Number(row.min_fare),
       booking_fee: Number(row.booking_fee),
       commission_type: row.commission_type,
-      commission_rate: row.commission_rate != null ? Number(row.commission_rate) : null,
+      commission_rate:
+        row.commission_rate != null ? Number(row.commission_rate) : null,
       commission_min: Number(row.commission_min),
       cancellation_window_secs: row.cancellation_window_secs,
       cancellation_fee: Number(row.cancellation_fee),

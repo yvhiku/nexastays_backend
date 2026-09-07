@@ -36,9 +36,7 @@ export function isKycBlockedForMoneyMovement(
 }
 
 /** Outbound wallet debits require an approved verification state */
-export function isKycPendingOrReview(
-  raw: string | null | undefined,
-): boolean {
+export function isKycPendingOrReview(raw: string | null | undefined): boolean {
   const n = normalizeKycStatus(raw);
   return n === 'PENDING' || n === 'UNDER_REVIEW' || n === 'UNVERIFIED';
 }

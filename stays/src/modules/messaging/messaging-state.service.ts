@@ -1,7 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { StaysConversation, ArchiveReason } from './entities/stays-conversation.entity';
+import {
+  StaysConversation,
+  ArchiveReason,
+} from './entities/stays-conversation.entity';
 import { StaysMessage } from './entities/stays-message.entity';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
 import { StaysListing } from '../stays/entities/stays-listing.entity';
@@ -46,10 +49,16 @@ export class MessagingStateService {
     return Number.isFinite(raw) && raw > 0 ? raw : 72;
   }
 
-  computePostStayEndsAt(booking: StaysBooking, listing?: StaysListing | null): Date {
+  computePostStayEndsAt(
+    booking: StaysBooking,
+    listing?: StaysListing | null,
+  ): Date {
     const checkoutAt =
       booking.completed_at ??
-      parseCheckoutDateTime(booking.checkout_date, listing?.checkout_time ?? '11:00');
+      parseCheckoutDateTime(
+        booking.checkout_date,
+        listing?.checkout_time ?? '11:00',
+      );
     const graceMs = this.getPostStayGraceHours() * 60 * 60 * 1000;
     return new Date(checkoutAt.getTime() + graceMs);
   }
@@ -60,7 +69,9 @@ export class MessagingStateService {
       where: { id: bookingId },
       relations: ['listing'],
     });
-    const conv = await this.convRepo.findOne({ where: { booking_id: bookingId } });
+    const conv = await this.convRepo.findOne({
+      where: { booking_id: bookingId },
+    });
     if (!booking || !conv) return;
 
     const now = new Date();
@@ -78,7 +89,11 @@ export class MessagingStateService {
 
     if (booking.status === 'COMPLETED') {
       if (conv.messaging_state === 'ARCHIVED') return;
-      if (conv.post_stay_ends_at && conv.post_stay_ends_at <= now && !conv.auto_archive_disabled) {
+      if (
+        conv.post_stay_ends_at &&
+        conv.post_stay_ends_at <= now &&
+        !conv.auto_archive_disabled
+      ) {
         await this.archiveConversation(conv.id, 'AUTO');
         return;
       }
@@ -88,8 +103,12 @@ export class MessagingStateService {
 
   /** Checkout → post-stay: chat stays active until post_stay_ends_at. */
   async enterPostStay(bookingId: string): Promise<void> {
-    const booking = await this.bookingRepo.findOne({ where: { id: bookingId } });
-    const conv = await this.convRepo.findOne({ where: { booking_id: bookingId } });
+    const booking = await this.bookingRepo.findOne({
+      where: { id: bookingId },
+    });
+    const conv = await this.convRepo.findOne({
+      where: { booking_id: bookingId },
+    });
     if (!booking || !conv || booking.status !== 'COMPLETED') return;
     if (conv.messaging_state === 'ACTIVE' && conv.post_stay_ends_at) return;
 
@@ -217,7 +236,9 @@ export class MessagingStateService {
       conversation_version: conv.conversation_version + 1,
     });
 
-    const updated = await this.convRepo.findOne({ where: { id: conversationId } });
+    const updated = await this.convRepo.findOne({
+      where: { id: conversationId },
+    });
     if (!updated) throw new NotFoundException('Conversation not found');
     return updated;
   }

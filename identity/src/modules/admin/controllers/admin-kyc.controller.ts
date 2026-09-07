@@ -76,7 +76,9 @@ export class AdminKycController {
   }
 
   @Get(':id/media/:slot')
-  @ApiOperation({ summary: 'Stream a stored KYC document/selfie for admin review' })
+  @ApiOperation({
+    summary: 'Stream a stored KYC document/selfie for admin review',
+  })
   async getMedia(
     @Param('id') id: string,
     @Param('slot') slot: string,

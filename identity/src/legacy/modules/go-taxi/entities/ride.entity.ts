@@ -102,25 +102,67 @@ export class Ride {
   @Column({ type: 'jsonb', name: 'fare_estimate', nullable: true })
   fare_estimate: Record<string, unknown> | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'fare_final', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'fare_final',
+    nullable: true,
+  })
   fare_final: number | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'booking_fee', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'booking_fee',
+    nullable: true,
+  })
   booking_fee: number | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'commission', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'commission',
+    nullable: true,
+  })
   commission: number | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'driver_payout', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'driver_payout',
+    nullable: true,
+  })
   driver_payout: number | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'platform_take', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'platform_take',
+    nullable: true,
+  })
   platform_take: number | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'passenger_total', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'passenger_total',
+    nullable: true,
+  })
   passenger_total: number | null;
 
-  @Column({ type: 'decimal', precision: 4, scale: 2, name: 'surge_multiplier', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 4,
+    scale: 2,
+    name: 'surge_multiplier',
+    nullable: true,
+  })
   surge_multiplier: number | null;
 
   @Column({ type: 'boolean', name: 'surge_active', nullable: true })
@@ -129,16 +171,31 @@ export class Ride {
   @Column({ type: 'varchar', length: 20, name: 'vehicle_type', nullable: true })
   vehicle_type: string | null;
 
-  @Column({ type: 'varchar', length: 255, name: 'cancellation_reason', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    name: 'cancellation_reason',
+    nullable: true,
+  })
   cancellation_reason: string | null;
 
   @Column({ type: 'varchar', length: 20, name: 'cancelled_by', nullable: true })
   cancelled_by: string | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'cancellation_fee', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'cancellation_fee',
+    nullable: true,
+  })
   cancellation_fee: number | null;
 
-  @Column({ type: 'boolean', name: 'cancellation_fee_collected', nullable: true })
+  @Column({
+    type: 'boolean',
+    name: 'cancellation_fee_collected',
+    nullable: true,
+  })
   cancellation_fee_collected: boolean | null;
 
   @Column({ type: 'timestamp', name: 'cancelled_at', nullable: true })

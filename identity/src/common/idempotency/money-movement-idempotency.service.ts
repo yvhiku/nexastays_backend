@@ -228,7 +228,8 @@ export class MoneyMovementIdempotencyService {
     const body = e.getResponse();
     return {
       statusCode: status,
-      error: typeof body === 'object' && body !== null ? body : { message: body },
+      error:
+        typeof body === 'object' && body !== null ? body : { message: body },
     };
   }
 
@@ -252,9 +253,9 @@ export class MoneyMovementIdempotencyService {
     const buf = crypto.createHash('sha256').update(material, 'utf8').digest();
     const k1 = buf.readInt32BE(0);
     const k2 = buf.readInt32BE(4);
-    await manager.query(
-      'SELECT pg_advisory_xact_lock($1::int, $2::int)',
-      [k1, k2],
-    );
+    await manager.query('SELECT pg_advisory_xact_lock($1::int, $2::int)', [
+      k1,
+      k2,
+    ]);
   }
 }

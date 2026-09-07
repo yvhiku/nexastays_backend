@@ -1,0 +1,746 @@
+[
+  {
+    "id": "active-schema-columns-retest",
+    "cwd": "nexastays_backend",
+    "command": "node /tmp/nexa-cert-20260906/schema_check.cjs",
+    "exit_code": 0,
+    "seconds": 1.0,
+    "log": "active-schema-columns-retest.log"
+  },
+  {
+    "id": "active-schema-columns",
+    "cwd": "nexastays_backend",
+    "command": "node /tmp/nexa-cert-20260906/schema_check.cjs",
+    "exit_code": 1,
+    "seconds": 0.67,
+    "log": "active-schema-columns.log"
+  },
+  {
+    "id": "backup-policy",
+    "cwd": "nexastays_db",
+    "command": "bash scripts/test-backup-policy.sh",
+    "exit_code": 0,
+    "seconds": 0.04,
+    "log": "backup-policy.log"
+  },
+  {
+    "id": "browser-auth-http",
+    "cwd": "nexastays_backend",
+    "command": "python3 /tmp/nexa-cert-20260906/browser_auth_checks.py",
+    "exit_code": 0,
+    "seconds": 0.19,
+    "log": "browser-auth-http.log"
+  },
+  {
+    "id": "consumers-build",
+    "cwd": "nexastays_platform/consumers",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 0.45,
+    "log": "consumers-build.log"
+  },
+  {
+    "id": "consumers-npm-audit",
+    "cwd": "nexastays_platform/consumers",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.63,
+    "log": "consumers-npm-audit.log"
+  },
+  {
+    "id": "dashboard-build",
+    "cwd": "nexastays_dashboard",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 10.19,
+    "log": "dashboard-build.log"
+  },
+  {
+    "id": "dashboard-lint",
+    "cwd": "nexastays_dashboard",
+    "command": "npm run lint",
+    "exit_code": 0,
+    "seconds": 1.0,
+    "log": "dashboard-lint.log"
+  },
+  {
+    "id": "dashboard-tests",
+    "cwd": "nexastays_dashboard",
+    "command": "npm run test:csp",
+    "exit_code": 0,
+    "seconds": 0.18,
+    "log": "dashboard-tests.log"
+  },
+  {
+    "id": "dashboard-tsc",
+    "cwd": "nexastays_dashboard",
+    "command": "./node_modules/.bin/tsc --noEmit --incremental false",
+    "exit_code": 0,
+    "seconds": 1.73,
+    "log": "dashboard-tsc.log"
+  },
+  {
+    "id": "event-bus-build",
+    "cwd": "nexastays_platform/event-bus",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 0.51,
+    "log": "event-bus-build.log"
+  },
+  {
+    "id": "event-bus-npm-audit",
+    "cwd": "nexastays_platform/event-bus",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.69,
+    "log": "event-bus-npm-audit.log"
+  },
+  {
+    "id": "gitleaks-image-retry",
+    "cwd": "nexastays_backend",
+    "command": "docker --config /tmp/nexa-cert-20260906/docker-config --host unix:///Users/apple/.docker/run/docker.sock pull ghcr.io/gitleaks/gitleaks:latest",
+    "exit_code": 0,
+    "seconds": 39.61,
+    "log": "gitleaks-image-retry.log"
+  },
+  {
+    "id": "gitleaks-image",
+    "cwd": "nexastays_backend",
+    "command": "docker pull ghcr.io/gitleaks/gitleaks:latest",
+    "exit_code": 124,
+    "seconds": 180.02,
+    "log": "gitleaks-image.log"
+  },
+  {
+    "id": "http-runtime",
+    "cwd": "nexastays_backend",
+    "command": "python3 /tmp/nexa-cert-20260906/http_checks.py",
+    "exit_code": 0,
+    "seconds": 0.28,
+    "log": "http-runtime.log"
+  },
+  {
+    "id": "identity-ajv-install",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm install --ignore-scripts --no-audit --no-fund",
+    "exit_code": 0,
+    "seconds": 4.39,
+    "log": "identity-ajv-install.log"
+  },
+  {
+    "id": "identity-brace-install",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm install --ignore-scripts --no-audit --no-fund",
+    "exit_code": 0,
+    "seconds": 1.11,
+    "log": "identity-brace-install.log"
+  },
+  {
+    "id": "identity-build-order",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 3.79,
+    "log": "identity-build-order.log"
+  },
+  {
+    "id": "identity-build-retest",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 3.74,
+    "log": "identity-build-retest.log"
+  },
+  {
+    "id": "identity-build",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 4.11,
+    "log": "identity-build.log"
+  },
+  {
+    "id": "identity-final-audit",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.99,
+    "log": "identity-final-audit.log"
+  },
+  {
+    "id": "identity-final-build",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 4.32,
+    "log": "identity-final-build.log"
+  },
+  {
+    "id": "identity-final-lint-report",
+    "cwd": "nexastays_backend/identity",
+    "command": "./node_modules/.bin/eslint \"{src,apps,libs,test}/**/*.ts\" -f json -o /tmp/nexa-cert-20260906/identity-lint-results.json",
+    "exit_code": 1,
+    "seconds": 6.88,
+    "log": "identity-final-lint-report.log"
+  },
+  {
+    "id": "identity-final-regression",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm test -- --runInBand --json --outputFile=/tmp/nexa-cert-20260906/identity-final-jest.json",
+    "exit_code": 0,
+    "seconds": 3.11,
+    "log": "identity-final-regression.log"
+  },
+  {
+    "id": "identity-final-tests",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm test -- --runInBand --json --outputFile=/tmp/nexa-cert-20260906/identity-final-jest.json",
+    "exit_code": 0,
+    "seconds": 2.89,
+    "log": "identity-final-tests.log"
+  },
+  {
+    "id": "identity-lint-final",
+    "cwd": "nexastays_backend/identity",
+    "command": "./node_modules/.bin/eslint \"{src,apps,libs,test}/**/*.ts\" -f json -o /tmp/nexa-cert-20260906/identity-lint-results.json",
+    "exit_code": 1,
+    "seconds": 8.69,
+    "log": "identity-lint-final.log"
+  },
+  {
+    "id": "identity-lint-retest",
+    "cwd": "nexastays_backend/identity",
+    "command": "./node_modules/.bin/eslint \"{src,apps,libs,test}/**/*.ts\" -f json -o /tmp/nexa-cert-20260906/identity-lint-results.json",
+    "exit_code": 2,
+    "seconds": 0.19,
+    "log": "identity-lint-retest.log"
+  },
+  {
+    "id": "identity-lint",
+    "cwd": "nexastays_backend/identity",
+    "command": "./node_modules/.bin/eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "exit_code": 2,
+    "seconds": 0.13,
+    "log": "identity-lint.log"
+  },
+  {
+    "id": "identity-migrations-order",
+    "cwd": "nexastays_db",
+    "command": "NEXA_DATABASE_COMPOSE=/tmp/nexa-cert-20260906/compose.yml sh identity/migrate.sh",
+    "exit_code": 0,
+    "seconds": 6.43,
+    "log": "identity-migrations-order.log"
+  },
+  {
+    "id": "identity-migrations",
+    "cwd": "nexastays_db",
+    "command": "NEXA_DATABASE_COMPOSE=/tmp/nexa-cert-20260906/compose.yml sh identity/migrate.sh",
+    "exit_code": 0,
+    "seconds": 122.58,
+    "log": "identity-migrations.log"
+  },
+  {
+    "id": "identity-npm-audit",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.99,
+    "log": "identity-npm-audit.log"
+  },
+  {
+    "id": "identity-read-model-build",
+    "cwd": "nexastays_platform/identity-read-model",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 0.4,
+    "log": "identity-read-model-build.log"
+  },
+  {
+    "id": "identity-read-model-npm-audit",
+    "cwd": "nexastays_platform/identity-read-model",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.68,
+    "log": "identity-read-model-npm-audit.log"
+  },
+  {
+    "id": "identity-tests-retest",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm test -- --runInBand --json --outputFile=/tmp/nexa-cert-20260906/identity-final-jest.json",
+    "exit_code": 0,
+    "seconds": 2.8,
+    "log": "identity-tests-retest.log"
+  },
+  {
+    "id": "identity-tests",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm test -- --runInBand --json --outputFile=/tmp/nexa-cert-20260906/identity-jest.json",
+    "exit_code": 0,
+    "seconds": 4.39,
+    "log": "identity-tests.log"
+  },
+  {
+    "id": "kyc-order-http-fixed",
+    "cwd": "nexastays_backend",
+    "command": "python3 /tmp/nexa-cert-20260906/kyc_order_checks.py",
+    "exit_code": 0,
+    "seconds": 0.13,
+    "log": "kyc-order-http-fixed.log"
+  },
+  {
+    "id": "kyc-order-http-retest",
+    "cwd": "nexastays_backend",
+    "command": "python3 /tmp/nexa-cert-20260906/kyc_order_checks.py",
+    "exit_code": 1,
+    "seconds": 0.13,
+    "log": "kyc-order-http-retest.log"
+  },
+  {
+    "id": "kyc-order-http",
+    "cwd": "nexastays_backend",
+    "command": "python3 /tmp/nexa-cert-20260906/kyc_order_checks.py",
+    "exit_code": 1,
+    "seconds": 0.08,
+    "log": "kyc-order-http.log"
+  },
+  {
+    "id": "kyc-order-unit-final",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm test -- --runInBand --testPathPatterns=\"compliance.service|sumsub-webhook-auth\"",
+    "exit_code": 0,
+    "seconds": 1.14,
+    "log": "kyc-order-unit-final.log"
+  },
+  {
+    "id": "kyc-order-unit",
+    "cwd": "nexastays_backend/identity",
+    "command": "npm test -- --runInBand --testPathPatterns=\"compliance.service|sumsub-webhook-auth\"",
+    "exit_code": 0,
+    "seconds": 1.2,
+    "log": "kyc-order-unit.log"
+  },
+  {
+    "id": "kyc-transaction-http",
+    "cwd": "nexastays_backend",
+    "command": "python3 /tmp/nexa-cert-20260906/kyc_transaction_checks.py",
+    "exit_code": 0,
+    "seconds": 0.33,
+    "log": "kyc-transaction-http.log"
+  },
+  {
+    "id": "local-backup-restore",
+    "cwd": "nexastays_db",
+    "command": "python3 /tmp/nexa-cert-20260906/restore_local.py",
+    "exit_code": 0,
+    "seconds": 6.29,
+    "log": "local-backup-restore.log"
+  },
+  {
+    "id": "media-service-build",
+    "cwd": "nexastays_platform/media-service",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 1.54,
+    "log": "media-service-build.log"
+  },
+  {
+    "id": "media-service-npm-audit",
+    "cwd": "nexastays_platform/media-service",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.69,
+    "log": "media-service-npm-audit.log"
+  },
+  {
+    "id": "mobile-analyze",
+    "cwd": "nexastays_mobile",
+    "command": "flutter analyze --no-pub",
+    "exit_code": 1,
+    "seconds": 4.9,
+    "log": "mobile-analyze.log"
+  },
+  {
+    "id": "mobile-tests",
+    "cwd": "nexastays_mobile",
+    "command": "flutter test",
+    "exit_code": 0,
+    "seconds": 8.84,
+    "log": "mobile-tests.log"
+  },
+  {
+    "id": "mock-booking-http-fixture",
+    "cwd": "nexastays_backend",
+    "command": "python3 /tmp/nexa-cert-20260906/booking_http_checks.py",
+    "exit_code": 0,
+    "seconds": 0.49,
+    "log": "mock-booking-http-fixture.log"
+  },
+  {
+    "id": "mock-booking-http",
+    "cwd": "nexastays_backend",
+    "command": "python3 /tmp/nexa-cert-20260906/booking_http_checks.py",
+    "exit_code": 1,
+    "seconds": 0.33,
+    "log": "mock-booking-http.log"
+  },
+  {
+    "id": "nexastays_backend-secret-history",
+    "cwd": "nexastays_backend",
+    "command": "docker run --rm --network none -v /Users/apple/nexa/nexastays/nexastays_backend:/repo:ro -v /tmp/nexa-cert-20260906/gitleaks:/evidence ghcr.io/gitleaks/gitleaks:latest git /repo --redact=100 --no-banner --report-format=json --report-path=/evidence/nexastays_backend.json --log-opts=--all --timeout=120",
+    "exit_code": 1,
+    "seconds": 1.47,
+    "log": "nexastays_backend-secret-history.log"
+  },
+  {
+    "id": "nexastays_dashboard-npm-audit",
+    "cwd": "nexastays_dashboard",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.65,
+    "log": "nexastays_dashboard-npm-audit.log"
+  },
+  {
+    "id": "nexastays_dashboard-secret-history",
+    "cwd": "nexastays_dashboard",
+    "command": "docker run --rm --network none -v /Users/apple/nexa/nexastays/nexastays_dashboard:/repo:ro -v /tmp/nexa-cert-20260906/gitleaks:/evidence ghcr.io/gitleaks/gitleaks:latest git /repo --redact=100 --no-banner --report-format=json --report-path=/evidence/nexastays_dashboard.json --log-opts=--all --timeout=120",
+    "exit_code": 0,
+    "seconds": 0.49,
+    "log": "nexastays_dashboard-secret-history.log"
+  },
+  {
+    "id": "nexastays_db-secret-history",
+    "cwd": "nexastays_db",
+    "command": "docker run --rm --network none -v /Users/apple/nexa/nexastays/nexastays_db:/repo:ro -v /tmp/nexa-cert-20260906/gitleaks:/evidence ghcr.io/gitleaks/gitleaks:latest git /repo --redact=100 --no-banner --report-format=json --report-path=/evidence/nexastays_db.json --log-opts=--all --timeout=120",
+    "exit_code": 0,
+    "seconds": 0.48,
+    "log": "nexastays_db-secret-history.log"
+  },
+  {
+    "id": "nexastays_mobile-secret-history",
+    "cwd": "nexastays_mobile",
+    "command": "docker run --rm --network none -v /Users/apple/nexa/nexastays/nexastays_mobile:/repo:ro -v /tmp/nexa-cert-20260906/gitleaks:/evidence ghcr.io/gitleaks/gitleaks:latest git /repo --redact=100 --no-banner --report-format=json --report-path=/evidence/nexastays_mobile.json --log-opts=--all --timeout=120",
+    "exit_code": 0,
+    "seconds": 0.69,
+    "log": "nexastays_mobile-secret-history.log"
+  },
+  {
+    "id": "nexastays_platform-secret-history",
+    "cwd": "nexastays_platform",
+    "command": "docker run --rm --network none -v /Users/apple/nexa/nexastays/nexastays_platform:/repo:ro -v /tmp/nexa-cert-20260906/gitleaks:/evidence ghcr.io/gitleaks/gitleaks:latest git /repo --redact=100 --no-banner --report-format=json --report-path=/evidence/nexastays_platform.json --log-opts=--all --timeout=120",
+    "exit_code": 0,
+    "seconds": 0.44,
+    "log": "nexastays_platform-secret-history.log"
+  },
+  {
+    "id": "nexastays_web-npm-audit",
+    "cwd": "nexastays_web",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.82,
+    "log": "nexastays_web-npm-audit.log"
+  },
+  {
+    "id": "nexastays_web-secret-history",
+    "cwd": "nexastays_web",
+    "command": "docker run --rm --network none -v /Users/apple/nexa/nexastays/nexastays_web:/repo:ro -v /tmp/nexa-cert-20260906/gitleaks:/evidence ghcr.io/gitleaks/gitleaks:latest git /repo --redact=100 --no-banner --report-format=json --report-path=/evidence/nexastays_web.json --log-opts=--all --timeout=120",
+    "exit_code": 1,
+    "seconds": 1.66,
+    "log": "nexastays_web-secret-history.log"
+  },
+  {
+    "id": "notifications-current-tests",
+    "cwd": "nexastays_platform/notifications-service",
+    "command": "npm test -- --runInBand",
+    "exit_code": 0,
+    "seconds": 1.78,
+    "log": "notifications-current-tests.log"
+  },
+  {
+    "id": "notifications-service-build",
+    "cwd": "nexastays_platform/notifications-service",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 1.97,
+    "log": "notifications-service-build.log"
+  },
+  {
+    "id": "notifications-service-npm-audit",
+    "cwd": "nexastays_platform/notifications-service",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.79,
+    "log": "notifications-service-npm-audit.log"
+  },
+  {
+    "id": "notifications-tests",
+    "cwd": "nexastays_platform/notifications-service",
+    "command": "npm test -- --runInBand",
+    "exit_code": 0,
+    "seconds": 1.81,
+    "log": "notifications-tests.log"
+  },
+  {
+    "id": "pg-concurrency-full-schema",
+    "cwd": "nexastays_backend/stays",
+    "command": "npm run test:pg-concurrency -- --json --outputFile=/tmp/nexa-cert-20260906/pg-jest.json",
+    "exit_code": 0,
+    "seconds": 0.91,
+    "log": "pg-concurrency-full-schema.log"
+  },
+  {
+    "id": "pg-integrity",
+    "cwd": "nexastays_db",
+    "command": "node /tmp/nexa-cert-20260906/pg-integrity.cjs",
+    "exit_code": 0,
+    "seconds": 0.13,
+    "log": "pg-integrity.log"
+  },
+  {
+    "id": "restore-failure-regression",
+    "cwd": "nexastays_db",
+    "command": "bash scripts/test-restore-failure.sh",
+    "exit_code": 0,
+    "seconds": 0.93,
+    "log": "restore-failure-regression.log"
+  },
+  {
+    "id": "restore-final-regression",
+    "cwd": "nexastays_db",
+    "command": "bash scripts/test-restore-failure.sh",
+    "exit_code": 0,
+    "seconds": 1.79,
+    "log": "restore-final-regression.log"
+  },
+  {
+    "id": "stays-ajv-install",
+    "cwd": "nexastays_backend/stays",
+    "command": "npm install --ignore-scripts --no-audit --no-fund",
+    "exit_code": 0,
+    "seconds": 4.36,
+    "log": "stays-ajv-install.log"
+  },
+  {
+    "id": "stays-brace-install",
+    "cwd": "nexastays_backend/stays",
+    "command": "npm install --ignore-scripts --no-audit --no-fund",
+    "exit_code": 0,
+    "seconds": 1.1,
+    "log": "stays-brace-install.log"
+  },
+  {
+    "id": "stays-build-retest",
+    "cwd": "nexastays_backend/stays",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 4.18,
+    "log": "stays-build-retest.log"
+  },
+  {
+    "id": "stays-build",
+    "cwd": "nexastays_backend/stays",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 4.55,
+    "log": "stays-build.log"
+  },
+  {
+    "id": "stays-current-tests",
+    "cwd": "nexastays_backend/stays",
+    "command": "npm test -- --runInBand --json --outputFile=/tmp/nexa-cert-20260906/stays-current-jest.json",
+    "exit_code": 0,
+    "seconds": 4.43,
+    "log": "stays-current-tests.log"
+  },
+  {
+    "id": "stays-final-audit",
+    "cwd": "nexastays_backend/stays",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.88,
+    "log": "stays-final-audit.log"
+  },
+  {
+    "id": "stays-final-lint-report",
+    "cwd": "nexastays_backend/stays",
+    "command": "./node_modules/.bin/eslint \"{src,apps,libs,test}/**/*.ts\" -f json -o /tmp/nexa-cert-20260906/stays-lint-results.json",
+    "exit_code": 1,
+    "seconds": 5.92,
+    "log": "stays-final-lint-report.log"
+  },
+  {
+    "id": "stays-lint-final",
+    "cwd": "nexastays_backend/stays",
+    "command": "./node_modules/.bin/eslint \"{src,apps,libs,test}/**/*.ts\" -f json -o /tmp/nexa-cert-20260906/stays-lint-results.json",
+    "exit_code": 1,
+    "seconds": 7.19,
+    "log": "stays-lint-final.log"
+  },
+  {
+    "id": "stays-lint-retest",
+    "cwd": "nexastays_backend/stays",
+    "command": "./node_modules/.bin/eslint \"{src,apps,libs,test}/**/*.ts\" -f json -o /tmp/nexa-cert-20260906/stays-lint-results.json",
+    "exit_code": 2,
+    "seconds": 0.19,
+    "log": "stays-lint-retest.log"
+  },
+  {
+    "id": "stays-lint",
+    "cwd": "nexastays_backend/stays",
+    "command": "./node_modules/.bin/eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "exit_code": 2,
+    "seconds": 0.13,
+    "log": "stays-lint.log"
+  },
+  {
+    "id": "stays-migrations",
+    "cwd": "nexastays_db",
+    "command": "NEXA_DATABASE_COMPOSE=/tmp/nexa-cert-20260906/compose.yml sh stays/migrate.sh",
+    "exit_code": 0,
+    "seconds": 127.38,
+    "log": "stays-migrations.log"
+  },
+  {
+    "id": "stays-npm-audit",
+    "cwd": "nexastays_backend/stays",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.97,
+    "log": "stays-npm-audit.log"
+  },
+  {
+    "id": "stays-tests-retest",
+    "cwd": "nexastays_backend/stays",
+    "command": "npm test -- --runInBand",
+    "exit_code": 0,
+    "seconds": 4.12,
+    "log": "stays-tests-retest.log"
+  },
+  {
+    "id": "stays-tests",
+    "cwd": "nexastays_backend/stays",
+    "command": "npm test -- --runInBand --json --outputFile=/tmp/nexa-cert-20260906/stays-jest.json",
+    "exit_code": 0,
+    "seconds": 6.17,
+    "log": "stays-tests.log"
+  },
+  {
+    "id": "telemetry-build",
+    "cwd": "nexastays_platform/telemetry",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 0.39,
+    "log": "telemetry-build.log"
+  },
+  {
+    "id": "telemetry-npm-audit",
+    "cwd": "nexastays_platform/telemetry",
+    "command": "npm audit --json",
+    "exit_code": 0,
+    "seconds": 0.64,
+    "log": "telemetry-npm-audit.log"
+  },
+  {
+    "id": "telemetry-tests",
+    "cwd": "nexastays_platform/telemetry",
+    "command": "npm test",
+    "exit_code": 0,
+    "seconds": 0.13,
+    "log": "telemetry-tests.log"
+  },
+  {
+    "id": "web-build-audit",
+    "cwd": "nexastays_web",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 19.16,
+    "log": "web-build-audit.log"
+  },
+  {
+    "id": "web-build",
+    "cwd": "nexastays_web",
+    "command": "npm run build",
+    "exit_code": 1,
+    "seconds": 12.09,
+    "log": "web-build.log"
+  },
+  {
+    "id": "web-final-build",
+    "cwd": "nexastays_web",
+    "command": "npm run build",
+    "exit_code": 0,
+    "seconds": 23.17,
+    "log": "web-final-build.log"
+  },
+  {
+    "id": "web-final-lint",
+    "cwd": "nexastays_web",
+    "command": "npm run lint",
+    "exit_code": 0,
+    "seconds": 2.06,
+    "log": "web-final-lint.log"
+  },
+  {
+    "id": "web-final-tests",
+    "cwd": "nexastays_web",
+    "command": "npm test",
+    "exit_code": 0,
+    "seconds": 2.06,
+    "log": "web-final-tests.log"
+  },
+  {
+    "id": "web-final-tsc",
+    "cwd": "nexastays_web",
+    "command": "./node_modules/.bin/tsc --noEmit --incremental false",
+    "exit_code": 0,
+    "seconds": 3.0,
+    "log": "web-final-tsc.log"
+  },
+  {
+    "id": "web-lint-retest",
+    "cwd": "nexastays_web",
+    "command": "npm run lint",
+    "exit_code": 0,
+    "seconds": 1.91,
+    "log": "web-lint-retest.log"
+  },
+  {
+    "id": "web-lint",
+    "cwd": "nexastays_web",
+    "command": "npm run lint",
+    "exit_code": 0,
+    "seconds": 2.03,
+    "log": "web-lint.log"
+  },
+  {
+    "id": "web-tests-retest",
+    "cwd": "nexastays_web",
+    "command": "npm test",
+    "exit_code": 0,
+    "seconds": 3.2,
+    "log": "web-tests-retest.log"
+  },
+  {
+    "id": "web-tests",
+    "cwd": "nexastays_web",
+    "command": "npm test",
+    "exit_code": 0,
+    "seconds": 2.44,
+    "log": "web-tests.log"
+  },
+  {
+    "id": "web-tsc-retest",
+    "cwd": "nexastays_web",
+    "command": "./node_modules/.bin/tsc --noEmit --incremental false",
+    "exit_code": 0,
+    "seconds": 4.15,
+    "log": "web-tsc-retest.log"
+  },
+  {
+    "id": "web-tsc",
+    "cwd": "nexastays_web",
+    "command": "./node_modules/.bin/tsc --noEmit --incremental false",
+    "exit_code": 2,
+    "seconds": 3.35,
+    "log": "web-tsc.log"
+  }
+]

@@ -43,7 +43,9 @@ describe('HostOnboardingService', () => {
     hostProfileRepo = {
       findOne: jest.fn(),
       create: jest.fn((x) => x as StaysHostProfile),
-      save: jest.fn(async (x) => ({ ...existingProfile, ...x }) as StaysHostProfile),
+      save: jest.fn(
+        async (x) => ({ ...existingProfile, ...x }) as StaysHostProfile,
+      ),
       count: jest.fn().mockResolvedValue(2),
       createQueryBuilder: jest.fn(),
     };

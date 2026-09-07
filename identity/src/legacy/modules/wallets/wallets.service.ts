@@ -281,10 +281,11 @@ export class WalletsService {
           requestPayload: body,
         },
         async (manager) => {
-          const walletAccount = await this.ledgerService.getOrCreateWalletAccount(
-            wallet.id,
-            manager,
-          );
+          const walletAccount =
+            await this.ledgerService.getOrCreateWalletAccount(
+              wallet.id,
+              manager,
+            );
           const balance = await this.ledgerService.getBalance(
             walletAccount.id,
             manager,
@@ -300,15 +301,17 @@ export class WalletsService {
           });
 
           const reference = `TOPUP-${Date.now()}`;
-          const appTransaction = await manager.getRepository(AppTransaction).save({
-            sender_user_id: null,
-            receiver_user_id: user.id,
-            amount: amount,
-            type: 'TOPUP',
-            status: 'PENDING',
-            reference,
-            idempotency_key: idempotencyKey,
-          });
+          const appTransaction = await manager
+            .getRepository(AppTransaction)
+            .save({
+              sender_user_id: null,
+              receiver_user_id: user.id,
+              amount: amount,
+              type: 'TOPUP',
+              status: 'PENDING',
+              reference,
+              idempotency_key: idempotencyKey,
+            });
 
           const emiResponse = await this.emiService.initiateTopUp(
             {
@@ -417,10 +420,11 @@ export class WalletsService {
           requestPayload,
         },
         async (manager) => {
-          const walletAccount = await this.ledgerService.getOrCreateWalletAccount(
-            wallet.id,
-            manager,
-          );
+          const walletAccount =
+            await this.ledgerService.getOrCreateWalletAccount(
+              wallet.id,
+              manager,
+            );
 
           await manager
             .getRepository(LedgerAccount)
@@ -598,8 +602,7 @@ export class WalletsService {
         {
           idempotencyKey: `wallet_transfer:${reference}`.slice(0, 128),
           reference,
-          description:
-            'Transfer from driver/courier wallet to consumer wallet',
+          description: 'Transfer from driver/courier wallet to consumer wallet',
           debitAccountId: driverAccount.id,
           creditAccountId: consumerAccount.id,
           amount,

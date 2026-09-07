@@ -8,7 +8,10 @@ import {
 } from 'typeorm';
 
 @Entity('stays_support_agent_coaching_notes')
-@Index('idx_stays_support_coaching_agent_created', ['agent_user_id', 'created_at'])
+@Index('idx_stays_support_coaching_agent_created', [
+  'agent_user_id',
+  'created_at',
+])
 export class StaysSupportAgentCoachingNote {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -31,7 +34,12 @@ export class StaysSupportAgentCoachingNote {
   @Column({ type: 'timestamptz', name: 'completed_at', nullable: true })
   completed_at: Date | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'completed_by', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'completed_by',
+    nullable: true,
+  })
   completed_by: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })

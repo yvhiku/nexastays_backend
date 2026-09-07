@@ -1,11 +1,15 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { CircuitBreaker, retryWithBackoff } from '@nexa/event-bus';
-import type { MediaStorageBackend, StoredMediaObject } from './media-storage.interface';
+import type {
+  MediaStorageBackend,
+  StoredMediaObject,
+} from './media-storage.interface';
 import { getInternalServiceKey } from '../security/secrets';
 import { normalizeRelativeMediaKey } from './media-storage-policy';
 
-const CLAIM_ROOT = process.env.MEDIA_REMOTE_CLAIM_ROOT ?? 'uploads/_remote_claims';
+const CLAIM_ROOT =
+  process.env.MEDIA_REMOTE_CLAIM_ROOT ?? 'uploads/_remote_claims';
 
 /**
  * Remote backend — delegates bytes to platform/media-service.
@@ -69,7 +73,9 @@ export class RemoteMediaStorageBackend implements MediaStorageBackend {
           const form = new FormData();
           form.append(
             'file',
-            new Blob([new Uint8Array(params.buffer)], { type: params.mimeType }),
+            new Blob([new Uint8Array(params.buffer)], {
+              type: params.mimeType,
+            }),
             filename,
           );
           form.append('ownerService', 'stays');

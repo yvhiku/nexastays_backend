@@ -1,0 +1,442 @@
+
+> @nexa/stays@0.0.1 lint:check
+> eslint "src/**/*.ts" --max-warnings 9999
+
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/cache/http-cache.interceptor.ts
+  74:11  warning  Unsafe assignment of an `any` value                                                                                                                                                              @typescript-eslint/no-unsafe-assignment
+  75:17  warning  Unsafe member access .method on an `any` value                                                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  79:31  warning  Unsafe argument of type `any` assigned to a parameter of type `{ url?: string | undefined; user?: { userId?: string | undefined; } | undefined; query?: Record<string, unknown> | undefined; }`  @typescript-eslint/no-unsafe-argument
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/decorators/current-user.decorator.ts
+  5:11  warning  Unsafe assignment of an `any` value           @typescript-eslint/no-unsafe-assignment
+  6:5   warning  Unsafe return of a value of type `any`        @typescript-eslint/no-unsafe-return
+  6:20  warning  Unsafe member access .user on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/events/domain-events.service.ts
+  36:63  warning  Invalid type "unknown" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/filters/http-exception.filter.ts
+  98:66  warning  Unsafe member access .path on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/account-type.guard.ts
+  23:11  warning  Unsafe assignment of an `any` value           @typescript-eslint/no-unsafe-assignment
+  24:33  warning  Unsafe member access .user on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/jwt-auth.guard.ts
+  22:11  warning  Unsafe assignment of an `any` value                 @typescript-eslint/no-unsafe-assignment
+  23:11  warning  Unsafe assignment of an `any` value                 @typescript-eslint/no-unsafe-assignment
+  23:32  warning  Unsafe member access .headers on an `any` value     @typescript-eslint/no-unsafe-member-access
+  33:10  warning  Unsafe call of an `any` typed value                 @typescript-eslint/no-unsafe-call
+  33:21  warning  Unsafe member access .startsWith on an `any` value  @typescript-eslint/no-unsafe-member-access
+  42:13  warning  Unsafe assignment of an `any` value                 @typescript-eslint/no-unsafe-assignment
+  43:14  warning  Unsafe member access .message on an `any` value     @typescript-eslint/no-unsafe-member-access
+  44:15  warning  Unsafe member access .name on an `any` value        @typescript-eslint/no-unsafe-member-access
+  46:18  warning  Unsafe member access .name on an `any` value        @typescript-eslint/no-unsafe-member-access
+  49:24  warning  Unsafe member access .statusCode on an `any` value  @typescript-eslint/no-unsafe-member-access
+  51:5   warning  Unsafe return of a value of type `any`              @typescript-eslint/no-unsafe-return
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/optional-jwt-auth.guard.ts
+  12:11  warning  Unsafe assignment of an `any` value              @typescript-eslint/no-unsafe-assignment
+  13:32  warning  Unsafe member access .headers on an `any` value  @typescript-eslint/no-unsafe-member-access
+  25:5   warning  Unsafe return of a value of type `any`           @typescript-eslint/no-unsafe-return
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/roles.guard.ts
+  40:11  warning  Unsafe assignment of an `any` value                                                                                           @typescript-eslint/no-unsafe-assignment
+  41:11  warning  Unsafe assignment of an `any` value                                                                                           @typescript-eslint/no-unsafe-assignment
+  41:26  warning  Unsafe member access .user on an `any` value                                                                                  @typescript-eslint/no-unsafe-member-access
+  47:32  warning  Unsafe argument of type `any` assigned to a parameter of type `{ roles?: string[] | undefined; role?: string | undefined; }`  @typescript-eslint/no-unsafe-argument
+  59:58  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                        @typescript-eslint/no-unsafe-argument
+  59:63  warning  Unsafe member access .userId on an `any` value                                                                                @typescript-eslint/no-unsafe-member-access
+  63:40  warning  Unsafe member access .authz_version on an `any` value                                                                         @typescript-eslint/no-unsafe-member-access
+  63:62  warning  Unsafe member access .av on an `any` value                                                                                    @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/guards/throttler-key.guard.ts
+  11:11  warning  Unsafe assignment of an `any` value                                                                                                                                                                                                                                                                                @typescript-eslint/no-unsafe-assignment
+  12:11  warning  Unsafe assignment of an `any` value                                                                                                                                                                                                                                                                                @typescript-eslint/no-unsafe-assignment
+  12:18  warning  Unsafe call of an `any` typed value                                                                                                                                                                                                                                                                                @typescript-eslint/no-unsafe-call
+  12:27  warning  Unsafe member access .url on an `any` value                                                                                                                                                                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  12:42  warning  Unsafe member access .path on an `any` value                                                                                                                                                                                                                                                                       @typescript-eslint/no-unsafe-member-access
+  12:54  warning  Unsafe member access .split on an `any` value                                                                                                                                                                                                                                                                      @typescript-eslint/no-unsafe-member-access
+  12:65  warning  Unsafe member access [0] on an `any` value                                                                                                                                                                                                                                                                         @typescript-eslint/no-unsafe-member-access
+  13:9   warning  Unsafe call of an `any` typed value                                                                                                                                                                                                                                                                                @typescript-eslint/no-unsafe-call
+  13:14  warning  Unsafe member access .includes on an `any` value                                                                                                                                                                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  13:47  warning  Unsafe member access .method on an `any` value                                                                                                                                                                                                                                                                     @typescript-eslint/no-unsafe-member-access
+  14:9   warning  Unsafe call of an `any` typed value                                                                                                                                                                                                                                                                                @typescript-eslint/no-unsafe-call
+  14:14  warning  Unsafe member access .includes on an `any` value                                                                                                                                                                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  14:62  warning  Unsafe member access .method on an `any` value                                                                                                                                                                                                                                                                     @typescript-eslint/no-unsafe-member-access
+  21:25  warning  Unsafe argument of type `any` assigned to a parameter of type `{ ip?: string | undefined; headers?: Record<string, string | string[] | undefined> | undefined; socket?: { remoteAddress?: string | undefined; } | undefined; method?: string | undefined; url?: string | undefined; path?: string | undefined; }`  @typescript-eslint/no-unsafe-argument
+  27:3   warning  Async method 'getTracker' has no 'await' expression                                                                                                                                                                                                                                                                @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/media/local-media-storage.ts
+  49:3  warning  Async method 'resolveDelivery' has no 'await' expression  @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/media/s3-media-storage.ts
+  15:3   warning  Async method 'getClient' has no 'await' expression        @typescript-eslint/require-await
+  26:13  warning  Unsafe assignment of an `any` value                       @typescript-eslint/no-unsafe-assignment
+  27:21  warning  Unsafe construction of an `any` typed value               @typescript-eslint/no-unsafe-call
+  57:11  warning  Unsafe assignment of an `any` value                       @typescript-eslint/no-unsafe-assignment
+  59:7   warning  Unsafe construction of an `any` typed value               @typescript-eslint/no-unsafe-call
+  74:3   warning  Async method 'exists' has no 'await' expression           @typescript-eslint/require-await
+  79:3   warning  Async method 'resolveDelivery' has no 'await' expression  @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/metrics/metrics.interceptor.ts
+  16:11  warning  Unsafe assignment of an `any` value                 @typescript-eslint/no-unsafe-assignment
+  21:28  warning  Unsafe member access .statusCode on an `any` value  @typescript-eslint/no-unsafe-member-access
+  26:28  warning  Unsafe member access .statusCode on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/security/outbound-url.ts
+  75:7  warning  Unsafe spread of an `any` value in an array  @typescript-eslint/no-unsafe-assignment
+  85:5  warning  Unsafe return of a value of type `any[]`     @typescript-eslint/no-unsafe-return
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/admin/admin-stays.service.ts
+  159:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  160:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  161:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  169:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  170:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  171:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  184:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  185:7   warning  Unsafe array destructuring of a tuple element with an `any` value                       @typescript-eslint/no-unsafe-assignment
+  409:44  warning  Unsafe member access .avg on an `any` value                                             @typescript-eslint/no-unsafe-member-access
+  421:38  warning  Unsafe member access .count on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  459:11  warning  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  459:44  warning  Unsafe member access .avg on an `any` value                                             @typescript-eslint/no-unsafe-member-access
+  460:11  warning  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  460:40  warning  Unsafe member access .avg on an `any` value                                             @typescript-eslint/no-unsafe-member-access
+  462:54  warning  Unsafe member access .waiting_since on an `any` value                                   @typescript-eslint/no-unsafe-member-access
+  463:18  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+  463:42  warning  Unsafe member access .waiting_since on an `any` value                                   @typescript-eslint/no-unsafe-member-access
+  465:48  warning  Unsafe member access .waiting_since on an `any` value                                   @typescript-eslint/no-unsafe-member-access
+  466:18  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+  466:39  warning  Unsafe member access .waiting_since on an `any` value                                   @typescript-eslint/no-unsafe-member-access
+  481:47  warning  Unsafe member access .total on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  482:47  warning  Unsafe member access .total on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  610:11  warning  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  618:11  warning  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  630:11  warning  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  650:40  warning  Unsafe member access .total on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  651:45  warning  Unsafe member access .total on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  652:55  warning  Unsafe member access .total on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/entities/stays-conversation.entity.ts
+  170:19  warning  "SUPPORT" | "AUTO" | "MANUAL" | "DISPUTE" | "SPAM" | "MERGED" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/message-payload.mapper.ts
+  60:20  warning  'meta.kind ?? type.replace(/_CARD$/, '').toLowerCase()' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  61:21  warning  'meta.title ?? body ?? ''' will use Object's default stringification format ('[object Object]') when stringified                               @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/message-preview.util.ts
+  5:9  warning  "VIDEO" | "SYSTEM" | "TEXT" | "SYSTEM_EVENT" | "SYSTEM_NOTICE" | "SYSTEM_INTERNAL" | "PROPERTY_CARD" | "BOOKING_CARD" | "CHECKIN_CARD" | "WIFI_CARD" | "LOCATION_CARD" | "REVIEW_CARD" | "PAYMENT_CARD" | "IMAGE" | "FILE" | "VOICE" | "LOCATION" | "CARD" | "CUSTOM" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/messaging-state.service.ts
+  150:13  warning  "SUPPORT" | "AUTO" | "MANUAL" | "DISPUTE" | "SPAM" | "MERGED" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/outbox.worker.ts
+  100:11  warning  Unsafe assignment of an `any` value  @typescript-eslint/no-unsafe-assignment
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/messaging/rate-limit.service.ts
+  23:3  warning  Async method 'assertCanSend' has no 'await' expression  @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/seo/seo-freshness-engine.service.ts
+  166:7  warning  Unsafe assignment of an `any` value  @typescript-eslint/no-unsafe-assignment
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/seo/seo-geo-monitoring.service.ts
+  14:3  warning  Async method 'logRequest' has no 'await' expression  @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/dto/search-listings.dto.ts
+  63:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/explore/explore.service.ts
+  826:3  warning  Async method 'safeCacheGet' has no 'await' expression  @typescript-eslint/require-await
+  836:3  warning  Async method 'safeCacheSet' has no 'await' expression  @typescript-eslint/require-await
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/hosts/host-onboarding.service.ts
+  399:11  warning  Unsafe assignment of an `any` value         @typescript-eslint/no-unsafe-assignment
+  403:31  warning  Unsafe member access [0] on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/payments/cmi-payment.provider.ts
+  148:24  warning  'body.oid ?? body.OID ?? ''' will use Object's default stringification format ('[object Object]') when stringified                        @typescript-eslint/no-base-to-string
+  149:27  warning  'body.amount ?? ''' will use Object's default stringification format ('[object Object]') when stringified                                 @typescript-eslint/no-base-to-string
+  151:7   warning  'body.ProcReturnCode ?? body.procReturnCode ?? ''' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  153:36  warning  'body.HASH ?? body.hash ?? ''' will use Object's default stringification format ('[object Object]') when stringified                      @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/calendar-sync.service.ts
+  684:42  warning  'vevent.summary' may use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/host-analytics.service.ts
+  125:60  warning  Invalid type "never" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/host-bookings-list.service.ts
+  322:9  warning  'this.rawField(raw, 'guest_sort_name') ?? ''' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/services/host-listings.service.ts
+  429:75  warning  'v' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/utils/csv.util.ts
+  5:30  warning  'value' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/dto/support-ticket.dto.ts
+  218:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  234:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  245:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  354:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  401:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/operational-intelligence.service.ts
+   754:11  warning  Unsafe assignment of an `any` value                                                                                                                                                                                                                                                                            @typescript-eslint/no-unsafe-assignment
+   805:11  warning  Unsafe assignment of an `any` value                                                                                                                                                                                                                                                                            @typescript-eslint/no-unsafe-assignment
+   815:37  warning  Unsafe member access .active_tickets on an `any` value                                                                                                                                                                                                                                                         @typescript-eslint/no-unsafe-member-access
+   816:35  warning  Unsafe member access .open_tickets on an `any` value                                                                                                                                                                                                                                                           @typescript-eslint/no-unsafe-member-access
+   817:41  warning  Unsafe member access .in_progress_tickets on an `any` value                                                                                                                                                                                                                                                    @typescript-eslint/no-unsafe-member-access
+   818:38  warning  Unsafe member access .waiting_tickets on an `any` value                                                                                                                                                                                                                                                        @typescript-eslint/no-unsafe-member-access
+   819:40  warning  Unsafe member access .escalated_tickets on an `any` value                                                                                                                                                                                                                                                      @typescript-eslint/no-unsafe-member-access
+   820:41  warning  Unsafe member access .unassigned_tickets on an `any` value                                                                                                                                                                                                                                                     @typescript-eslint/no-unsafe-member-access
+   821:43  warning  Unsafe member access .high_priority_tickets on an `any` value                                                                                                                                                                                                                                                  @typescript-eslint/no-unsafe-member-access
+   822:46  warning  Unsafe member access .high_priority_unassigned on an `any` value                                                                                                                                                                                                                                               @typescript-eslint/no-unsafe-member-access
+   823:37  warning  Unsafe member access .urgent_tickets on an `any` value                                                                                                                                                                                                                                                         @typescript-eslint/no-unsafe-member-access
+   824:34  warning  Unsafe member access .sla_on_track on an `any` value                                                                                                                                                                                                                                                           @typescript-eslint/no-unsafe-member-access
+   825:33  warning  Unsafe member access .sla_at_risk on an `any` value                                                                                                                                                                                                                                                            @typescript-eslint/no-unsafe-member-access
+   826:35  warning  Unsafe member access .sla_breached on an `any` value                                                                                                                                                                                                                                                           @typescript-eslint/no-unsafe-member-access
+   827:43  warning  Unsafe member access .active_signals on an `any` value                                                                                                                                                                                                                                                         @typescript-eslint/no-unsafe-member-access
+   828:49  warning  Unsafe member access .acknowledged_signals on an `any` value                                                                                                                                                                                                                                                   @typescript-eslint/no-unsafe-member-access
+   882:11  warning  Unsafe assignment of an `any` value                                                                                                                                                                                                                                                                            @typescript-eslint/no-unsafe-assignment
+   886:11  warning  Unsafe assignment of an `any` value                                                                                                                                                                                                                                                                            @typescript-eslint/no-unsafe-assignment
+   924:36  warning  Unsafe member access .total on an `any` value                                                                                                                                                                                                                                                                  @typescript-eslint/no-unsafe-member-access
+   977:11  warning  Unsafe assignment of an `any` value                                                                                                                                                                                                                                                                            @typescript-eslint/no-unsafe-assignment
+   999:7   warning  Unsafe argument of type `any` assigned to a parameter of type `Iterable<readonly [unknown, unknown]> | null | undefined`                                                                                                                                                                                       @typescript-eslint/no-unsafe-argument
+   999:7   warning  Unsafe call of an `any` typed value                                                                                                                                                                                                                                                                            @typescript-eslint/no-unsafe-call
+   999:18  warning  Unsafe member access .map on an `any` value                                                                                                                                                                                                                                                                    @typescript-eslint/no-unsafe-member-access
+   999:31  warning  Unsafe return of a value of type `any[]`                                                                                                                                                                                                                                                                       @typescript-eslint/no-unsafe-return
+  1000:13  warning  Unsafe member access .agent_id on an `any` value                                                                                                                                                                                                                                                               @typescript-eslint/no-unsafe-member-access
+  1002:35  warning  Unsafe member access .review_count on an `any` value                                                                                                                                                                                                                                                           @typescript-eslint/no-unsafe-member-access
+  1004:17  warning  Unsafe member access .average_agent_rating on an `any` value                                                                                                                                                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  1006:28  warning  Unsafe member access .average_agent_rating on an `any` value                                                                                                                                                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  1008:27  warning  Unsafe member access .r1 on an `any` value                                                                                                                                                                                                                                                                     @typescript-eslint/no-unsafe-member-access
+  1009:27  warning  Unsafe member access .r2 on an `any` value                                                                                                                                                                                                                                                                     @typescript-eslint/no-unsafe-member-access
+  1010:27  warning  Unsafe member access .r3 on an `any` value                                                                                                                                                                                                                                                                     @typescript-eslint/no-unsafe-member-access
+  1011:27  warning  Unsafe member access .r4 on an `any` value                                                                                                                                                                                                                                                                     @typescript-eslint/no-unsafe-member-access
+  1012:27  warning  Unsafe member access .r5 on an `any` value                                                                                                                                                                                                                                                                     @typescript-eslint/no-unsafe-member-access
+  1038:18  warning  Unsafe argument of type error typed assigned to a parameter of type `{ agentId: string; assigned: number; open: number; inProgress: number; waiting: number; waitingForCustomer: number; waitingForHost: number; escalated: number; atRisk: number; breached: number; oldestActiveTicketAt: string | null; }`  @typescript-eslint/no-unsafe-argument
+  1087:11  warning  Unsafe assignment of an `any` value                                                                                                                                                                                                                                                                            @typescript-eslint/no-unsafe-assignment
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/operational-signals.constants.ts
+  122:38   warning  'metadata.averageAgentRating ?? '—'' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  122:38   warning  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  124:37   warning  'metadata.problemSolvedRate ?? '—'' will use Object's default stringification format ('[object Object]') when stringified   @typescript-eslint/no-base-to-string
+  124:37   warning  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  126:48   warning  'metadata.recentSla ?? '—'' will use Object's default stringification format ('[object Object]') when stringified           @typescript-eslint/no-base-to-string
+  126:48   warning  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  126:82   warning  'metadata.baselineSla ?? '—'' will use Object's default stringification format ('[object Object]') when stringified         @typescript-eslint/no-base-to-string
+  126:82   warning  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  128:33   warning  'metadata.category ?? 'category'' will use Object's default stringification format ('[object Object]') when stringified     @typescript-eslint/no-base-to-string
+  128:33   warning  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  128:80   warning  'metadata.solvedRate ?? '—'' will use Object's default stringification format ('[object Object]') when stringified          @typescript-eslint/no-base-to-string
+  128:80   warning  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+  128:115  warning  'metadata.previousSolvedRate ?? '—'' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  128:115  warning  Invalid type "{}" of template literal expression                                                                            @typescript-eslint/restrict-template-expressions
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/support-performance.service.ts
+  329:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  348:5   warning  Unsafe return of a value of type `any`                                                                                    @typescript-eslint/no-unsafe-return
+  348:12  warning  Unsafe call of an `any` typed value                                                                                       @typescript-eslint/no-unsafe-call
+  348:17  warning  Unsafe member access .map on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  349:7   warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  349:21  warning  Unsafe member access .ticket_id on an `any` value                                                                         @typescript-eslint/no-unsafe-member-access
+  350:7   warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  350:21  warning  Unsafe member access .category on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  351:24  warning  Unsafe member access .agent_rating on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  351:65  warning  Unsafe member access .agent_rating on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  352:7   warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  352:26  warning  Unsafe member access .problem_solved on an `any` value                                                                    @typescript-eslint/no-unsafe-member-access
+  353:7   warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  353:20  warning  Unsafe member access .comment on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+  354:7   warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  355:13  warning  Unsafe member access .submitted_at on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  356:13  warning  Unsafe call of an `any` typed value                                                                                       @typescript-eslint/no-unsafe-call
+  356:17  warning  Unsafe member access .submitted_at on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  357:24  warning  Unsafe member access .submitted_at on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  362:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  372:5   warning  Unsafe return of a value of type `any`                                                                                    @typescript-eslint/no-unsafe-return
+  372:17  warning  Unsafe member access [0] on an `any` value                                                                                @typescript-eslint/no-unsafe-member-access
+  392:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  405:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  437:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  451:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  472:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  497:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  530:12  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                    @typescript-eslint/no-unsafe-argument
+  530:16  warning  Unsafe member access .agent_id on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  530:53  warning  Unsafe member access .assigned_count on an `any` value                                                                    @typescript-eslint/no-unsafe-member-access
+  533:28  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                    @typescript-eslint/no-unsafe-argument
+  533:32  warning  Unsafe member access .agent_id on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  534:42  warning  Unsafe member access .tickets_closed on an `any` value                                                                    @typescript-eslint/no-unsafe-member-access
+  535:44  warning  Unsafe member access .tickets_reopened on an `any` value                                                                  @typescript-eslint/no-unsafe-member-access
+  540:49  warning  Unsafe member access .matured_closed on an `any` value                                                                    @typescript-eslint/no-unsafe-member-access
+  541:51  warning  Unsafe member access .matured_reopened on an `any` value                                                                  @typescript-eslint/no-unsafe-member-access
+  548:12  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                    @typescript-eslint/no-unsafe-argument
+  548:16  warning  Unsafe member access .agent_id on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  549:13  warning  Unsafe member access .follow_up_count on an `any` value                                                                   @typescript-eslint/no-unsafe-member-access
+  553:28  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                    @typescript-eslint/no-unsafe-argument
+  553:32  warning  Unsafe member access .agent_id on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  554:47  warning  Unsafe member access .sample_count on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  555:48  warning  Unsafe member access .sla_met on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+  556:53  warning  Unsafe member access .sla_breached on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  562:13  warning  Unsafe member access .avg_seconds on an `any` value                                                                       @typescript-eslint/no-unsafe-member-access
+  562:53  warning  Unsafe member access .avg_seconds on an `any` value                                                                       @typescript-eslint/no-unsafe-member-access
+  565:28  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                    @typescript-eslint/no-unsafe-argument
+  565:32  warning  Unsafe member access .agent_id on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  566:44  warning  Unsafe member access .sample_count on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  567:45  warning  Unsafe member access .sla_met on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+  568:50  warning  Unsafe member access .sla_breached on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  574:13  warning  Unsafe member access .avg_seconds on an `any` value                                                                       @typescript-eslint/no-unsafe-member-access
+  574:53  warning  Unsafe member access .avg_seconds on an `any` value                                                                       @typescript-eslint/no-unsafe-member-access
+  577:28  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                    @typescript-eslint/no-unsafe-argument
+  577:32  warning  Unsafe member access .agent_id on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  578:34  warning  Unsafe member access .review_count on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  581:13  warning  Unsafe member access .average_overall_rating on an `any` value                                                            @typescript-eslint/no-unsafe-member-access
+  583:24  warning  Unsafe member access .average_overall_rating on an `any` value                                                            @typescript-eslint/no-unsafe-member-access
+  585:13  warning  Unsafe member access .average_agent_rating on an `any` value                                                              @typescript-eslint/no-unsafe-member-access
+  587:24  warning  Unsafe member access .average_agent_rating on an `any` value                                                              @typescript-eslint/no-unsafe-member-access
+  588:47  warning  Unsafe member access .solved_count on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  589:50  warning  Unsafe member access .unsolved_count on an `any` value                                                                    @typescript-eslint/no-unsafe-member-access
+  593:23  warning  Unsafe member access .r1 on an `any` value                                                                                @typescript-eslint/no-unsafe-member-access
+  594:23  warning  Unsafe member access .r2 on an `any` value                                                                                @typescript-eslint/no-unsafe-member-access
+  595:23  warning  Unsafe member access .r3 on an `any` value                                                                                @typescript-eslint/no-unsafe-member-access
+  596:23  warning  Unsafe member access .r4 on an `any` value                                                                                @typescript-eslint/no-unsafe-member-access
+  597:23  warning  Unsafe member access .r5 on an `any` value                                                                                @typescript-eslint/no-unsafe-member-access
+  612:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  635:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  658:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  696:7   warning  Unsafe spread of an `any` value in an array                                                                               @typescript-eslint/no-unsafe-assignment
+  696:10  warning  Unsafe call of an `any` typed value                                                                                       @typescript-eslint/no-unsafe-call
+  696:15  warning  Unsafe member access .map on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  696:28  warning  Unsafe return of a value of type `any`                                                                                    @typescript-eslint/no-unsafe-return
+  696:32  warning  Unsafe member access .category on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  697:7   warning  Unsafe spread of an `any` value in an array                                                                               @typescript-eslint/no-unsafe-assignment
+  697:10  warning  Unsafe call of an `any` typed value                                                                                       @typescript-eslint/no-unsafe-call
+  697:17  warning  Unsafe member access .map on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  697:30  warning  Unsafe return of a value of type `any`                                                                                    @typescript-eslint/no-unsafe-return
+  697:34  warning  Unsafe member access .category on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  698:7   warning  Unsafe spread of an `any` value in an array                                                                               @typescript-eslint/no-unsafe-assignment
+  698:10  warning  Unsafe call of an `any` typed value                                                                                       @typescript-eslint/no-unsafe-call
+  698:14  warning  Unsafe member access .map on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  698:27  warning  Unsafe return of a value of type `any`                                                                                    @typescript-eslint/no-unsafe-return
+  698:31  warning  Unsafe member access .category on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  700:28  warning  Unsafe argument of type `any` assigned to a parameter of type `Iterable<readonly [unknown, unknown]> | null | undefined`  @typescript-eslint/no-unsafe-argument
+  700:28  warning  Unsafe call of an `any` typed value                                                                                       @typescript-eslint/no-unsafe-call
+  700:33  warning  Unsafe member access .map on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  700:46  warning  Unsafe return of a value of type `any[]`                                                                                  @typescript-eslint/no-unsafe-return
+  700:51  warning  Unsafe member access .category on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  701:27  warning  Unsafe argument of type `any` assigned to a parameter of type `Iterable<readonly [unknown, unknown]> | null | undefined`  @typescript-eslint/no-unsafe-argument
+  701:27  warning  Unsafe call of an `any` typed value                                                                                       @typescript-eslint/no-unsafe-call
+  701:34  warning  Unsafe member access .map on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  701:47  warning  Unsafe return of a value of type `any[]`                                                                                  @typescript-eslint/no-unsafe-return
+  701:52  warning  Unsafe member access .category on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  702:27  warning  Unsafe argument of type `any` assigned to a parameter of type `Iterable<readonly [unknown, unknown]> | null | undefined`  @typescript-eslint/no-unsafe-argument
+  702:27  warning  Unsafe call of an `any` typed value                                                                                       @typescript-eslint/no-unsafe-call
+  702:31  warning  Unsafe member access .map on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  702:44  warning  Unsafe return of a value of type `any[]`                                                                                  @typescript-eslint/no-unsafe-return
+  702:49  warning  Unsafe member access .category on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  711:9   warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  740:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  784:5   warning  Unsafe return of a value of type `any`                                                                                    @typescript-eslint/no-unsafe-return
+  784:12  warning  Unsafe call of an `any` typed value                                                                                       @typescript-eslint/no-unsafe-call
+  784:17  warning  Unsafe member access .map on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  785:34  warning  Unsafe member access .review_count on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  786:34  warning  Unsafe member access .fr_count on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  787:35  warning  Unsafe member access .res_count on an `any` value                                                                         @typescript-eslint/no-unsafe-member-access
+  789:9   warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  789:23  warning  Unsafe member access .language on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  790:34  warning  Unsafe member access .ticket_volume on an `any` value                                                                     @typescript-eslint/no-unsafe-member-access
+  793:15  warning  Unsafe member access .average_overall_rating on an `any` value                                                            @typescript-eslint/no-unsafe-member-access
+  795:26  warning  Unsafe member access .average_overall_rating on an `any` value                                                            @typescript-eslint/no-unsafe-member-access
+  797:36  warning  Unsafe member access .solved_count on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  799:36  warning  Unsafe member access .fr_met on an `any` value                                                                            @typescript-eslint/no-unsafe-member-access
+  801:37  warning  Unsafe member access .res_met on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+  810:11  warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  830:5   warning  Unsafe return of a value of type `any`                                                                                    @typescript-eslint/no-unsafe-return
+  830:12  warning  Unsafe call of an `any` typed value                                                                                       @typescript-eslint/no-unsafe-call
+  830:17  warning  Unsafe member access .map on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  831:35  warning  Unsafe member access .reviewed_count on an `any` value                                                                    @typescript-eslint/no-unsafe-member-access
+  833:9   warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  833:22  warning  Unsafe member access .reply_id on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  834:9   warning  Unsafe assignment of an `any` value                                                                                       @typescript-eslint/no-unsafe-assignment
+  834:20  warning  Unsafe member access .title on an `any` value                                                                             @typescript-eslint/no-unsafe-member-access
+  835:32  warning  Unsafe member access .usage_count on an `any` value                                                                       @typescript-eslint/no-unsafe-member-access
+  838:37  warning  Unsafe member access .solved_count on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  840:15  warning  Unsafe member access .average_overall_rating on an `any` value                                                            @typescript-eslint/no-unsafe-member-access
+  842:26  warning  Unsafe member access .average_overall_rating on an `any` value                                                            @typescript-eslint/no-unsafe-member-access
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/support-routing.config.ts
+  122:13  warning  "HOST" | "LISTING" | "BOOKING" | "OTHER" | "GUEST" | "PAYMENT" | "REFUND" | "CANCELLATION" | "KYC" | "TECHNICAL" | "FRAUD" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/support/support-tickets.service.ts
+   851:57  warning  Unsafe argument of type `any` assigned to a parameter of type `Record<string, unknown>`                                              @typescript-eslint/no-unsafe-argument
+   985:43  warning  Unsafe array destructuring of a tuple element with an `any` value                                                                    @typescript-eslint/no-unsafe-assignment
+  1016:7   warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  1332:7   warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  1337:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  1346:5   warning  Unsafe return of a value of type `any`                                                                                               @typescript-eslint/no-unsafe-return
+  1346:12  warning  Unsafe call of an `any` typed value                                                                                                  @typescript-eslint/no-unsafe-call
+  1346:17  warning  Unsafe member access .map on an `any` value                                                                                          @typescript-eslint/no-unsafe-member-access
+  1347:7   warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  1347:21  warning  Unsafe member access .viewer_id on an `any` value                                                                                    @typescript-eslint/no-unsafe-member-access
+  1348:7   warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  1349:13  warning  Unsafe member access .last_seen_at on an `any` value                                                                                 @typescript-eslint/no-unsafe-member-access
+  1350:13  warning  Unsafe call of an `any` typed value                                                                                                  @typescript-eslint/no-unsafe-call
+  1350:17  warning  Unsafe member access .last_seen_at on an `any` value                                                                                 @typescript-eslint/no-unsafe-member-access
+  1351:24  warning  Unsafe member access .last_seen_at on an `any` value                                                                                 @typescript-eslint/no-unsafe-member-access
+  1352:7   warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  1353:13  warning  Unsafe member access .expires_at on an `any` value                                                                                   @typescript-eslint/no-unsafe-member-access
+  1354:13  warning  Unsafe call of an `any` typed value                                                                                                  @typescript-eslint/no-unsafe-call
+  1354:17  warning  Unsafe member access .expires_at on an `any` value                                                                                   @typescript-eslint/no-unsafe-member-access
+  1355:24  warning  Unsafe member access .expires_at on an `any` value                                                                                   @typescript-eslint/no-unsafe-member-access
+  1356:7   warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  1356:27  warning  Unsafe member access .last_activity_at on an `any` value                                                                             @typescript-eslint/no-unsafe-member-access
+  1357:15  warning  Unsafe member access .last_activity_at on an `any` value                                                                             @typescript-eslint/no-unsafe-member-access
+  1358:13  warning  Unsafe call of an `any` typed value                                                                                                  @typescript-eslint/no-unsafe-call
+  1358:17  warning  Unsafe member access .last_activity_at on an `any` value                                                                             @typescript-eslint/no-unsafe-member-access
+  1359:24  warning  Unsafe member access .last_activity_at on an `any` value                                                                             @typescript-eslint/no-unsafe-member-access
+  1361:26  warning  Unsafe member access .activity_state on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  1734:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  1738:38  warning  Unsafe member access [0] on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  1954:25  warning  'row.ticket_id ?? row.ticketId ?? ''' will use Object's default stringification format ('[object Object]') when stringified          @typescript-eslint/no-base-to-string
+  1955:29  warning  'row.ticket_number ?? row.ticketNumber ?? ''' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  1956:22  warning  'row.status ?? ''' will use Object's default stringification format ('[object Object]') when stringified                             @typescript-eslint/no-base-to-string
+  1971:20  warning  'submitted ?? ''' will use Object's default stringification format ('[object Object]') when stringified                              @typescript-eslint/no-base-to-string
+  1975:20  warning  'reviewAgentId' will use Object's default stringification format ('[object Object]') when stringified                                @typescript-eslint/no-base-to-string
+  1979:20  warning  'reviewAgentName' will use Object's default stringification format ('[object Object]') when stringified                              @typescript-eslint/no-base-to-string
+  1980:67  warning  'agentId' will use Object's default stringification format ('[object Object]') when stringified                                      @typescript-eslint/no-base-to-string
+  2273:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2305:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2340:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2358:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2370:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2382:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2394:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  2430:34  warning  Unsafe member access .created on an `any` value                                                                                      @typescript-eslint/no-unsafe-member-access
+  2431:31  warning  Unsafe member access .open on an `any` value                                                                                         @typescript-eslint/no-unsafe-member-access
+  2432:35  warning  Unsafe member access .resolved on an `any` value                                                                                     @typescript-eslint/no-unsafe-member-access
+  2433:33  warning  Unsafe member access .closed on an `any` value                                                                                       @typescript-eslint/no-unsafe-member-access
+  2434:36  warning  Unsafe member access .escalated on an `any` value                                                                                    @typescript-eslint/no-unsafe-member-access
+  2437:51  warning  Unsafe member access .avg_first_response_seconds on an `any` value                                                                   @typescript-eslint/no-unsafe-member-access
+  2438:50  warning  Unsafe member access .median_first_response_seconds on an `any` value                                                                @typescript-eslint/no-unsafe-member-access
+  2441:38  warning  Unsafe member access .avg_first_resolution_seconds on an `any` value                                                                 @typescript-eslint/no-unsafe-member-access
+  2442:37  warning  Unsafe member access .median_first_resolution_seconds on an `any` value                                                              @typescript-eslint/no-unsafe-member-access
+  2445:38  warning  Unsafe member access .avg_closure_seconds on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  2446:37  warning  Unsafe member access .median_closure_seconds on an `any` value                                                                       @typescript-eslint/no-unsafe-member-access
+  2453:33  warning  Unsafe member access .responses on an `any` value                                                                                    @typescript-eslint/no-unsafe-member-access
+  2454:34  warning  Unsafe member access .average_rating on an `any` value                                                                               @typescript-eslint/no-unsafe-member-access
+  2456:29  warning  Unsafe member access .r1 on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  2457:29  warning  Unsafe member access .r2 on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  2458:29  warning  Unsafe member access .r3 on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  2459:29  warning  Unsafe member access .r4 on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  2460:29  warning  Unsafe member access .r5 on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+  2473:35  warning  Unsafe member access .assigned on an `any` value                                                                                     @typescript-eslint/no-unsafe-member-access
+  2474:37  warning  Unsafe member access .unassigned on an `any` value                                                                                   @typescript-eslint/no-unsafe-member-access
+  3056:11  warning  Unsafe assignment of an `any` value                                                                                                  @typescript-eslint/no-unsafe-assignment
+  3060:35  warning  Unsafe member access [0] on an `any` value                                                                                           @typescript-eslint/no-unsafe-member-access
+
+✖ 361 problems (0 errors, 361 warnings)
+

@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
@@ -144,10 +141,7 @@ export class HostsService {
     const ext = this.getExtension(detected);
     const dir = path.join(HOST_UPLOAD_DIR, userId);
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(
-      path.join(dir, `selfie_${assetId}${ext}`),
-      file!.buffer,
-    );
+    await fs.writeFile(path.join(dir, `selfie_${assetId}${ext}`), file!.buffer);
     return { asset_id: assetId };
   }
 }

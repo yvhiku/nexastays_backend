@@ -37,7 +37,10 @@ export function assertDemoOtpForbiddenInProduction(
 }
 
 function isLoopbackHostname(hostname: string): boolean {
-  const h = hostname.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  const h = hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '');
   return h === 'localhost' || h === '127.0.0.1' || h === '::1';
 }
 
@@ -111,7 +114,9 @@ export function assertNoLoopbackProductionServiceUrls(
 export type SumsubMode = 'sandbox' | 'live';
 
 /** Explicit Sumsub environment — sandbox for dogfood/dev; live required for real production. */
-export function getSumsubMode(env: NodeJS.ProcessEnv = process.env): SumsubMode {
+export function getSumsubMode(
+  env: NodeJS.ProcessEnv = process.env,
+): SumsubMode {
   const raw = (env.SUMSUB_MODE ?? '').trim().toLowerCase();
   if (raw === 'live' || raw === 'sandbox') return raw;
   const stage = resolveNexaStage(env);

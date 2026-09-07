@@ -1,4 +1,9 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+} from 'typeorm';
 
 export type OutboxStatus = 'PENDING' | 'PROCESSING' | 'DONE' | 'FAILED';
 
@@ -19,7 +24,11 @@ export class StaysMessagingOutbox {
   @Column({ type: 'int', default: 0 })
   attempts: number;
 
-  @Column({ type: 'timestamptz', name: 'next_retry_at', default: () => 'NOW()' })
+  @Column({
+    type: 'timestamptz',
+    name: 'next_retry_at',
+    default: () => 'NOW()',
+  })
   next_retry_at: Date;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })

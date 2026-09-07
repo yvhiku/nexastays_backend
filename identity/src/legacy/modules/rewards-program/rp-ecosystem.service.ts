@@ -25,9 +25,7 @@ export class RpEcosystemService {
       order: { id: 'ASC' },
     });
     return rows
-      .filter(
-        (r) => !r.valid_until || new Date(r.valid_until) >= now,
-      )
+      .filter((r) => !r.valid_until || new Date(r.valid_until) >= now)
       .map((r) => ({
         id: r.id,
         brand: r.brand,

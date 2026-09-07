@@ -26,15 +26,18 @@ export function isTwilioConfigured(
 ): boolean {
   return Boolean(
     env.TWILIO_ACCOUNT_SID?.trim() &&
-      env.TWILIO_AUTH_TOKEN?.trim() &&
-      env.TWILIO_PHONE_NUMBER?.trim(),
+    env.TWILIO_AUTH_TOKEN?.trim() &&
+    env.TWILIO_PHONE_NUMBER?.trim(),
   );
 }
 
 export function getEnvoiSmsBaseUrl(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  return (env.ENVOISMS_BASE_URL || 'https://api.envoisms.ma').replace(/\/$/, '');
+  return (env.ENVOISMS_BASE_URL || 'https://api.envoisms.ma').replace(
+    /\/$/,
+    '',
+  );
 }
 
 export function getEnvoiSmsFrom(
@@ -52,7 +55,10 @@ export function assertProductionSmsConfigured(
   env: NodeJS.ProcessEnv = process.env,
 ): void {
   if (env.NODE_ENV !== 'production') return;
-  if (env.NEXA_ENV === 'dogfood' && /^\d{6}$/.test((env.DEMO_OTP_CODE ?? '').trim())) {
+  if (
+    env.NEXA_ENV === 'dogfood' &&
+    /^\d{6}$/.test((env.DEMO_OTP_CODE ?? '').trim())
+  ) {
     return;
   }
   const provider = resolveSmsProvider(env);

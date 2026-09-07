@@ -10,7 +10,10 @@ import { Repository, Brackets, In } from 'typeorm';
 import { StaysConversation } from './entities/stays-conversation.entity';
 import { StaysMessage } from './entities/stays-message.entity';
 import { StaysBooking } from '../stays/entities/stays-booking.entity';
-import { formatInboxPreview, resolveInboxSenderLabel } from './message-preview.util';
+import {
+  formatInboxPreview,
+  resolveInboxSenderLabel,
+} from './message-preview.util';
 import { MessagingPermissionsService } from './permissions.service';
 import { MessagesService } from './messages.service';
 import { MessagingAuditService } from './audit.service';
@@ -58,23 +61,21 @@ export class ConversationsService {
   ): Promise<ConversationListResponse[]> {
     await this.repair.repairForUser(userId);
 
-    const qb = this.convRepo
-      .createQueryBuilder('c')
-      .where(
-        new Brackets((w) => {
-          w.where('c.guest_user_id = :uid', { uid: userId }).orWhere(
-            'c.host_user_id = :uid',
-            { uid: userId },
-          );
-        }),
-      );
+    const qb = this.convRepo.createQueryBuilder('c').where(
+      new Brackets((w) => {
+        w.where('c.guest_user_id = :uid', { uid: userId }).orWhere(
+          'c.host_user_id = :uid',
+          { uid: userId },
+        );
+      }),
+    );
 
     if (filter === 'unread') {
       qb.andWhere(
         new Brackets((w) => {
-          w.where(
-            '(c.guest_user_id = :uid AND c.unread_guest > 0)',
-          ).orWhere('(c.host_user_id = :uid AND c.unread_host > 0)');
+          w.where('(c.guest_user_id = :uid AND c.unread_guest > 0)').orWhere(
+            '(c.host_user_id = :uid AND c.unread_host > 0)',
+          );
         }),
       );
     } else if (filter === 'active') {
@@ -93,8 +94,12 @@ export class ConversationsService {
       qb.andWhere(
         new Brackets((w) => {
           w.where("c.messaging_state = 'ARCHIVED'")
-            .orWhere("(c.guest_user_id = :uid AND c.guest_visibility = 'ARCHIVED')")
-            .orWhere("(c.host_user_id = :uid AND c.host_visibility = 'ARCHIVED')");
+            .orWhere(
+              "(c.guest_user_id = :uid AND c.guest_visibility = 'ARCHIVED')",
+            )
+            .orWhere(
+              "(c.host_user_id = :uid AND c.host_visibility = 'ARCHIVED')",
+            );
         }),
       );
     } else if (filter === 'hosts') {
@@ -109,13 +114,32 @@ export class ConversationsService {
       qb.andWhere(
         new Brackets((w) => {
           w.where('LOWER(c.last_message_preview) LIKE :term', { term })
-            .orWhere("LOWER(c.reservation_snapshot->>'listingTitle') LIKE :term", { term })
-            .orWhere("LOWER(c.reservation_snapshot->>'hostDisplayName') LIKE :term", { term })
-            .orWhere("LOWER(c.reservation_snapshot->>'guestDisplayName') LIKE :term", { term })
-            .orWhere("LOWER(c.reservation_snapshot->>'bookingReference') LIKE :term", { term })
-            .orWhere("LOWER(c.reservation_snapshot->>'listingReference') LIKE :term", { term })
-            .orWhere("LOWER(c.reservation_snapshot->>'city') LIKE :term", { term })
-            .orWhere("LOWER(c.reservation_snapshot->>'country') LIKE :term", { term })
+            .orWhere(
+              "LOWER(c.reservation_snapshot->>'listingTitle') LIKE :term",
+              { term },
+            )
+            .orWhere(
+              "LOWER(c.reservation_snapshot->>'hostDisplayName') LIKE :term",
+              { term },
+            )
+            .orWhere(
+              "LOWER(c.reservation_snapshot->>'guestDisplayName') LIKE :term",
+              { term },
+            )
+            .orWhere(
+              "LOWER(c.reservation_snapshot->>'bookingReference') LIKE :term",
+              { term },
+            )
+            .orWhere(
+              "LOWER(c.reservation_snapshot->>'listingReference') LIKE :term",
+              { term },
+            )
+            .orWhere("LOWER(c.reservation_snapshot->>'city') LIKE :term", {
+              term,
+            })
+            .orWhere("LOWER(c.reservation_snapshot->>'country') LIKE :term", {
+              term,
+            })
             .orWhere(
               `EXISTS (
                 SELECT 1 FROM stays_messages sm
@@ -152,11 +176,15 @@ export class ConversationsService {
 
     for (const conv of filtered) {
       if (conv.type === 'SUPPORT') continue;
-      const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
+      const snapshot =
+        conv.reservation_snapshot as unknown as ReservationSnapshot;
       if (this.snapshotRepair.isSnapshotIncomplete(snapshot)) {
-        void this.outbox.enqueueDirect(MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED, {
-          conversationId: conv.id,
-        });
+        void this.outbox.enqueueDirect(
+          MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED,
+          {
+            conversationId: conv.id,
+          },
+        );
       }
     }
 
@@ -199,10 +227,16 @@ export class ConversationsService {
     bookingId: string,
     userId: string,
   ): Promise<ConversationListResponse | null> {
-    const conv = await this.convRepo.findOne({ where: { booking_id: bookingId } });
+    const conv = await this.convRepo.findOne({
+      where: { booking_id: bookingId },
+    });
     if (!conv || !this.permissions.isParticipant(conv, userId)) return null;
     if (this.permissions.visibilityFor(conv, userId) === 'DELETED') return null;
-    return this.toListResponse(conv, userId, await this.loadLastMessage(conv.last_message_id));
+    return this.toListResponse(
+      conv,
+      userId,
+      await this.loadLastMessage(conv.last_message_id),
+    );
   }
 
   async ensureConversationForBooking(
@@ -213,7 +247,11 @@ export class ConversationsService {
       bookingId,
       userId,
     );
-    return this.toListResponse(conv, userId, await this.loadLastMessage(conv.last_message_id));
+    return this.toListResponse(
+      conv,
+      userId,
+      await this.loadLastMessage(conv.last_message_id),
+    );
   }
 
   async getConversation(
@@ -229,14 +267,18 @@ export class ConversationsService {
       throw new NotFoundException('Conversation not found');
     }
 
-    const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
+    const snapshot =
+      conv.reservation_snapshot as unknown as ReservationSnapshot;
     if (
       conv.type !== 'SUPPORT' &&
       this.snapshotRepair.isSnapshotIncomplete(snapshot)
     ) {
-      void this.outbox.enqueueDirect(MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED, {
-        conversationId: conv.id,
-      });
+      void this.outbox.enqueueDirect(
+        MESSAGING_INTERNAL_EVENTS.SNAPSHOT_REPAIR_REQUESTED,
+        {
+          conversationId: conv.id,
+        },
+      );
     }
 
     const { messages, hasMore } = await this.messagesService.listMessages(
@@ -248,7 +290,9 @@ export class ConversationsService {
 
     let bookingStatus: string | null = null;
     if (conv.booking_id) {
-      const booking = await this.bookingRepo.findOne({ where: { id: conv.booking_id } });
+      const booking = await this.bookingRepo.findOne({
+        where: { id: conv.booking_id },
+      });
       bookingStatus = booking?.status ?? null;
     }
 
@@ -278,7 +322,8 @@ export class ConversationsService {
       throw new NotFoundException('Conversation not found');
     }
     const perms = this.permissions.resolve(conv, userId);
-    if (action === 'archive' && !perms.canArchive) throw new ForbiddenException();
+    if (action === 'archive' && !perms.canArchive)
+      throw new ForbiddenException();
     if (action === 'delete' && !perms.canDelete) throw new ForbiddenException();
 
     const isGuest = conv.guest_user_id === userId;
@@ -292,7 +337,10 @@ export class ConversationsService {
       [field]: value,
       conversation_version: nextVersion,
     });
-    await this.audit.log(`visibility_${action}`, conv.id, userId, { field, value });
+    await this.audit.log(`visibility_${action}`, conv.id, userId, {
+      field,
+      value,
+    });
     return { conversationVersion: nextVersion };
   }
 
@@ -314,21 +362,22 @@ export class ConversationsService {
     if (conv.type === 'SUPPORT') {
       throw new NotFoundException('Conversation not found');
     }
-    const { report, ticket } = await this.supportTickets.provisionReportWithTicket({
-      conversationId: conv.id,
-      reporterUserId: userId,
-      reason,
-      attachmentIds,
-      bookingId: conv.booking_id,
-      listingId: conv.listing_id,
-      reportedUserId:
-        conv.guest_user_id === userId
-          ? conv.host_user_id
-          : conv.host_user_id === userId
-            ? conv.guest_user_id
-            : null,
-      sourceConversation: conv,
-    });
+    const { report, ticket } =
+      await this.supportTickets.provisionReportWithTicket({
+        conversationId: conv.id,
+        reporterUserId: userId,
+        reason,
+        attachmentIds,
+        bookingId: conv.booking_id,
+        listingId: conv.listing_id,
+        reportedUserId:
+          conv.guest_user_id === userId
+            ? conv.host_user_id
+            : conv.host_user_id === userId
+              ? conv.guest_user_id
+              : null,
+        sourceConversation: conv,
+      });
     await this.audit.log('conversation_reported', conv.id, userId, {
       reason: reason ?? '',
       reportId: report.id,
@@ -417,9 +466,16 @@ export class ConversationsService {
     if (!conv || !this.permissions.isParticipant(conv, userId)) {
       throw new NotFoundException('Conversation not found');
     }
-    const updated = await this.messagingState.reopenConversation(conversationId, options);
+    const updated = await this.messagingState.reopenConversation(
+      conversationId,
+      options,
+    );
     await this.audit.log('conversation_reopened', updated.id, userId, options);
-    return this.toListResponse(updated, userId, await this.loadLastMessage(updated.last_message_id));
+    return this.toListResponse(
+      updated,
+      userId,
+      await this.loadLastMessage(updated.last_message_id),
+    );
   }
 
   /** Keep a single inbox row per booking when duplicate threads exist. */
@@ -451,10 +507,16 @@ export class ConversationsService {
     messageId: string | null | undefined,
   ): Promise<StaysMessage | undefined> {
     if (!messageId) return undefined;
-    return (await this.messageRepo.findOne({ where: { id: messageId } })) ?? undefined;
+    return (
+      (await this.messageRepo.findOne({ where: { id: messageId } })) ??
+      undefined
+    );
   }
 
-  private toDomain(conv: StaysConversation, userId: string): ConversationDomain {
+  private toDomain(
+    conv: StaysConversation,
+    userId: string,
+  ): ConversationDomain {
     return {
       id: conv.id,
       type: conv.type,
@@ -474,14 +536,22 @@ export class ConversationsService {
     lastMessage?: StaysMessage,
     ticketClosedKnown?: boolean,
   ): Promise<ConversationListResponse> {
-    const snapshot = conv.reservation_snapshot as unknown as ReservationSnapshot;
+    const snapshot =
+      conv.reservation_snapshot as unknown as ReservationSnapshot;
     let status: string | null = null;
     if (conv.booking_id) {
-      const booking = await this.bookingRepo.findOne({ where: { id: conv.booking_id } });
+      const booking = await this.bookingRepo.findOne({
+        where: { id: conv.booking_id },
+      });
       status = booking?.status ?? null;
     }
 
-    const presentation = await this.presentation.buildPresentation(conv, userId, snapshot, status);
+    const presentation = await this.presentation.buildPresentation(
+      conv,
+      userId,
+      snapshot,
+      status,
+    );
 
     const senderLabel = lastMessage
       ? resolveInboxSenderLabel({

@@ -66,9 +66,10 @@ export class KycReuseService {
     if (!verification?.expiry_date) return false;
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    const exp = verification.expiry_date instanceof Date
-      ? verification.expiry_date
-      : new Date(verification.expiry_date);
+    const exp =
+      verification.expiry_date instanceof Date
+        ? verification.expiry_date
+        : new Date(verification.expiry_date);
     exp.setHours(0, 0, 0, 0);
     return exp < now;
   }
@@ -112,7 +113,9 @@ export class KycReuseService {
       where: { unified_identity_id: unifiedIdentityId },
     });
 
-    const isDocumentExpired = this.isIdentityDocumentExpired(verification ?? null);
+    const isDocumentExpired = this.isIdentityDocumentExpired(
+      verification ?? null,
+    );
     const isReusableForService = this.isKycReusableForService(
       verification ?? null,
       service,
@@ -136,7 +139,8 @@ export class KycReuseService {
     }
 
     const useExistingKyc = isReusableForService && !blockReason;
-    const canSkipIdentityStep = useExistingKyc && !policy.requiresStepUpVerification;
+    const canSkipIdentityStep =
+      useExistingKyc && !policy.requiresStepUpVerification;
     const canPrefillIdentityReadonly =
       policy.canPrefillIdentityReadonly &&
       verification != null &&
@@ -205,7 +209,8 @@ export class KycReuseService {
     if (existing) {
       await this.repo.update(existing.id, payload);
       const updated = await this.repo.findOne({ where: { id: existing.id } });
-      if (!updated) throw new Error('ReusableIdentityVerification not found after update');
+      if (!updated)
+        throw new Error('ReusableIdentityVerification not found after update');
       return updated;
     }
 
@@ -224,14 +229,15 @@ export class KycReuseService {
     userPhoneNumber: string,
     kyc: KycProfile,
   ): Promise<ReusableIdentityVerification | null> {
-    const identity = await this.unifiedIdentityService.findOrCreateByPhone(userPhoneNumber);
+    const identity =
+      await this.unifiedIdentityService.findOrCreateByPhone(userPhoneNumber);
     const selfieVerified = Boolean(kyc.documents?.selfie ?? kyc.selfie_url);
     let documentNumberMasked: string | null = null;
     if (kyc.national_id_number) {
       const s = String(kyc.national_id_number);
       documentNumberMasked = s.length > 4 ? `****${s.slice(-4)}` : '****';
     }
-    let expiryDate: Date | null = null;
+    const expiryDate: Date | null = null;
     // KycProfile does not have expiry_date; could be added or derived from document_type
     const reusable = await this.upsertFromKycProfile({
       unifiedIdentityId: identity.id,

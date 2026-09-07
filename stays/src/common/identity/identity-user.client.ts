@@ -52,9 +52,12 @@ export class IdentityUserClient {
    */
   async listActiveSupportAgents(): Promise<IdentitySupportAgentRosterItem[]> {
     try {
-      const res = await fetch(`${this.baseUrl()}/internal/users/support-agents`, {
-        headers: this.internalHeaders(),
-      });
+      const res = await fetch(
+        `${this.baseUrl()}/internal/users/support-agents`,
+        {
+          headers: this.internalHeaders(),
+        },
+      );
       if (!res.ok) {
         this.logger.warn(`support-agent roster failed: ${res.status}`);
         return [];
@@ -104,7 +107,9 @@ export class IdentityUserClient {
     }
   }
 
-  async getProfileSummary(userId: string): Promise<IdentityProfileSummary | null> {
+  async getProfileSummary(
+    userId: string,
+  ): Promise<IdentityProfileSummary | null> {
     if (!userId) return null;
     const cached = this.summaryCache.get(userId);
     if (cached && cached.expiresAt > Date.now()) {

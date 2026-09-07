@@ -1,5 +1,8 @@
 import { evaluateKycMoneyMovementPolicy } from './kyc-policy.engine';
-import type { PolicyEvaluationInput, EffectiveTierLimits } from './kyc-policy.types';
+import type {
+  PolicyEvaluationInput,
+  EffectiveTierLimits,
+} from './kyc-policy.types';
 import {
   isKycVerifiedForMoneyMovement,
   normalizeKycStatus,

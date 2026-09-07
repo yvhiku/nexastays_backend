@@ -3,8 +3,6 @@ import {
   IsOptional,
   IsString,
   IsIn,
-  IsNumber,
-  IsBoolean,
   ValidateNested,
   Min,
   Max,

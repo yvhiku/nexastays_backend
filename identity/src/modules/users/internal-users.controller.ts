@@ -33,10 +33,10 @@ export class InternalUsersController {
   }
 
   @Get(':userId/authz')
-  @ApiOperation({ summary: 'S2S: authz version for ADMIN role revocation checks' })
-  async authzState(
-    @Param('userId') userId: string,
-  ): Promise<{
+  @ApiOperation({
+    summary: 'S2S: authz version for ADMIN role revocation checks',
+  })
+  async authzState(@Param('userId') userId: string): Promise<{
     authz_version: number;
     status: string;
     account_type: string;
@@ -56,7 +56,9 @@ export class InternalUsersController {
 
   @Get(':userId/profile-photo/exists')
   @ApiOperation({ summary: 'S2S: whether user has an uploaded profile photo' })
-  async profilePhotoExists(@Param('userId') userId: string): Promise<{ hasPhoto: boolean }> {
+  async profilePhotoExists(
+    @Param('userId') userId: string,
+  ): Promise<{ hasPhoto: boolean }> {
     const filePath = await this.usersService.getProfilePhotoPath(userId);
     return { hasPhoto: !!filePath };
   }
@@ -73,10 +75,7 @@ export class InternalUsersController {
     }
     const resolved = path.resolve(filePath);
     const photoRoot = path.resolve('uploads/profile');
-    if (
-      resolved !== photoRoot &&
-      !resolved.startsWith(photoRoot + path.sep)
-    ) {
+    if (resolved !== photoRoot && !resolved.startsWith(photoRoot + path.sep)) {
       throw new NotFoundException('No profile photo');
     }
     const ext = resolved.split('.').pop()?.toLowerCase();
@@ -93,9 +92,7 @@ export class InternalUsersController {
 
   @Get(':userId/profile-summary')
   @ApiOperation({ summary: 'S2S: minimal profile for messaging presentation' })
-  async profileSummary(
-    @Param('userId') userId: string,
-  ): Promise<{
+  async profileSummary(@Param('userId') userId: string): Promise<{
     fullName: string | null;
     email: string | null;
     phone: string | null;

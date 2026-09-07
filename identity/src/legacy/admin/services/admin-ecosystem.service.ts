@@ -24,28 +24,34 @@ export class AdminEcosystemService {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const [payStats, staysStats, ridesToday, completedRidesToday, ordersToday, completedOrdersToday] =
-      await Promise.all([
-        this.adminDashboardService.getStats(),
-        this.adminStaysService.getStats(),
-        this.rideRepo.count({
-          where: { created_at: MoreThanOrEqual(startOfDay) },
-        }),
-        this.rideRepo.count({
-          where: {
-            created_at: MoreThanOrEqual(startOfDay),
-            status: 'COMPLETED' as any,
-          },
-        }),
-        this.orderRepo.count({
-          where: { created_at: MoreThanOrEqual(startOfDay) },
-        }),
-        this.orderRepo
-          .createQueryBuilder('o')
-          .where('o.created_at >= :start', { start: startOfDay })
-          .andWhere("o.status = 'DELIVERED'")
-          .getCount(),
-      ]);
+    const [
+      payStats,
+      staysStats,
+      ridesToday,
+      completedRidesToday,
+      ordersToday,
+      completedOrdersToday,
+    ] = await Promise.all([
+      this.adminDashboardService.getStats(),
+      this.adminStaysService.getStats(),
+      this.rideRepo.count({
+        where: { created_at: MoreThanOrEqual(startOfDay) },
+      }),
+      this.rideRepo.count({
+        where: {
+          created_at: MoreThanOrEqual(startOfDay),
+          status: 'COMPLETED' as any,
+        },
+      }),
+      this.orderRepo.count({
+        where: { created_at: MoreThanOrEqual(startOfDay) },
+      }),
+      this.orderRepo
+        .createQueryBuilder('o')
+        .where('o.created_at >= :start', { start: startOfDay })
+        .andWhere("o.status = 'DELIVERED'")
+        .getCount(),
+    ]);
 
     const goRevenueMtd = await this.rideRepo
       .createQueryBuilder('r')
@@ -66,12 +72,24 @@ export class AdminEcosystemService {
         goRevenueMtd: Number(goRevenueMtd?.total ?? 0),
       },
       stays: {
-        activeListings: (staysStats as any)?.liveListings ?? (staysStats as any)?.totalListings ?? 0,
-        bookingsMtd: (staysStats as any)?.todayBookings ?? (staysStats as any)?.totalBookings ?? 0,
+        activeListings:
+          (staysStats as any)?.liveListings ??
+          (staysStats as any)?.totalListings ??
+          0,
+        bookingsMtd:
+          (staysStats as any)?.todayBookings ??
+          (staysStats as any)?.totalBookings ??
+          0,
         hostsPending: (staysStats as any)?.pendingHostVerification ?? 0,
-        revenueMtd: (staysStats as any)?.totalRevenue ?? (staysStats as any)?.todayRevenue ?? 0,
+        revenueMtd:
+          (staysStats as any)?.totalRevenue ??
+          (staysStats as any)?.todayRevenue ??
+          0,
       },
-      systemStatus: payStats.systemStatus ?? { api: 'healthy', database: 'healthy' },
+      systemStatus: payStats.systemStatus ?? {
+        api: 'healthy',
+        database: 'healthy',
+      },
     };
   }
 }

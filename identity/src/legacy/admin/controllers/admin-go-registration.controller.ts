@@ -25,7 +25,10 @@ import {
 } from '../../go-taxi/registration-applications/registration-applications.service';
 
 @ApiTags('Pay Admin')
-@Controller(['admin/go/registration-applications', 'pay/admin/go/registration-applications'])
+@Controller([
+  'admin/go/registration-applications',
+  'pay/admin/go/registration-applications',
+])
 @SkipThrottle()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
@@ -79,7 +82,9 @@ export class AdminGoRegistrationController {
     if (fullPath !== root && !fullPath.startsWith(root + sep)) {
       return res.status(404).json({ message: 'File not found' });
     }
-    const ext = safeName.includes('.') ? safeName.split('.').pop()?.toLowerCase() : '';
+    const ext = safeName.includes('.')
+      ? safeName.split('.').pop()?.toLowerCase()
+      : '';
     const contentType =
       ext === 'png'
         ? 'image/png'
@@ -111,6 +116,10 @@ export class AdminGoRegistrationController {
     @Req() req: AdminRequest,
   ) {
     const adminId = req.user?.userId || 'admin';
-    return this.registrationService.reject(id, adminId, body.reason || 'Rejected by admin');
+    return this.registrationService.reject(
+      id,
+      adminId,
+      body.reason || 'Rejected by admin',
+    );
   }
 }

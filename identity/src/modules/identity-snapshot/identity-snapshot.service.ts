@@ -27,7 +27,9 @@ export class IdentitySnapshotService {
   }
 
   async getSnapshot(userId: string): Promise<IdentitySnapshot> {
-    const cached = await this.cache.get<IdentitySnapshot>(this.cacheKey(userId));
+    const cached = await this.cache.get<IdentitySnapshot>(
+      this.cacheKey(userId),
+    );
     if (cached) return cached;
 
     const snapshot = await this.loadSnapshot(userId);
@@ -55,7 +57,11 @@ export class IdentitySnapshotService {
 
     const kyc = await this.kycRepo.findOne({ where: { user_id: userId } });
     const kycTier = (kyc?.level ?? 'NONE').toUpperCase();
-    const kycStatus = (kyc?.status ?? user.kyc_status ?? 'PENDING').toUpperCase();
+    const kycStatus = (
+      kyc?.status ??
+      user.kyc_status ??
+      'PENDING'
+    ).toUpperCase();
     const updatedAt =
       kyc?.reviewed_at ??
       kyc?.last_webhook_received_at ??

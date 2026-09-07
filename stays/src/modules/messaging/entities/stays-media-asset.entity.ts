@@ -13,7 +13,12 @@ export class StaysMediaAsset {
   @Column({ type: 'text', name: 'storage_key' })
   storage_key: string;
 
-  @Column({ type: 'varchar', length: 64, name: 'checksum_sha256', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 64,
+    name: 'checksum_sha256',
+    nullable: true,
+  })
   checksum_sha256: string | null;
 
   @Column({ type: 'varchar', length: 128, nullable: true })

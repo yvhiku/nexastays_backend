@@ -63,7 +63,10 @@ export class AdminStaysController {
     @Param('assetId') assetId: string,
     @Res() res: Response,
   ) {
-    const fullPath = await this.adminStaysService.getListingMediaPath(id, assetId);
+    const fullPath = await this.adminStaysService.getListingMediaPath(
+      id,
+      assetId,
+    );
     const resolved = path.resolve(fullPath);
     const uploadRoot = path.resolve(process.cwd(), 'uploads/host');
     if (
@@ -72,7 +75,9 @@ export class AdminStaysController {
     ) {
       throw new NotFoundException('Media not found');
     }
-    const ext = resolved.includes('.') ? resolved.split('.').pop()?.toLowerCase() : '';
+    const ext = resolved.includes('.')
+      ? resolved.split('.').pop()?.toLowerCase()
+      : '';
     const contentType =
       ext === 'mp4'
         ? 'video/mp4'
@@ -164,9 +169,13 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
-    return this.adminStaysService.approveHost(id, user.userId, { ip, userAgent });
+    return this.adminStaysService.approveHost(id, user.userId, {
+      ip,
+      userAgent,
+    });
   }
 
   @Post('hosts/:id/reject')
@@ -176,7 +185,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.rejectHost(
       id,
@@ -192,9 +202,13 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
-    return this.adminStaysService.freezeHost(id, user.userId, { ip, userAgent });
+    return this.adminStaysService.freezeHost(id, user.userId, {
+      ip,
+      userAgent,
+    });
   }
 
   @Post('hosts/:id/unfreeze')
@@ -203,9 +217,13 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
-    return this.adminStaysService.unfreezeHost(id, user.userId, { ip, userAgent });
+    return this.adminStaysService.unfreezeHost(id, user.userId, {
+      ip,
+      userAgent,
+    });
   }
 
   @Post('listings/:id/approve')
@@ -214,9 +232,13 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
-    return this.adminStaysService.approveListing(id, user.userId, { ip, userAgent });
+    return this.adminStaysService.approveListing(id, user.userId, {
+      ip,
+      userAgent,
+    });
   }
 
   @Post('listings/:id/reject')
@@ -226,7 +248,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.rejectListing(
       id,
@@ -242,7 +265,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.setListingLive(id, user.userId, {
       ip,

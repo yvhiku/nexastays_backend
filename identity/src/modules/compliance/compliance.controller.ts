@@ -8,12 +8,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-} from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OtpSessionResolverGuard } from '../../common/guards/otp-session-resolver.guard';
@@ -35,7 +30,9 @@ export class ComplianceController {
   @SkipThrottle()
   @UseGuards(JwtAuthGuard, OtpSessionResolverGuard)
   @ApiBearerAuth('bearer')
-  @ApiOperation({ summary: 'Submit KYC profile data before Sumsub verification' })
+  @ApiOperation({
+    summary: 'Submit KYC profile data before Sumsub verification',
+  })
   async submit(
     @CurrentUser() user: { userId: string },
     @Body() body: SubmitKycDto,

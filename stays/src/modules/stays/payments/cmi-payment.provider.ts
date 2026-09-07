@@ -1,6 +1,9 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { createHmac, randomBytes } from 'crypto';
-import { isProductionRuntime, requirePublicBaseUrl } from '../../../common/security/secrets';
+import {
+  isProductionRuntime,
+  requirePublicBaseUrl,
+} from '../../../common/security/secrets';
 
 /** Optional Nest token so unit tests can inject a mock fetch without Nest DI. */
 export const CMI_FETCH = 'CMI_FETCH';
@@ -58,10 +61,7 @@ export function getCmiApiUrl(env: NodeJS.ProcessEnv = process.env): string {
   return 'https://testpayment.cmi.co.ma/fim/api';
 }
 
-export type CmiFetch = (
-  input: string,
-  init?: RequestInit,
-) => Promise<Response>;
+export type CmiFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
 @Injectable()
 export class CmiPaymentProvider {
@@ -109,7 +109,9 @@ export class CmiPaymentProvider {
       storeKey,
     ].join('|');
 
-    const hash = createHmac('sha512', storeKey).update(hashPlain).digest('base64');
+    const hash = createHmac('sha512', storeKey)
+      .update(hashPlain)
+      .digest('base64');
 
     const params = new URLSearchParams({
       clientid: clientId,
@@ -151,7 +153,11 @@ export class CmiPaymentProvider {
     const hashFromGateway = String(body.HASH ?? body.hash ?? '');
 
     if (!hashFromGateway || !oid) {
-      return { valid: false, providerIntentId: oid || undefined, success: false };
+      return {
+        valid: false,
+        providerIntentId: oid || undefined,
+        success: false,
+      };
     }
 
     const hashPlain = [oid, storeKey, procReturnCode, amount].join('|');
@@ -213,10 +219,16 @@ export class CmiPaymentProvider {
     const storeKey = getCmiStoreKey();
     const amount = input.omitAmount ? '' : Number(input.amount).toFixed(2);
     const currency = input.omitAmount ? '' : input.currency;
-    const hashPlain = [clientId, input.providerIntentId, amount, currency, storeKey].join(
-      '|',
-    );
-    const hash = createHmac('sha512', storeKey).update(hashPlain).digest('base64');
+    const hashPlain = [
+      clientId,
+      input.providerIntentId,
+      amount,
+      currency,
+      storeKey,
+    ].join('|');
+    const hash = createHmac('sha512', storeKey)
+      .update(hashPlain)
+      .digest('base64');
 
     const body = new URLSearchParams({
       CLIENTID: clientId,
@@ -273,7 +285,10 @@ function parseProcReturnCode(raw: string): string {
   const form = /(?:^|[&\n])ProcReturnCode=([^&\n\r]*)/i.exec(raw);
   if (form?.[1]) return decodeURIComponent(form[1].trim());
   try {
-    const json = JSON.parse(raw) as { ProcReturnCode?: string; procReturnCode?: string };
+    const json = JSON.parse(raw) as {
+      ProcReturnCode?: string;
+      procReturnCode?: string;
+    };
     return String(json.ProcReturnCode ?? json.procReturnCode ?? '').trim();
   } catch {
     return '';

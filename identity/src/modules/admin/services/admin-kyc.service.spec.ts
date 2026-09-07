@@ -59,11 +59,16 @@ describe('AdminKycService (source filtering)', () => {
   };
 
   const mockUserRepo = {};
-  const mockAuditService = { logAction: jest.fn().mockResolvedValue(undefined) };
+  const mockAuditService = {
+    logAction: jest.fn().mockResolvedValue(undefined),
+  };
   const mockKycReuse = {};
   const mockSnapshot = { invalidate: jest.fn().mockResolvedValue(undefined) };
   const mockDomainEvents = {};
-  const mockCompliance = { syncSumsubStatus: jest.fn(), syncSumsubDossier: jest.fn() };
+  const mockCompliance = {
+    syncSumsubStatus: jest.fn(),
+    syncSumsubDossier: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();

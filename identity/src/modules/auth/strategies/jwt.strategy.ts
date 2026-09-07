@@ -4,7 +4,10 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { JwtKeysService } from '../../jwks/jwt-keys.service';
 import type { Request } from 'express';
 import { extractBearerAccessToken } from '../security/bearer-access-token';
-import { getJwtAudience, getJwtIssuer } from '../../../common/security/jwt-claims';
+import {
+  getJwtAudience,
+  getJwtIssuer,
+} from '../../../common/security/jwt-claims';
 
 export interface JwtPayload {
   sub: string;

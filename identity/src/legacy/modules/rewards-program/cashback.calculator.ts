@@ -55,9 +55,7 @@ export function calculateCashback(input: CashbackInput): CashbackResult {
     input.userSelectedCategoryIds.includes(input.categoryId) &&
     input.billingPeriodCategoryRates.has(input.categoryId)
   ) {
-    applicableRate = input.billingPeriodCategoryRates.get(
-      input.categoryId,
-    )!;
+    applicableRate = input.billingPeriodCategoryRates.get(input.categoryId)!;
     cashbackType = 'category';
   }
 

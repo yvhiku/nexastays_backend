@@ -34,10 +34,7 @@ const PENDING_STATUSES: StaysBooking['status'][] = [
   'PAYMENT_PENDING',
 ];
 
-const ACTIVE_STATUSES: StaysBooking['status'][] = [
-  'CONFIRMED',
-  'CHECKED_IN',
-];
+const ACTIVE_STATUSES: StaysBooking['status'][] = ['CONFIRMED', 'CHECKED_IN'];
 
 const FUTURE_EARNING_STATUSES: StaysBooking['status'][] = [
   'CONFIRMED',
@@ -159,7 +156,6 @@ export class HostDashboardService {
     let feesPrev = 0;
     let upcomingRevenue30d = 0;
     let bookedNightsThisMonth = 0;
-    let bookedNightsPrevMonth = 0;
 
     for (const b of bookings) {
       if (!EARNING_STATUSES.includes(b.status)) continue;
@@ -172,7 +168,9 @@ export class HostDashboardService {
 
       // Month attribution: confirmed_at ?? created_at in Africa/Casablanca
       const attrYmd = toCasablancaYmd(b.confirmed_at ?? b.created_at);
-      if (ymdInHalfOpen(attrYmd, dash.thisMonthStart, dash.thisMonthEndExclusive)) {
+      if (
+        ymdInHalfOpen(attrYmd, dash.thisMonthStart, dash.thisMonthEndExclusive)
+      ) {
         grossThis += gross;
         netThis += payout;
         feesThis += fees;
@@ -197,12 +195,6 @@ export class HostDashboardService {
         dash.year,
         dash.month,
       );
-      bookedNightsPrevMonth += bookedNightsInCalendarMonth(
-        checkin,
-        checkout,
-        dash.previousYear,
-        dash.previousMonth,
-      );
     }
 
     // upcoming_revenue_30d = net payout of FUTURE earning bookings with
@@ -223,7 +215,10 @@ export class HostDashboardService {
     const capacity = dash.daysInThisMonth * Math.max(liveListings, 1);
     const occupancyPctThisMonth =
       capacity > 0
-        ? Math.min(100, Math.round((bookedNightsThisMonth / capacity) * 1000) / 10)
+        ? Math.min(
+            100,
+            Math.round((bookedNightsThisMonth / capacity) * 1000) / 10,
+          )
         : 0;
 
     let checkinsToday = 0;
@@ -262,8 +257,7 @@ export class HostDashboardService {
 
       const stayStatuses =
         b.status === 'CONFIRMED' || b.status === 'CHECKED_IN';
-      const checkoutStatuses =
-        stayStatuses || b.status === 'COMPLETED';
+      const checkoutStatuses = stayStatuses || b.status === 'COMPLETED';
 
       if (stayStatuses && checkin === dash.today) {
         checkinsToday += 1;
@@ -299,9 +293,7 @@ export class HostDashboardService {
         select: ['id', 'listing_id', 'status'],
       });
       const badListings = new Set(
-        calendars
-          .filter((c) => c.status === 'ERROR')
-          .map((c) => c.listing_id),
+        calendars.filter((c) => c.status === 'ERROR').map((c) => c.listing_id),
       );
       calendarStatus = {
         healthy: badListings.size === 0,
@@ -386,7 +378,7 @@ export class HostDashboardService {
         total_reviews: reviewsPayload.summary.total_count,
       },
       messaging: {
-        unread_count: null as null,
+        unread_count: null,
         status: 'unavailable' as const,
       },
       calendar_status: calendarStatus,
@@ -548,7 +540,10 @@ export class HostDashboardService {
     const capacity = dim * Math.max(liveListings, 1);
     const occupancyPctThisMonth =
       capacity > 0
-        ? Math.min(100, Math.round((bookedNightsThisMonth / capacity) * 1000) / 10)
+        ? Math.min(
+            100,
+            Math.round((bookedNightsThisMonth / capacity) * 1000) / 10,
+          )
         : 0;
 
     const prevDim = daysInMonth(
@@ -619,7 +614,11 @@ export class HostDashboardService {
       ? toIsoDate(parseDateOnly(nextUpcoming.checkin_date))
       : null;
 
-    const revenueSeries30d = this.buildRevenueSeries(bookings, hostPayout, today);
+    const revenueSeries30d = this.buildRevenueSeries(
+      bookings,
+      hostPayout,
+      today,
+    );
 
     let pendingPayoutAmount: number | null = null;
     if (listingIds.length > 0) {
@@ -650,9 +649,7 @@ export class HostDashboardService {
         select: ['id', 'listing_id', 'status'],
       });
       const badListings = new Set(
-        calendars
-          .filter((c) => c.status === 'ERROR')
-          .map((c) => c.listing_id),
+        calendars.filter((c) => c.status === 'ERROR').map((c) => c.listing_id),
       );
       calendarStatus = {
         healthy: badListings.size === 0,
@@ -756,7 +753,8 @@ export class HostDashboardService {
     };
     if (listingIds.length === 0) return empty;
 
-    const summaries = await this.hostListingsService.getHostListings(hostUserId);
+    const summaries =
+      await this.hostListingsService.getHostListings(hostUserId);
     const calendars = await this.calendarRepo.find({
       where: { listing_id: In(listingIds) },
       select: ['listing_id', 'status'],
@@ -798,9 +796,7 @@ export class HostDashboardService {
       photos_complete:
         summaries.length > 0 && photosCompleteCount === summaries.length,
       avg_completion_pct:
-        summaries.length > 0
-          ? Math.round(completionSum / summaries.length)
-          : 0,
+        summaries.length > 0 ? Math.round(completionSum / summaries.length) : 0,
       missing,
     };
   }

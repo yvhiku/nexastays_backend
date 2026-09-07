@@ -1,0 +1,61 @@
+{
+  "processes": [
+    {
+      "name": "identity",
+      "result": "SIGTERM sent to audit process group"
+    },
+    {
+      "name": "stays",
+      "result": "SIGTERM sent to audit process group"
+    },
+    {
+      "name": "web",
+      "result": "SIGTERM sent to audit process group"
+    },
+    {
+      "name": "dashboard",
+      "result": "SIGTERM sent to audit process group"
+    },
+    {
+      "name": "web-dev",
+      "result": "already stopped"
+    },
+    {
+      "name": "web-ui",
+      "result": "SIGTERM sent to audit process group"
+    }
+  ],
+  "containers": [
+    {
+      "name": "nexa-cert-20260906-identity-db-1",
+      "exit_code": 0
+    },
+    {
+      "name": "nexa-cert-20260906-stays-db-1",
+      "exit_code": 0
+    },
+    {
+      "name": "nexa-cert-20260906-redis",
+      "exit_code": 0
+    }
+  ],
+  "networks": [
+    {
+      "name": "nexa-cert-20260906-host",
+      "exit_code": 0
+    },
+    {
+      "name": "nexa-cert-20260906_default",
+      "exit_code": 0
+    }
+  ],
+  "remaining_application_containers": [
+    "nexastays_db-identity-db-1",
+    "nexastays_db-redis-1",
+    "nexastays_db-stays-db-1"
+  ],
+  "audit_listeners": "",
+  "existing_web_3005_running": true,
+  "private_credentials_scan": "No exact generated credential or DEMO OTP values found in report artifacts",
+  "private_scratch_removed": true
+}

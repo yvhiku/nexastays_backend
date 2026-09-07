@@ -67,7 +67,10 @@ export class AdminActivityService {
     }
 
     for (const r of recentRides) {
-      const ride = r as Ride & { rider_user?: { full_name?: string }; driver_user?: { full_name?: string } | null };
+      const ride = r as Ride & {
+        rider_user?: { full_name?: string };
+        driver_user?: { full_name?: string } | null;
+      };
       events.push({
         id: `ride-${r.id}`,
         type: r.status === 'COMPLETED' ? 'ride_completed' : 'ride_created',
@@ -85,7 +88,10 @@ export class AdminActivityService {
     }
 
     for (const o of recentOrders) {
-      const order = o as Order & { customer?: { full_name?: string }; merchant?: { name?: string } };
+      const order = o as Order & {
+        customer?: { full_name?: string };
+        merchant?: { name?: string };
+      };
       events.push({
         id: `order-${o.id}`,
         type: o.status === 'DELIVERED' ? 'delivery_delivered' : 'order_created',
@@ -101,24 +107,49 @@ export class AdminActivityService {
       });
     }
 
-    events.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    events.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
     return { events: events.slice(0, limit) };
   }
 
   private inferProduct(action: string, entityType?: string | null): string {
-    if (entityType?.toLowerCase().includes('kyc') || action.toLowerCase().includes('kyc')) return 'pay';
-    if (entityType?.toLowerCase().includes('ride') || action.toLowerCase().includes('ride')) return 'go';
-    if (entityType?.toLowerCase().includes('order') || action.toLowerCase().includes('order')) return 'go';
-    if (entityType?.toLowerCase().includes('booking') || entityType?.toLowerCase().includes('stays')) return 'stays';
-    if (action.toLowerCase().includes('fraud') || action.toLowerCase().includes('risk')) return 'pay';
+    if (
+      entityType?.toLowerCase().includes('kyc') ||
+      action.toLowerCase().includes('kyc')
+    )
+      return 'pay';
+    if (
+      entityType?.toLowerCase().includes('ride') ||
+      action.toLowerCase().includes('ride')
+    )
+      return 'go';
+    if (
+      entityType?.toLowerCase().includes('order') ||
+      action.toLowerCase().includes('order')
+    )
+      return 'go';
+    if (
+      entityType?.toLowerCase().includes('booking') ||
+      entityType?.toLowerCase().includes('stays')
+    )
+      return 'stays';
+    if (
+      action.toLowerCase().includes('fraud') ||
+      action.toLowerCase().includes('risk')
+    )
+      return 'pay';
     return 'pay';
   }
 
   private mapAuditActionToEventType(action: string): string {
     const a = action.toLowerCase();
-    if (a.includes('kyc') && (a.includes('approve') || a.includes('verified'))) return 'kyc_approved';
+    if (a.includes('kyc') && (a.includes('approve') || a.includes('verified')))
+      return 'kyc_approved';
     if (a.includes('kyc') && a.includes('reject')) return 'kyc_rejected';
-    if (a.includes('booking') && a.includes('confirm')) return 'booking_confirmed';
+    if (a.includes('booking') && a.includes('confirm'))
+      return 'booking_confirmed';
     if (a.includes('fraud') || a.includes('risk')) return 'fraud_alert';
     return 'audit';
   }

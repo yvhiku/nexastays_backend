@@ -68,7 +68,8 @@ function defaultBatchSize(count: number): number {
 
 function parseArgs(argv: string[]) {
   let count = Number(process.env.SEED_COUNT || DEFAULT_COUNT);
-  let clean = process.env.SEED_CLEAN === '1' || process.env.SEED_CLEAN === 'true';
+  let clean =
+    process.env.SEED_CLEAN === '1' || process.env.SEED_CLEAN === 'true';
   let hostUserId = process.env.SEED_HOST_USER_ID?.trim() || '';
   let batchSize = Number(process.env.SEED_BATCH_SIZE || 0);
   let startOffset = Number(process.env.SEED_OFFSET || 0);
@@ -289,45 +290,49 @@ async function main() {
 
       let batchCreated = 0;
       try {
-      for (let i = 0; i < n; i++) {
-        const idx = offset + i + 1;
-        const place = CITIES[(offset + i) % CITIES.length];
-        const listingType = pick(TYPES);
-        const guests = 1 + Math.floor(Math.random() * 8);
-        const bedroomCount = 1 + Math.floor(Math.random() * 4);
-        const price = Math.round((150 + Math.random() * 2350) * 100) / 100;
+        for (let i = 0; i < n; i++) {
+          const idx = offset + i + 1;
+          const place = CITIES[(offset + i) % CITIES.length];
+          const listingType = pick(TYPES);
+          const guests = 1 + Math.floor(Math.random() * 8);
+          const bedroomCount = 1 + Math.floor(Math.random() * 4);
+          const price = Math.round((150 + Math.random() * 2350) * 100) / 100;
 
-        listings.push({
-          title: `${TITLE_PREFIX}${listingType.charAt(0)}${listingType.slice(1).toLowerCase()} in ${place.city} #${idx}`,
-          listing_type: listingType,
-          booking_model: bookingModel(listingType),
-          city: place.city,
-          neighborhood: pick(NEIGHBORHOODS),
-          geo_lat: jitter(place.lat),
-          geo_lng: jitter(place.lng),
-          property_details: {
-            bedrooms: bedroomsJson(bedroomCount, guests),
-            checkin_method: 'IN_PERSON',
-            guest_language: 'fr',
-          },
-          instant_booking: Math.random() < 0.45,
-          max_guests: guests,
-          amenities: pick(AMENITY_POOLS),
-          pets_policy: pick(['NO', 'ALLOWED', 'DOGS_CATS'] as const),
-          smoking_policy: pick(['NOT_ALLOWED', 'ALLOWED'] as const),
-          quiet_hours: Math.random() < 0.4,
-          cancellation_policy: pick(['FLEXIBLE', 'MODERATE', 'STRICT'] as const),
-          base_price: price,
-          weekend_price:
-            Math.round(price * (1.05 + Math.random() * 0.2) * 100) / 100,
-          unit_kind: unitKind(listingType),
-          // Stagger timestamps so keyset pagination never collapses a whole batch.
-          created_at: new Date(batchBaseMs - i * 1000).toISOString(),
-        });
-      }
+          listings.push({
+            title: `${TITLE_PREFIX}${listingType.charAt(0)}${listingType.slice(1).toLowerCase()} in ${place.city} #${idx}`,
+            listing_type: listingType,
+            booking_model: bookingModel(listingType),
+            city: place.city,
+            neighborhood: pick(NEIGHBORHOODS),
+            geo_lat: jitter(place.lat),
+            geo_lng: jitter(place.lng),
+            property_details: {
+              bedrooms: bedroomsJson(bedroomCount, guests),
+              checkin_method: 'IN_PERSON',
+              guest_language: 'fr',
+            },
+            instant_booking: Math.random() < 0.45,
+            max_guests: guests,
+            amenities: pick(AMENITY_POOLS),
+            pets_policy: pick(['NO', 'ALLOWED', 'DOGS_CATS'] as const),
+            smoking_policy: pick(['NOT_ALLOWED', 'ALLOWED'] as const),
+            quiet_hours: Math.random() < 0.4,
+            cancellation_policy: pick([
+              'FLEXIBLE',
+              'MODERATE',
+              'STRICT',
+            ] as const),
+            base_price: price,
+            weekend_price:
+              Math.round(price * (1.05 + Math.random() * 0.2) * 100) / 100,
+            unit_kind: unitKind(listingType),
+            // Stagger timestamps so keyset pagination never collapses a whole batch.
+            created_at: new Date(batchBaseMs - i * 1000).toISOString(),
+          });
+        }
 
-      const listingRes = await client.query<{ id: string; title: string }>(
-         `INSERT INTO stays_listings (
+        const listingRes = await client.query<{ id: string; title: string }>(
+          `INSERT INTO stays_listings (
            host_user_id, title, listing_type, booking_model, city, country,
            neighborhood, geo_lat, geo_lng, status, description,
            property_details, safety_features, policies,
@@ -367,29 +372,29 @@ async function main() {
            created_at text
          )
          RETURNING id, title`,
-        [hostUserId, JSON.stringify(listings)],
-      );
+          [hostUserId, JSON.stringify(listings)],
+        );
 
-      const byTitle = new Map(listings.map((l) => [l.title, l]));
-      const rulesPayload = listingRes.rows.map((row) => {
-        const src = byTitle.get(row.title)!;
-        return {
-          listing_id: row.id,
-          pets_policy: src.pets_policy,
-          smoking_policy: src.smoking_policy,
-          quiet_hours: src.quiet_hours,
-          max_guests: src.max_guests,
-          amenities: src.amenities,
-          cancellation_policy: src.cancellation_policy,
-          base_price: src.base_price,
-          weekend_price: src.weekend_price,
-          unit_kind: src.unit_kind,
-          title: src.title,
-        };
-      });
+        const byTitle = new Map(listings.map((l) => [l.title, l]));
+        const rulesPayload = listingRes.rows.map((row) => {
+          const src = byTitle.get(row.title)!;
+          return {
+            listing_id: row.id,
+            pets_policy: src.pets_policy,
+            smoking_policy: src.smoking_policy,
+            quiet_hours: src.quiet_hours,
+            max_guests: src.max_guests,
+            amenities: src.amenities,
+            cancellation_policy: src.cancellation_policy,
+            base_price: src.base_price,
+            weekend_price: src.weekend_price,
+            unit_kind: src.unit_kind,
+            title: src.title,
+          };
+        });
 
-      await client.query(
-        `INSERT INTO stays_listing_rules (
+        await client.query(
+          `INSERT INTO stays_listing_rules (
            listing_id, pets_policy, smoking_policy, quiet_hours,
            couples_welcome, max_guests, amenities, cancellation_policy
          )
@@ -411,11 +416,11 @@ async function main() {
            amenities jsonb,
            cancellation_policy text
          )`,
-        [JSON.stringify(rulesPayload)],
-      );
+          [JSON.stringify(rulesPayload)],
+        );
 
-      await client.query(
-        `INSERT INTO stays_rate_plans (
+        await client.query(
+          `INSERT INTO stays_rate_plans (
            listing_id, currency, base_price, weekend_price
          )
          SELECT
@@ -428,11 +433,11 @@ async function main() {
            base_price numeric,
            weekend_price numeric
          )`,
-        [JSON.stringify(rulesPayload)],
-      );
+          [JSON.stringify(rulesPayload)],
+        );
 
-      await client.query(
-        `INSERT INTO stays_check_in_contacts (
+        await client.query(
+          `INSERT INTO stays_check_in_contacts (
            listing_id, full_name, phone_encrypted, role, access_instructions
          )
          SELECT
@@ -442,11 +447,11 @@ async function main() {
            'OWNER',
            'Seed check-in — call on arrival.'
          FROM jsonb_to_recordset($1::jsonb) AS x(listing_id text)`,
-        [JSON.stringify(rulesPayload)],
-      );
+          [JSON.stringify(rulesPayload)],
+        );
 
-      await client.query(
-        `INSERT INTO stays_listing_unit_types (
+        await client.query(
+          `INSERT INTO stays_listing_unit_types (
            listing_id, kind, name, quantity, max_guests,
            pricing_unit, base_price, currency, sort_order, is_active
          )
@@ -468,11 +473,11 @@ async function main() {
            max_guests int,
            base_price numeric
          )`,
-        [JSON.stringify(rulesPayload)],
-      );
+          [JSON.stringify(rulesPayload)],
+        );
 
-      batchCreated = listingRes.rows.length;
-      await client.query('COMMIT');
+        batchCreated = listingRes.rows.length;
+        await client.query('COMMIT');
       } catch (batchErr) {
         await client.query('ROLLBACK').catch(() => undefined);
         throw batchErr;
@@ -491,7 +496,9 @@ async function main() {
     console.log(
       `\nDone. ${created} LIVE Morocco listings (${startOffset + created} total with prefix) in ${Math.round((Date.now() - startedAt) / 1000)}s`,
     );
-    console.log(`Titles use prefix "${TITLE_PREFIX}" — re-run with --clean to replace.`);
+    console.log(
+      `Titles use prefix "${TITLE_PREFIX}" — re-run with --clean to replace.`,
+    );
   } catch (err) {
     await client.query('ROLLBACK').catch(() => undefined);
     throw err;

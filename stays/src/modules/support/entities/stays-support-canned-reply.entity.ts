@@ -28,7 +28,12 @@ export class StaysSupportCannedReply {
   @Column({ type: 'varchar', length: 128, name: 'created_by_admin_id' })
   created_by_admin_id: string;
 
-  @Column({ type: 'varchar', length: 128, name: 'updated_by_admin_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'updated_by_admin_id',
+    nullable: true,
+  })
   updated_by_admin_id: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })

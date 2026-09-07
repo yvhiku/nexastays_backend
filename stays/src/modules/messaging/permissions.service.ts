@@ -106,8 +106,10 @@ export class MessagingPermissionsService {
   }
 
   visibilityFor(conversation: StaysConversation, userId: string): string {
-    if (conversation.guest_user_id === userId) return conversation.guest_visibility;
-    if (conversation.host_user_id === userId) return conversation.host_visibility;
+    if (conversation.guest_user_id === userId)
+      return conversation.guest_visibility;
+    if (conversation.host_user_id === userId)
+      return conversation.host_visibility;
     return 'DELETED';
   }
 }

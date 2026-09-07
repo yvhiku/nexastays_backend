@@ -1,0 +1,12 @@
+{
+  "original_requirements_exact_match": true,
+  "ids_exactly_once": true,
+  "result_totals": {
+    "PASS": 38,
+    "UNVERIFIED": 110,
+    "FAIL": 2
+  },
+  "total": 150,
+  "markdown_links_resolve": true,
+  "generated_secrets_absent": true
+}

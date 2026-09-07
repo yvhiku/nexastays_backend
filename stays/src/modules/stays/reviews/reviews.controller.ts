@@ -115,7 +115,11 @@ export class ReviewsController {
   @ApiOperation({ summary: 'List reviews for a listing' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
-  @ApiQuery({ name: 'sort', required: false, enum: ['newest', 'highest', 'lowest'] })
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    enum: ['newest', 'highest', 'lowest'],
+  })
   async listListingReviews(
     @Param('listingId') listingId: string,
     @Query('page') page?: string,

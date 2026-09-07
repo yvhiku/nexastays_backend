@@ -19,10 +19,8 @@ import { OtpSendRateLimitGuard } from './guards/otp-send-rate-limit.guard';
 import { OtpVerifyRateLimitGuard } from './guards/otp-verify-rate-limit.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtKeysService } from '../jwks/jwt-keys.service';
-import { appConfig } from '../../common/config/app.config';
 import {
   getJwtAccessExpiresIn,
-  getJwtAdminExpiresIn,
   getJwtAudience,
   getJwtIssuer,
 } from '../../common/security/jwt-claims';

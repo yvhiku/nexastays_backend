@@ -42,10 +42,20 @@ export class UnifiedIdentity {
   @Column({ type: 'text', nullable: true })
   address: string | null;
 
-  @Column({ type: 'varchar', length: 500, nullable: true, name: 'profile_photo_url' })
+  @Column({
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+    name: 'profile_photo_url',
+  })
   profile_photo_url: string | null;
 
-  @Column({ type: 'varchar', length: 10, nullable: true, name: 'preferred_language' })
+  @Column({
+    type: 'varchar',
+    length: 10,
+    nullable: true,
+    name: 'preferred_language',
+  })
   preferred_language: string | null;
 
   @Column({ type: 'boolean', default: false, name: 'identity_verified' })
@@ -64,13 +74,23 @@ export class UnifiedIdentity {
   identity_verification_status: string;
 
   /** @deprecated Use identity_verification_status. Kept for backward compat. */
-  @Column({ type: 'varchar', length: 20, default: 'PENDING', name: 'kyc_status' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: 'PENDING',
+    name: 'kyc_status',
+  })
   kyc_status: string;
 
   @Column({ type: 'varchar', length: 20, nullable: true, name: 'kyc_level' })
   kyc_level: string | null;
 
-  @Column({ type: 'varchar', length: 20, default: 'ACTIVE', name: 'account_status' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: 'ACTIVE',
+    name: 'account_status',
+  })
   account_status: string;
 
   /**

@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   OneToOne,
   JoinColumn,
-  ManyToOne,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { piiTransformer } from '../../../common/security/pii-encryption';
@@ -207,7 +206,6 @@ export class KycProfile {
   /** Trimmed Sumsub applicant + docsStatus meta (no image blobs). */
   @Column({ type: 'jsonb', name: 'provider_snapshot', nullable: true })
   // `any` values: TypeORM DeepPartial rejects `Record<string, unknown>`.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   provider_snapshot: Record<string, any> | null;
 
   @Column({ type: 'jsonb', nullable: true, name: 'aml_screening' })

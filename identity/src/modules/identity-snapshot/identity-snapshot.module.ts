@@ -7,10 +7,7 @@ import { IdentitySnapshotService } from './identity-snapshot.service';
 import { IdentitySnapshotController } from './identity-snapshot.controller';
 
 @Module({
-  imports: [
-    CommonCacheModule,
-    TypeOrmModule.forFeature([User, KycProfile]),
-  ],
+  imports: [CommonCacheModule, TypeOrmModule.forFeature([User, KycProfile])],
   controllers: [IdentitySnapshotController],
   providers: [IdentitySnapshotService],
   exports: [IdentitySnapshotService],

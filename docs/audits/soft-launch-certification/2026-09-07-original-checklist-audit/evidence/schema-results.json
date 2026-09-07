@@ -1,0 +1,16 @@
+[
+  {
+    "service": "identity",
+    "active_entities": 21,
+    "mapped_columns": 245,
+    "missing_columns": [],
+    "scope": "column presence only; not a full type/default/index/schema diff"
+  },
+  {
+    "service": "stays",
+    "active_entities": 48,
+    "mapped_columns": 609,
+    "missing_columns": [],
+    "scope": "column presence only; not a full type/default/index/schema diff"
+  }
+]

@@ -31,13 +31,28 @@ export class StaysConversation {
   @Column({ type: 'varchar', length: 20, default: 'BOOKING' })
   type: ConversationType;
 
-  @Column({ type: 'varchar', length: 20, name: 'messaging_state', default: 'ACTIVE' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'messaging_state',
+    default: 'ACTIVE',
+  })
   messaging_state: MessagingState;
 
-  @Column({ type: 'varchar', length: 20, name: 'guest_visibility', default: 'ACTIVE' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'guest_visibility',
+    default: 'ACTIVE',
+  })
   guest_visibility: ParticipantVisibility;
 
-  @Column({ type: 'varchar', length: 20, name: 'host_visibility', default: 'ACTIVE' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'host_visibility',
+    default: 'ACTIVE',
+  })
   host_visibility: ParticipantVisibility;
 
   @Column({ type: 'int', name: 'conversation_version', default: 1 })
@@ -55,10 +70,20 @@ export class StaysConversation {
   @Column({ type: 'uuid', name: 'listing_id', nullable: true })
   listing_id: string | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'host_user_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'host_user_id',
+    nullable: true,
+  })
   host_user_id: string | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'guest_user_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'guest_user_id',
+    nullable: true,
+  })
   guest_user_id: string | null;
 
   @Column({ type: 'uuid', name: 'last_message_id', nullable: true })
@@ -91,10 +116,20 @@ export class StaysConversation {
   @Column({ type: 'int', name: 'unread_host', default: 0 })
   unread_host: number;
 
-  @Column({ type: 'varchar', length: 20, name: 'notification_level_guest', default: 'ALL' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'notification_level_guest',
+    default: 'ALL',
+  })
   notification_level_guest: NotificationLevel;
 
-  @Column({ type: 'varchar', length: 20, name: 'notification_level_host', default: 'ALL' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'notification_level_host',
+    default: 'ALL',
+  })
   notification_level_host: NotificationLevel;
 
   @Column({ type: 'boolean', name: 'blocked_by_guest', default: false })
@@ -118,10 +153,20 @@ export class StaysConversation {
   @Column({ type: 'boolean', name: 'auto_archive_disabled', default: false })
   auto_archive_disabled: boolean;
 
-  @Column({ type: 'varchar', length: 32, name: 'auto_archive_disabled_reason', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 32,
+    name: 'auto_archive_disabled_reason',
+    nullable: true,
+  })
   auto_archive_disabled_reason: string | null;
 
-  @Column({ type: 'varchar', length: 20, name: 'archive_reason', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'archive_reason',
+    nullable: true,
+  })
   archive_reason: ArchiveReason | string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })

@@ -15,7 +15,10 @@ import {
 } from '../../compliance/image-type.util';
 import { UsersService } from '../../users/users.service';
 import { UnifiedIdentityService } from '../../users/unified-identity.service';
-import { normalizePhoneOrThrow, tryNormalizePhoneNumber } from '../../../common/phone/phone-normalizer';
+import {
+  normalizePhoneOrThrow,
+  tryNormalizePhoneNumber,
+} from '../../../common/phone/phone-normalizer';
 import { DriversService } from '../drivers/drivers.service';
 import { VehicleType } from '../enums/vehicle-type.enum';
 import { DriverStatus } from '../enums/driver-status.enum';
@@ -64,38 +67,41 @@ export class RegistrationApplicationsService {
     return isNaN(d.getTime()) ? null : d;
   }
 
-  async submit(data: {
-    role: string;
-    fullName?: string;
-    phoneNumber: string;
-    countryCode?: string;
-    email?: string;
-    dateOfBirth?: string;
-    city?: string;
-    address?: string;
-    emergencyContact?: string;
-    identityDocumentType?: string;
-    identityReused?: boolean;
-    vehicleMake?: string;
-    vehicleModel?: string;
-    vehicleYear?: number;
-    vehicleColor?: string;
-    licensePlate?: string;
-    vehicleCategory?: string;
-    driversLicenseExpiry?: string;
-    vehicleRegistrationExpiry?: string;
-    insuranceExpiry?: string;
-    vehiclePhotos?: Record<string, string>;
-  }, files: {
-    identity_front?: Express.Multer.File[];
-    identity_back?: Express.Multer.File[];
-    selfie?: Express.Multer.File[];
-    drivers_license?: Express.Multer.File[];
-    vehicle_registration?: Express.Multer.File[];
-    insurance?: Express.Multer.File[];
-    background_check?: Express.Multer.File[];
-    vehicle_photos?: Express.Multer.File[];
-  }): Promise<{ id: string; status: string }> {
+  async submit(
+    data: {
+      role: string;
+      fullName?: string;
+      phoneNumber: string;
+      countryCode?: string;
+      email?: string;
+      dateOfBirth?: string;
+      city?: string;
+      address?: string;
+      emergencyContact?: string;
+      identityDocumentType?: string;
+      identityReused?: boolean;
+      vehicleMake?: string;
+      vehicleModel?: string;
+      vehicleYear?: number;
+      vehicleColor?: string;
+      licensePlate?: string;
+      vehicleCategory?: string;
+      driversLicenseExpiry?: string;
+      vehicleRegistrationExpiry?: string;
+      insuranceExpiry?: string;
+      vehiclePhotos?: Record<string, string>;
+    },
+    files: {
+      identity_front?: Express.Multer.File[];
+      identity_back?: Express.Multer.File[];
+      selfie?: Express.Multer.File[];
+      drivers_license?: Express.Multer.File[];
+      vehicle_registration?: Express.Multer.File[];
+      insurance?: Express.Multer.File[];
+      background_check?: Express.Multer.File[];
+      vehicle_photos?: Express.Multer.File[];
+    },
+  ): Promise<{ id: string; status: string }> {
     const role = (data.role || 'driver').toLowerCase();
     if (role !== 'driver' && role !== 'courier') {
       throw new BadRequestException('role must be driver or courier');
@@ -119,14 +125,13 @@ export class RegistrationApplicationsService {
       address: data.address || null,
       emergency_contact: data.emergencyContact || null,
       identity_document_type: data.identityDocumentType || null,
-      vehicle_make: role === 'driver' ? (data.vehicleMake || null) : null,
-      vehicle_model: role === 'driver' ? (data.vehicleModel || null) : null,
+      vehicle_make: role === 'driver' ? data.vehicleMake || null : null,
+      vehicle_model: role === 'driver' ? data.vehicleModel || null : null,
       vehicle_year:
         role === 'driver' && data.vehicleYear != null ? data.vehicleYear : null,
-      vehicle_color: role === 'driver' ? (data.vehicleColor || null) : null,
-      license_plate: role === 'driver' ? (data.licensePlate || null) : null,
-      vehicle_category:
-        role === 'driver' ? (data.vehicleCategory || null) : null,
+      vehicle_color: role === 'driver' ? data.vehicleColor || null : null,
+      license_plate: role === 'driver' ? data.licensePlate || null : null,
+      vehicle_category: role === 'driver' ? data.vehicleCategory || null : null,
       drivers_license_expiry:
         role === 'driver' ? this.parseDate(data.driversLicenseExpiry) : null,
       vehicle_registration_expiry:
@@ -135,7 +140,7 @@ export class RegistrationApplicationsService {
           : null,
       insurance_expiry:
         role === 'driver' ? this.parseDate(data.insuranceExpiry) : null,
-      vehicle_photos: role === 'driver' ? (data.vehiclePhotos || {}) : {},
+      vehicle_photos: role === 'driver' ? data.vehiclePhotos || {} : {},
     });
     await this.repo.save(app);
     const dir = path.join(UPLOAD_DIR, app.id);
@@ -161,8 +166,7 @@ export class RegistrationApplicationsService {
         (await saveFile(files.identity_front, 'identity_front')) || null;
       app.identity_back_path =
         (await saveFile(files.identity_back, 'identity_back')) || null;
-      app.selfie_path =
-        (await saveFile(files.selfie, 'selfie')) || null;
+      app.selfie_path = (await saveFile(files.selfie, 'selfie')) || null;
     }
 
     if (role === 'driver') {
@@ -244,7 +248,9 @@ export class RegistrationApplicationsService {
     const digitsOnly = raw.replace(/\D/g, '');
     const local = digitsOnly.slice(-9);
     const normalized = tryNormalizePhoneNumber(raw);
-    const candidates = [raw, digitsOnly, local, normalized].filter(Boolean) as string[];
+    const candidates = [raw, digitsOnly, local, normalized].filter(
+      Boolean,
+    ) as string[];
 
     for (const p of [...new Set(candidates)]) {
       const [app] = await this.repo.find({
@@ -264,7 +270,10 @@ export class RegistrationApplicationsService {
     return null;
   }
 
-  async approve(id: string, reviewedBy: string): Promise<RegistrationApplication> {
+  async approve(
+    id: string,
+    reviewedBy: string,
+  ): Promise<RegistrationApplication> {
     const app = await this.dataSource.transaction(async (manager) => {
       const locked = await manager
         .getRepository(RegistrationApplication)
@@ -272,7 +281,8 @@ export class RegistrationApplicationsService {
         .where('a.id = :id', { id })
         .setLock('pessimistic_write')
         .getOne();
-      if (!locked) throw new NotFoundException('Registration application not found');
+      if (!locked)
+        throw new NotFoundException('Registration application not found');
       if (locked.status !== 'PENDING' && locked.status !== 'UNDER_REVIEW') {
         throw new BadRequestException(
           `Cannot approve application with status ${locked.status}`,
@@ -287,11 +297,13 @@ export class RegistrationApplicationsService {
     });
 
     const rawPhone =
-      (app.country_code || '') + String(app.phone_number || '').replace(/\s/g, '');
+      (app.country_code || '') +
+      String(app.phone_number || '').replace(/\s/g, '');
     const phone = normalizePhoneOrThrow(rawPhone);
     const accountType = app.role === 'driver' ? 'DRIVER' : 'COURIER';
 
-    const identity = await this.unifiedIdentityService.findOrCreateByPhone(phone);
+    const identity =
+      await this.unifiedIdentityService.findOrCreateByPhone(phone);
     const consumer = await this.usersService.findOrCreateForKyc(
       phone,
       app.full_name ?? undefined,
@@ -305,7 +317,9 @@ export class RegistrationApplicationsService {
     });
 
     if (accountType === 'DRIVER') {
-      const existingProfile = await this.driversService.getDriverByUserId(roleUser.id);
+      const existingProfile = await this.driversService.getDriverByUserId(
+        roleUser.id,
+      );
       if (!existingProfile) {
         const vehicleType = this.mapVehicleCategory(app.vehicle_category);
         const vehiclePlate = app.license_plate || 'TBD';
@@ -314,7 +328,10 @@ export class RegistrationApplicationsService {
           vehicleType,
           vehiclePlate,
         );
-        await this.driversService.updateDriverStatus(driverProfile.id, DriverStatus.ACTIVE);
+        await this.driversService.updateDriverStatus(
+          driverProfile.id,
+          DriverStatus.ACTIVE,
+        );
       }
     }
 

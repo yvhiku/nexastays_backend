@@ -17,7 +17,9 @@ export class StaysCheckInContact {
   @Column({ type: 'uuid', unique: true, name: 'listing_id' })
   listing_id: string;
 
-  @OneToOne(() => StaysListing, (l) => l.check_in_contact, { onDelete: 'CASCADE' })
+  @OneToOne(() => StaysListing, (l) => l.check_in_contact, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'listing_id' })
   listing: StaysListing;
 

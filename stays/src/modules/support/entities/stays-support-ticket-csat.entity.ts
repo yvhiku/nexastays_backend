@@ -16,7 +16,13 @@ export class StaysSupportTicketCsat {
   @Column({ type: 'numeric', precision: 2, scale: 1 })
   rating: number;
 
-  @Column({ type: 'numeric', precision: 2, scale: 1, name: 'agent_rating', nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 2,
+    scale: 1,
+    name: 'agent_rating',
+    nullable: true,
+  })
   agent_rating: number | null;
 
   @Column({ type: 'varchar', length: 128, name: 'agent_id', nullable: true })

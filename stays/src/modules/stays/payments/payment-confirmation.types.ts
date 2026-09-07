@@ -5,7 +5,9 @@ export type PaymentConfirmationOutcome =
   | 'BOOKING_NOT_PAYABLE'
   | 'DATES_UNAVAILABLE';
 
-export type MockPaymentConfirmStatus = 'CONFIRMED' | 'PAYMENT_ALREADY_PROCESSED';
+export type MockPaymentConfirmStatus =
+  | 'CONFIRMED'
+  | 'PAYMENT_ALREADY_PROCESSED';
 
 export interface MockPaymentConfirmResult {
   status: MockPaymentConfirmStatus;

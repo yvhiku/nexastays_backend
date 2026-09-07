@@ -1,0 +1,37 @@
+[
+  {
+    "name": "KYC transaction rolls back on user write failure",
+    "result": "PASS",
+    "details": {
+      "http_status": 503,
+      "persisted_kyc_status": "REJECTED",
+      "error_is_generic": true
+    }
+  },
+  {
+    "name": "same event succeeds after transient failure is removed",
+    "result": "PASS",
+    "details": {
+      "http_status": 201
+    }
+  },
+  {
+    "name": "duplicate event is acknowledged without applying again",
+    "result": "PASS",
+    "details": {
+      "http_status": 201,
+      "updated": false
+    }
+  },
+  {
+    "name": "concurrent different events retain the newest status",
+    "result": "PASS",
+    "details": {
+      "statuses": [
+        201,
+        201
+      ],
+      "persisted_kyc_status": "REJECTED"
+    }
+  }
+]

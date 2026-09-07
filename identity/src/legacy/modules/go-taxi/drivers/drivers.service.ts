@@ -194,7 +194,10 @@ export class DriversService {
     application_status: string;
   } | null> {
     const authUserId = userId;
-    console.log('[DriversService] getDriverProfileForUser called, authUserId=', authUserId);
+    console.log(
+      '[DriversService] getDriverProfileForUser called, authUserId=',
+      authUserId,
+    );
 
     // 1. Resolve driver (userId may be DRIVER or CONSUMER with same identity)
     // Primary: unified_identity_id. Legacy fallback: linked_user_id (CONSUMER→DRIVER) when identity missing.
@@ -206,10 +209,11 @@ export class DriversService {
         select: ['id', 'unified_identity_id'],
       });
       if (currentUser?.unified_identity_id) {
-        const driverUser = await this.usersService.findByUnifiedIdentityIdAndAccountType(
-          currentUser.unified_identity_id,
-          'DRIVER',
-        );
+        const driverUser =
+          await this.usersService.findByUnifiedIdentityIdAndAccountType(
+            currentUser.unified_identity_id,
+            'DRIVER',
+          );
         if (driverUser) {
           driverUserId = driverUser.id;
           driver = await this.getDriverByUserId(driverUser.id);
@@ -232,11 +236,17 @@ export class DriversService {
       console.log('[DriversService] No driver found, returning null');
       return null;
     }
-    console.log('[DriversService] resolved driverUserId=', driverUserId, 'driverId=', driver.id);
+    console.log(
+      '[DriversService] resolved driverUserId=',
+      driverUserId,
+      'driverId=',
+      driver.id,
+    );
 
     // 2. Load approved registration application (source of truth for onboarding data)
-    const driverPhone = String((driver as any).user?.phone_number || '')
-      .replace(/\s/g, '');
+    const driverPhone = String(
+      (driver as any).user?.phone_number || '',
+    ).replace(/\s/g, '');
     const currentUser = await this.usersService.getMe(userId);
     const fallbackPhone = (currentUser as any).phone_number;
     const phone = String(driverPhone || fallbackPhone || '').replace(/\s/g, '');
@@ -255,15 +265,26 @@ export class DriversService {
     ].filter(Boolean);
 
     let reg: RegistrationApplication | null = null;
-    console.log('[DriversService] querying registration, candidatesCount=', candidates.length, 'local=', local || '(empty)');
+    console.log(
+      '[DriversService] querying registration, candidatesCount=',
+      candidates.length,
+      'local=',
+      local || '(empty)',
+    );
 
     if (candidates.length > 0) {
       reg =
-        (await this.registrationRepo.find({
-          where: { phone_number: In(candidates), status: 'APPROVED', role: 'driver' },
-          order: { created_at: 'DESC' },
-          take: 1,
-        }))[0] ?? null;
+        (
+          await this.registrationRepo.find({
+            where: {
+              phone_number: In(candidates),
+              status: 'APPROVED',
+              role: 'driver',
+            },
+            order: { created_at: 'DESC' },
+            take: 1,
+          })
+        )[0] ?? null;
     }
     if (!reg && local) {
       reg = await this.registrationRepo
@@ -291,14 +312,26 @@ export class DriversService {
         });
         reg =
           recent.find((a) => {
-            const rn = String(a.full_name || '').trim().toLowerCase().replace(/\s+/g, ' ');
-            return rn && (rn === driverName || rn.includes(driverName) || driverName.includes(rn));
+            const rn = String(a.full_name || '')
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, ' ');
+            return (
+              rn &&
+              (rn === driverName ||
+                rn.includes(driverName) ||
+                driverName.includes(rn))
+            );
           }) ?? null;
       }
     }
     if (!reg && driver.vehicle_plate && driver.vehicle_plate !== 'TBD') {
       reg = await this.registrationRepo.findOne({
-        where: { license_plate: driver.vehicle_plate, status: 'APPROVED', role: 'driver' },
+        where: {
+          license_plate: driver.vehicle_plate,
+          status: 'APPROVED',
+          role: 'driver',
+        },
         order: { created_at: 'DESC' },
       });
     }
@@ -313,7 +346,9 @@ export class DriversService {
       reg =
         recent.find((a) => {
           const cc = String(a.country_code || '').replace(/\D/g, '');
-          const pn = String(a.phone_number || '').replace(/\D/g, '').slice(-9);
+          const pn = String(a.phone_number || '')
+            .replace(/\D/g, '')
+            .slice(-9);
           const combined = (cc + pn).replace(/\D/g, '').slice(-9);
           return combined === targetNorm || pn === targetNorm;
         }) ?? null;
@@ -326,15 +361,30 @@ export class DriversService {
         take: 10,
         select: ['id', 'phone_number', 'full_name', 'license_plate'],
       });
-      console.log('[DriversService] REG NOT FOUND. Sample approved regs:', allApproved.map((r) => ({
-        id: r.id,
-        phone: r.phone_number,
-        name: r.full_name,
-        plate: r.license_plate,
-      })));
-      console.log('[DriversService] Our candidates=', candidates, 'driverName=', (driver as any).user?.full_name, 'driverPlate=', driver.vehicle_plate);
+      console.log(
+        '[DriversService] REG NOT FOUND. Sample approved regs:',
+        allApproved.map((r) => ({
+          id: r.id,
+          phone: r.phone_number,
+          name: r.full_name,
+          plate: r.license_plate,
+        })),
+      );
+      console.log(
+        '[DriversService] Our candidates=',
+        candidates,
+        'driverName=',
+        (driver as any).user?.full_name,
+        'driverPlate=',
+        driver.vehicle_plate,
+      );
     }
-    console.log('[DriversService] approvedRegId=', reg?.id ?? 'null', 'hasReg=', !!reg);
+    console.log(
+      '[DriversService] approvedRegId=',
+      reg?.id ?? 'null',
+      'hasReg=',
+      !!reg,
+    );
     safeLogger.info('GET /go/drivers/me resolved', {
       authUserId,
       driverUserId,
@@ -362,7 +412,9 @@ export class DriversService {
     const vehicleParts: string[] = [];
     if (reg) {
       if (reg.vehicle_make || reg.vehicle_model) {
-        vehicleParts.push([reg.vehicle_make, reg.vehicle_model].filter(Boolean).join(' '));
+        vehicleParts.push(
+          [reg.vehicle_make, reg.vehicle_model].filter(Boolean).join(' '),
+        );
       }
       if (reg.vehicle_year) vehicleParts.push(String(reg.vehicle_year));
       if (reg.vehicle_color) vehicleParts.push(reg.vehicle_color);
@@ -376,14 +428,18 @@ export class DriversService {
     const vehicle_summary = vehicleParts.filter(Boolean).join(' · ') || null;
 
     const makeModel = reg
-      ? [reg.vehicle_make, reg.vehicle_model].filter(Boolean).join(' ').trim() || ''
+      ? [reg.vehicle_make, reg.vehicle_model]
+          .filter(Boolean)
+          .join(' ')
+          .trim() || ''
       : '';
     const vehicle =
       reg || driver.vehicle_plate
         ? {
             make_model: reg
               ? makeModel || 'Vehicle'
-              : String(driver.vehicle_type || '') + (driver.vehicle_plate ? ` ${driver.vehicle_plate}` : ''),
+              : String(driver.vehicle_type || '') +
+                (driver.vehicle_plate ? ` ${driver.vehicle_plate}` : ''),
             year: reg?.vehicle_year ?? null,
             color: reg?.vehicle_color ?? null,
             plate: reg?.license_plate ?? driver.vehicle_plate ?? null,
@@ -399,7 +455,10 @@ export class DriversService {
       reg?.vehicle_registration_expiry ?? null,
       !!reg?.vehicle_registration_path,
     );
-    const insuranceDoc = toDocStatus(reg?.insurance_expiry ?? null, !!reg?.insurance_path);
+    const insuranceDoc = toDocStatus(
+      reg?.insurance_expiry ?? null,
+      !!reg?.insurance_path,
+    );
     const backgroundCheckDoc = reg?.background_check_path
       ? { status: 'VERIFIED' as const }
       : { status: 'PENDING' as const };
@@ -407,7 +466,14 @@ export class DriversService {
     const user = (currentUser as any) || {};
     const driverUser = (driver as any).user || {};
 
-    console.log('[DriversService] final vehicle_summary=', vehicle_summary, 'licenseStatus=', licenseDoc.status, 'regStatus=', registrationDoc.status);
+    console.log(
+      '[DriversService] final vehicle_summary=',
+      vehicle_summary,
+      'licenseStatus=',
+      licenseDoc.status,
+      'regStatus=',
+      registrationDoc.status,
+    );
     safeLogger.info('GET /go/drivers/me merged payload', {
       vehicle_summary: vehicle_summary ?? '(null)',
       vehicle_plate: vehicle?.plate ?? '(null)',
@@ -419,11 +485,17 @@ export class DriversService {
     return {
       id: driverUserId,
       driver_id: driver.id,
-      full_name: reg?.full_name ?? driverUser.full_name ?? user.full_name ?? null,
-      phone_number: driverUser.phone_number ?? user.phone_number ?? reg?.phone_number ?? null,
+      full_name:
+        reg?.full_name ?? driverUser.full_name ?? user.full_name ?? null,
+      phone_number:
+        driverUser.phone_number ??
+        user.phone_number ??
+        reg?.phone_number ??
+        null,
       email: reg?.email ?? driverUser.email ?? user.email ?? null,
       city: reg?.city ?? driverUser.city ?? user.city ?? null,
-      profile_photo_url: driverUser.profile_photo_url ?? user.profile_photo_url ?? null,
+      profile_photo_url:
+        driverUser.profile_photo_url ?? user.profile_photo_url ?? null,
       verified_driver: !!reg && reg.status === 'APPROVED',
       driver_status: reg?.status ?? driver.status,
       vehicle_summary,

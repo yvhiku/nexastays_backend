@@ -8,10 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { IdentityAuthzClient } from '../identity/identity-authz.client';
 
-function jwtRoles(user: {
-  roles?: string[];
-  role?: string;
-}): string[] {
+function jwtRoles(user: { roles?: string[]; role?: string }): string[] {
   if (Array.isArray(user?.roles) && user.roles.length > 0) {
     return user.roles.map(String);
   }

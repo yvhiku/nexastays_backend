@@ -1,0 +1,32 @@
+[
+  {
+    "name": "browser OTP sets HttpOnly refresh and strips JSON refresh",
+    "result": "PASS",
+    "details": {
+      "status": 200,
+      "has_httponly": true,
+      "json_refresh_present": false
+    }
+  },
+  {
+    "name": "browser refresh rotates credential",
+    "result": "PASS",
+    "details": {
+      "status": 200
+    }
+  },
+  {
+    "name": "browser logout accepts current refresh",
+    "result": "PASS",
+    "details": {
+      "status": 200
+    }
+  },
+  {
+    "name": "revoked refresh rejected",
+    "result": "PASS",
+    "details": {
+      "status": 401
+    }
+  }
+]

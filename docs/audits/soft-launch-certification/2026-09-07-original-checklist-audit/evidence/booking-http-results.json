@@ -1,0 +1,111 @@
+[
+  {
+    "name": "mock journey booking creation",
+    "result": "PASS",
+    "details": {
+      "status": 201,
+      "response_keys": [
+        "id",
+        "booking_reference",
+        "listing_id",
+        "status",
+        "booking_lifecycle",
+        "checkin_date",
+        "checkout_date",
+        "guest_count",
+        "total_subtotal",
+        "guest_fee",
+        "total_paid",
+        "currency",
+        "created_at",
+        "completed_at",
+        "payment_expires_at",
+        "payment_failed",
+        "can_review",
+        "can_complain",
+        "can_cancel",
+        "has_reviewed",
+        "review_status",
+        "listing"
+      ]
+    }
+  },
+  {
+    "name": "two nights price and fees are computed server-side",
+    "result": "PASS",
+    "details": {
+      "actual": {
+        "total_subtotal": 200.0,
+        "guest_fee": 10.0,
+        "host_fee": 10.0,
+        "total_paid": 210.0,
+        "payout_amount": 190.0
+      }
+    }
+  },
+  {
+    "name": "booking idempotency returns same booking",
+    "result": "PASS",
+    "details": {
+      "status": 201
+    }
+  },
+  {
+    "name": "overlapping booking refused through API",
+    "result": "PASS",
+    "details": {
+      "status": 409
+    }
+  },
+  {
+    "name": "mock payment intent creation",
+    "result": "PASS",
+    "details": {
+      "status": 201
+    }
+  },
+  {
+    "name": "mock confirm first",
+    "result": "PASS",
+    "details": {
+      "status": 200
+    }
+  },
+  {
+    "name": "mock confirm repeat",
+    "result": "PASS",
+    "details": {
+      "status": 200
+    }
+  },
+  {
+    "name": "mock confirmation creates one settled test ledger and confirms booking",
+    "result": "PASS",
+    "details": {
+      "settled_mock_rows": 1,
+      "booking_status": "CONFIRMED"
+    }
+  },
+  {
+    "name": "guest cancellation through API",
+    "result": "PASS",
+    "details": {
+      "status": 200
+    }
+  },
+  {
+    "name": "mock refund ledger amount",
+    "result": "PASS",
+    "details": {
+      "refund": "210.00",
+      "expected": 210
+    }
+  },
+  {
+    "name": "cancellation releases inventory for rebooking",
+    "result": "PASS",
+    "details": {
+      "status": 201
+    }
+  }
+]

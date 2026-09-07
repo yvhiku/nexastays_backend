@@ -75,7 +75,12 @@ export class RidesController {
     @CurrentUser() user: any,
     @Body() body?: CancelRideDto,
   ) {
-    return this.ridesService.cancel(id, user.userId, user.account_type, body?.reason);
+    return this.ridesService.cancel(
+      id,
+      user.userId,
+      user.account_type,
+      body?.reason,
+    );
   }
 
   @Get('rides')
@@ -101,8 +106,7 @@ export class RidesController {
   ) {
     const driverLat = lat != null ? parseFloat(lat) : undefined;
     const driverLng = lng != null ? parseFloat(lng) : undefined;
-    const radius =
-      radiusKm != null ? parseFloat(radiusKm) : 1;
+    const radius = radiusKm != null ? parseFloat(radiusKm) : 1;
     return this.ridesService.listAvailableForDriver(
       driverLat,
       driverLng,

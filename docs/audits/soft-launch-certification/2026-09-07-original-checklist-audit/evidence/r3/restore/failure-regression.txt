@@ -1,0 +1,1 @@
+PASS: pg_restore exit 1 stops restore before validation or success reporting

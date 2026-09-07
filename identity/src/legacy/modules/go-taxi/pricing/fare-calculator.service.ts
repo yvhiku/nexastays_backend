@@ -64,7 +64,12 @@ export class FareCalculatorService {
       promoDiscount = 0,
     } = input;
 
-    if (distanceKm < 0 || durationMin < 0 || surcharges < 0 || promoDiscount < 0) {
+    if (
+      distanceKm < 0 ||
+      durationMin < 0 ||
+      surcharges < 0 ||
+      promoDiscount < 0
+    ) {
       throw new BadRequestException(
         'Distance, duration, surcharges, and promo discount must be non-negative',
       );

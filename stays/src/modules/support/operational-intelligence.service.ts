@@ -10,7 +10,13 @@ import {
   type SupportStaffActor,
 } from './support-staff-access';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, MoreThanOrEqual, QueryFailedError, Repository } from 'typeorm';
+import {
+  DataSource,
+  In,
+  MoreThanOrEqual,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { StaysAuditService } from '../stays/services/stays-audit.service';
 import {
   computeSupportSla,
@@ -158,7 +164,10 @@ export class OperationalIntelligenceService {
     );
   }
 
-  async evaluateReport(kind: 'conversation_reported' | 'safety_issue', id: string) {
+  async evaluateReport(
+    kind: 'conversation_reported' | 'safety_issue',
+    id: string,
+  ) {
     if (kind === 'conversation_reported') {
       const report = await this.reportRepo.findOne({ where: { id } });
       if (!report) return;
@@ -648,13 +657,17 @@ export class OperationalIntelligenceService {
     }
     if (ticket.booking_id) {
       consider(
-        await this.ticketRepo.find({ where: { booking_id: ticket.booking_id } }),
+        await this.ticketRepo.find({
+          where: { booking_id: ticket.booking_id },
+        }),
         'SAME_BOOKING',
       );
     }
     if (ticket.listing_id) {
       consider(
-        await this.ticketRepo.find({ where: { listing_id: ticket.listing_id } }),
+        await this.ticketRepo.find({
+          where: { listing_id: ticket.listing_id },
+        }),
         'SAME_LISTING',
       );
     }
@@ -941,7 +954,8 @@ export class OperationalIntelligenceService {
       followUpSignalId: row.follow_up_signal_id
         ? String(row.follow_up_signal_id)
         : null,
-      overallRating: row.overall_rating == null ? null : Number(row.overall_rating),
+      overallRating:
+        row.overall_rating == null ? null : Number(row.overall_rating),
       agentRating: row.agent_rating == null ? null : Number(row.agent_rating),
       problemSolved: truthyFlag(row.problem_solved)
         ? true
@@ -960,7 +974,7 @@ export class OperationalIntelligenceService {
 
   async listAgentWorkload(now: Date = new Date()) {
     const rows = await this.queryAssignedAgentWorkload(now);
-    const ratingRows = (await this.dataSource.query(
+    const ratingRows = await this.dataSource.query(
       `
       SELECT
         c.agent_id,
@@ -975,16 +989,7 @@ export class OperationalIntelligenceService {
       WHERE c.agent_id IS NOT NULL
       GROUP BY c.agent_id
       `,
-    )) as {
-      agent_id: string;
-      review_count: number;
-      average_agent_rating: number | string | null;
-      r1: number;
-      r2: number;
-      r3: number;
-      r4: number;
-      r5: number;
-    }[];
+    );
     const emptyRatings = {
       reviewCount: 0,
       averageAgentRating: null as number | null,
@@ -1163,7 +1168,7 @@ export class OperationalIntelligenceService {
     const metadata = (row.metadata ?? {}) as Record<string, unknown> & {
       code?: SignalReasonCode;
     };
-    const code = (metadata.code ?? 'REPEAT_REPORT_THRESHOLD') as SignalReasonCode;
+    const code = metadata.code ?? 'REPEAT_REPORT_THRESHOLD';
     return {
       id: row.id,
       type: row.signal_type,
@@ -1211,7 +1216,9 @@ export class OperationalIntelligenceService {
       upserts: [
         {
           type: 'MULTIPLE_OPEN_TICKETS' as const,
-          severity: (count >= 4 ? 'MEDIUM' : 'LOW') as OperationalSignalSeverity,
+          severity: (count >= 4
+            ? 'MEDIUM'
+            : 'LOW') as OperationalSignalSeverity,
           subjectType: 'USER' as const,
           subjectId: requesterUserId,
           ticketId: latest?.id ?? null,
@@ -1298,11 +1305,13 @@ export class OperationalIntelligenceService {
     state: SupportSlaState,
   ): SignalReasonCode | null {
     if (state === 'AT_RISK') {
-      if (sla.firstResponse.state === 'AT_RISK') return 'FIRST_RESPONSE_AT_RISK';
+      if (sla.firstResponse.state === 'AT_RISK')
+        return 'FIRST_RESPONSE_AT_RISK';
       if (sla.resolution.state === 'AT_RISK') return 'FIRST_RESOLUTION_AT_RISK';
       return null;
     }
-    if (sla.firstResponse.state === 'BREACHED') return 'FIRST_RESPONSE_BREACHED';
+    if (sla.firstResponse.state === 'BREACHED')
+      return 'FIRST_RESPONSE_BREACHED';
     if (sla.resolution.state === 'BREACHED') return 'FIRST_RESOLUTION_BREACHED';
     return null;
   }
@@ -1506,10 +1515,10 @@ function daysAgo(days: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
-function truthyFlag(value: boolean | number | string | null | undefined): boolean {
-  return (
-    value === true || value === 1 || value === 't' || value === 'true'
-  );
+function truthyFlag(
+  value: boolean | number | string | null | undefined,
+): boolean {
+  return value === true || value === 1 || value === 't' || value === 'true';
 }
 
 function attentionReasonsFor(row: {

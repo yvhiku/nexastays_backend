@@ -8,7 +8,10 @@ function envNumber(name: string, fallback: number, min?: number): number {
 }
 
 export function supportQualityWindowDays(): number {
-  return Math.min(90, Math.max(1, envNumber('SUPPORT_QUALITY_WINDOW_DAYS', 30, 1)));
+  return Math.min(
+    90,
+    Math.max(1, envNumber('SUPPORT_QUALITY_WINDOW_DAYS', 30, 1)),
+  );
 }
 
 export function supportMinReviewsForQualitySignal(): number {
@@ -52,7 +55,10 @@ export function supportReopenMaturityDays(): number {
 }
 
 export function supportMinReviewsForCategorySignal(): number {
-  return Math.max(1, envNumber('SUPPORT_MIN_REVIEWS_FOR_CATEGORY_SIGNAL', 5, 1));
+  return Math.max(
+    1,
+    envNumber('SUPPORT_MIN_REVIEWS_FOR_CATEGORY_SIGNAL', 5, 1),
+  );
 }
 
 export function supportCategoryRecentDays(): number {

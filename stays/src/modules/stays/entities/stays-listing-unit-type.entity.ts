@@ -60,10 +60,21 @@ export class StaysListingUnitType {
   @Column({ type: 'jsonb', default: () => "'[]'" })
   amenities: string[];
 
-  @Column({ type: 'varchar', length: 20, name: 'pricing_unit', default: 'NIGHT' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'pricing_unit',
+    default: 'NIGHT',
+  })
   pricing_unit: UnitPricingUnit;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_price', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    name: 'base_price',
+    default: 0,
+  })
   base_price: number;
 
   @Column({ type: 'varchar', length: 3, default: 'MAD' })

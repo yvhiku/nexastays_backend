@@ -6,7 +6,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import { DataSource, EntityManager, Repository, In, QueryFailedError } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  Repository,
+  In,
+  QueryFailedError,
+} from 'typeorm';
 import { StaysListing } from './entities/stays-listing.entity';
 import { StaysBooking } from './entities/stays-booking.entity';
 import { StaysBookingOccupant } from './entities/stays-booking-occupant.entity';
@@ -150,13 +156,17 @@ export class StaysService {
     return found.delivery;
   }
 
-  async getListingMediaPath(listingId: string, assetId: string): Promise<string> {
+  async getListingMediaPath(
+    listingId: string,
+    assetId: string,
+  ): Promise<string> {
     const listing = await this.listingRepo.findOne({
       where: { id: listingId },
       relations: ['media'],
     });
     if (!listing) throw new NotFoundException('Listing not found');
-    if (listing.status !== 'LIVE') throw new NotFoundException('Listing not found');
+    if (listing.status !== 'LIVE')
+      throw new NotFoundException('Listing not found');
     const media = listing.media?.find((m) => m.asset_id === assetId);
     if (!media) throw new NotFoundException('Media not found');
 
@@ -230,11 +240,16 @@ export class StaysService {
     if (params.checkin_date && params.checkout_date) {
       const checkin = params.checkin_date.trim();
       const checkout = params.checkout_date.trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(checkin) && /^\d{4}-\d{2}-\d{2}$/.test(checkout) && checkout > checkin) {
-        const unavailable = await this.availabilityService.getUnavailableListingIds(
-          checkin,
-          checkout,
-        );
+      if (
+        /^\d{4}-\d{2}-\d{2}$/.test(checkin) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(checkout) &&
+        checkout > checkin
+      ) {
+        const unavailable =
+          await this.availabilityService.getUnavailableListingIds(
+            checkin,
+            checkout,
+          );
         if (unavailable.length > 0) {
           qb.andWhere('l.id NOT IN (:...unavailable)', { unavailable });
         }
@@ -263,15 +278,17 @@ export class StaysService {
       throw new NotFoundException('Listing not found');
     }
 
-    const isOwner =
-      !!guestUserId && listing.host_user_id === guestUserId;
+    const isOwner = !!guestUserId && listing.host_user_id === guestUserId;
     const canRevealAddress =
       isOwner ||
       (guestUserId
         ? await this.canRevealAddressAndContact(listing.id, guestUserId)
         : false);
 
-    return this.toListingResponse(listing, canRevealAddress ? 'full' : 'masked');
+    return this.toListingResponse(
+      listing,
+      canRevealAddress ? 'full' : 'masked',
+    );
   }
 
   async getListingAvailability(
@@ -344,7 +361,9 @@ export class StaysService {
       dates.push(this.availabilityService.toDateString(cursor));
       cursor.setDate(cursor.getDate() + 1);
       if (dates.length > 366) {
-        throw new BadRequestException('Availability range cannot exceed 366 nights');
+        throw new BadRequestException(
+          'Availability range cannot exceed 366 nights',
+        );
       }
     }
 
@@ -395,7 +414,8 @@ export class StaysService {
     const address = listing.address_encrypted?.trim();
     if (!address) return null;
 
-    const floorRe = /^(étage|etage|floor|level|apt|apartment|appartement|studio)\b/i;
+    const floorRe =
+      /^(étage|etage|floor|level|apt|apartment|appartement|studio)\b/i;
     const isFloor = (text: string) => floorRe.test(text.trim());
 
     const parts = address
@@ -435,9 +455,7 @@ export class StaysService {
       geo_lat: listing.geo_lat,
       geo_lng: listing.geo_lng,
       address:
-        addressMode === 'full'
-          ? (listing.address_encrypted ?? null)
-          : null,
+        addressMode === 'full' ? (listing.address_encrypted ?? null) : null,
       neighborhood: this.extractNeighborhood(listing),
       status: listing.status,
       checkin_time: listing.checkin_time,
@@ -470,7 +488,11 @@ export class StaysService {
         : null,
       media: (listing.media || [])
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-        .map((m) => ({ asset_id: m.asset_id, kind: m.kind, sort_order: m.sort_order ?? 0 })),
+        .map((m) => ({
+          asset_id: m.asset_id,
+          kind: m.kind,
+          sort_order: m.sort_order ?? 0,
+        })),
     };
   }
 
@@ -483,7 +505,9 @@ export class StaysService {
       identitySnapshot?: IdentitySnapshot | null;
     },
   ) {
-    const isVerified = this.isGuestVerifiedForBooking(auditContext?.identitySnapshot);
+    const isVerified = this.isGuestVerifiedForBooking(
+      auditContext?.identitySnapshot,
+    );
     if (!isVerified) {
       throw new BadRequestException(
         'Identity verification required to book. Complete KYC in Nexa Identity first.',
@@ -507,204 +531,209 @@ export class StaysService {
       const listingRepo = manager.getRepository(StaysListing);
       const bookingRepo = manager.getRepository(StaysBooking);
 
-        // Lock listing row only — FOR UPDATE cannot target nullable OUTER JOIN sides
-        // (e.g. left-joined rules). Load relations after the lock is held.
-        const locked = await listingRepo
-          .createQueryBuilder('l')
-          .setLock('pessimistic_write')
-          .where('l.id = :id', { id: dto.listing_id })
-          .getOne();
+      // Lock listing row only — FOR UPDATE cannot target nullable OUTER JOIN sides
+      // (e.g. left-joined rules). Load relations after the lock is held.
+      const locked = await listingRepo
+        .createQueryBuilder('l')
+        .setLock('pessimistic_write')
+        .where('l.id = :id', { id: dto.listing_id })
+        .getOne();
 
-        if (!locked) {
-          throw new NotFoundException('Listing not found');
-        }
+      if (!locked) {
+        throw new NotFoundException('Listing not found');
+      }
 
-        const listing = await listingRepo.findOne({
-          where: { id: dto.listing_id },
-          relations: ['rate_plan', 'rules'],
+      const listing = await listingRepo.findOne({
+        where: { id: dto.listing_id },
+        relations: ['rate_plan', 'rules'],
+      });
+
+      if (!listing) {
+        throw new NotFoundException('Listing not found');
+      }
+
+      if (listing.status !== 'LIVE') {
+        throw new BadRequestException('Listing is not available for booking');
+      }
+
+      const maxGuests = listing.rules?.max_guests ?? 50;
+      if (dto.guest_count > maxGuests) {
+        throw new BadRequestException(
+          `Guest count exceeds listing maximum of ${maxGuests}`,
+        );
+      }
+      if (dto.occupants && dto.occupants.length > dto.guest_count) {
+        throw new BadRequestException(
+          'Occupants list cannot exceed guest_count',
+        );
+      }
+
+      const checkin = parseBookingDateOnly(dto.checkin_date);
+      const checkout = parseBookingDateOnly(dto.checkout_date);
+      assertMinOneNightStay(dto.checkin_date, dto.checkout_date);
+
+      // Re-check idempotency inside transaction
+      if (dto.idempotency_key) {
+        const existingInTxn = await bookingRepo.findOne({
+          where: {
+            guest_user_id: userId,
+            idempotency_key: dto.idempotency_key,
+          },
         });
-
-        if (!listing) {
-          throw new NotFoundException('Listing not found');
-        }
-
-        if (listing.status !== 'LIVE') {
-          throw new BadRequestException('Listing is not available for booking');
-        }
-
-        const maxGuests = listing.rules?.max_guests ?? 50;
-        if (dto.guest_count > maxGuests) {
-          throw new BadRequestException(
-            `Guest count exceeds listing maximum of ${maxGuests}`,
-          );
-        }
-        if (dto.occupants && dto.occupants.length > dto.guest_count) {
-          throw new BadRequestException(
-            'Occupants list cannot exceed guest_count',
-          );
-        }
-
-        const checkin = parseBookingDateOnly(dto.checkin_date);
-        const checkout = parseBookingDateOnly(dto.checkout_date);
-        assertMinOneNightStay(dto.checkin_date, dto.checkout_date);
-
-        // Re-check idempotency inside transaction
-        if (dto.idempotency_key) {
-          const existingInTxn = await bookingRepo.findOne({
-            where: {
-              guest_user_id: userId,
-              idempotency_key: dto.idempotency_key,
-            },
+        if (existingInTxn) {
+          const loaded = await bookingRepo.findOne({
+            where: { id: existingInTxn.id },
+            relations: ['listing', 'listing.check_in_contact'],
           });
-          if (existingInTxn) {
-            const loaded = await bookingRepo.findOne({
-              where: { id: existingInTxn.id },
-              relations: ['listing', 'listing.check_in_contact'],
-            });
-            if (loaded) return this.toBookingResponse(loaded);
-          }
+          if (loaded) return this.toBookingResponse(loaded);
         }
+      }
 
-        // Availability check inside transaction (same connection as listing lock)
-        const available = await this.availabilityService.isListingAvailable(
-          dto.listing_id,
-          dto.checkin_date,
-          dto.checkout_date,
-          { manager },
+      // Availability check inside transaction (same connection as listing lock)
+      const available = await this.availabilityService.isListingAvailable(
+        dto.listing_id,
+        dto.checkin_date,
+        dto.checkout_date,
+        { manager },
+      );
+      if (!available) {
+        throw new ConflictException(
+          'Selected dates are no longer available. Please try different dates.',
         );
-        if (!available) {
-          throw new ConflictException(
-            'Selected dates are no longer available. Please try different dates.',
-          );
-        }
+      }
 
-        // Calendar nights only — see bookingNightsBetween (DST-safe, UTC YMD).
-        const nights = bookingNightsBetween(dto.checkin_date, dto.checkout_date);
-        const ratePlan = listing.rate_plan;
-        if (!ratePlan) {
-          throw new BadRequestException('Listing has no pricing configured');
-        }
+      // Calendar nights only — see bookingNightsBetween (DST-safe, UTC YMD).
+      const nights = bookingNightsBetween(dto.checkin_date, dto.checkout_date);
+      const ratePlan = listing.rate_plan;
+      if (!ratePlan) {
+        throw new BadRequestException('Listing has no pricing configured');
+      }
 
-        const basePrice = Number(ratePlan.base_price);
-        const subtotal = basePrice * nights;
-        // Authoritative DB fee rates — booking snapshot freezes afterwards.
-        const { guestFee, hostFee, totalPaid, payoutAmount } =
-          await this.platformSettings.calculateFeesAuthoritative(subtotal);
+      const basePrice = Number(ratePlan.base_price);
+      const subtotal = basePrice * nights;
+      // Authoritative DB fee rates — booking snapshot freezes afterwards.
+      const { guestFee, hostFee, totalPaid, payoutAmount } =
+        await this.platformSettings.calculateFeesAuthoritative(subtotal);
 
-        const bookingReference = await allocateBookingReference(
-          manager,
-          new Date(),
-        );
+      const bookingReference = await allocateBookingReference(
+        manager,
+        new Date(),
+      );
 
-        const newBooking = bookingRepo.create({
-          listing_id: dto.listing_id,
-          guest_user_id: userId,
-          booking_reference: bookingReference,
-          status: 'PAYMENT_PENDING',
-          checkin_date: checkin,
-          checkout_date: checkout,
-          guest_count: dto.guest_count,
-          total_subtotal: subtotal,
-          guest_fee: guestFee,
-          host_fee: hostFee,
-          total_paid: totalPaid,
-          payout_amount: payoutAmount,
-          currency: ratePlan.currency,
-          idempotency_key: dto.idempotency_key || null,
-        });
+      const newBooking = bookingRepo.create({
+        listing_id: dto.listing_id,
+        guest_user_id: userId,
+        booking_reference: bookingReference,
+        status: 'PAYMENT_PENDING',
+        checkin_date: checkin,
+        checkout_date: checkout,
+        guest_count: dto.guest_count,
+        total_subtotal: subtotal,
+        guest_fee: guestFee,
+        host_fee: hostFee,
+        total_paid: totalPaid,
+        payout_amount: payoutAmount,
+        currency: ratePlan.currency,
+        idempotency_key: dto.idempotency_key || null,
+      });
 
-        try {
-          await bookingRepo.save(newBooking);
-        } catch (err) {
-          if (err instanceof QueryFailedError) {
-            const driver = err.driverError as {
-              code?: string;
-              constraint?: string;
-              message?: string;
-            };
-            const msg = `${driver?.message ?? ''} ${err.message}`;
-            if (
-              driver?.code === '23P01' ||
-              driver?.code === '40P01' ||
-              driver?.constraint === 'ex_stays_bookings_active_overlap' ||
-              msg.includes('ex_stays_bookings_active_overlap')
-            ) {
-              throw new ConflictException(
-                'Selected dates are no longer available. Please try different dates.',
-              );
-            }
-          }
-          throw err;
-        }
-
-        if (dto.occupants?.length) {
-          const occupantRepo = manager.getRepository(StaysBookingOccupant);
-          for (const o of dto.occupants) {
-            const frontId = o.id_document_front_asset_id?.trim() || null;
-            const backId = o.id_document_back_asset_id?.trim() || null;
-            if (frontId) {
-              await this.assertOwnedOccupantAsset(userId, frontId, 'front');
-            }
-            if (backId) {
-              await this.assertOwnedOccupantAsset(userId, backId, 'back');
-            }
-            await occupantRepo.save(
-              occupantRepo.create({
-                booking_id: newBooking.id,
-                full_name: o.full_name?.trim() || 'Guest',
-                id_number: o.id_number?.trim() || null,
-                is_primary: !!o.is_primary,
-                phone: o.phone?.trim() || null,
-                email: o.email?.trim() || null,
-                gender: o.gender?.trim() || null,
-                id_document_front_asset_id: frontId,
-                id_document_back_asset_id: backId,
-              }),
+      try {
+        await bookingRepo.save(newBooking);
+      } catch (err) {
+        if (err instanceof QueryFailedError) {
+          const driver = err.driverError as {
+            code?: string;
+            constraint?: string;
+            message?: string;
+          };
+          const msg = `${driver?.message ?? ''} ${err.message}`;
+          if (
+            driver?.code === '23P01' ||
+            driver?.code === '40P01' ||
+            driver?.constraint === 'ex_stays_bookings_active_overlap' ||
+            msg.includes('ex_stays_bookings_active_overlap')
+          ) {
+            throw new ConflictException(
+              'Selected dates are no longer available. Please try different dates.',
             );
           }
         }
+        throw err;
+      }
 
-        await this.auditService.log({
-          actorUserId: userId,
-          actorRole: 'GUEST',
-          entityType: 'BOOKING',
-          entityId: newBooking.id,
-          action: 'BOOKING_CREATED',
-          metadata: {
-            listing_id: dto.listing_id,
-            checkin_date: dto.checkin_date,
-            checkout_date: dto.checkout_date,
-          },
-          ip: auditContext?.ip,
-          userAgent: auditContext?.userAgent,
-        });
+      if (dto.occupants?.length) {
+        const occupantRepo = manager.getRepository(StaysBookingOccupant);
+        for (const o of dto.occupants) {
+          const frontId = o.id_document_front_asset_id?.trim() || null;
+          const backId = o.id_document_back_asset_id?.trim() || null;
+          if (frontId) {
+            await this.assertOwnedOccupantAsset(userId, frontId, 'front');
+          }
+          if (backId) {
+            await this.assertOwnedOccupantAsset(userId, backId, 'back');
+          }
+          await occupantRepo.save(
+            occupantRepo.create({
+              booking_id: newBooking.id,
+              full_name: o.full_name?.trim() || 'Guest',
+              id_number: o.id_number?.trim() || null,
+              is_primary: !!o.is_primary,
+              phone: o.phone?.trim() || null,
+              email: o.email?.trim() || null,
+              gender: o.gender?.trim() || null,
+              id_document_front_asset_id: frontId,
+              id_document_back_asset_id: backId,
+            }),
+          );
+        }
+      }
 
-        void this.domainEvents.publish(EVENTS.BOOKING_CREATED, 'stays', {
-          bookingId: newBooking.id,
-          listingId: dto.listing_id,
-          guestUserId: userId,
-        });
+      await this.auditService.log({
+        actorUserId: userId,
+        actorRole: 'GUEST',
+        entityType: 'BOOKING',
+        entityId: newBooking.id,
+        action: 'BOOKING_CREATED',
+        metadata: {
+          listing_id: dto.listing_id,
+          checkin_date: dto.checkin_date,
+          checkout_date: dto.checkout_date,
+        },
+        ip: auditContext?.ip,
+        userAgent: auditContext?.userAgent,
+      });
 
-        const withRelations = await bookingRepo.findOne({
-          where: { id: newBooking.id },
-          relations: ['listing', 'listing.check_in_contact', 'listing.media'],
-        });
+      void this.domainEvents.publish(EVENTS.BOOKING_CREATED, 'stays', {
+        bookingId: newBooking.id,
+        listingId: dto.listing_id,
+        guestUserId: userId,
+      });
 
-        return this.toBookingResponse(withRelations ?? newBooking);
+      const withRelations = await bookingRepo.findOne({
+        where: { id: newBooking.id },
+        relations: ['listing', 'listing.check_in_contact', 'listing.media'],
+      });
+
+      return this.toBookingResponse(withRelations ?? newBooking);
     });
   }
 
   async getBookingById(bookingId: string, userId: string) {
     const booking = await this.bookingRepo.findOne({
       where: { id: bookingId },
-      relations: ['listing', 'listing.check_in_contact', 'listing.media', 'occupants'],
+      relations: [
+        'listing',
+        'listing.check_in_contact',
+        'listing.media',
+        'occupants',
+      ],
     });
 
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
 
-    const listing = booking.listing as StaysListing;
+    const listing = booking.listing;
     const isGuest = booking.guest_user_id === userId;
     const isHost = !isGuest && listing?.host_user_id === userId;
 
@@ -745,16 +774,19 @@ export class StaysService {
     return { ...base, viewer_role: 'GUEST' as const };
   }
 
-  private async lifecycleExtrasForBooking(
-    booking: StaysBooking,
-  ): Promise<{
+  private async lifecycleExtrasForBooking(booking: StaysBooking): Promise<{
     paymentFailed?: boolean;
     has_reviewed?: boolean;
     review_rating?: number;
   }> {
-    const rating = await this.reviewsService.getReviewRatingForBooking(booking.id);
+    const rating = await this.reviewsService.getReviewRatingForBooking(
+      booking.id,
+    );
     const has_reviewed = rating != null;
-    if (booking.status !== 'PAYMENT_PENDING' && booking.status !== 'INITIATED') {
+    if (
+      booking.status !== 'PAYMENT_PENDING' &&
+      booking.status !== 'INITIATED'
+    ) {
       return {
         has_reviewed,
         review_rating: rating ?? undefined,
@@ -788,7 +820,10 @@ export class StaysService {
         order: { created_at: 'DESC' },
       });
       for (const intent of intents) {
-        if (intent.status === 'FAILED' && !failedIntentBookingIds.has(intent.booking_id)) {
+        if (
+          intent.status === 'FAILED' &&
+          !failedIntentBookingIds.has(intent.booking_id)
+        ) {
           failedIntentBookingIds.add(intent.booking_id);
         }
       }
@@ -799,16 +834,11 @@ export class StaysService {
     );
 
     return bookings.map((b) =>
-      this.toBookingResponse(
-        b,
-        this.shouldRevealContactForBooking(b),
-        false,
-        {
-          paymentFailed: failedIntentBookingIds.has(b.id),
-          has_reviewed: reviewedRatings.has(b.id),
-          review_rating: reviewedRatings.get(b.id),
-        },
-      ),
+      this.toBookingResponse(b, this.shouldRevealContactForBooking(b), false, {
+        paymentFailed: failedIntentBookingIds.has(b.id),
+        has_reviewed: reviewedRatings.has(b.id),
+        review_rating: reviewedRatings.get(b.id),
+      }),
     );
   }
 
@@ -1050,7 +1080,9 @@ export class StaysService {
     );
     const payment_expires_at =
       booking.status === 'PAYMENT_PENDING' || booking.status === 'INITIATED'
-        ? this.lifecycleService.getPaymentExpiresAt(booking.created_at).toISOString()
+        ? this.lifecycleService
+            .getPaymentExpiresAt(booking.created_at)
+            .toISOString()
         : null;
 
     const ownListing =
@@ -1117,7 +1149,10 @@ export class StaysService {
             city: listing.city,
             checkin_time: listing.checkin_time ?? null,
             checkout_time: listing.checkout_time ?? null,
-            address: revealContact && listing.address_encrypted ? listing.address_encrypted : null,
+            address:
+              revealContact && listing.address_encrypted
+                ? listing.address_encrypted
+                : null,
             check_in_instructions:
               revealContact && contact?.access_instructions
                 ? contact.access_instructions

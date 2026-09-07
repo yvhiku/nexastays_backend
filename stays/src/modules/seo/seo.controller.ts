@@ -28,7 +28,9 @@ function parsePathSegments(path?: string): string[] {
 function requestMeta(req: Request) {
   return {
     userAgent: req.headers['user-agent'] ?? null,
-    referrer: (req.headers.referer ?? req.headers.referrer ?? null) as string | null,
+    referrer: (req.headers.referer ?? req.headers.referrer ?? null) as
+      | string
+      | null,
   };
 }
 
@@ -76,10 +78,7 @@ export class SeoController {
   @Public()
   @Get('guides')
   @ApiOperation({ summary: 'List published travel guides' })
-  listGuides(
-    @Query('locale') locale?: string,
-    @Query('type') type?: string,
-  ) {
+  listGuides(@Query('locale') locale?: string, @Query('type') type?: string) {
     const guideType =
       type === 'travel' ||
       type === 'experience' ||
@@ -93,10 +92,7 @@ export class SeoController {
   @Public()
   @Get('guides/:slug')
   @ApiOperation({ summary: 'Full guide page payload' })
-  getGuide(
-    @Param('slug') slug: string,
-    @Query('locale') locale?: string,
-  ) {
+  getGuide(@Param('slug') slug: string, @Query('locale') locale?: string) {
     return this.guides.getGuidePage(slug, parseLocale(locale));
   }
 
@@ -112,27 +108,25 @@ export class SeoController {
   @Public()
   @Get('listings/:id')
   @ApiOperation({ summary: 'SEO metadata payload for a listing detail page' })
-  getListingSeo(
-    @Param('id') id: string,
-    @Query('locale') locale?: string,
-  ) {
+  getListingSeo(@Param('id') id: string, @Query('locale') locale?: string) {
     return this.listingSeo.buildListingPage(id, parseLocale(locale));
   }
 
   @Public()
   @Get('pages/resolve')
-  @ApiOperation({ summary: 'Resolve SEO page by path segments (e.g. marrakech/riads)' })
-  resolvePage(
-    @Query('path') path: string,
-    @Query('locale') locale?: string,
-  ) {
+  @ApiOperation({
+    summary: 'Resolve SEO page by path segments (e.g. marrakech/riads)',
+  })
+  resolvePage(@Query('path') path: string, @Query('locale') locale?: string) {
     const segments = parsePathSegments(path);
     return this.engine.resolveAndGenerate(segments, parseLocale(locale));
   }
 
   @Public()
   @Get('pages/city/:slug')
-  @ApiOperation({ summary: 'Full SEO page payload for a city landing page (legacy)' })
+  @ApiOperation({
+    summary: 'Full SEO page payload for a city landing page (legacy)',
+  })
   generateCityPage(
     @Param('slug') slug: string,
     @Query('locale') locale?: string,
@@ -142,18 +136,25 @@ export class SeoController {
 
   @Public()
   @Get('pages/:segment/:combo')
-  @ApiOperation({ summary: 'City × filter combo SEO page (e.g. marrakech/riads)' })
+  @ApiOperation({
+    summary: 'City × filter combo SEO page (e.g. marrakech/riads)',
+  })
   generateComboPage(
     @Param('segment') segment: string,
     @Param('combo') combo: string,
     @Query('locale') locale?: string,
   ) {
-    return this.engine.resolveAndGenerate([segment, combo], parseLocale(locale));
+    return this.engine.resolveAndGenerate(
+      [segment, combo],
+      parseLocale(locale),
+    );
   }
 
   @Public()
   @Get('pages/:segment')
-  @ApiOperation({ summary: 'Single-segment SEO page (city, property type, or amenity)' })
+  @ApiOperation({
+    summary: 'Single-segment SEO page (city, property type, or amenity)',
+  })
   generateSegmentPage(
     @Param('segment') segment: string,
     @Query('locale') locale?: string,
@@ -164,7 +165,9 @@ export class SeoController {
   @Public()
   @Throttle({ default: THROTTLE_DEFAULT })
   @Get('ai-context/resolve')
-  @ApiOperation({ summary: 'Structured page context for AI systems (path-based)' })
+  @ApiOperation({
+    summary: 'Structured page context for AI systems (path-based)',
+  })
   async buildAiContextForPath(
     @Query('path') path: string,
     @Query('locale') locale?: string,
@@ -173,7 +176,8 @@ export class SeoController {
   ) {
     const segments = parsePathSegments(path);
     const loc = parseLocale(locale);
-    const base = siteUrl?.trim() || process.env.STAYS_WEB_URL || 'http://localhost:3005';
+    const base =
+      siteUrl?.trim() || process.env.STAYS_WEB_URL || 'http://localhost:3005';
 
     if (segments[0] === 'guides' && segments[1]) {
       void this.geoMonitoring.logRequest({
@@ -205,7 +209,8 @@ export class SeoController {
     @Req() req?: Request,
   ) {
     const loc = parseLocale(locale);
-    const base = siteUrl?.trim() || process.env.STAYS_WEB_URL || 'http://localhost:3005';
+    const base =
+      siteUrl?.trim() || process.env.STAYS_WEB_URL || 'http://localhost:3005';
     void this.geoMonitoring.logRequest({
       endpoint: 'ai-context/guides',
       pageSlug: slug,
@@ -218,7 +223,9 @@ export class SeoController {
   @Public()
   @Throttle({ default: THROTTLE_DEFAULT })
   @Get('ai-context/:slug')
-  @ApiOperation({ summary: 'Structured destination context for AI systems (GEO)' })
+  @ApiOperation({
+    summary: 'Structured destination context for AI systems (GEO)',
+  })
   async buildAiContext(
     @Param('slug') slug: string,
     @Query('locale') locale?: string,
@@ -226,7 +233,8 @@ export class SeoController {
     @Req() req?: Request,
   ) {
     const loc = parseLocale(locale);
-    const base = siteUrl?.trim() || process.env.STAYS_WEB_URL || 'http://localhost:3005';
+    const base =
+      siteUrl?.trim() || process.env.STAYS_WEB_URL || 'http://localhost:3005';
     void this.geoMonitoring.logRequest({
       endpoint: 'ai-context',
       pageSlug: slug,

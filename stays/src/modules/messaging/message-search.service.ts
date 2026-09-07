@@ -46,10 +46,9 @@ export class MessageSearchService {
       .where('m.conversation_id = :id', { id: conversationId })
       .andWhere('m.deleted_at IS NULL')
       .andWhere("m.type != 'SYSTEM_INTERNAL'")
-      .andWhere(
-        `(m.body ILIKE :like OR m.metadata::text ILIKE :like)`,
-        { like },
-      )
+      .andWhere(`(m.body ILIKE :like OR m.metadata::text ILIKE :like)`, {
+        like,
+      })
       .orderBy('m.conversation_sequence', 'DESC')
       .take(50)
       .getMany();
@@ -58,7 +57,8 @@ export class MessageSearchService {
     for (const row of rows) {
       const resultType = this.classify(row);
       if (!types.includes(resultType)) continue;
-      const snippet = row.body ?? String((row.metadata as { title?: string })?.title ?? '');
+      const snippet =
+        row.body ?? String((row.metadata as { title?: string })?.title ?? '');
       results.push({
         messageId: row.id,
         conversationSequence: Number(row.conversation_sequence),

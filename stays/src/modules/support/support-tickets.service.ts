@@ -8,7 +8,13 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, QueryFailedError, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import {
   CLOSED_SUPPORT_TICKET_MESSAGE,
   TICKET_IS_NOT_CLOSED_MESSAGE,
@@ -45,7 +51,6 @@ import {
 } from './entities/stays-support-ticket.entity';
 import { StaysConversationReport } from './entities/stays-conversation-report.entity';
 import { StaysSafetyIssue } from './entities/stays-safety-issue.entity';
-import { StaysSupportTicketRefCounter } from './entities/stays-support-ticket-ref-counter.entity';
 import { StaysSupportTicketNote } from './entities/stays-support-ticket-note.entity';
 import { StaysSupportTicketCsat } from './entities/stays-support-ticket-csat.entity';
 import { canonicalizeRequesterLanguage } from './support-language';
@@ -520,7 +525,8 @@ export class SupportTicketsService {
       options.manager,
     );
     const identity = await this.identityUsers.getProfileSummary(userId);
-    const customerName = options.customerName?.trim() || identity?.fullName || null;
+    const customerName =
+      options.customerName?.trim() || identity?.fullName || null;
     const requesterEmail = identity?.email || null;
     const requesterLanguage = canonicalizeRequesterLanguage(
       identity?.preferredLanguage,
@@ -564,7 +570,9 @@ export class SupportTicketsService {
         first_admin_response_at: null,
         closed_at: null,
       });
-      const savedTicket = await manager.getRepository(StaysSupportTicket).save(ticket);
+      const savedTicket = await manager
+        .getRepository(StaysSupportTicket)
+        .save(ticket);
 
       await this.timelineSeeder.insertMessage(manager, conversation, {
         type: 'TEXT',
@@ -575,7 +583,9 @@ export class SupportTicketsService {
           cardVersion: 1,
           presentationVersion: 1,
           supportTicketId: savedTicket.id,
-          ...(dto.clientRequestId ? { clientRequestId: dto.clientRequestId } : {}),
+          ...(dto.clientRequestId
+            ? { clientRequestId: dto.clientRequestId }
+            : {}),
         },
         senderId: userId,
         clientMessageId: dto.clientRequestId ?? null,
@@ -623,9 +633,8 @@ export class SupportTicketsService {
       if (options.manager) {
         // Nested in an outer TX: isolate 23505 with a savepoint so the outer
         // transaction stays usable for conflict reuse.
-        created = await this.withUniqueConflictSavepoint(
-          options.manager,
-          () => insertTicket(options.manager!),
+        created = await this.withUniqueConflictSavepoint(options.manager, () =>
+          insertTicket(options.manager!),
         );
       } else {
         created = await this.dataSource.transaction((manager) =>
@@ -794,10 +803,9 @@ export class SupportTicketsService {
       .innerJoin(StaysSupportTicket, 't', 't.id = c.ticket_id');
 
     if (isSupportAgentActor(actor)) {
-      qb.andWhere(
-        '(t.assigned_admin_id = :actorId OR c.agent_id = :actorId)',
-        { actorId: actor.userId },
-      );
+      qb.andWhere('(t.assigned_admin_id = :actorId OR c.agent_id = :actorId)', {
+        actorId: actor.userId,
+      });
     }
     if (query.problemSolved === true) {
       qb.andWhere('c.problem_solved = true');
@@ -941,7 +949,9 @@ export class SupportTicketsService {
 
     let report: Record<string, unknown> | null = null;
     if (ticket.report_id) {
-      const row = await this.reportRepo.findOne({ where: { id: ticket.report_id } });
+      const row = await this.reportRepo.findOne({
+        where: { id: ticket.report_id },
+      });
       if (row) {
         report = {
           id: row.id,
@@ -954,7 +964,9 @@ export class SupportTicketsService {
 
     let safety_issue: Record<string, unknown> | null = null;
     if (ticket.safety_issue_id) {
-      const row = await this.safetyRepo.findOne({ where: { id: ticket.safety_issue_id } });
+      const row = await this.safetyRepo.findOne({
+        where: { id: ticket.safety_issue_id },
+      });
       if (row) {
         safety_issue = {
           id: row.id,
@@ -980,7 +992,10 @@ export class SupportTicketsService {
     ]);
 
     return {
-      ...this.toListRow(ticket, bookingRefs.get(ticket.booking_id ?? '') ?? null),
+      ...this.toListRow(
+        ticket,
+        bookingRefs.get(ticket.booking_id ?? '') ?? null,
+      ),
       conversation_id: ticket.conversation_id,
       listing,
       host: listingHostId
@@ -1013,8 +1028,7 @@ export class SupportTicketsService {
       (typeof actorUserId === 'object' && actorUserId
         ? actorUserId
         : {
-            userId:
-              typeof actorUserId === 'string' ? actorUserId : 'system',
+            userId: typeof actorUserId === 'string' ? actorUserId : 'system',
             role: 'ADMIN',
           });
     const auditUserId =
@@ -1313,11 +1327,14 @@ export class SupportTicketsService {
         activityState,
       ],
     );
-    return { ok: true as const, viewers: await this.listActiveViewers(ticketId) };
+    return {
+      ok: true as const,
+      viewers: await this.listActiveViewers(ticketId),
+    };
   }
 
   async listActiveViewers(ticketId: string) {
-    const rows = (await this.dataSource.query(
+    const rows = await this.dataSource.query(
       `
       SELECT viewer_id, last_seen_at, expires_at, last_activity_at, activity_state
       FROM stays_support_ticket_viewers
@@ -1325,13 +1342,7 @@ export class SupportTicketsService {
       ORDER BY last_seen_at DESC
       `,
       [ticketId],
-    )) as {
-      viewer_id: string;
-      last_seen_at: Date | string;
-      expires_at: Date | string;
-      last_activity_at: Date | string | null;
-      activity_state: string | null;
-    }[];
+    );
     return rows.map((row) => ({
       viewerId: row.viewer_id,
       lastSeenAt:
@@ -1347,8 +1358,7 @@ export class SupportTicketsService {
           ? row.last_activity_at.toISOString()
           : String(row.last_activity_at)
         : null,
-        activityState:
-        row.activity_state === 'HANDLING' ? 'HANDLING' : 'VIEWING',
+      activityState: row.activity_state === 'HANDLING' ? 'HANDLING' : 'VIEWING',
     }));
   }
 
@@ -1402,30 +1412,32 @@ export class SupportTicketsService {
   ) {
     const ticket = await this.requireAccessibleTicket(ticketId, actor);
     const now = new Date();
-    const receiptChanges = await this.dataSource.transaction(async (manager) => {
-      if (ticket.unread_for_support) {
-        await manager.getRepository(StaysSupportTicket).update(ticket.id, {
-          unread_for_support: false,
-          updated_at: now,
-        });
-      }
-      if (!ticket.requester_user_id || !ticket.conversation_id) return 0;
-      const updated = await manager
-        .getRepository(StaysMessage)
-        .createQueryBuilder()
-        .update(StaysMessage)
-        .set({
-          status: 'READ',
-          read_at: now,
-          delivered_at: () => 'COALESCE(delivered_at, NOW())',
-        })
-        .where('conversation_id = :cid', { cid: ticket.conversation_id })
-        .andWhere('sender_id = :uid', { uid: ticket.requester_user_id })
-        .andWhere("status IN ('PERSISTED', 'SENT', 'DELIVERED')")
-        .andWhere('read_at IS NULL')
-        .execute();
-      return Number(updated.affected ?? 0);
-    });
+    const receiptChanges = await this.dataSource.transaction(
+      async (manager) => {
+        if (ticket.unread_for_support) {
+          await manager.getRepository(StaysSupportTicket).update(ticket.id, {
+            unread_for_support: false,
+            updated_at: now,
+          });
+        }
+        if (!ticket.requester_user_id || !ticket.conversation_id) return 0;
+        const updated = await manager
+          .getRepository(StaysMessage)
+          .createQueryBuilder()
+          .update(StaysMessage)
+          .set({
+            status: 'READ',
+            read_at: now,
+            delivered_at: () => 'COALESCE(delivered_at, NOW())',
+          })
+          .where('conversation_id = :cid', { cid: ticket.conversation_id })
+          .andWhere('sender_id = :uid', { uid: ticket.requester_user_id })
+          .andWhere("status IN ('PERSISTED', 'SENT', 'DELIVERED')")
+          .andWhere('read_at IS NULL')
+          .execute();
+        return Number(updated.affected ?? 0);
+      },
+    );
 
     if (receiptChanges > 0 && ticket.requester_user_id) {
       this.realtime.publish(ticket.requester_user_id, {
@@ -1502,7 +1514,9 @@ export class SupportTicketsService {
           ? { unread_guest: (conv.unread_guest ?? 0) + 1 }
           : { unread_host: (conv.unread_host ?? 0) + 1 };
 
-      await manager.getRepository(StaysConversation).update(conv.id, unreadPatch);
+      await manager
+        .getRepository(StaysConversation)
+        .update(conv.id, unreadPatch);
       await manager.getRepository(StaysSupportTicket).update(ticket.id, {
         unread_for_support: false,
         last_message_preview: trimmed.slice(0, 200),
@@ -1557,7 +1571,9 @@ export class SupportTicketsService {
       sender_type: 'SUPPORT_AGENT',
       sender_id: adminUserId,
       body: trimmed,
-      created_at: (saved.message.sent_at ?? saved.message.created_at).toISOString(),
+      created_at: (
+        saved.message.sent_at ?? saved.message.created_at
+      ).toISOString(),
     };
   }
 
@@ -1887,8 +1903,7 @@ export class SupportTicketsService {
     return {
       rating: Number(row.rating),
       comment: row.comment,
-      agent_rating:
-        row.agent_rating == null ? null : Number(row.agent_rating),
+      agent_rating: row.agent_rating == null ? null : Number(row.agent_rating),
       agent_id: row.agent_id ?? null,
       problem_solved: row.problem_solved ?? null,
       submitted_at: row.submitted_at.toISOString(),
@@ -1914,7 +1929,10 @@ export class SupportTicketsService {
   }
 
   private async loadCsatByTicketIds(ticketIds: string[]) {
-    const map = new Map<string, ReturnType<SupportTicketsService['mapCsatRow']>>();
+    const map = new Map<
+      string,
+      ReturnType<SupportTicketsService['mapCsatRow']>
+    >();
     if (!ticketIds.length) return map;
     const rows = await this.csatRepo.find({
       where: { ticket_id: In(ticketIds) },
@@ -1936,8 +1954,9 @@ export class SupportTicketsService {
       ticket_id: String(row.ticket_id ?? row.ticketId ?? ''),
       ticket_number: String(row.ticket_number ?? row.ticketNumber ?? ''),
       status: String(row.status ?? ''),
-      customer_name:
-        (row.customer_name ?? row.customerName ?? null) as string | null,
+      customer_name: (row.customer_name ?? row.customerName ?? null) as
+        | string
+        | null,
       rating: Number(row.rating ?? 0),
       agent_rating:
         agentRatingRaw == null || agentRatingRaw === ''
@@ -2127,7 +2146,8 @@ export class SupportTicketsService {
       },
       items: page.map((m) => {
         let senderRole: 'GUEST' | 'HOST' | 'UNKNOWN' = 'UNKNOWN';
-        if (m.sender_id && m.sender_id === conv.guest_user_id) senderRole = 'GUEST';
+        if (m.sender_id && m.sender_id === conv.guest_user_id)
+          senderRole = 'GUEST';
         else if (m.sender_id && m.sender_id === conv.host_user_id) {
           senderRole = 'HOST';
         }
@@ -2140,9 +2160,7 @@ export class SupportTicketsService {
           body: m.body ?? '',
           conversation_sequence: Number(m.conversation_sequence),
           created_at: (m.sent_at ?? m.created_at).toISOString(),
-          attachments: atts
-            .map((a) => evidenceById.get(a.id))
-            .filter(Boolean),
+          attachments: atts.map((a) => evidenceById.get(a.id)).filter(Boolean),
         };
       }),
       next_cursor: hasMore
@@ -2161,7 +2179,12 @@ export class SupportTicketsService {
     actor: SupportStaffActor = DEFAULT_ADMIN_ACTOR,
   ) {
     await this.requireAccessibleTicket(ticketId, actor);
-    return this.listActivityForEntity('support_ticket', ticketId, limit, offset);
+    return this.listActivityForEntity(
+      'support_ticket',
+      ticketId,
+      limit,
+      offset,
+    );
   }
 
   /**
@@ -2171,8 +2194,8 @@ export class SupportTicketsService {
   async getAnalyticsForAdmin(query: { from?: string; to?: string } = {}) {
     const now = new Date();
     const defaultFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    let from = query.from ? new Date(query.from) : defaultFrom;
-    let toExclusive = query.to
+    const from = query.from ? new Date(query.from) : defaultFrom;
+    const toExclusive = query.to
       ? new Date(query.to)
       : new Date(now.getTime() + 1);
     if (Number.isNaN(from.getTime()) || Number.isNaN(toExclusive.getTime())) {
@@ -2214,10 +2237,7 @@ export class SupportTicketsService {
 
     // Incomplete: elapsed/window < 0.8 ON_TRACK, < 1 AT_RISK, else BREACHED.
     // Complete: completed <= target ON_TRACK else BREACHED.
-    const legStateSql = (
-      completedCol: string,
-      hoursExpr: string,
-    ) => `
+    const legStateSql = (completedCol: string, hoursExpr: string) => `
       CASE
         WHEN ${completedCol} IS NOT NULL THEN
           CASE
@@ -2308,7 +2328,11 @@ export class SupportTicketsService {
       else if (state === 'AT_RISK') bag.atRisk += n;
       else bag.breached += n;
     };
-    for (const row of slaRows as { fr_state: string; res_state: string; cnt: number }[]) {
+    for (const row of slaRows as {
+      fr_state: string;
+      res_state: string;
+      cnt: number;
+    }[]) {
       bump(firstResponseSla, row.fr_state, Number(row.cnt));
       bump(firstResolutionSla, row.res_state, Number(row.cnt));
     }
@@ -2397,8 +2421,7 @@ export class SupportTicketsService {
       params.slice(0, 2),
     );
 
-    const num = (v: unknown) =>
-      v == null || v === '' ? null : Number(v);
+    const num = (v: unknown) => (v == null || v === '' ? null : Number(v));
 
     return {
       from: from.toISOString(),
@@ -2708,61 +2731,62 @@ export class SupportTicketsService {
     // cannot leave the canonical row escalated without a ticket.
     const { ticketId, createdTicket } = await this.dataSource.transaction(
       async (manager) => {
-      const ticketRepo = manager.getRepository(StaysSupportTicket);
-      const convRepo = manager.getRepository(StaysConversation);
-      const reportRepo = manager.getRepository(StaysConversationReport);
-      const safetyRepo = manager.getRepository(StaysSafetyIssue);
+        const ticketRepo = manager.getRepository(StaysSupportTicket);
+        const convRepo = manager.getRepository(StaysConversation);
+        const reportRepo = manager.getRepository(StaysConversationReport);
+        const safetyRepo = manager.getRepository(StaysSafetyIssue);
 
-      let createdTicket = false;
-      let ticket: StaysSupportTicket | null =
-        input.kind === 'conversation_reported'
-          ? await ticketRepo.findOne({
-              where: { report_id: input.row.id },
-            })
-          : await ticketRepo.findOne({
-              where: { safety_issue_id: input.row.id },
-            });
-
-      if (!ticket) {
-        const conv = await convRepo.findOne({
-          where: { id: input.row.conversation_id },
-        });
-        if (!conv) {
-          throw new InternalServerErrorException(ENSURE_TICKET_FAILED);
-        }
-        ticket =
+        let createdTicket = false;
+        let ticket: StaysSupportTicket | null =
           input.kind === 'conversation_reported'
-            ? await this.ensureTicketForReport({
-                report: input.row as StaysConversationReport,
-                sourceConversation: conv,
-                manager,
+            ? await ticketRepo.findOne({
+                where: { report_id: input.row.id },
               })
-            : await this.ensureTicketForSafetyIssue({
-                safety: input.row as StaysSafetyIssue,
-                sourceConversation: conv,
-                manager,
+            : await ticketRepo.findOne({
+                where: { safety_issue_id: input.row.id },
               });
-        createdTicket = true;
-      }
 
-      if (ticket.priority !== 'URGENT') {
-        await ticketRepo.update(ticket.id, {
-          priority: 'HIGH',
-          updated_at: new Date(),
-        });
-        ticket.priority = 'HIGH';
-      }
+        if (!ticket) {
+          const conv = await convRepo.findOne({
+            where: { id: input.row.conversation_id },
+          });
+          if (!conv) {
+            throw new InternalServerErrorException(ENSURE_TICKET_FAILED);
+          }
+          ticket =
+            input.kind === 'conversation_reported'
+              ? await this.ensureTicketForReport({
+                  report: input.row as StaysConversationReport,
+                  sourceConversation: conv,
+                  manager,
+                })
+              : await this.ensureTicketForSafetyIssue({
+                  safety: input.row as StaysSafetyIssue,
+                  sourceConversation: conv,
+                  manager,
+                });
+          createdTicket = true;
+        }
 
-      input.row.status = 'ESCALATED';
-      input.row.updated_at = new Date();
-      if (input.kind === 'conversation_reported') {
-        await reportRepo.save(input.row as StaysConversationReport);
-      } else {
-        await safetyRepo.save(input.row as StaysSafetyIssue);
-      }
+        if (ticket.priority !== 'URGENT') {
+          await ticketRepo.update(ticket.id, {
+            priority: 'HIGH',
+            updated_at: new Date(),
+          });
+          ticket.priority = 'HIGH';
+        }
 
-      return { ticketId: ticket.id, createdTicket };
-    });
+        input.row.status = 'ESCALATED';
+        input.row.updated_at = new Date();
+        if (input.kind === 'conversation_reported') {
+          await reportRepo.save(input.row as StaysConversationReport);
+        } else {
+          await safetyRepo.save(input.row as StaysSafetyIssue);
+        }
+
+        return { ticketId: ticket.id, createdTicket };
+      },
+    );
 
     await this.staysAudit.log({
       actorUserId: input.actorUserId,
@@ -2820,11 +2844,18 @@ export class SupportTicketsService {
       });
   }
 
-  private async resolveSupportContacts(userIds: Array<string | null | undefined>) {
+  private async resolveSupportContacts(
+    userIds: Array<string | null | undefined>,
+  ) {
     const unique = [...new Set(userIds.filter((id): id is string => !!id))];
     const contacts = new Map<
       string,
-      { id: string; name: string | null; email: string | null; phone: string | null }
+      {
+        id: string;
+        name: string | null;
+        email: string | null;
+        phone: string | null;
+      }
     >();
     if (unique.length === 0) return contacts;
 
@@ -2974,7 +3005,9 @@ export class SupportTicketsService {
     }
 
     if (dto.listingId) {
-      const listing = await listingRepo.findOne({ where: { id: dto.listingId } });
+      const listing = await listingRepo.findOne({
+        where: { id: dto.listingId },
+      });
       if (!listing) throw new NotFoundException('Ticket not found');
       if (party === 'HOST' && listing.host_user_id !== userId) {
         throw new NotFoundException('Ticket not found');
@@ -2999,7 +3032,9 @@ export class SupportTicketsService {
 
     let safetyIssueId: string | null = null;
     if (dto.safetyIssueId) {
-      const safety = await safetyRepo.findOne({ where: { id: dto.safetyIssueId } });
+      const safety = await safetyRepo.findOne({
+        where: { id: dto.safetyIssueId },
+      });
       if (!safety || safety.reporter_user_id !== userId) {
         throw new NotFoundException('Ticket not found');
       }
@@ -3069,7 +3104,10 @@ export class SupportTicketsService {
     return new Map(rows.map((r) => [r.id, r.booking_reference]));
   }
 
-  private toListRow(ticket: StaysSupportTicket, bookingRef: string | null = null) {
+  private toListRow(
+    ticket: StaysSupportTicket,
+    bookingRef: string | null = null,
+  ) {
     const sla = computeSupportSla({
       createdAt: ticket.created_at,
       priority: ticket.priority,

@@ -1,10 +1,12 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, LessThanOrEqual, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  LessThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { MoneyMovementIdempotencyService } from '../../common/idempotency/money-movement-idempotency.service';
 import { MoneyMovementScope } from '../../common/idempotency/money-movement-scope';
 import { KycPolicyValidationService } from '../compliance/kyc-policy/kyc-policy-validation.service';
@@ -141,7 +143,11 @@ export class SubscriptionService {
         scope: MoneyMovementScope.SUBSCRIPTION_PRO,
         actorUserId: userId,
         idempotencyKey,
-        requestPayload: { billing_period: billingPeriod, amount, initial: true },
+        requestPayload: {
+          billing_period: billingPeriod,
+          amount,
+          initial: true,
+        },
       },
       async (manager) => {
         const charge = await this.chargeProInManager(manager, {
@@ -150,10 +156,8 @@ export class SubscriptionService {
           billingPeriod,
           amount,
           idempotencyKey,
-          reference: `SUB-PRO-${billingPeriod.toUpperCase()}-${Date.now()}`.slice(
-            0,
-            64,
-          ),
+          reference:
+            `SUB-PRO-${billingPeriod.toUpperCase()}-${Date.now()}`.slice(0, 64),
           metadataExtra: { initial_purchase: true },
         });
 
@@ -235,8 +239,14 @@ export class SubscriptionService {
       }
     }
 
-    const user = await this.userRepository.findOne({ where: { id: sub.user_id } });
-    if (!user || user.status === 'DELETION_PENDING' || user.status === 'FROZEN') {
+    const user = await this.userRepository.findOne({
+      where: { id: sub.user_id },
+    });
+    if (
+      !user ||
+      user.status === 'DELETION_PENDING' ||
+      user.status === 'FROZEN'
+    ) {
       await this.cancelSubscription(sub, 'account_unavailable');
       return 'cancelled';
     }
@@ -279,10 +289,11 @@ export class SubscriptionService {
             billingPeriod,
             amount,
             idempotencyKey,
-            reference: `SUB-PRO-RENEW-${billingPeriod.toUpperCase()}-${Date.now()}`.slice(
-              0,
-              64,
-            ),
+            reference:
+              `SUB-PRO-RENEW-${billingPeriod.toUpperCase()}-${Date.now()}`.slice(
+                0,
+                64,
+              ),
             metadataExtra: {
               subscription_id: sub.id,
               renewal: true,
@@ -330,7 +341,10 @@ export class SubscriptionService {
     }
   }
 
-  private async markPastDue(sub: UserProSubscription, now: Date): Promise<void> {
+  private async markPastDue(
+    sub: UserProSubscription,
+    now: Date,
+  ): Promise<void> {
     await this.proSubscriptionRepository.update(sub.id, {
       status: 'past_due',
       past_due_since: sub.past_due_since ?? now,
@@ -350,9 +364,7 @@ export class SubscriptionService {
     await this.userRepository.update(sub.user_id, {
       rewards_tier: 'standard',
     });
-    this.logger.warn(
-      `Cancelled Nexa Pro for user ${sub.user_id} (${reason})`,
-    );
+    this.logger.warn(`Cancelled Nexa Pro for user ${sub.user_id} (${reason})`);
   }
 
   private async chargeProInManager(

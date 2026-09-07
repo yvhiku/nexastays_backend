@@ -12,8 +12,14 @@ describe('AppController', () => {
       controllers: [AppController],
       providers: [
         AppService,
-        { provide: DbHealthService, useValue: { check: jest.fn().mockResolvedValue(true) } },
-        { provide: MetricsService, useValue: { getMetrics: jest.fn().mockReturnValue({}) } },
+        {
+          provide: DbHealthService,
+          useValue: { check: jest.fn().mockResolvedValue(true) },
+        },
+        {
+          provide: MetricsService,
+          useValue: { getMetrics: jest.fn().mockReturnValue({}) },
+        },
       ],
     }).compile();
 

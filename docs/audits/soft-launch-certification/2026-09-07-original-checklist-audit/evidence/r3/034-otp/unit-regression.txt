@@ -1,0 +1,9 @@
+PASS src/modules/auth/otp-lockout.service.spec.ts
+PASS src/modules/sms/sms.service.spec.ts
+PASS src/modules/auth/otp-send-rate-limit.service.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       15 passed, 15 total
+Snapshots:   0 total
+Time:        0.568 s, estimated 1 s
+Ran all test suites matching auth.otp-expiry-invariants|otp-lockout|otp-send-rate-limit|sms.service.

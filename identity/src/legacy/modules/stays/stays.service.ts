@@ -63,13 +63,17 @@ export class StaysService {
     }
   }
 
-  async getListingMediaPath(listingId: string, assetId: string): Promise<string> {
+  async getListingMediaPath(
+    listingId: string,
+    assetId: string,
+  ): Promise<string> {
     const listing = await this.listingRepo.findOne({
       where: { id: listingId },
       relations: ['media'],
     });
     if (!listing) throw new NotFoundException('Listing not found');
-    if (listing.status !== 'LIVE' && listing.status !== 'APPROVED') throw new NotFoundException('Listing not found');
+    if (listing.status !== 'LIVE' && listing.status !== 'APPROVED')
+      throw new NotFoundException('Listing not found');
     const media = listing.media?.find((m) => m.asset_id === assetId);
     if (!media) throw new NotFoundException('Media not found');
     const dir = path.resolve(
@@ -123,10 +127,11 @@ export class StaysService {
       const checkin = new Date(params.checkin_date);
       const checkout = new Date(params.checkout_date);
       if (checkout > checkin) {
-        const unavailable = await this.availabilityService.getUnavailableListingIds(
-          checkin,
-          checkout,
-        );
+        const unavailable =
+          await this.availabilityService.getUnavailableListingIds(
+            checkin,
+            checkout,
+          );
         if (unavailable.length > 0) {
           qb.andWhere('l.id NOT IN (:...unavailable)', { unavailable });
         }
@@ -159,7 +164,10 @@ export class StaysService {
       ? await this.canRevealAddressAndContact(listing.id, guestUserId)
       : false;
 
-    return this.toListingResponse(listing, canRevealAddress ? 'full' : 'masked');
+    return this.toListingResponse(
+      listing,
+      canRevealAddress ? 'full' : 'masked',
+    );
   }
 
   private async canRevealAddressAndContact(
@@ -229,7 +237,11 @@ export class StaysService {
         : null,
       media: (listing.media || [])
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-        .map((m) => ({ asset_id: m.asset_id, kind: m.kind, sort_order: m.sort_order ?? 0 })),
+        .map((m) => ({
+          asset_id: m.asset_id,
+          kind: m.kind,
+          sort_order: m.sort_order ?? 0,
+        })),
     };
   }
 
@@ -263,138 +275,145 @@ export class StaysService {
       const listingRepo = manager.getRepository(StaysListing);
       const bookingRepo = manager.getRepository(StaysBooking);
 
-        // SELECT FOR UPDATE to prevent double-booking (INNER JOIN required: FOR UPDATE cannot apply to nullable side of outer join)
-        const listing = await listingRepo
-          .createQueryBuilder('l')
-          .innerJoinAndSelect('l.rate_plan', 'rp')
-          .setLock('pessimistic_write')
-          .where('l.id = :id', { id: dto.listing_id })
-          .getOne();
+      // SELECT FOR UPDATE to prevent double-booking (INNER JOIN required: FOR UPDATE cannot apply to nullable side of outer join)
+      const listing = await listingRepo
+        .createQueryBuilder('l')
+        .innerJoinAndSelect('l.rate_plan', 'rp')
+        .setLock('pessimistic_write')
+        .where('l.id = :id', { id: dto.listing_id })
+        .getOne();
 
-        if (!listing) {
-          throw new NotFoundException('Listing not found');
-        }
+      if (!listing) {
+        throw new NotFoundException('Listing not found');
+      }
 
-        if (listing.status !== 'LIVE' && listing.status !== 'APPROVED') {
-          throw new BadRequestException('Listing is not available for booking');
-        }
+      if (listing.status !== 'LIVE' && listing.status !== 'APPROVED') {
+        throw new BadRequestException('Listing is not available for booking');
+      }
 
-        const checkin = new Date(dto.checkin_date);
-        const checkout = new Date(dto.checkout_date);
+      const checkin = new Date(dto.checkin_date);
+      const checkout = new Date(dto.checkout_date);
 
-        if (checkout <= checkin) {
-          throw new BadRequestException('Checkout must be after check-in');
-        }
+      if (checkout <= checkin) {
+        throw new BadRequestException('Checkout must be after check-in');
+      }
 
-        // Re-check idempotency inside transaction
-        if (dto.idempotency_key) {
-          const existingInTxn = await bookingRepo.findOne({
-            where: {
-              guest_user_id: userId,
-              idempotency_key: dto.idempotency_key,
-            },
+      // Re-check idempotency inside transaction
+      if (dto.idempotency_key) {
+        const existingInTxn = await bookingRepo.findOne({
+          where: {
+            guest_user_id: userId,
+            idempotency_key: dto.idempotency_key,
+          },
+        });
+        if (existingInTxn) {
+          const loaded = await bookingRepo.findOne({
+            where: { id: existingInTxn.id },
+            relations: ['listing', 'listing.host', 'listing.check_in_contact'],
           });
-          if (existingInTxn) {
-            const loaded = await bookingRepo.findOne({
-              where: { id: existingInTxn.id },
-              relations: ['listing', 'listing.host', 'listing.check_in_contact'],
-            });
-            if (loaded) return this.toBookingResponse(loaded);
-          }
+          if (loaded) return this.toBookingResponse(loaded);
         }
+      }
 
-        // Availability check inside transaction
-        const available = await this.availabilityService.isListingAvailable(
-          dto.listing_id,
-          checkin,
-          checkout,
+      // Availability check inside transaction
+      const available = await this.availabilityService.isListingAvailable(
+        dto.listing_id,
+        checkin,
+        checkout,
+      );
+      if (!available) {
+        throw new ConflictException(
+          'Selected dates are no longer available. Please try different dates.',
         );
-        if (!available) {
-          throw new ConflictException(
-            'Selected dates are no longer available. Please try different dates.',
+      }
+
+      const nights = Math.ceil(
+        (checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      const ratePlan = listing.rate_plan;
+      if (!ratePlan) {
+        throw new BadRequestException('Listing has no pricing configured');
+      }
+
+      const basePrice = Number(ratePlan.base_price);
+      const subtotal = basePrice * nights;
+      const guestFee = Math.round(subtotal * GUEST_FEE_PCT * 100) / 100;
+      const hostFee = Math.round(subtotal * HOST_FEE_PCT * 100) / 100;
+      const totalPaid = subtotal + guestFee;
+      const payoutAmount = subtotal - hostFee;
+
+      const newBooking = bookingRepo.create({
+        listing_id: dto.listing_id,
+        guest_user_id: userId,
+        status: 'PAYMENT_PENDING',
+        checkin_date: checkin,
+        checkout_date: checkout,
+        guest_count: dto.guest_count,
+        total_subtotal: subtotal,
+        guest_fee: guestFee,
+        host_fee: hostFee,
+        total_paid: totalPaid,
+        payout_amount: payoutAmount,
+        currency: ratePlan.currency,
+        idempotency_key: dto.idempotency_key || null,
+      });
+
+      await bookingRepo.save(newBooking);
+
+      if (dto.occupants?.length) {
+        const occupantRepo = manager.getRepository(StaysBookingOccupant);
+        for (const o of dto.occupants) {
+          await occupantRepo.save(
+            occupantRepo.create({
+              booking_id: newBooking.id,
+              full_name: o.full_name?.trim() || 'Guest',
+              id_number: o.id_number?.trim() || null,
+              is_primary: !!o.is_primary,
+              phone: o.phone?.trim() || null,
+              email: o.email?.trim() || null,
+              gender: o.gender?.trim() || null,
+              id_document_front_asset_id:
+                o.id_document_front_asset_id?.trim() || null,
+              id_document_back_asset_id:
+                o.id_document_back_asset_id?.trim() || null,
+            }),
           );
         }
+      }
 
-        const nights = Math.ceil(
-          (checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        const ratePlan = listing.rate_plan;
-        if (!ratePlan) {
-          throw new BadRequestException('Listing has no pricing configured');
-        }
-
-        const basePrice = Number(ratePlan.base_price);
-        const subtotal = basePrice * nights;
-        const guestFee = Math.round(subtotal * GUEST_FEE_PCT * 100) / 100;
-        const hostFee = Math.round(subtotal * HOST_FEE_PCT * 100) / 100;
-        const totalPaid = subtotal + guestFee;
-        const payoutAmount = subtotal - hostFee;
-
-        const newBooking = bookingRepo.create({
+      await this.auditService.log({
+        actorUserId: userId,
+        actorRole: 'GUEST',
+        entityType: 'BOOKING',
+        entityId: newBooking.id,
+        action: 'BOOKING_CREATED',
+        metadata: {
           listing_id: dto.listing_id,
-          guest_user_id: userId,
-          status: 'PAYMENT_PENDING',
-          checkin_date: checkin,
-          checkout_date: checkout,
-          guest_count: dto.guest_count,
-          total_subtotal: subtotal,
-          guest_fee: guestFee,
-          host_fee: hostFee,
-          total_paid: totalPaid,
-          payout_amount: payoutAmount,
-          currency: ratePlan.currency,
-          idempotency_key: dto.idempotency_key || null,
-        });
+          checkin_date: dto.checkin_date,
+          checkout_date: dto.checkout_date,
+        },
+        ip: auditContext?.ip,
+        userAgent: auditContext?.userAgent,
+      });
 
-        await bookingRepo.save(newBooking);
+      const withRelations = await bookingRepo.findOne({
+        where: { id: newBooking.id },
+        relations: ['listing', 'listing.host', 'listing.check_in_contact'],
+      });
 
-        if (dto.occupants?.length) {
-          const occupantRepo = manager.getRepository(StaysBookingOccupant);
-          for (const o of dto.occupants) {
-            await occupantRepo.save(
-              occupantRepo.create({
-                booking_id: newBooking.id,
-                full_name: o.full_name?.trim() || 'Guest',
-                id_number: o.id_number?.trim() || null,
-                is_primary: !!o.is_primary,
-                phone: o.phone?.trim() || null,
-                email: o.email?.trim() || null,
-                gender: o.gender?.trim() || null,
-                id_document_front_asset_id: o.id_document_front_asset_id?.trim() || null,
-                id_document_back_asset_id: o.id_document_back_asset_id?.trim() || null,
-              }),
-            );
-          }
-        }
-
-        await this.auditService.log({
-          actorUserId: userId,
-          actorRole: 'GUEST',
-          entityType: 'BOOKING',
-          entityId: newBooking.id,
-          action: 'BOOKING_CREATED',
-          metadata: {
-            listing_id: dto.listing_id,
-            checkin_date: dto.checkin_date,
-            checkout_date: dto.checkout_date,
-          },
-          ip: auditContext?.ip,
-          userAgent: auditContext?.userAgent,
-        });
-
-        const withRelations = await bookingRepo.findOne({
-          where: { id: newBooking.id },
-          relations: ['listing', 'listing.host', 'listing.check_in_contact'],
-        });
-
-        return this.toBookingResponse(withRelations ?? newBooking);
+      return this.toBookingResponse(withRelations ?? newBooking);
     });
   }
 
   async getBookingById(bookingId: string, userId: string) {
     const booking = await this.bookingRepo.findOne({
       where: { id: bookingId },
-      relations: ['listing', 'listing.host', 'listing.check_in_contact', 'occupants'],
+      relations: [
+        'listing',
+        'listing.host',
+        'listing.check_in_contact',
+        'occupants',
+      ],
     });
 
     if (!booking) {
@@ -449,7 +468,11 @@ export class StaysService {
     includeOccupants = false,
   ) {
     const listing = booking.listing as StaysListing & {
-      check_in_contact?: { full_name: string; phone_encrypted?: string; role?: string };
+      check_in_contact?: {
+        full_name: string;
+        phone_encrypted?: string;
+        role?: string;
+      };
       host?: User;
     };
     return {
@@ -472,12 +495,17 @@ export class StaysService {
             id: listing.id,
             title: listing.title,
             city: listing.city,
-            address: revealContact && listing.address_encrypted ? listing.address_encrypted : null,
+            address:
+              revealContact && listing.address_encrypted
+                ? listing.address_encrypted
+                : null,
             check_in_contact:
               revealContact && listing.check_in_contact
                 ? {
                     full_name: listing.check_in_contact.full_name,
-                    phone: listing.check_in_contact.phone_encrypted ?? '[contact host]',
+                    phone:
+                      listing.check_in_contact.phone_encrypted ??
+                      '[contact host]',
                     role: listing.check_in_contact.role,
                   }
                 : null,

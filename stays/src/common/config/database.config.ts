@@ -19,14 +19,19 @@ export const databaseConfig = {
   synchronize,
   ssl: isProd
     ? {
-        rejectUnauthorized:
-          process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
       }
     : undefined,
   logging: process.env.NODE_ENV === 'development',
   extra: {
     max: parseInt(process.env.DB_POOL_MAX || '15', 10),
-    idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE_TIMEOUT || '30000', 10),
-    connectionTimeoutMillis: parseInt(process.env.DB_POOL_CONNECT_TIMEOUT || '2000', 10),
+    idleTimeoutMillis: parseInt(
+      process.env.DB_POOL_IDLE_TIMEOUT || '30000',
+      10,
+    ),
+    connectionTimeoutMillis: parseInt(
+      process.env.DB_POOL_CONNECT_TIMEOUT || '2000',
+      10,
+    ),
   },
 };

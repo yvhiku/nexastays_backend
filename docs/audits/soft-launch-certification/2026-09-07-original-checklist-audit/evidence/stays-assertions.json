@@ -1,0 +1,2653 @@
+[
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/payments/booking-pg-concurrency.prod-inv-001.spec.ts",
+    "assertions": [
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency constraint exists in live catalog with expected predicate",
+        "status": "pending"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency exact overlap: only one of two concurrent creates succeeds",
+        "status": "pending"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency partial overlap: only one succeeds",
+        "status": "pending"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency adjacent nights (checkout = next check-in): both succeed \u2014 half-open [)",
+        "status": "pending"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency different listings same dates: both succeed",
+        "status": "pending"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency failed transaction leaves no orphan booking row",
+        "status": "pending"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency same-row confirm vs cancel: exactly one wins with status predicate",
+        "status": "pending"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency same-row expire vs confirm: exactly one wins",
+        "status": "pending"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency stress: many concurrent exact overlaps \u2192 exactly one winner",
+        "status": "pending"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency COMPLETED bookings do not participate in exclusion (product rule)",
+        "status": "pending"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/payments/payment-provider.config.spec.ts",
+    "assertions": [
+      {
+        "name": "payment-provider.config PROD-OPS-002 / Phase 2A isMockPaymentProvider is true when STAYS_PAYMENT_PROVIDER=mock",
+        "status": "passed"
+      },
+      {
+        "name": "payment-provider.config PROD-OPS-002 / Phase 2A dogfood allows mock",
+        "status": "passed"
+      },
+      {
+        "name": "payment-provider.config PROD-OPS-002 / Phase 2A staging requires explicit mock provider env",
+        "status": "passed"
+      },
+      {
+        "name": "payment-provider.config PROD-OPS-002 / Phase 2A real production rejects mock and unset default",
+        "status": "passed"
+      },
+      {
+        "name": "payment-provider.config PROD-OPS-002 / Phase 2A production accepts explicit cmi with secrets and non-loopback URLs",
+        "status": "passed"
+      },
+      {
+        "name": "payment-provider.config PROD-OPS-002 / Phase 2A cmi rejects missing secrets without falling back to mock",
+        "status": "passed"
+      },
+      {
+        "name": "payment-provider.config PROD-OPS-002 / Phase 2A cmi rejects loopback callback URLs",
+        "status": "passed"
+      },
+      {
+        "name": "payment-provider.config PROD-OPS-002 / Phase 2A isHostPayoutEnabled is false unless explicitly true",
+        "status": "passed"
+      },
+      {
+        "name": "payment-provider.config PROD-OPS-002 / Phase 2A legacy webhook requires explicit opt-in and non-production",
+        "status": "passed"
+      },
+      {
+        "name": "StaysPaymentsController legacy webhook Test 9 \u2014 public mock webhook throws Forbidden when legacy gate is off",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/payments/booking-state-concurrency.spec.ts",
+    "assertions": [
+      {
+        "name": "Booking state concurrency \u2014 payment confirmation Test 1 \u2014 PAYMENT_PENDING payment confirmation \u2192 CONFIRMED with ledger",
+        "status": "passed"
+      },
+      {
+        "name": "Booking state concurrency \u2014 payment confirmation Test 2 \u2014 EXPIRED booking rejects payment confirmation without success ledger",
+        "status": "passed"
+      },
+      {
+        "name": "Booking state concurrency \u2014 payment confirmation Test 3 \u2014 CANCELLED booking rejects payment confirmation without success ledger",
+        "status": "passed"
+      },
+      {
+        "name": "Booking state concurrency \u2014 payment confirmation CONFIRMED booking with pending intent \u2192 ALREADY_PROCESSED without new ledger",
+        "status": "passed"
+      },
+      {
+        "name": "Booking state concurrency \u2014 payment confirmation guarded confirm update with zero affected rows \u2192 BOOKING_NOT_PAYABLE",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/payments/stays-payments-cmi-lifecycle.spec.ts",
+    "assertions": [
+      {
+        "name": "StaysPaymentsService CMI lifecycle helpers captureCmiAfterConfirm records SUCCEEDED and skips when already captured",
+        "status": "passed"
+      },
+      {
+        "name": "StaysPaymentsService CMI lifecycle helpers captureCmiAfterConfirm retries when prior capture FAILED",
+        "status": "passed"
+      },
+      {
+        "name": "StaysPaymentsService CMI lifecycle helpers voidCmiPreAuth records void metadata",
+        "status": "passed"
+      },
+      {
+        "name": "StaysPaymentsService CMI lifecycle helpers refundCmiForBooking settles PENDING REFUND on provider success",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/admin/admin-stays.listing-lifecycle.spec.ts",
+    "assertions": [
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) pauseListing (Freeze / Take Offline) LIVE -> PAUSED with admin audit",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) pauseListing (Freeze / Take Offline) APPROVED -> PAUSED with admin audit",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) pauseListing (Freeze / Take Offline) rejects pause from DRAFT (400) without saving",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) pauseListing (Freeze / Take Offline) rejects pause from SUBMITTED (400) without saving",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) pauseListing (Freeze / Take Offline) rejects pause from REJECTED (400) without saving",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) pauseListing (Freeze / Take Offline) rejects pause from PAUSED (400) without saving",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) pauseListing (Freeze / Take Offline) 404 when the listing does not exist",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) pauseListing (Freeze / Take Offline) never touches archived_at (pause is not archive)",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) unpauseListing (Resume) PAUSED (from LIVE) -> LIVE, audits, and re-publishes for marketplace visibility",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) unpauseListing (Resume) PAUSED (from APPROVED) -> APPROVED without LISTING_PUBLISHED",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) unpauseListing (Resume) legacy PAUSED without paused_from_status defaults to LIVE",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) unpauseListing (Resume) rejects resume from DRAFT (400)",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) unpauseListing (Resume) rejects resume from SUBMITTED (400)",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) unpauseListing (Resume) rejects resume from APPROVED (400)",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) unpauseListing (Resume) rejects resume from REJECTED (400)",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) unpauseListing (Resume) rejects resume from LIVE (400)",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) unpauseListing (Resume) is blocked while the host is listing-frozen and does not clear host freeze",
+        "status": "passed"
+      },
+      {
+        "name": "AdminStaysService listing lifecycle (pause / unpause / set-live) setListingLive (unchanged) still only allows APPROVED -> LIVE",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/payments/mock-payment-confirm.spec.ts",
+    "assertions": [
+      {
+        "name": "Mock payment confirm (authenticated) Test 1 \u2014 valid guest payment confirms booking and creates one ledger path",
+        "status": "passed"
+      },
+      {
+        "name": "Mock payment confirm (authenticated) Test 2 \u2014 guest cannot confirm another guest booking",
+        "status": "passed"
+      },
+      {
+        "name": "Mock payment confirm (authenticated) Test 4 \u2014 missing payment intent returns 404",
+        "status": "passed"
+      },
+      {
+        "name": "Mock payment confirm (authenticated) Test 5 \u2014 expired booking cannot be paid",
+        "status": "passed"
+      },
+      {
+        "name": "Mock payment confirm (authenticated) Test 6 \u2014 cancelled booking cannot be paid",
+        "status": "passed"
+      },
+      {
+        "name": "Mock payment confirm (authenticated) Test 7 \u2014 duplicate confirmation is idempotent",
+        "status": "passed"
+      },
+      {
+        "name": "Mock payment confirm (authenticated) Test 8 \u2014 intent amount mismatch rejects confirmation",
+        "status": "passed"
+      },
+      {
+        "name": "Mock payment confirm (authenticated) Test 10 \u2014 mock confirm endpoint works when provider=mock (dogfood soft-launch runtime)",
+        "status": "passed"
+      },
+      {
+        "name": "Legacy mock webhook gate Test 9 \u2014 legacy webhook disabled in production even with mock provider",
+        "status": "passed"
+      },
+      {
+        "name": "Legacy mock webhook gate Test 9 \u2014 legacy webhook disabled by default in development",
+        "status": "passed"
+      },
+      {
+        "name": "confirmPaymentSuccess idempotency S2-01 \u2014 booking FOR UPDATE lock does not use LEFT JOIN (Postgres-safe)",
+        "status": "passed"
+      },
+      {
+        "name": "confirmPaymentSuccess idempotency second webhook does not duplicate ledger when intent already succeeded",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/explore-filter-forwarding.spec.ts",
+    "assertions": [
+      {
+        "name": "StaysController explore filter forwarding exploreListings receives all eight P0 filter fields unchanged",
+        "status": "passed"
+      },
+      {
+        "name": "StaysController explore filter forwarding exploreMap receives all eight P0 filter fields unchanged",
+        "status": "passed"
+      },
+      {
+        "name": "StaysController explore filter forwarding explore and exploreMap receive the same eight filter values for identical DTO filters",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/payments/cmi-payment.provider.spec.ts",
+    "assertions": [
+      {
+        "name": "CmiPaymentProvider.verifyCallback rejects missing hash (fail closed)",
+        "status": "passed"
+      },
+      {
+        "name": "CmiPaymentProvider.verifyCallback rejects tampered amount",
+        "status": "passed"
+      },
+      {
+        "name": "CmiPaymentProvider.verifyCallback accepts valid HMAC success",
+        "status": "passed"
+      },
+      {
+        "name": "CmiPaymentProvider merchant ops (capture/void/refund) getCmiApiUrl derives /fim/api from est3Dgate payment URL",
+        "status": "passed"
+      },
+      {
+        "name": "CmiPaymentProvider merchant ops (capture/void/refund) capture posts PostAuth and parses ProcReturnCode",
+        "status": "passed"
+      },
+      {
+        "name": "CmiPaymentProvider merchant ops (capture/void/refund) voidAuthorization omits amount and uses Void",
+        "status": "passed"
+      },
+      {
+        "name": "CmiPaymentProvider merchant ops (capture/void/refund) refund uses Credit and fails closed on non-00",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-tickets.service.spec.ts",
+    "assertions": [
+      {
+        "name": "SupportTicketsService creates ticket + SUPPORT conversation + first message transactionally",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService snapshots requester_language at create and ignores unsupported locales",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService auto-assigns after a standalone ticket create commits",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService still creates the ticket when auto-assign throws",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService returns 404 obfuscation when booking is not owned",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService returns 404 obfuscation when report is not owned",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService ensureTicketForReport is idempotent when ticket already exists",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService ensureTicketForSafetyIssue is idempotent when ticket already exists",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService createTicketForUser reuses ticket for same reportId",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService reuses existing ticket when unique constraint races",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService copies booking/listing/reported user onto canonical report",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService keeps null context when conversation has none",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService paginates admin tickets and enforces max limit",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService attaches CSAT onto admin ticket list items without N+1",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService lists submitted support reviews only and isolates agents",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService dismissed reports remain listed and escalation does not downgrade URGENT",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService auto-assigns when escalation first creates a ticket",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService paginates admin reports with default limit and empty page",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService assigns eligible SUPPORT_AGENT and audits assignment",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects GUEST assignee with 422",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects Super Admin assignee with 422",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects frozen assignee with 422",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService reassigns and unassigns with audit metadata and does not mutate status",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects unknown assignee with 404",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects combining unassigned with assignedAdminId",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService accepts CSAT for CLOSED requester and rejects OPEN / RESOLVED / duplicate / cross-user",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService accepts overall-only CSAT when the close snapshot has no agent",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService accepts half-star CSAT ratings",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService GET CSAT returns canReview only when CLOSED and not yet submitted",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService returns empty analytics for empty created_at range",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects invalid analytics dates and ranges over 90 days",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService aggregates analytics volume, status distribution, and assignment",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService creates and lists internal notes without body in audit",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects SUPPORT source conversation for investigation transcript",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService lists ticket activity by entity_type and entity_id only",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rolls back REVIEWED when escalation ticket ensure fails",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects PATCH without kind or with invalid status",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService refuses evidence that does not belong to the canonical record",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService clears unread_for_support when admin lists messages",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService stamps unread requester messages READ when admin opens the ticket",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService does not rewrite already READ requester messages or republish on reopen",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService does not enqueue delivery when admin send rolls back",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService maps admin messages as SUPPORT_AGENT",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService does not overwrite first_admin_response_at on second admin reply",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService sets closed_at on CLOSED without clearing resolved_at",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService snapshots review_agent_id and archives the SUPPORT conversation on first CLOSED",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService does not publish realtime when the close transaction fails",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService does not re-archive or republish on a second CLOSED patch",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService does not overwrite review_agent_id on later reassignment",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService leaves review_agent_id null when an unassigned ticket is closed",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects CLOSED admin send with 409 and does not insert a message",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService applies customer message effects: RESOLVED reopens and preserves resolved_at",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService applies customer message effects: WAITING_FOR_CUSTOMER becomes IN_PROGRESS",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService preserves WAITING_FOR_HOST for GUEST party and does not clear resolved_at",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects CLOSED customer lock with 409",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService provisionReportWithTicket uses one TX and rolls back when ticket ensure fails",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService reuses ticket on unique conflict via savepoint without poisoning outer TX",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService throws when 23505 reuse finds no ticket (no ticket:null success)",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService throws when safety 23505 reuse finds no ticket",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService does not escalate when source conversation is missing",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService keeps REVIEWED when escalate hits unrecovered 23505",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService ticket isolation for SUPPORT_AGENT lists only the agent queue and ignores assignedAdminId / unassigned",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService ticket isolation for SUPPORT_AGENT cannot expand the queue with requesterUserId",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService ticket isolation for SUPPORT_AGENT GET own ticket 200, foreign unassigned and guessed UUID 404",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService ticket isolation for SUPPORT_AGENT returns host name email and phone on ticket detail",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService ticket isolation for SUPPORT_AGENT messages notes and activity follow the same ownership 404",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService ticket isolation for SUPPORT_AGENT POST message to unassigned 404s and does not auto-claim",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService ticket isolation for SUPPORT_AGENT PATCH own status allowed; priority and assignment 403; foreign 404 not 403",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService ticket isolation for SUPPORT_AGENT allows notes on CLOSED tickets and never inserts a customer message",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService rejects generic PATCH status out of CLOSED and keeps the conversation archived",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService reopens CLOSED tickets, unarchives, preserves CSAT, and evaluates SLA",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService returns 409 when reopen is called on a ticket that is not closed",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService does not reopen CSAT after close \u2192 review \u2192 reopen \u2192 close",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService creates FOLLOW_UP_REQUIRED after unsolved CSAT",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService makes concurrent reopen idempotent: one success, one 409, one audit",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService reopens an unassigned CLOSED ticket to OPEN",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService forbids support agents from reopening tickets",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService heartbeats presence independently of ticket data",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService sets optional resolution_type, audits, and preserves it on reopen",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService renders allowlisted canned variables after ticket access",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService does not render inactive canned replies",
+        "status": "passed"
+      },
+      {
+        "name": "SupportTicketsService allows resolution_type on CLOSED without leaving CLOSED",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/idempotency/canonical-request-hash.spec.ts",
+    "assertions": [
+      {
+        "name": "canonicalRequestHash matches for key reorder and drops idempotency_key from body",
+        "status": "passed"
+      },
+      {
+        "name": "canonicalRequestHash changes when a money field changes",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/messages.service.spec.ts",
+    "assertions": [
+      {
+        "name": "MessagesService paginates messages with before_sequence cursor (chronological ASC)",
+        "status": "passed"
+      },
+      {
+        "name": "MessagesService enqueues MESSAGE_RECEIVED with senderName and conversation version on send",
+        "status": "passed"
+      },
+      {
+        "name": "MessagesService locks ticket then applies customer support effects inside the send TX",
+        "status": "passed"
+      },
+      {
+        "name": "MessagesService sends on SUPPORT contact threads when booking_id is null",
+        "status": "passed"
+      },
+      {
+        "name": "MessagesService rejects CLOSED support send before inserting a message",
+        "status": "passed"
+      },
+      {
+        "name": "MessagesService bumps conversation_version on markRead",
+        "status": "passed"
+      },
+      {
+        "name": "MessagesService does not publish MESSAGE_READ when reopen finds no unread rows",
+        "status": "passed"
+      },
+      {
+        "name": "MessagesService stamps only counterpart SUPPORT messages delivered on customer open",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/services/stays-cancellation.service.spec.ts",
+    "assertions": [
+      {
+        "name": "StaysCancellationService should calculate full refund for MODERATE policy when >= 5 days before check-in",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should calculate 50% refund for MODERATE policy when 1\u20135 days before check-in",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService Test 5 \u2014 paid booking with zero policy refund creates no REFUND ledger",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should calculate full refund for FLEXIBLE policy when >= 24h before check-in",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should calculate 50% refund for STRICT policy when >= 7 days before check-in",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should reject cancellation of COMPLETED booking",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should reject when non-guest tries to cancel as guest",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService Test 4 \u2014 CONFIRMED + settled GUEST_PAYMENT keeps existing refund policy",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService Test 8 \u2014 guarded cancel update uses locked status and fails when row no longer matches",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService Test 1 \u2014 PAYMENT_PENDING unpaid cancel creates no REFUND ledger",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService Test 2 \u2014 INITIATED unpaid cancel creates no REFUND ledger",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService Test 3 \u2014 positive theoretical refund but no settled payment \u2192 no REFUND ledger",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService Test 6 \u2014 duplicate REFUND prevented when REFUND already exists",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService Test 7 \u2014 positive REFUND path always queries settled GUEST_PAYMENT first",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/admin-support.controller.spec.ts",
+    "assertions": [
+      {
+        "name": "AdminSupportController roles keeps operations, analytics, workload, and global signals ADMIN-only",
+        "status": "passed"
+      },
+      {
+        "name": "AdminSupportController roles keeps ticket isolation methods open to SUPPORT_AGENT",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/stays.controller.h3-routes.spec.ts",
+    "assertions": [
+      {
+        "name": "StaysController H3/H10 host route registration registers GET host/dashboard (H3)",
+        "status": "passed"
+      },
+      {
+        "name": "StaysController H3/H10 host route registration registers GET host/stats (legacy KPI) and GET host/analytics (H10)",
+        "status": "passed"
+      },
+      {
+        "name": "StaysController H3/H10 host route registration controller prefix remains stays (global api/v1 \u2192 /api/v1/stays/...)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/conversations.service.spec.ts",
+    "assertions": [
+      {
+        "name": "ConversationsService filters DELETED conversations from inbox list",
+        "status": "passed"
+      },
+      {
+        "name": "ConversationsService includes ARCHIVED conversations in all filter",
+        "status": "passed"
+      },
+      {
+        "name": "ConversationsService applies archived filter query",
+        "status": "passed"
+      },
+      {
+        "name": "ConversationsService excludes archived SUPPORT from the support filter",
+        "status": "passed"
+      },
+      {
+        "name": "ConversationsService increments conversation_version on visibility archive",
+        "status": "passed"
+      },
+      {
+        "name": "ConversationsService applies search filter when q is provided",
+        "status": "passed"
+      },
+      {
+        "name": "ConversationsService returns linked ticket fields after report and rejects SUPPORT threads",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/services/host-analytics.service.spec.ts",
+    "assertions": [
+      {
+        "name": "HostAnalyticsService.getHostAnalytics returns empty properties for host with no listings",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics includes zero-booking listing with denorm reviews and occupancy 0",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics aggregates one earning booking (CONFIRMED) with H3 money formulas",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics includes CHECKED_IN and COMPLETED; excludes PAYMENT_PENDING and CANCELLED",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics uses payout_amount fallback max(0, subtotal - host_fee)",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics attributes earnings by confirmed_at Casablanca month; falls back to created_at",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics resolves next_30d period and uses check-in window for earnings",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics supports all_time earnings and null occupancy value",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics computes property occupancy as booked nights / period_days",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics exposes listing avg_rating and review_count denorm fields",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics aggregates multiple listings independently",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics isolates Host A from Host B listings and bookings",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics rejects invalid period and never accepts client hostId",
+        "status": "passed"
+      },
+      {
+        "name": "HostAnalyticsService.getHostAnalytics loads listings and bookings once (no per-listing N+1)",
+        "status": "passed"
+      },
+      {
+        "name": "GET /stays/host/analytics controller wiring requires JwtAuthGuard and passes user.userId (no hostId)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/services/host-dashboard.service.spec.ts",
+    "assertions": [
+      {
+        "name": "HostDashboardService.getHostDashboard returns empty aggregate for host with no listings",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard aggregates multi-listing KPIs and money split (gross/net/fees)",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard counts check-in/out today/tomorrow and currently staying",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard excludes non-earning statuses from money KPIs",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard computes MoM on net host earnings across Casablanca months",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard sums pending HOST_PAYOUT and keeps available/paid_out at contract defaults when none settled",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard counts settled HOST_PAYOUT in paid_out when present",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard isolates host A from host B listings and bookings",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard uses Africa/Casablanca day boundary for new_bookings_today",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard getDashboardNow exposes Casablanca bounds",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard does not invent messaging unread counts",
+        "status": "passed"
+      },
+      {
+        "name": "HostDashboardService.getHostDashboard documents JwtAuthGuard at controller \u2014 service trusts hostUserId arg",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/services/host-listings.h17-authz.spec.ts",
+    "assertions": [
+      {
+        "name": "HostListingsService H17 authorization resumeListing DENY when canList is false (frozen/unverified) \u2014 no LIVE transition",
+        "status": "passed"
+      },
+      {
+        "name": "HostListingsService H17 authorization updateListing DENY when canList is false before ownership load",
+        "status": "passed"
+      },
+      {
+        "name": "HostListingsService H17 authorization replaceListingMedia DENY when canList is false",
+        "status": "passed"
+      },
+      {
+        "name": "HostListingsService H17 authorization cross-host pause returns NotFound (anti-enumeration)",
+        "status": "passed"
+      },
+      {
+        "name": "HostListingsService H17 authorization resumeListing ALLOW path calls canList then ownership",
+        "status": "passed"
+      },
+      {
+        "name": "HostListingsService H17 authorization resumeListing restores APPROVED when paused_from_status is APPROVED",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/hosts/host-onboarding.service.spec.ts",
+    "assertions": [
+      {
+        "name": "HostOnboardingService submitHostOnboarding returns existing pending profile without duplicate save",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService countPendingApplications uses application_status PENDING",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService canList is false until application approved",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService canList is true when application and verification approved and not frozen",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService canList DENY when listing_frozen even if application+verification APPROVED",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService canList DENY when application APPROVED but host_verification PENDING",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService canList DENY when application APPROVED but host_verification REJECTED",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService canList DENY when application REJECTED even if verification appears APPROVED",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService canList DENY when application DRAFT",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService canList DENY when no host profile exists",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService isApprovedHost is application APPROVED only (weaker than canList)",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService getHostMe can_create_listing / can_publish_listing match canList triad",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService listForAdmin omits document_number_hash and sumsub_applicant_id",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/services/booking-lifecycle-scheduler.service.spec.ts",
+    "assertions": [
+      {
+        "name": "BookingLifecycleSchedulerService \u2014 payment expiration guards Test 6 \u2014 expiration updates PAYMENT_PENDING \u2192 EXPIRED and cancels pending intents",
+        "status": "passed"
+      },
+      {
+        "name": "BookingLifecycleSchedulerService \u2014 payment expiration guards Test 7 \u2014 expiration skips event and intent cancel when guarded update affects zero rows",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/services/booked-statuses.alignment.spec.ts",
+    "assertions": [
+      {
+        "name": "PROD-INV-001 booking inventory status semantics BOOKED_STATUSES matches DB exclusion statuses (no COMPLETED)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-assignment-race.spec.ts",
+    "assertions": [
+      {
+        "name": "Support assignment races serializes two admin assignments so the last commit wins",
+        "status": "passed"
+      },
+      {
+        "name": "Support assignment races rejects an agent message after the committed assignee changed",
+        "status": "passed"
+      },
+      {
+        "name": "Support assignment races rejects an agent message after unassign",
+        "status": "passed"
+      },
+      {
+        "name": "Support assignment races does not restore a stale assignee when status loses the assignment race",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/services/host-listings.pagination.spec.ts",
+    "assertions": [
+      {
+        "name": "HostListingsService listHostListingsPage (multi-media pagination) walks all cursors: every listing once, page size \u226420, has_next until final",
+        "status": "passed"
+      },
+      {
+        "name": "HostListingsService listHostListingsPage (multi-media pagination) rejects cursor from another host context before querying",
+        "status": "passed"
+      },
+      {
+        "name": "HostListingsService listHostListingsPage (multi-media pagination) default keyset uses +1ms created_at tie window (ms vs \u00b5s)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/seo/seo-listing.sitemap.spec.ts",
+    "assertions": [
+      {
+        "name": "SeoListingService.listIndexableForSitemap A: includes LIVE+indexable listings once per locale",
+        "status": "passed"
+      },
+      {
+        "name": "SeoListingService.listIndexableForSitemap B: excludes LIVE failing quality; only queries LIVE status",
+        "status": "passed"
+      },
+      {
+        "name": "SeoListingService.listIndexableForSitemap C: enumerates every ID batch until exhaustion (no first-page truncation)",
+        "status": "passed"
+      },
+      {
+        "name": "SeoListingService.listIndexableForSitemap D: produces unique paths only",
+        "status": "passed"
+      },
+      {
+        "name": "SeoListingService.listIndexableForSitemap E: paths match /{locale}/listings/{uuid} canonical shape",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/security/bola-payments.spec.ts",
+    "assertions": [
+      {
+        "name": "BOLA \u2014 payment intent ownership does not create intent for another guest booking",
+        "status": "passed"
+      },
+      {
+        "name": "BOLA \u2014 payment intent ownership rejects zero-total bookings",
+        "status": "passed"
+      },
+      {
+        "name": "BOLA \u2014 payment intent ownership returns existing pending intent instead of creating a duplicate",
+        "status": "passed"
+      },
+      {
+        "name": "BOLA \u2014 payment intent ownership rejects a second intent when another payment is already in progress",
+        "status": "passed"
+      },
+      {
+        "name": "Payment webhook idempotency skips duplicate success webhooks when intent is already succeeded",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/services/stays-reviews.service.spec.ts",
+    "assertions": [
+      {
+        "name": "StaysReviewsService validates half-star ratings",
+        "status": "passed"
+      },
+      {
+        "name": "StaysReviewsService creates a review for a completed booking",
+        "status": "passed"
+      },
+      {
+        "name": "StaysReviewsService blocks duplicate reviews",
+        "status": "passed"
+      },
+      {
+        "name": "StaysReviewsService allows review when lifecycle completed but DB status still CONFIRMED",
+        "status": "passed"
+      },
+      {
+        "name": "StaysReviewsService blocks review when booking not completed",
+        "status": "passed"
+      },
+      {
+        "name": "StaysReviewsService blocks unauthorized guest",
+        "status": "passed"
+      },
+      {
+        "name": "StaysReviewsService blocks edit after 48h window",
+        "status": "passed"
+      },
+      {
+        "name": "StaysReviewsService recalculates aggregates on update",
+        "status": "passed"
+      },
+      {
+        "name": "StaysReviewsService parseReviewSort defaults invalid values to newest",
+        "status": "passed"
+      },
+      {
+        "name": "StaysReviewsService listHostReviews applies deterministic ORDER BY for each sort",
+        "status": "passed"
+      },
+      {
+        "name": "ReviewAggregateService maps ratings to histogram buckets",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/conversation-provision.service.spec.ts",
+    "assertions": [
+      {
+        "name": "ConversationProvisionService creates conversation with snapshot v1 inside transaction",
+        "status": "passed"
+      },
+      {
+        "name": "ConversationProvisionService seeds timeline cards on provision",
+        "status": "passed"
+      },
+      {
+        "name": "ConversationProvisionService enqueues BOOKING_CONFIRMED and PAYMENT_SUCCEEDED outbox rows",
+        "status": "passed"
+      },
+      {
+        "name": "ConversationProvisionService falls back providerIntentId to booking id when payment intent is missing",
+        "status": "passed"
+      },
+      {
+        "name": "ConversationProvisionService is idempotent when conversation already exists",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-quality-signals.service.spec.ts",
+    "assertions": [
+      {
+        "name": "SupportQualitySignalsService does not create a CSAT pattern below the review minimum",
+        "status": "passed"
+      },
+      {
+        "name": "SupportQualitySignalsService creates AGENT_LOW_CSAT_PATTERN with enough low agent ratings",
+        "status": "passed"
+      },
+      {
+        "name": "SupportQualitySignalsService creates AGENT_LOW_SOLVED_RATE independently of a high agent rating",
+        "status": "passed"
+      },
+      {
+        "name": "SupportQualitySignalsService does not create AGENT_SLA_DECLINE when recent SLA stays above the absolute target",
+        "status": "passed"
+      },
+      {
+        "name": "SupportQualitySignalsService creates AGENT_SLA_DECLINE when volume, absolute target, and decline all fail",
+        "status": "passed"
+      },
+      {
+        "name": "SupportQualitySignalsService does not create AGENT_SLA_DECLINE when recent volume is below the minimum",
+        "status": "passed"
+      },
+      {
+        "name": "SupportQualitySignalsService creates CATEGORY_OUTCOME_DECLINE vs the previous window, not a static 70% floor",
+        "status": "passed"
+      },
+      {
+        "name": "SupportQualitySignalsService does not create CATEGORY_OUTCOME_DECLINE when either window is below the review minimum",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/outbox.worker.spec.ts",
+    "assertions": [
+      {
+        "name": "MessagingOutboxWorker claims only PENDING rows with SKIP LOCKED",
+        "status": "passed"
+      },
+      {
+        "name": "MessagingOutboxWorker unwraps TypeORM [rows, rowCount] tuple from UPDATE RETURNING",
+        "status": "passed"
+      },
+      {
+        "name": "MessagingOutboxWorker marks row DONE after successful publish",
+        "status": "passed"
+      },
+      {
+        "name": "MessagingOutboxWorker retries with backoff on publish failure",
+        "status": "passed"
+      },
+      {
+        "name": "MessagingOutboxWorker dead-letters validation failures without retrying",
+        "status": "passed"
+      },
+      {
+        "name": "MessagingOutboxWorker repairs empty providerIntentId on legacy payment.succeeded rows",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/services/host-listings.canlist.spec.ts",
+    "assertions": [
+      {
+        "name": "HostListingsService assertCanList (H15) createListing DENY when canList is false (unverified) \u2014 no DB transaction",
+        "status": "passed"
+      },
+      {
+        "name": "HostListingsService assertCanList (H15) createListing DENY when listing_frozen with frozen-specific message",
+        "status": "passed"
+      },
+      {
+        "name": "HostListingsService assertCanList (H15) submitListing DENY when canList is false before ownership load completes mutation path",
+        "status": "passed"
+      },
+      {
+        "name": "HostListingsService assertCanList (H15) requireOwnedListing path: Host A cannot mutate Host B listing (NotFoundException)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/hosts/hosts.upload-oversize.spec.ts",
+    "assertions": [
+      {
+        "name": "HostsService upload size gate (audit 092) rejects oversize host verification photo (>5MB)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/app.controller.spec.ts",
+    "assertions": [
+      {
+        "name": "AppController root should return \"Hello World!\"",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/operational-intelligence.service.spec.ts",
+    "assertions": [
+      {
+        "name": "OperationalIntelligenceService repeat reports does not signal for 2 reports",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService repeat reports signals MEDIUM for 3 reports in 7 days",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService repeat reports signals HIGH for 5+ reports",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService repeat reports resolves existing signal when count drops below threshold",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService repeat safety does not signal for 1 issue",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService repeat safety signals HIGH for 2 issues",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService repeat safety signals URGENT for severe explicit category",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService SLA ON_TRACK does not create SLA signals",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService SLA AT_RISK produces SLA_ATTENTION",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService SLA BREACHED produces SLA_BREACHED and resolves attention when not at risk",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService unassigned high priority HIGH unassigned \u2192 signal",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService unassigned high priority URGENT unassigned \u2192 signal",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService unassigned high priority LOW unassigned \u2192 no unassigned signal",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService unassigned high priority assigned HIGH resolves the signal",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService unassigned high priority CLOSED does not keep an active unassigned signal",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService multiple open tickets 3 open tickets \u2192 LOW signal",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService multiple open tickets 2 open tickets resolves the signal",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService related tickets matches same booking, excludes self, and limits",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService related tickets allows agent parent ownership and 404s foreign parent",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService related tickets omits foreign sibling tickets from an agent related list",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService related tickets ticket-scoped signals follow parent ownership",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService dedupe second evaluation updates last_detected_at on one row",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService dedupe reopens a RESOLVED signal when the condition is true again",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService dedupe retries as an update after UNIQUE(dedupe_key) 23505",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService signal lifecycle API ACTIVE \u2192 ACKNOWLEDGED audits without bodies",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService signal lifecycle API rejects invalid transition",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService signal lifecycle API unknown signal \u2192 404",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService signal lifecycle API agent ACK on owned ticket; missing and foreign signals share Signal not found",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService FOLLOW_UP_REQUIRED upserts an active signal for unsolved CSAT and is race-safe",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService FOLLOW_UP_REQUIRED does not reactivate a historically resolved follow-up",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService FOLLOW_UP_REQUIRED resolves only the active follow-up row",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService FOLLOW_UP_REQUIRED rejects ACKNOWLEDGE on FOLLOW_UP_REQUIRED",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService FOLLOW_UP_REQUIRED mark reviewed resolves follow-up with actor metadata",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService low CSAT requires 5 responses and 2 low ratings",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService safeEvaluate swallows engine failures",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService slaState filter SQL casts named hour params to int",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService lists agent workload without closed tickets or overview totals",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService returns queue health splits and on-track SLA from overview SQL",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService lists attention tickets once with union reasons",
+        "status": "passed"
+      },
+      {
+        "name": "OperationalIntelligenceService includes CLOSED tickets with an active follow-up signal and CSAT ratings",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/services/stays-availability.service.spec.ts",
+    "assertions": [
+      {
+        "name": "StaysAvailabilityService should return listing IDs with overlapping CONFIRMED bookings",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService should return listing IDs with blocked dates in availability_blocks",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService should merge unavailable IDs from both bookings and blocks",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService should filter by listingIds when provided",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService should return true from isListingAvailable when listing is not unavailable",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService should return false from isListingAvailable when listing has overlapping booking",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService formats Date values without UTC day shift",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/messaging-state.service.spec.ts",
+    "assertions": [
+      {
+        "name": "MessagingStateService computes post-stay end from completed_at plus grace hours",
+        "status": "passed"
+      },
+      {
+        "name": "MessagingStateService enterPostStay keeps conversation active and sets post_stay_ends_at",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/hosts/hosts.service.spec.ts",
+    "assertions": [
+      {
+        "name": "HostsService.canList (H15 authorization) delegates to HostOnboardingService.canList, not isApprovedHost",
+        "status": "passed"
+      },
+      {
+        "name": "HostsService.canList (H15 authorization) returns false when onboarding canList denies (does not widen via isApprovedHost)",
+        "status": "passed"
+      },
+      {
+        "name": "HostsService.canList (H15 authorization) isHostVerified remains application-approval check (not listing eligibility)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-performance-snapshot.service.spec.ts",
+    "assertions": [
+      {
+        "name": "SupportPerformanceSnapshotService upserts the UTC day window, not a 30-day rollup",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-canned-replies.service.spec.ts",
+    "assertions": [
+      {
+        "name": "SupportCannedRepliesService lists active replies by default",
+        "status": "passed"
+      },
+      {
+        "name": "SupportCannedRepliesService creates a reply and audits without body in metadata",
+        "status": "passed"
+      },
+      {
+        "name": "SupportCannedRepliesService soft-deactivates on delete path",
+        "status": "passed"
+      },
+      {
+        "name": "SupportCannedRepliesService rejects empty title",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-assignment.service.spec.ts",
+    "assertions": [
+      {
+        "name": "SupportAssignmentService assigns the lowest-score eligible agent and audits source AUTO",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAssignmentService skips assignment when the ticket is already assigned",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAssignmentService leaves the ticket unassigned when Identity returns no eligible agents",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAssignmentService skips a frozen chosen agent and picks the next eligible one",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAssignmentService leaves the ticket unassigned when every agent is at capacity",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAssignmentService does not assign two concurrent tickets to the same agent from one snapshot",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAssignmentService swallows assign errors so callers still succeed",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAssignmentService no-ops when auto-assign is disabled",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAssignmentService prefers a category+language specialist over a lower-score generalist",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAssignmentService skips a perfect skill match that is at capacity",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-performance.service.spec.ts",
+    "assertions": [
+      {
+        "name": "SupportPerformanceService attributes first-response SLA to the first responder, not the closer",
+        "status": "passed"
+      },
+      {
+        "name": "SupportPerformanceService cohorts reopen rate by close date, not reopen-event date",
+        "status": "passed"
+      },
+      {
+        "name": "SupportPerformanceService does not treat missing reviews as unsolved",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-agent-metrics.service.spec.ts",
+    "assertions": [
+      {
+        "name": "SupportAgentMetricsService maps canonical ticketsClosed onto Loop 3 closedCount",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAgentMetricsService scopes /me metrics to the JWT agent id",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/platform-settings/platform-settings.service.spec.ts",
+    "assertions": [
+      {
+        "name": "PlatformSettingsService \u2014 fee cache / authoritative rates calculateFeesAuthoritative always loads rates from DB",
+        "status": "passed"
+      },
+      {
+        "name": "PlatformSettingsService \u2014 fee cache / authoritative rates fee update does not rewrite a prior in-memory fee snapshot",
+        "status": "passed"
+      },
+      {
+        "name": "PlatformSettingsService \u2014 fee cache / authoritative rates updateFeeRates refreshes the local process cache",
+        "status": "passed"
+      },
+      {
+        "name": "PlatformSettingsService \u2014 fee cache / authoritative rates calculateFees identity: total_paid = payout + guest + host",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-agent-skills.service.spec.ts",
+    "assertions": [
+      {
+        "name": "SupportAgentSkillsService canonicalizes mixed language spellings on save",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAgentSkillsService rejects non-SUPPORT_AGENT targets",
+        "status": "passed"
+      },
+      {
+        "name": "SupportAgentSkillsService rejects missing agents",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/conversation-presentation.service.spec.ts",
+    "assertions": [
+      {
+        "name": "ConversationPresentationService renders SUPPORT threads without host lookup or stay dates",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/security/cleaning-fee-removal.spec.ts",
+    "assertions": [
+      {
+        "name": "Cleaning fee product removal Test 1 \u2014 host RatePlan DTO has no cleaning_fee field",
+        "status": "passed"
+      },
+      {
+        "name": "Cleaning fee product removal Test 2 \u2014 booking fee math has no cleaning component (base \u00d7 nights only)",
+        "status": "passed"
+      },
+      {
+        "name": "Cleaning fee product removal Test 3/4/5 \u2014 payment/ledger/refund sources do not reference cleaning_fee",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-coaching-notes.service.spec.ts",
+    "assertions": [
+      {
+        "name": "SupportCoachingNotesService rejects silent edits to a completed note",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/security/jwt-iss-aud.spec.ts",
+    "assertions": [
+      {
+        "name": "Stays JWT iss/aud verification SEC-006 accepts matching claims and rejects wrong aud",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/app.health.spec.ts",
+    "assertions": [
+      {
+        "name": "Stays AppController health PROD-OPS-005 liveness ignores DB",
+        "status": "passed"
+      },
+      {
+        "name": "Stays AppController health PROD-OPS-005 ready throws when DB unavailable",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/timeline-seeder.service.spec.ts",
+    "assertions": [
+      {
+        "name": "TimelineSeederService self-heals a stale conversation sequence before inserting",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/security/outbound-https-fetch.spec.ts",
+    "assertions": [
+      {
+        "name": "outbound-url SSRF guards allows public https hosts",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects http://example.com/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://localhost/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://127.0.0.1/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://127.1.2.3/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://10.0.0.5/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://192.168.1.1/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://172.16.0.1/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://172.31.255.255/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://169.254.169.254/latest/meta-data/",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://0.0.0.0/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://[::1]/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://[fc00::1]/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://[fd12:3456:789a::1]/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://[fe80::1]/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://metadata.google.internal/",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects file:///etc/passwd",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects ftp://example.com/x",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects gopher://example.com/x",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects data:text/plain,hi",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://user:pass@example.com/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards detects blocked IP addresses",
+        "status": "passed"
+      },
+      {
+        "name": "resolvePublicAddressesOnly / DNS SSRF rejects public hostname resolving to a private IP",
+        "status": "passed"
+      },
+      {
+        "name": "resolvePublicAddressesOnly / DNS SSRF rejects mixed public + private DNS records",
+        "status": "passed"
+      },
+      {
+        "name": "resolvePublicAddressesOnly / DNS SSRF rejects IPv6 unique-local DNS results",
+        "status": "passed"
+      },
+      {
+        "name": "resolvePublicAddressesOnly / DNS SSRF rejects literal private IPs via resolvePublicAddressesOnly",
+        "status": "passed"
+      },
+      {
+        "name": "fetchOutboundHttps redirect SSRF policy allows a successful public HTTPS hop",
+        "status": "passed"
+      },
+      {
+        "name": "fetchOutboundHttps redirect SSRF policy rejects redirect to 127.0.0.1",
+        "status": "passed"
+      },
+      {
+        "name": "fetchOutboundHttps redirect SSRF policy rejects redirect to private RFC1918 IP",
+        "status": "passed"
+      },
+      {
+        "name": "fetchOutboundHttps redirect SSRF policy rejects HTTPS \u2192 HTTP redirect",
+        "status": "passed"
+      },
+      {
+        "name": "fetchOutboundHttps redirect SSRF policy rejects redirect chains exceeding the maximum",
+        "status": "passed"
+      },
+      {
+        "name": "fetchOutboundHttps redirect SSRF policy rejects unsafe absolute redirects from relative Location against blocked hosts",
+        "status": "passed"
+      },
+      {
+        "name": "fetchOutboundHttps redirect SSRF policy follows a safe relative redirect to another public HTTPS path",
+        "status": "passed"
+      },
+      {
+        "name": "fetchOutboundHttps redirect SSRF policy rejects malformed Location headers",
+        "status": "passed"
+      },
+      {
+        "name": "fetchOutboundHttps redirect SSRF policy rejects redirect whose DNS resolves private after public first hop",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/guards/roles.guard.spec.ts",
+    "assertions": [
+      {
+        "name": "Stays RolesGuard SEC-003 allows matching ADMIN authz_version",
+        "status": "passed"
+      },
+      {
+        "name": "Stays RolesGuard SEC-003 denies stale ADMIN token after Identity revocation",
+        "status": "passed"
+      },
+      {
+        "name": "Stays RolesGuard SEC-003 leaves guest authorization unchecked when no roles required",
+        "status": "passed"
+      },
+      {
+        "name": "Stays RolesGuard SEC-003 denies SUPPORT_AGENT on ADMIN routes",
+        "status": "passed"
+      },
+      {
+        "name": "Stays RolesGuard SEC-003 runs live authz for SUPPORT_AGENT routes",
+        "status": "passed"
+      },
+      {
+        "name": "Stays RolesGuard SEC-003 denies frozen SUPPORT_AGENT on SUPPORT_AGENT routes",
+        "status": "passed"
+      },
+      {
+        "name": "Stays RolesGuard SEC-003 denies JWT ADMIN when live staff_role is SUPPORT_AGENT",
+        "status": "passed"
+      },
+      {
+        "name": "Stays RolesGuard SEC-003 denies JWT SUPPORT_AGENT when live staff_role is ADMIN",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/security/mass-assignment.spec.ts",
+    "assertions": [
+      {
+        "name": "mass assignment / financial DTO guards rejects privilege fields on UpdateHostListingDto (forbidNonWhitelisted)",
+        "status": "passed"
+      },
+      {
+        "name": "mass assignment / financial DTO guards rejects zero base_price on create listing rate plan",
+        "status": "passed"
+      },
+      {
+        "name": "mass assignment / financial DTO guards rejects negative guest_count on booking",
+        "status": "passed"
+      },
+      {
+        "name": "mass assignment / financial DTO guards rejects client total_paid / commission on CreateBookingDto",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/security/outbound-url.spec.ts",
+    "assertions": [
+      {
+        "name": "outbound-url SSRF guards allows public https hosts",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects http://example.com/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://localhost/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://127.0.0.1/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://10.0.0.5/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://192.168.1.1/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://172.16.0.1/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://169.254.169.254/latest/meta-data/",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://0.0.0.0/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://[::1]/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://[fc00::1]/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://metadata.google.internal/",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects file:///etc/passwd",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects ftp://example.com/x",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards rejects https://user:pass@example.com/x.ics",
+        "status": "passed"
+      },
+      {
+        "name": "outbound-url SSRF guards detects blocked hostnames and IPs",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/phone/phone-normalizer.spec.ts",
+    "assertions": [
+      {
+        "name": "phone-normalizer Morocco formats normalizes 0612345678 to +212612345678",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer Morocco formats normalizes 612345678 to +212612345678",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer Morocco formats normalizes 212612345678 to +212612345678",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer Morocco formats normalizes +212612345678 (already E.164)",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer Morocco formats handles spaces and dashes in Morocco numbers",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer Morocco formats strips national trunk 0 after +212 (+2120612345678 \u2192 +212612345678)",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer international formats accepts US number with country code",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer international formats accepts French number",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer international formats accepts UK number",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer validation rejects empty input",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer validation rejects too few digits",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer validation rejects too many digits",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer validation rejects ambiguous values (leading zeros only)",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer validation rejects too short ambiguous",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer tryNormalizePhoneNumber returns normalized string for valid input",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer tryNormalizePhoneNumber returns null for invalid input",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer normalizePhoneOrThrow throws BadRequestException for invalid input",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer DEFAULT_COUNTRY_CODE is 212 for Morocco",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/utils/booking-date.util.spec.ts",
+    "assertions": [
+      {
+        "name": "bookingNightsBetween \u2014 calendar date nights (DST-safe) 1 night",
+        "status": "passed"
+      },
+      {
+        "name": "bookingNightsBetween \u2014 calendar date nights (DST-safe) 2 nights",
+        "status": "passed"
+      },
+      {
+        "name": "bookingNightsBetween \u2014 calendar date nights (DST-safe) 7 nights",
+        "status": "passed"
+      },
+      {
+        "name": "bookingNightsBetween \u2014 calendar date nights (DST-safe) rejects same-day stay",
+        "status": "passed"
+      },
+      {
+        "name": "bookingNightsBetween \u2014 calendar date nights (DST-safe) checkout before check-in yields negative night count",
+        "status": "passed"
+      },
+      {
+        "name": "bookingNightsBetween \u2014 calendar date nights (DST-safe) accepts date-only strings with trailing time suffix",
+        "status": "passed"
+      },
+      {
+        "name": "bookingNightsBetween \u2014 calendar date nights (DST-safe) DST fall-back boundary remains exact calendar nights",
+        "status": "passed"
+      },
+      {
+        "name": "bookingNightsBetween \u2014 calendar date nights (DST-safe) DST spring-forward boundary remains exact calendar nights",
+        "status": "passed"
+      },
+      {
+        "name": "bookingNightsBetween \u2014 calendar date nights (DST-safe) rejects invalid calendar dates",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/utils/host-list-cursor.util.spec.ts",
+    "assertions": [
+      {
+        "name": "host-list-cursor round-trips keys and id",
+        "status": "passed"
+      },
+      {
+        "name": "host-list-cursor rejects cursor when filter context changes",
+        "status": "passed"
+      },
+      {
+        "name": "host-list-cursor rejects cursor for another host",
+        "status": "passed"
+      },
+      {
+        "name": "host-list-cursor rejects tampered payload",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/observability/observability-internal.controller.spec.ts",
+    "assertions": [
+      {
+        "name": "ObservabilityInternalController rejects missing internal key",
+        "status": "passed"
+      },
+      {
+        "name": "ObservabilityInternalController disables test alert in real production without ENABLE flag",
+        "status": "passed"
+      },
+      {
+        "name": "ObservabilityInternalController allows dogfood with internal key",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-staff-access.spec.ts",
+    "assertions": [
+      {
+        "name": "support-staff-access derives ADMIN from JWT roles, not account_type",
+        "status": "passed"
+      },
+      {
+        "name": "support-staff-access does not treat account_type ADMIN as staff ADMIN",
+        "status": "passed"
+      },
+      {
+        "name": "support-staff-access allows ADMIN any ticket and agents only their assignment",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/messaging-realtime.service.spec.ts",
+    "assertions": [
+      {
+        "name": "MessagingRealtimeService publishes conversation events only to the intended user",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/security/bola-listings.spec.ts",
+    "assertions": [
+      {
+        "name": "BOLA \u2014 listing ownership contract Host A cannot read Host B listing",
+        "status": "passed"
+      },
+      {
+        "name": "BOLA \u2014 listing ownership contract owner can access own listing",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/permissions.service.spec.ts",
+    "assertions": [
+      {
+        "name": "MessagingPermissionsService exposes reserved notificationLevel per participant",
+        "status": "passed"
+      },
+      {
+        "name": "MessagingPermissionsService denies send when a SUPPORT ticket is closed even if still ACTIVE",
+        "status": "passed"
+      },
+      {
+        "name": "MessagingPermissionsService returns visibility per participant",
+        "status": "passed"
+      },
+      {
+        "name": "MessagingPermissionsService allows ADMIN access only on SUPPORT conversations",
+        "status": "passed"
+      },
+      {
+        "name": "MessagingPermissionsService disables canReport on SUPPORT conversations for participants",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/identity/identity-authz.client.spec.ts",
+    "assertions": [
+      {
+        "name": "IdentityAuthzClient does not reuse a previous live authz lookup",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/security/financial-integrity.spec.ts",
+    "assertions": [
+      {
+        "name": "financial integrity rejects zero and negative amounts",
+        "status": "passed"
+      },
+      {
+        "name": "financial integrity locks intent to booking total and rejects client override",
+        "status": "passed"
+      },
+      {
+        "name": "financial integrity rounds MAD consistently",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/media/media-storage-policy.spec.ts",
+    "assertions": [
+      {
+        "name": "PROD-SEC-002 media storage policy fails closed when NEXA_ENV=production without MEDIA_SERVICE_URL",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-SEC-002 media storage policy rejects MEDIA_ALLOW_LOCAL_STORAGE in production",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-SEC-002 media storage policy passes when production has MEDIA_SERVICE_URL",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-SEC-002 media storage policy rejects path traversal keys",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-SEC-002 media storage policy detects SVG buffers for rejection",
+        "status": "passed"
+      },
+      {
+        "name": "LocalMediaStorageBackend stores a JPEG under a server-built relative key",
+        "status": "passed"
+      },
+      {
+        "name": "LocalMediaStorageBackend does not allow overwrite of another user namespace via traversal",
+        "status": "passed"
+      },
+      {
+        "name": "LocalMediaStorageBackend user A object is not readable via user B key",
+        "status": "passed"
+      },
+      {
+        "name": "LocalMediaStorageBackend delete is scoped to the relative key",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/observability/financial-observability.spec.ts",
+    "assertions": [
+      {
+        "name": "financial observability PROD-OPS-003 accepts balanced ledger amounts",
+        "status": "passed"
+      },
+      {
+        "name": "financial observability PROD-OPS-003 rejects unbalanced guest payment equation",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/security/cors-origins.spec.ts",
+    "assertions": [
+      {
+        "name": "Stays CORS allowlist SEC-005 rejects missing staging or dogfood allowlist",
+        "status": "passed"
+      },
+      {
+        "name": "Stays CORS allowlist SEC-005 allows configured origin only",
+        "status": "passed"
+      },
+      {
+        "name": "Stays CORS allowlist SEC-005 rejects credentialed wildcard CORS",
+        "status": "passed"
+      },
+      {
+        "name": "Stays CORS allowlist SEC-005 development defaults are controlled",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-routing.config.spec.ts",
+    "assertions": [
+      {
+        "name": "support routing score + selectBestAgent defaults auto-assign on and capacity 20",
+        "status": "passed"
+      },
+      {
+        "name": "support routing score + selectBestAgent scores the plan example so Agent C wins despite more active tickets",
+        "status": "passed"
+      },
+      {
+        "name": "support routing score + selectBestAgent excludes agents that are not in the eligible roster (frozen / Super Admin)",
+        "status": "passed"
+      },
+      {
+        "name": "support routing score + selectBestAgent skips agents at capacity and stays unassigned when everyone is full",
+        "status": "passed"
+      },
+      {
+        "name": "support routing score + selectBestAgent URGENT prefers agents under 70% capacity when that pool is non-empty",
+        "status": "passed"
+      },
+      {
+        "name": "support routing score + selectBestAgent URGENT falls back to anyone under cap when nobody is under 70%",
+        "status": "passed"
+      },
+      {
+        "name": "support routing score + selectBestAgent breaks score ties by oldest last assignment then stable agent id",
+        "status": "passed"
+      },
+      {
+        "name": "pickSkillTier selects category + language when available",
+        "status": "passed"
+      },
+      {
+        "name": "pickSkillTier falls back to category, then language, then general",
+        "status": "passed"
+      },
+      {
+        "name": "pickSkillTier does not treat empty arrays as wildcards",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/messaging-qa.spec.ts",
+    "assertions": [
+      {
+        "name": "Messaging QA contracts adaptive poll tiers uses 5s when conversation is active (<30s idle)",
+        "status": "passed"
+      },
+      {
+        "name": "Messaging QA contracts adaptive poll tiers uses 10s when idle 30s\u20135min",
+        "status": "passed"
+      },
+      {
+        "name": "Messaging QA contracts adaptive poll tiers uses 20s when idle >5min",
+        "status": "passed"
+      },
+      {
+        "name": "Messaging QA contracts adaptive poll tiers uses 30s for inbox-only mode",
+        "status": "passed"
+      },
+      {
+        "name": "Messaging QA contracts adaptive poll tiers stops polling when tab is background",
+        "status": "passed"
+      },
+      {
+        "name": "Messaging QA contracts push version sync skips fetch when local version >= push version",
+        "status": "passed"
+      },
+      {
+        "name": "Messaging QA contracts push version sync fetches when push version is ahead",
+        "status": "passed"
+      },
+      {
+        "name": "Messaging QA contracts push version sync fetches when local version unknown",
+        "status": "passed"
+      },
+      {
+        "name": "Messaging QA contracts archive re-open rules ARCHIVED resurfaces on inbound message; DELETED stays hidden",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/security/production-env-policy.spec.ts",
+    "assertions": [
+      {
+        "name": "Stays production-env-policy Phase 1 rejects known-dev DB_PASSWORD in production",
+        "status": "passed"
+      },
+      {
+        "name": "Stays production-env-policy Phase 1 rejects loopback IDENTITY_BASE_URL in production",
+        "status": "passed"
+      },
+      {
+        "name": "Stays production-env-policy Phase 1 accepts dogfood production Node with strong non-loopback URLs",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/security/pii-encryption.spec.ts",
+    "assertions": [
+      {
+        "name": "PII encryption round-trips with AES-256-GCM and does not expose plaintext",
+        "status": "passed"
+      },
+      {
+        "name": "PII encryption keeps legacy plaintext readable during migration",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-sla.config.spec.ts",
+    "assertions": [
+      {
+        "name": "SUPPORT_SLA + computeSupportSla exposes locked priority thresholds",
+        "status": "passed"
+      },
+      {
+        "name": "SUPPORT_SLA + computeSupportSla marks incomplete first-response AT_RISK near end of window",
+        "status": "passed"
+      },
+      {
+        "name": "SUPPORT_SLA + computeSupportSla marks completed first response ON_TRACK when before target",
+        "status": "passed"
+      },
+      {
+        "name": "SUPPORT_SLA + computeSupportSla marks first-resolution BREACHED when resolved after target",
+        "status": "passed"
+      },
+      {
+        "name": "SUPPORT_SLA + computeSupportSla slaStateFor treats completion after target as BREACHED",
+        "status": "passed"
+      },
+      {
+        "name": "suggestRouting suggests HIGH for safety-linked tickets",
+        "status": "passed"
+      },
+      {
+        "name": "suggestRouting never downgrades URGENT",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/messaging/message-preview.util.spec.ts",
+    "assertions": [
+      {
+        "name": "formatInboxPreview prefers message body for text messages",
+        "status": "passed"
+      },
+      {
+        "name": "formatInboxPreview uses caption for image messages without body",
+        "status": "passed"
+      },
+      {
+        "name": "formatInboxPreview shows sender sent a photo for image messages",
+        "status": "passed"
+      },
+      {
+        "name": "formatInboxPreview falls back to Photo for image messages without sender",
+        "status": "passed"
+      },
+      {
+        "name": "formatInboxPreview uses card title instead of Update for property cards",
+        "status": "passed"
+      },
+      {
+        "name": "formatInboxPreview uses system event body",
+        "status": "passed"
+      },
+      {
+        "name": "formatInboxPreview uses guest review card title by default",
+        "status": "passed"
+      },
+      {
+        "name": "formatInboxPreview uses host-specific review preview when viewer is host",
+        "status": "passed"
+      },
+      {
+        "name": "formatInboxPreview uses host reviewed preview after guest submits review",
+        "status": "passed"
+      },
+      {
+        "name": "resolveInboxSenderLabel returns You when viewer sent the message",
+        "status": "passed"
+      },
+      {
+        "name": "resolveInboxSenderLabel returns host name when host sent the message",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/utils/host-bookings-list-sql.util.spec.ts",
+    "assertions": [
+      {
+        "name": "host-bookings-list-sql ops equivalence emits ranks 0..8 with checkout_today before checkin_today",
+        "status": "passed"
+      },
+      {
+        "name": "host-bookings-list-sql ops equivalence checkin_today filter excludes checkout_today",
+        "status": "passed"
+      },
+      {
+        "name": "host-bookings-list-sql ops equivalence current filter is stay-active overlapping today",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/security/release-metadata.spec.ts",
+    "assertions": [
+      {
+        "name": "stays getReleaseMetadata exposes sha without secrets",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/common/security/cookie-csrf.spec.ts",
+    "assertions": [
+      {
+        "name": "cookie request origin enforcement rejects an untrusted cookie-authenticated write",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-ticket-state.spec.ts",
+    "assertions": [
+      {
+        "name": "nextStatusAfterCustomerMessage reopens RESOLVED to OPEN",
+        "status": "passed"
+      },
+      {
+        "name": "nextStatusAfterCustomerMessage moves WAITING_FOR_CUSTOMER to IN_PROGRESS for guest or host party",
+        "status": "passed"
+      },
+      {
+        "name": "nextStatusAfterCustomerMessage moves WAITING_FOR_HOST to OPEN only for HOST party",
+        "status": "passed"
+      },
+      {
+        "name": "nextStatusAfterCustomerMessage preserves ESCALATED, OPEN, and IN_PROGRESS",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-language.spec.ts",
+    "assertions": [
+      {
+        "name": "support language canonicalization snapshots only ar/fr/en primary tags",
+        "status": "passed"
+      },
+      {
+        "name": "support language canonicalization dedupes mixed language spellings",
+        "status": "passed"
+      },
+      {
+        "name": "support language canonicalization keeps only canonical ticket categories",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/support/support-canned-render.spec.ts",
+    "assertions": [
+      {
+        "name": "interpolateCannedBody replaces only the allowlisted variables",
+        "status": "passed"
+      },
+      {
+        "name": "interpolateCannedBody turns unknown tokens and object paths into empty strings",
+        "status": "passed"
+      },
+      {
+        "name": "cannedDiscoveryRank orders exact category+language before GENERAL",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/stays/src/modules/identity-auth/bearer-access-token.spec.ts",
+    "assertions": [
+      {
+        "name": "Stays Bearer access extraction PROD-SEC-001 accepts Authorization Bearer",
+        "status": "passed"
+      },
+      {
+        "name": "Stays Bearer access extraction PROD-SEC-001 rejects ambient nexa_access cookie alone",
+        "status": "passed"
+      },
+      {
+        "name": "Stays Bearer access extraction PROD-SEC-001 ignores cookie even when Bearer absent",
+        "status": "passed"
+      }
+    ]
+  }
+]

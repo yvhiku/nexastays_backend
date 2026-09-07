@@ -517,7 +517,10 @@ export class EMIMockProvider extends EMIProviderBase {
           throw new Error('INSUFFICIENT_FUNDS');
         }
 
-        const reference = `EMI-WITHDRAW-${request.idempotency_key}`.slice(0, 64);
+        const reference = `EMI-WITHDRAW-${request.idempotency_key}`.slice(
+          0,
+          64,
+        );
         return this.ledgerPostingService.postTwoLegJournal(mgr, {
           idempotencyKey: request.idempotency_key,
           reference,
@@ -906,9 +909,7 @@ export class EMIMockProvider extends EMIProviderBase {
     }
 
     const transactions = Array.from(this.operationStore.values())
-      .filter(
-        (op) => op.created_at >= startOfDay && op.created_at < endOfDay,
-      )
+      .filter((op) => op.created_at >= startOfDay && op.created_at < endOfDay)
       .map((op) => ({
         emi_reference: op.operation_id,
         operation_type: op.operation_type,

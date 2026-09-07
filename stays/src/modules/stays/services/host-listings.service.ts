@@ -147,10 +147,7 @@ export class HostListingsService {
       );
     }
 
-    qb.addSelect(
-      'COALESCE(l.last_edited_at, l.updated_at)',
-      'updated_sort',
-    );
+    qb.addSelect('COALESCE(l.last_edited_at, l.updated_at)', 'updated_sort');
     if (sort === 'price') {
       qb.addSelect('rate_plan.base_price', 'price_sort');
     }
@@ -392,10 +389,9 @@ export class HostListingsService {
     }
     if (sort === 'price') {
       if (k.price_sort == null) {
-        qb.andWhere(
-          `(rate_plan.base_price IS NULL AND l.id > :cId)`,
-          { cId: id },
-        );
+        qb.andWhere(`(rate_plan.base_price IS NULL AND l.id > :cId)`, {
+          cId: id,
+        });
       } else {
         qb.andWhere(
           `(
@@ -430,11 +426,7 @@ export class HostListingsService {
         raw.updated_sort ?? listing.last_edited_at ?? listing.updated_at;
       return {
         updated_sort:
-          v == null
-            ? null
-            : v instanceof Date
-              ? v.toISOString()
-              : String(v),
+          v == null ? null : v instanceof Date ? v.toISOString() : String(v),
       };
     }
     const price = raw.price_sort ?? listing.rate_plan?.base_price;
@@ -578,12 +570,15 @@ export class HostListingsService {
     if (dto.landmark !== undefined && !locationLocked) {
       listing.landmark = dto.landmark || null;
     }
-    if (dto.geo_lat !== undefined && !locationLocked) listing.geo_lat = dto.geo_lat;
-    if (dto.geo_lng !== undefined && !locationLocked) listing.geo_lng = dto.geo_lng;
+    if (dto.geo_lat !== undefined && !locationLocked)
+      listing.geo_lat = dto.geo_lat;
+    if (dto.geo_lng !== undefined && !locationLocked)
+      listing.geo_lng = dto.geo_lng;
     if (dto.description !== undefined) listing.description = dto.description;
     if (dto.checkin_time != null) listing.checkin_time = dto.checkin_time;
     if (dto.checkout_time != null) listing.checkout_time = dto.checkout_time;
-    if (dto.instant_booking != null) listing.instant_booking = dto.instant_booking;
+    if (dto.instant_booking != null)
+      listing.instant_booking = dto.instant_booking;
     if (dto.property_details != null) {
       listing.property_details = {
         ...(listing.property_details ?? {}),
@@ -1012,7 +1007,8 @@ export class HostListingsService {
       return {
         id: listing.id,
         status: 'DRAFT' as const,
-        message: 'Draft listing created. Continue editing to submit for review.',
+        message:
+          'Draft listing created. Continue editing to submit for review.',
       };
     });
   }
@@ -1051,7 +1047,9 @@ export class HostListingsService {
     dto: ReplaceListingMediaDto,
   ) {
     await this.assertCanList(userId);
-    const listing = await this.requireOwnedListing(userId, listingId, ['media']);
+    const listing = await this.requireOwnedListing(userId, listingId, [
+      'media',
+    ]);
     if (!EDITABLE_STATUSES.includes(listing.status)) {
       throw new BadRequestException(
         'Media cannot be changed in the current listing status.',
@@ -1089,21 +1087,23 @@ export class HostListingsService {
   async replaceListingUnitTypes(
     userId: string,
     listingId: string,
-    dto: { unit_types: Array<{
-      kind: string;
-      name: string;
-      quantity?: number;
-      max_guests?: number;
-      base_price: number;
-      currency?: string;
-      pricing_unit?: string;
-      amenities?: string[];
-      bed_config?: unknown[];
-      size_sqm?: number;
-      details?: Record<string, unknown>;
-      sort_order?: number;
-      is_active?: boolean;
-    }> },
+    dto: {
+      unit_types: Array<{
+        kind: string;
+        name: string;
+        quantity?: number;
+        max_guests?: number;
+        base_price: number;
+        currency?: string;
+        pricing_unit?: string;
+        amenities?: string[];
+        bed_config?: unknown[];
+        size_sqm?: number;
+        details?: Record<string, unknown>;
+        sort_order?: number;
+        is_active?: boolean;
+      }>;
+    },
   ) {
     await this.assertCanList(userId);
     const listing = await this.requireOwnedListing(userId, listingId);
@@ -1141,7 +1141,8 @@ export class HostListingsService {
         const sizeRaw =
           u.size_sqm != null
             ? u.size_sqm
-            : sizeFromDetails != null && Number.isFinite(Number(sizeFromDetails))
+            : sizeFromDetails != null &&
+                Number.isFinite(Number(sizeFromDetails))
               ? Number(sizeFromDetails)
               : null;
         await unitRepo.save(
@@ -1152,11 +1153,14 @@ export class HostListingsService {
             quantity: u.quantity ?? 1,
             max_guests: u.max_guests ?? 2,
             bed_config: bedConfig,
-            size_sqm: sizeRaw != null && Number.isFinite(Number(sizeRaw))
-              ? Number(sizeRaw)
-              : null,
+            size_sqm:
+              sizeRaw != null && Number.isFinite(Number(sizeRaw))
+                ? Number(sizeRaw)
+                : null,
             amenities: u.amenities ?? [],
-            pricing_unit: (u.pricing_unit as StaysListingUnitType['pricing_unit']) ?? 'NIGHT',
+            pricing_unit:
+              (u.pricing_unit as StaysListingUnitType['pricing_unit']) ??
+              'NIGHT',
             base_price: u.base_price,
             currency: u.currency ?? 'MAD',
             details,
@@ -1169,10 +1173,9 @@ export class HostListingsService {
         dto.unit_types.length > 0
           ? Math.min(...dto.unit_types.map((x) => x.base_price))
           : 0;
-      await manager.getRepository(StaysRatePlan).update(
-        { listing_id: listingId },
-        { base_price: minPrice },
-      );
+      await manager
+        .getRepository(StaysRatePlan)
+        .update({ listing_id: listingId }, { base_price: minPrice });
       await manager.getRepository(StaysListing).update(listingId, {
         last_edited_at: new Date(),
       });
@@ -1272,13 +1275,16 @@ export class HostListingsService {
       throw new BadRequestException('No file uploaded');
     }
     if (file.size > MAX_PHOTO_SIZE) {
-      throw new BadRequestException(`Photo too large. Max ${MAX_PHOTO_SIZE / 1024 / 1024}MB`);
+      throw new BadRequestException(
+        `Photo too large. Max ${MAX_PHOTO_SIZE / 1024 / 1024}MB`,
+      );
     }
     const detected = detectImageType(file.buffer);
     if (!detected) {
       throw new BadRequestException('Invalid image. Use JPEG, PNG, or WebP');
     }
-    const ext = detected === 'png' ? '.png' : detected === 'webp' ? '.webp' : '.jpg';
+    const ext =
+      detected === 'png' ? '.png' : detected === 'webp' ? '.webp' : '.jpg';
     const mime =
       detected === 'png'
         ? 'image/png'
@@ -1303,7 +1309,9 @@ export class HostListingsService {
       throw new BadRequestException('No file uploaded');
     }
     if (file.size > MAX_VIDEO_SIZE) {
-      throw new BadRequestException(`Video too large. Max ${MAX_VIDEO_SIZE / 1024 / 1024}MB`);
+      throw new BadRequestException(
+        `Video too large. Max ${MAX_VIDEO_SIZE / 1024 / 1024}MB`,
+      );
     }
     const detected = detectVideoType(file.buffer);
     if (!detected) {

@@ -47,7 +47,14 @@ export class AdminGoPricingController {
   }
 
   @Post('surge')
-  surge(@Body() body: { vehicleType: string; surgeActive: boolean; surgeMultiplier?: number }) {
+  surge(
+    @Body()
+    body: {
+      vehicleType: string;
+      surgeActive: boolean;
+      surgeMultiplier?: number;
+    },
+  ) {
     return this.adminGoPricingService.setSurge(
       body.vehicleType,
       body.surgeActive,

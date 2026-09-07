@@ -1,0 +1,52 @@
+=== Stays Gate 3 authz suites ===
+
+> @nexa/stays@0.0.1 test
+> jest --runInBand src/modules/stays/security/bola-listings.spec.ts src/modules/stays/security/bola-bookings.spec.ts src/modules/stays/security/bola-payments.spec.ts src/modules/stays/security/bola-multi-actor-matrix.spec.ts src/modules/stays/services/host-listings.h17-authz.spec.ts src/modules/stays/services/stays-cancellation.service.spec.ts src/modules/support/support-tickets.service.spec.ts src/common/guards/roles.guard.spec.ts
+
+PASS src/modules/stays/services/stays-cancellation.service.spec.ts
+PASS src/modules/support/support-tickets.service.spec.ts
+PASS src/modules/stays/security/bola-multi-actor-matrix.spec.ts
+PASS src/modules/stays/services/host-listings.h17-authz.spec.ts
+PASS src/modules/stays/security/bola-payments.spec.ts
+PASS src/modules/stays/security/bola-bookings.spec.ts
+PASS src/common/guards/roles.guard.spec.ts
+PASS src/modules/stays/security/bola-listings.spec.ts
+
+Test Suites: 8 passed, 8 total
+Tests:       144 passed, 144 total
+Snapshots:   0 total
+Time:        0.902 s, estimated 2 s
+Ran all test suites matching src/modules/stays/security/bola-listings.spec.ts|src/modules/stays/security/bola-bookings.spec.ts|src/modules/stays/security/bola-payments.spec.ts|src/modules/stays/security/bola-multi-actor-matrix.spec.ts|src/modules/stays/services/host-listings.h17-authz.spec.ts|src/modules/stays/services/stays-cancellation.service.spec.ts|src/modules/support/support-tickets.service.spec.ts|src/common/guards/roles.guard.spec.ts.
+
+=== Identity RolesGuard ===
+
+> @nexa/identity@0.0.1 test
+> jest --runInBand src/common/guards/roles.guard.spec.ts
+
+PASS src/common/guards/roles.guard.spec.ts
+  RolesGuard SEC-003
+    ✓ allows valid ADMIN when authz_version matches (1 ms)
+    ✓ denies non-admin JWT on ADMIN route (1 ms)
+    ✓ Gate3 042 — host-like consumer JWT cannot access ADMIN routes
+    ✓ Gate3 047 — SUSPENDED admin fails live authz (status or av mismatch) (2 ms)
+    ✓ denies ADMIN JWT after demotion (DB account_type != ADMIN)
+    ✓ denies ADMIN JWT when authz_version mismatches (revocation)
+    ✓ denies frozen ADMIN
+    ✓ does not check authz_version for non-ADMIN role requirements
+    ✓ does not treat account_type ADMIN as a JWT role
+    ✓ denies SUPPORT_AGENT on ADMIN routes without live lookup (1 ms)
+    ✓ allows SUPPORT_AGENT on SUPPORT_AGENT routes when av matches
+    ✓ denies frozen SUPPORT_AGENT
+    ✓ denies stale SUPPORT_AGENT token after av bump
+    ✓ cannot upgrade privilege from client role claim alone without ADMIN requirement path
+
+Test Suites: 1 passed, 1 total
+Tests:       14 passed, 14 total
+Snapshots:   0 total
+Time:        0.568 s, estimated 1 s
+Ran all test suites matching src/common/guards/roles.guard.spec.ts.
+
+=== Pass count summary ===
+Stays: 8 suites passed, 144 tests passed, 0 failed
+Identity: 1 suite passed, 14 tests passed, 0 failed
+Combined related: 9 suites, 158 tests passed

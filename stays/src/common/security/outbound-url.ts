@@ -9,7 +9,10 @@ const BLOCKED_HOSTNAMES = new Set([
 ]);
 
 function stripBrackets(host: string): string {
-  return host.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  return host
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '');
 }
 
 function parseIpv4(ip: string): [number, number, number, number] | null {
@@ -57,7 +60,12 @@ function expandIpv6Hextets(ip: string): number[] | null {
 
   const [leftRaw, rightRaw] = core.split('::');
   const left = leftRaw ? leftRaw.split(':').filter(Boolean) : [];
-  const right = rightRaw !== undefined ? (rightRaw ? rightRaw.split(':').filter(Boolean) : []) : [];
+  const right =
+    rightRaw !== undefined
+      ? rightRaw
+        ? rightRaw.split(':').filter(Boolean)
+        : []
+      : [];
 
   if (core.includes('::')) {
     const missing = 8 - left.length - right.length;
@@ -67,7 +75,8 @@ function expandIpv6Hextets(ip: string): number[] | null {
       ...Array(missing).fill(0),
       ...right.map((h) => parseInt(h, 16)),
     ];
-    if (hextets.some((n) => Number.isNaN(n) || n < 0 || n > 0xffff)) return null;
+    if (hextets.some((n) => Number.isNaN(n) || n < 0 || n > 0xffff))
+      return null;
     if (embeddedV4) {
       // last 32 bits already zeroed via ':0:0' placeholder — rebuild from v4
       hextets[6] = (embeddedV4[0] << 8) | embeddedV4[1];

@@ -34,7 +34,12 @@ export class RiskAlert {
   amount: number | null;
 
   /** e.g. TXN-… reference from the attempted transfer. */
-  @Column({ type: 'varchar', length: 100, name: 'transaction_reference', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    name: 'transaction_reference',
+    nullable: true,
+  })
   transaction_reference: string | null;
 
   @Column({ type: 'text' })

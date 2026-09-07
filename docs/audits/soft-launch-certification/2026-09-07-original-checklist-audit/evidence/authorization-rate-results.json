@@ -1,0 +1,70 @@
+[
+  {
+    "name": "fresh consumer credential is valid",
+    "result": "PASS",
+    "details": {
+      "http_status": 200
+    }
+  },
+  {
+    "name": "consumer access denied identity/api/v1/admin/users",
+    "result": "PASS",
+    "details": {
+      "http_status": 403
+    }
+  },
+  {
+    "name": "consumer access denied stays/api/v1/admin/stays/listings",
+    "result": "PASS",
+    "details": {
+      "http_status": 403
+    }
+  },
+  {
+    "name": "consumer access denied stays/api/v1/stays/host/listings",
+    "result": "FAIL",
+    "details": {
+      "http_status": 200
+    }
+  },
+  {
+    "name": "OTP send burst is rate limited in test runtime",
+    "result": "PASS",
+    "details": {
+      "statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        429
+      ],
+      "scope": "NODE_ENV=test limits; production thresholds not certified"
+    }
+  }
+]

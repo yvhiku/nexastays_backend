@@ -44,13 +44,11 @@ describe('ReconciliationService', () => {
   });
 
   it('creates reconciliation issue when debit and credit are imbalanced', async () => {
-    jest
-      .spyOn(service as never, 'calculateDailySums')
-      .mockResolvedValue({
-        debit_total: 120,
-        credit_total: 90,
-        difference: 30,
-      });
+    jest.spyOn(service as never, 'calculateDailySums').mockResolvedValue({
+      debit_total: 120,
+      credit_total: 90,
+      difference: 30,
+    });
     jest
       .spyOn(service as never, 'countOrphanLedgerEntries')
       .mockResolvedValue(0);

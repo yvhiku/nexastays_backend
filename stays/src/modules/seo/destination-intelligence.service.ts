@@ -94,17 +94,24 @@ export class DestinationIntelligenceService {
     }
 
     const verifiedPercent =
-      listingCount > 0 ? Math.round((verifiedCount / listingCount) * 100) : null;
+      listingCount > 0
+        ? Math.round((verifiedCount / listingCount) * 100)
+        : null;
 
     return {
       listingCount,
       verifiedCount,
-      avgNightlyPrice: stats?.avgPrice != null ? Math.round(Number(stats.avgPrice)) : null,
-      minPrice: stats?.minPrice != null ? Math.round(Number(stats.minPrice)) : null,
-      maxPrice: stats?.maxPrice != null ? Math.round(Number(stats.maxPrice)) : null,
+      avgNightlyPrice:
+        stats?.avgPrice != null ? Math.round(Number(stats.avgPrice)) : null,
+      minPrice:
+        stats?.minPrice != null ? Math.round(Number(stats.minPrice)) : null,
+      maxPrice:
+        stats?.maxPrice != null ? Math.round(Number(stats.maxPrice)) : null,
       luxuryCount: Number(stats?.luxuryCount ?? 0),
       avgRating:
-        stats?.avgRating != null ? Math.round(Number(stats.avgRating) * 10) / 10 : null,
+        stats?.avgRating != null
+          ? Math.round(Number(stats.avgRating) * 10) / 10
+          : null,
       reviewCount: Number(stats?.reviewCount ?? 0),
       topNeighborhood,
       bestMonth: null,
@@ -115,7 +122,9 @@ export class DestinationIntelligenceService {
     };
   }
 
-  private baseQuery(filters: SeoExploreFilters): SelectQueryBuilder<StaysListing> {
+  private baseQuery(
+    filters: SeoExploreFilters,
+  ): SelectQueryBuilder<StaysListing> {
     const qb = this.listingRepo
       .createQueryBuilder('l')
       .leftJoin(StaysRatePlan, 'rp', 'rp.listing_id = l.id')
@@ -141,7 +150,9 @@ export class DestinationIntelligenceService {
     }
 
     if (filters.pets_allowed) {
-      qb.andWhere("rules.pets_policy IS NOT NULL AND rules.pets_policy <> 'NO'");
+      qb.andWhere(
+        "rules.pets_policy IS NOT NULL AND rules.pets_policy <> 'NO'",
+      );
     }
 
     if (filters.family_friendly) {

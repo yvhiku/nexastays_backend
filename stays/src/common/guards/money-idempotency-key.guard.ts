@@ -43,8 +43,7 @@ export class MoneyIdempotencyKeyGuard implements CanActivate {
     if (!KEY_PATTERN.test(key)) {
       throw new BadRequestException({
         code: 'IDEMPOTENCY_KEY_INVALID',
-        message:
-          'Idempotency-Key must be 8–128 characters [a-zA-Z0-9._-].',
+        message: 'Idempotency-Key must be 8–128 characters [a-zA-Z0-9._-].',
       });
     }
 

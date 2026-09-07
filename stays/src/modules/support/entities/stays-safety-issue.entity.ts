@@ -35,7 +35,12 @@ export class StaysSafetyIssue {
   @Column({ type: 'uuid', name: 'listing_id', nullable: true })
   listing_id: string | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'reported_user_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'reported_user_id',
+    nullable: true,
+  })
   reported_user_id: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })

@@ -1,0 +1,1423 @@
+[
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/auth.otp-contract.spec.ts",
+    "assertions": [
+      {
+        "name": "AuthController OTP response compatibility keeps v2 JWT/session fields and adds canonical onboarding",
+        "status": "passed"
+      },
+      {
+        "name": "AuthController OTP response compatibility keeps the legacy verify-otp response boolean-only",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/otp-lockout.service.spec.ts",
+    "assertions": [
+      {
+        "name": "OtpLockoutService locks after 5 failures for ~15 minutes",
+        "status": "passed"
+      },
+      {
+        "name": "OtpLockoutService resets failed count after successful verify",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/admin/services/admin-kyc.service.spec.ts",
+    "assertions": [
+      {
+        "name": "AdminKycService (source filtering) filters by source=PAY (includes legacy null)",
+        "status": "passed"
+      },
+      {
+        "name": "AdminKycService (source filtering) filters by source=STAYS (exact match only, no legacy null)",
+        "status": "passed"
+      },
+      {
+        "name": "AdminKycService (source filtering) filters by source=GO",
+        "status": "passed"
+      },
+      {
+        "name": "AdminKycService (source filtering) defaults to ALL sources when source is missing",
+        "status": "passed"
+      },
+      {
+        "name": "AdminKycService (source filtering) rejects an invalid source value",
+        "status": "passed"
+      },
+      {
+        "name": "AdminKycService (source filtering) applies pagination when page and limit provided",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/admin-login.spec.ts",
+    "assertions": [
+      {
+        "name": "AuthService.adminLogin issues ADMIN roles for Super Admin allowlist login",
+        "status": "passed"
+      },
+      {
+        "name": "AuthService.adminLogin stamps ADMIN JWT roles for ADMIN account_type even without a profile",
+        "status": "passed"
+      },
+      {
+        "name": "AuthService.adminLogin issues SUPPORT_AGENT roles only for a provisioned agent password",
+        "status": "passed"
+      },
+      {
+        "name": "AuthService.adminLogin fails provisioned staff login with the wrong password",
+        "status": "passed"
+      },
+      {
+        "name": "AuthService.adminLogin fails unknown emails with the same generic failure",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/logout-refresh-revoke.spec.ts",
+    "assertions": [
+      {
+        "name": "AuthService \u2014 logout refresh session revocation Test 1 \u2014 revokeRefreshSessionByToken marks the matching session revoked",
+        "status": "passed"
+      },
+      {
+        "name": "AuthService \u2014 logout refresh session revocation Test 2 \u2014 logout revoke is idempotent for already-revoked tokens",
+        "status": "passed"
+      },
+      {
+        "name": "AuthService \u2014 logout refresh session revocation Test 5 \u2014 unknown/expired refresh revoke is safe and silent",
+        "status": "passed"
+      },
+      {
+        "name": "AuthService \u2014 logout refresh session revocation Test 4 \u2014 revokeRefreshTokens with device_id only touches that device",
+        "status": "passed"
+      },
+      {
+        "name": "AuthService \u2014 logout refresh session revocation Test 6 \u2014 resolveAccessPrincipal does not confuse users across Bearer tokens",
+        "status": "passed"
+      },
+      {
+        "name": "AuthService \u2014 logout refresh session revocation Test 4 \u2014 revoking session A does not touch session B rows",
+        "status": "passed"
+      },
+      {
+        "name": "AuthService \u2014 logout refresh session revocation refresh rejects a previously revoked token",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/auth.login-enumeration.spec.ts",
+    "assertions": [
+      {
+        "name": "AuthController login SEC-004 enumeration unknown phone returns existence-neutral { ok: true }",
+        "status": "passed"
+      },
+      {
+        "name": "AuthController login SEC-004 enumeration known phone returns the same public shape",
+        "status": "passed"
+      },
+      {
+        "name": "AuthController login SEC-004 enumeration pads both known and unknown paths (structural timing equivalence)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/users/users.service.spec.ts",
+    "assertions": [
+      {
+        "name": "UsersService (profile lock) updateProfile - not locked allows updating full_name, city, date_of_birth",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) updateProfile - locked throws 403 PROFILE_LOCKED when updating full_name",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) updateProfile - locked throws 403 PROFILE_LOCKED when client tries to forge date_of_birth",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) updateProfile - locked allows updating email when locked",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) updateProfile - locked allows updating city when locked",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) updateProfile - locked allows updating profile_photo_url when locked",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) createUser - 23505 idempotency (race simulation) returns existing consumer when insert hits uniq_consumer_per_phone",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) ensureRoleAccount - 23505 idempotency (race simulation) returns existing role account when save hits uniq_*_per_unified_identity",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) getMe returns profile_locked and locked_fields when KYC approved",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) getMe exposes date_of_birth from kyc_profiles when user/identity DOB is empty",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) getMe keeps date_of_birth null when no layer has DOB",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) listActiveSupportAgents returns ACTIVE SUPPORT_AGENT ids only",
+        "status": "passed"
+      },
+      {
+        "name": "UsersService (profile lock) listActiveSupportAgents returns an empty roster when no active agents exist",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/compliance/compliance.service.spec.ts",
+    "assertions": [
+      {
+        "name": "ComplianceService (KYC source) saves kyc_source from body when source=STAYS",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) saves kyc_source from body when source=GO",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) saves kyc_source=PAY when source=PAY in body",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) defaults to PAY when source is invalid or missing",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) derives document_country from nationality when omitted",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) does not downgrade VERIFIED user.kyc_status when minting Sumsub SDK tokens",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub DOB persistence (S2-02) persists provider DOB onto KYC + user when Sumsub info.dob is present",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub DOB persistence (S2-02) leaves DOB empty when Sumsub provides no DOB",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub DOB persistence (S2-02) does not overwrite an existing KYC DOB from webhook payload",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) extractSumsubIdentity maps name / DOB / alpha-3 country / ID_CARD\u2192CNIE / doc number",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) extractSumsubIdentity never invents values",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) extractSumsubIdentity picks expiry, email, phone, and review meta",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) extractSumsubIdentity ignores issuedDate as expiry",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) maps non-Moroccan ID_CARD to NATIONAL_ID and DRIVERS to DRIVING_LICENSE",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) applyDocsStatusAndMedia stores Sumsub image paths and checklist flags",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) buildProviderSnapshot omits image binaries and keeps meta ids",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) GREEN webhook with applicant fills empty KYC + user identity fields and hashes the doc number",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) does not clobber form-provided name / document type with provider values",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) fetches applicant when webhook payload only has review meta (levelName/inspectionId)",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub full identity backfill (admin KYC monitoring) fetches the applicant once when the payload has no identity and KYC is incomplete",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub webhook ordering ignores replay or stale events after 2026-09-06T12:00:00Z without status/media writes",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub webhook ordering ignores replay or stale events after 2026-09-06T13:00:00Z without status/media writes",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub webhook ordering rejects an unordered event timestamp undefined",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub webhook ordering rejects an unordered event timestamp ",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub webhook ordering rejects an unordered event timestamp invalid-date",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub webhook dossier/media sync applicantReviewed triggers persistSumsubDossierArtifacts after status apply",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub webhook dossier/media sync applicantPending also pulls dossier media once docs are uploaded",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub webhook dossier/media sync does not pull media for unrelated webhook types",
+        "status": "passed"
+      },
+      {
+        "name": "ComplianceService (KYC source) Sumsub webhook dossier/media sync returns a retryable 503 when status persistence fails without syncing media",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/logout.controller.spec.ts",
+    "assertions": [
+      {
+        "name": "AuthController \u2014 logout session scope revokes only the refresh cookie session (current session)",
+        "status": "passed"
+      },
+      {
+        "name": "AuthController \u2014 logout session scope revokes the dashboard admin refresh cookie without reading nexa_refresh",
+        "status": "passed"
+      },
+      {
+        "name": "AuthController \u2014 logout session scope is idempotent when no refresh cookie and no device_id",
+        "status": "passed"
+      },
+      {
+        "name": "AuthController \u2014 logout session scope device-scoped revoke requires access principal and never revoke-all",
+        "status": "passed"
+      },
+      {
+        "name": "AuthController \u2014 logout session scope Test 6 \u2014 without refresh token, User A access cannot target User B sessions",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/sms/sms.service.spec.ts",
+    "assertions": [
+      {
+        "name": "SEC-002 SMS / OTP logging assertProductionSmsConfigured allows production when EnvoiSMS is configured",
+        "status": "passed"
+      },
+      {
+        "name": "SEC-002 SMS / OTP logging assertProductionSmsConfigured allows production when Twilio is fully configured",
+        "status": "passed"
+      },
+      {
+        "name": "SEC-002 SMS / OTP logging assertProductionSmsConfigured fails closed in production when no SMS provider is set",
+        "status": "passed"
+      },
+      {
+        "name": "SEC-002 SMS / OTP logging assertProductionSmsConfigured does not require SMS outside production",
+        "status": "passed"
+      },
+      {
+        "name": "SEC-002 SMS / OTP logging resolveSmsProvider prefers EnvoiSMS when API key is present",
+        "status": "passed"
+      },
+      {
+        "name": "SEC-002 SMS / OTP logging resolveSmsProvider honors explicit SMS_PROVIDER=twilio",
+        "status": "passed"
+      },
+      {
+        "name": "SEC-002 SMS / OTP logging SmsService.sendOtp logging non-production mock does not log the OTP value",
+        "status": "passed"
+      },
+      {
+        "name": "SEC-002 SMS / OTP logging SmsService.sendOtp logging production without provider refuses delivery and does not log OTP",
+        "status": "passed"
+      },
+      {
+        "name": "SEC-002 SMS / OTP logging SmsService.sendOtp logging EnvoiSMS path posts OTP metadata and logs success without OTP",
+        "status": "passed"
+      },
+      {
+        "name": "SEC-002 SMS / OTP logging SmsService.sendOtp logging Twilio path logs success without OTP",
+        "status": "passed"
+      },
+      {
+        "name": "SEC-002 SMS / OTP logging SmsService.sendOtp logging provider failure logs do not include OTP",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/compliance/sumsub-webhook-auth.spec.ts",
+    "assertions": [
+      {
+        "name": "Sumsub webhook raw-body authentication accepts a valid HMAC_SHA256_HEX digest over the exact raw bytes",
+        "status": "passed"
+      },
+      {
+        "name": "Sumsub webhook raw-body authentication accepts a valid HMAC_SHA512_HEX digest over the exact raw bytes",
+        "status": "passed"
+      },
+      {
+        "name": "Sumsub webhook raw-body authentication accepts a valid HMAC_SHA1_HEX digest over the exact raw bytes",
+        "status": "passed"
+      },
+      {
+        "name": "Sumsub webhook raw-body authentication rejects a modified body even when the original digest is valid",
+        "status": "passed"
+      },
+      {
+        "name": "Sumsub webhook raw-body authentication rejects missing or malformed digest undefined",
+        "status": "passed"
+      },
+      {
+        "name": "Sumsub webhook raw-body authentication rejects missing or malformed digest ",
+        "status": "passed"
+      },
+      {
+        "name": "Sumsub webhook raw-body authentication rejects missing or malformed digest 00",
+        "status": "passed"
+      },
+      {
+        "name": "Sumsub webhook raw-body authentication rejects missing or malformed digest not-a-digest",
+        "status": "passed"
+      },
+      {
+        "name": "Sumsub webhook raw-body authentication rejects a request when no dedicated webhook secret is configured",
+        "status": "passed"
+      },
+      {
+        "name": "Sumsub webhook raw-body authentication rejects unsupported signature algorithms",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/users/internal-users.controller.spec.ts",
+    "assertions": [
+      {
+        "name": "InternalUsersController.listActiveSupportAgents returns the ACTIVE-only S2S roster",
+        "status": "passed"
+      },
+      {
+        "name": "InternalUsersController.listActiveSupportAgents includes phone on the S2S profile summary for support contact",
+        "status": "passed"
+      },
+      {
+        "name": "InternalServiceGuard (S2S support-agent roster) allows the internal service key",
+        "status": "passed"
+      },
+      {
+        "name": "InternalServiceGuard (S2S support-agent roster) rejects a SUPPORT_AGENT JWT with no internal key",
+        "status": "passed"
+      },
+      {
+        "name": "InternalServiceGuard (S2S support-agent roster) rejects a wrong internal key",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/stays/hosts/host-onboarding.service.spec.ts",
+    "assertions": [
+      {
+        "name": "HostOnboardingService submitHostOnboarding returns existing pending profile without duplicate save",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService countPendingApplications uses application_status PENDING",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService canList is false until application approved",
+        "status": "passed"
+      },
+      {
+        "name": "HostOnboardingService canList is true when application and verification approved",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/security/jwt-iss-aud.spec.ts",
+    "assertions": [
+      {
+        "name": "JWT iss/aud verification SEC-006 accepts valid RS256 JWT with correct iss/aud",
+        "status": "passed"
+      },
+      {
+        "name": "JWT iss/aud verification SEC-006 rejects wrong issuer",
+        "status": "passed"
+      },
+      {
+        "name": "JWT iss/aud verification SEC-006 rejects wrong audience",
+        "status": "passed"
+      },
+      {
+        "name": "JWT iss/aud verification SEC-006 rejects missing issuer",
+        "status": "passed"
+      },
+      {
+        "name": "JWT iss/aud verification SEC-006 rejects missing audience",
+        "status": "passed"
+      },
+      {
+        "name": "JWT iss/aud verification SEC-006 rejects wrong algorithm (HS256)",
+        "status": "passed"
+      },
+      {
+        "name": "JWT iss/aud verification SEC-006 rejects expired token",
+        "status": "passed"
+      },
+      {
+        "name": "JWT iss/aud verification SEC-006 rejects token for another environment issuer",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/stays/services/stays-cancellation.service.spec.ts",
+    "assertions": [
+      {
+        "name": "StaysCancellationService should calculate full refund for MODERATE policy when >= 5 days before check-in",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should calculate 50% refund for MODERATE policy when 1\u20135 days before check-in",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should calculate 0% refund for MODERATE policy when < 24h before check-in",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should calculate full refund for FLEXIBLE policy when >= 24h before check-in",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should calculate 50% refund for STRICT policy when >= 7 days before check-in",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should reject cancellation of COMPLETED booking",
+        "status": "passed"
+      },
+      {
+        "name": "StaysCancellationService should reject when non-guest tries to cancel as guest",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/reconciliation/reconciliation.service.spec.ts",
+    "assertions": [
+      {
+        "name": "ReconciliationService creates reconciliation issue when debit and credit are imbalanced",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/stays/services/stays-availability.service.spec.ts",
+    "assertions": [
+      {
+        "name": "StaysAvailabilityService should return listing IDs with overlapping CONFIRMED bookings",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService should return listing IDs with blocked dates in availability_blocks",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService should merge unavailable IDs from both bookings and blocks",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService should filter by listingIds when provided",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService should return true from isListingAvailable when listing is not unavailable",
+        "status": "passed"
+      },
+      {
+        "name": "StaysAvailabilityService should return false from isListingAvailable when listing has overlapping booking",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/admin/services/admin-users.service.spec.ts",
+    "assertions": [
+      {
+        "name": "AdminUsersService.updateStaffRole rejects changing own staff role",
+        "status": "passed"
+      },
+      {
+        "name": "AdminUsersService.updateStaffRole rejects non-ADMIN account types",
+        "status": "passed"
+      },
+      {
+        "name": "AdminUsersService.updateStaffRole rejects missing users",
+        "status": "passed"
+      },
+      {
+        "name": "AdminUsersService.updateStaffRole sets SUPPORT_AGENT, bumps av, revokes refresh, and audits",
+        "status": "passed"
+      },
+      {
+        "name": "AdminUsersService.updateStaffRole can promote SUPPORT_AGENT back to ADMIN",
+        "status": "passed"
+      },
+      {
+        "name": "AdminUsersService.listSupportAgents returns SUPPORT_AGENT staff including frozen, without secrets",
+        "status": "passed"
+      },
+      {
+        "name": "AdminUsersService.listSupportAgents returns an empty roster when no support agents exist",
+        "status": "passed"
+      },
+      {
+        "name": "AdminUsersService.createSupportAgent creates a SUPPORT_AGENT with hashed staff password and no password in the audit",
+        "status": "passed"
+      },
+      {
+        "name": "AdminUsersService.createSupportAgent rejects duplicate emails",
+        "status": "passed"
+      },
+      {
+        "name": "AdminUsersService.createSupportAgent rejects Super Admin bootstrap allowlist emails",
+        "status": "passed"
+      },
+      {
+        "name": "AdminUsersService.createSupportAgent rejects passwords shorter than 10 characters",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/go-taxi/pricing/go-pricing.service.spec.ts",
+    "assertions": [
+      {
+        "name": "GoPricingService should be defined",
+        "status": "passed"
+      },
+      {
+        "name": "GoPricingService estimateFare (economy seed) applies minimum fare when raw fare is below threshold",
+        "status": "passed"
+      },
+      {
+        "name": "GoPricingService estimateFare (economy seed) applies commission floor when 10% of fare is below minimum",
+        "status": "passed"
+      },
+      {
+        "name": "GoPricingService estimateFare (economy seed) booking fee is collected independently of fare",
+        "status": "passed"
+      },
+      {
+        "name": "GoPricingService estimateFare (economy seed) trip completion uses actual distance and duration not estimate",
+        "status": "passed"
+      },
+      {
+        "name": "GoPricingService estimateFare (economy seed) driver payout is fare minus commission only",
+        "status": "passed"
+      },
+      {
+        "name": "GoPricingService estimateFare (economy seed) platform take is booking fee plus commission",
+        "status": "passed"
+      },
+      {
+        "name": "GoPricingService surge surge multiplier is applied to fare but not to booking fee when surge_active",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/pin-lockout.service.spec.ts",
+    "assertions": [
+      {
+        "name": "PinLockoutService locks after max failures and returns retry window",
+        "status": "passed"
+      },
+      {
+        "name": "PinLockoutService resets counters after successful PIN verification",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/guards/roles.guard.spec.ts",
+    "assertions": [
+      {
+        "name": "RolesGuard SEC-003 allows valid ADMIN when authz_version matches",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 denies non-admin JWT on ADMIN route",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 denies ADMIN JWT after demotion (DB account_type != ADMIN)",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 denies ADMIN JWT when authz_version mismatches (revocation)",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 denies frozen ADMIN",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 does not check authz_version for non-ADMIN role requirements",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 does not treat account_type ADMIN as a JWT role",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 denies SUPPORT_AGENT on ADMIN routes without live lookup",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 allows SUPPORT_AGENT on SUPPORT_AGENT routes when av matches",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 denies frozen SUPPORT_AGENT",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 denies stale SUPPORT_AGENT token after av bump",
+        "status": "passed"
+      },
+      {
+        "name": "RolesGuard SEC-003 cannot upgrade privilege from client role claim alone without ADMIN requirement path",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/users/identity-phone-numbers.service.spec.ts",
+    "assertions": [
+      {
+        "name": "IdentityPhoneNumbersService attachPhoneNumberToIdentity - 23505 idempotency returns existing row when save hits unique violation for same identity (race)",
+        "status": "passed"
+      },
+      {
+        "name": "IdentityPhoneNumbersService attachPhoneNumberToIdentity - 23505 idempotency throws Conflict when 23505 and row belongs to different identity",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/app.controller.spec.ts",
+    "assertions": [
+      {
+        "name": "AppController root should return \"Hello World!\"",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/app.health.spec.ts",
+    "assertions": [
+      {
+        "name": "AppController health PROD-OPS-005 liveness does not depend on DB",
+        "status": "passed"
+      },
+      {
+        "name": "AppController health PROD-OPS-005 readiness returns 503 semantics when DB down",
+        "status": "passed"
+      },
+      {
+        "name": "AppController health PROD-OPS-005 GET /health sets status 503 when degraded/unavailable",
+        "status": "passed"
+      },
+      {
+        "name": "AppController health PROD-OPS-005 version exposes metadata without secrets",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/observability/observability.spec.ts",
+    "assertions": [
+      {
+        "name": "PROD-OPS-003 observability primitives validates and resolves request ids",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-OPS-003 observability primitives redacts secrets and OTP-like fields",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-OPS-003 observability primitives assertPayloadHasNoSecrets rejects JWT-like and DB URLs",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-OPS-003 observability primitives production monitoring/alerting fail closed; dev does not",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-OPS-003 observability primitives createErrorMonitoring is noop in test without DSN",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-OPS-003 observability primitives dedupes alerts within window",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-OPS-003 observability primitives severity policy documents P0 financial integrity",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-OPS-003 observability primitives installFatalHandlers captures unhandledRejection without throwing",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/go-taxi/pricing/fare-calculator.service.spec.ts",
+    "assertions": [
+      {
+        "name": "FareCalculatorService calculate economy short trip under minimum fare",
+        "status": "passed"
+      },
+      {
+        "name": "FareCalculatorService calculate economy medium trip",
+        "status": "passed"
+      },
+      {
+        "name": "FareCalculatorService calculate comfort long trip",
+        "status": "passed"
+      },
+      {
+        "name": "FareCalculatorService calculate moto short trip",
+        "status": "passed"
+      },
+      {
+        "name": "FareCalculatorService calculate promo discount reduces rider payable only",
+        "status": "passed"
+      },
+      {
+        "name": "FareCalculatorService calculate surge multiplier",
+        "status": "passed"
+      },
+      {
+        "name": "FareCalculatorService calculate invalid ride type throws",
+        "status": "passed"
+      },
+      {
+        "name": "FareCalculatorService calculate negative distance throws",
+        "status": "passed"
+      },
+      {
+        "name": "FareCalculatorService calculate negative duration throws",
+        "status": "passed"
+      },
+      {
+        "name": "FareCalculatorService calculate rounds final fare to whole MAD",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/users/entities/staff-jwt-claims.spec.ts",
+    "assertions": [
+      {
+        "name": "staffJwtClaims maps ADMIN staff_role to ADMIN-only JWT roles",
+        "status": "passed"
+      },
+      {
+        "name": "staffJwtClaims maps SUPPORT_AGENT to SUPPORT_AGENT-only JWT roles",
+        "status": "passed"
+      },
+      {
+        "name": "staffJwtClaims never includes ADMIN alongside SUPPORT_AGENT",
+        "status": "passed"
+      },
+      {
+        "name": "staffJwtClaims defaults unknown or missing values to ADMIN",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/ledger/ledger-validation.spec.ts",
+    "assertions": [
+      {
+        "name": "assertBalancedJournal accepts a balanced two-line journal",
+        "status": "passed"
+      },
+      {
+        "name": "assertBalancedJournal rejects imbalance",
+        "status": "passed"
+      },
+      {
+        "name": "computeStableJournalPayloadHash matches regardless of input line ordering",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/phone/phone-normalizer.spec.ts",
+    "assertions": [
+      {
+        "name": "phone-normalizer Morocco formats normalizes 0612345678 to +212612345678",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer Morocco formats normalizes 612345678 to +212612345678",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer Morocco formats normalizes 212612345678 to +212612345678",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer Morocco formats normalizes +212612345678 (already E.164)",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer Morocco formats handles spaces and dashes in Morocco numbers",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer Morocco formats strips national trunk 0 after +212 (+2120612345678 \u2192 +212612345678)",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer international formats accepts US number with country code",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer international formats accepts French number",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer international formats accepts UK number",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer validation rejects empty input",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer validation rejects too few digits",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer validation rejects too many digits",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer validation rejects ambiguous values (leading zeros only)",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer validation rejects too short ambiguous",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer tryNormalizePhoneNumber returns normalized string for valid input",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer tryNormalizePhoneNumber returns null for invalid input",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer normalizePhoneOrThrow throws BadRequestException for invalid input",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer DEFAULT_COUNTRY_CODE is 212 for Morocco",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer phoneLookupCandidates includes Morocco legacy variants for MA numbers",
+        "status": "passed"
+      },
+      {
+        "name": "phone-normalizer phoneLookupCandidates does not invent +212 variants for French numbers",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/otp-send-rate-limit.service.spec.ts",
+    "assertions": [
+      {
+        "name": "OtpSendRateLimitService allows sends under the per-minute limit then rejects",
+        "status": "passed"
+      },
+      {
+        "name": "OtpSendRateLimitService isolates limits per phone+ip key",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/security/cookie-csrf.spec.ts",
+    "assertions": [
+      {
+        "name": "cookie request origin enforcement rejects a cookie-authenticated write without an approved origin",
+        "status": "passed"
+      },
+      {
+        "name": "cookie request origin enforcement allows an exact approved origin",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/compliance-kyc-policy/kyc-policy.override-effectiveness.spec.ts",
+    "assertions": [
+      {
+        "name": "isBypassAllLimitsEffective returns false when bypass_all_limits is false",
+        "status": "passed"
+      },
+      {
+        "name": "isBypassAllLimitsEffective allows legacy maker_version 0 without second approver",
+        "status": "passed"
+      },
+      {
+        "name": "isBypassAllLimitsEffective requires distinct second approver for maker_version 1",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/compliance-kyc-policy/kyc-policy.engine.spec.ts",
+    "assertions": [
+      {
+        "name": "evaluateKycMoneyMovementPolicy allows verified user within caps",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateKycMoneyMovementPolicy denies when KYC not verified",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateKycMoneyMovementPolicy allows bypass_all_limits without verification",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateKycMoneyMovementPolicy denies unknown sender country",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateKycMoneyMovementPolicy denies when single-transfer cap exceeded",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateKycMoneyMovementPolicy denies top-up over wallet cap",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateKycMoneyMovementPolicy enforces blocked merchant list",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateKycMoneyMovementPolicy enforces velocity on completed outbound count",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateKycMoneyMovementPolicy allows SUBSCRIPTION_PRO when single-transfer cap would block WITHDRAW",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateKycMoneyMovementPolicy still denies SUBSCRIPTION_PRO when KYC not verified",
+        "status": "passed"
+      },
+      {
+        "name": "kyc-status helpers normalizes APPROVED to VERIFIED",
+        "status": "passed"
+      },
+      {
+        "name": "kyc-status helpers treats APPROVED as verified for money movement",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/security/upload-storage-policy.spec.ts",
+    "assertions": [
+      {
+        "name": "PROD-SEC-002 identity upload policy fails closed in production without IDENTITY_DISABLE_LOCAL_UPLOADS",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-SEC-002 identity upload policy passes when production disables local uploads",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-SEC-002 identity upload policy blocks upload methods when local uploads are disabled",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/security/production-env-policy.spec.ts",
+    "assertions": [
+      {
+        "name": "Identity production-env-policy Phase 1 + 2A rejects DEMO_OTP_CODE in a production release",
+        "status": "passed"
+      },
+      {
+        "name": "Identity production-env-policy Phase 1 + 2A allows DEMO_OTP_CODE for dogfood with production Node hardening",
+        "status": "passed"
+      },
+      {
+        "name": "Identity production-env-policy Phase 1 + 2A allows DEMO_OTP_CODE outside production",
+        "status": "passed"
+      },
+      {
+        "name": "Identity production-env-policy Phase 1 + 2A rejects known-dev INTERNAL_SERVICE_KEY in production",
+        "status": "passed"
+      },
+      {
+        "name": "Identity production-env-policy Phase 1 + 2A rejects loopback JWT_ISSUER in production",
+        "status": "passed"
+      },
+      {
+        "name": "Identity production-env-policy Phase 1 + 2A accepts dogfood NODE_ENV=production with strong non-loopback config",
+        "status": "passed"
+      },
+      {
+        "name": "Identity production-env-policy Phase 1 + 2A SUMSUB_MODE sandbox allowed in dogfood; live required in production",
+        "status": "passed"
+      },
+      {
+        "name": "Identity production-env-policy Phase 1 + 2A EMI mock forbidden in production; disabled allowed",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/security/cors-origins.spec.ts",
+    "assertions": [
+      {
+        "name": "CORS allowlist SEC-005 resolves stages from NEXA_ENV / APP_ENV / NODE_ENV",
+        "status": "passed"
+      },
+      {
+        "name": "CORS allowlist SEC-005 requires explicit CORS_ORIGINS for staging, dogfood, and production",
+        "status": "passed"
+      },
+      {
+        "name": "CORS allowlist SEC-005 returns configured allowlist for staging",
+        "status": "passed"
+      },
+      {
+        "name": "CORS allowlist SEC-005 preserves production allowlist",
+        "status": "passed"
+      },
+      {
+        "name": "CORS allowlist SEC-005 rejects credentialed wildcard CORS",
+        "status": "passed"
+      },
+      {
+        "name": "CORS allowlist SEC-005 uses local defaults in development when CORS_ORIGINS unset",
+        "status": "passed"
+      },
+      {
+        "name": "CORS allowlist SEC-005 never returns origin:true boolean",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/security/browser-auth-cookies.spec.ts",
+    "assertions": [
+      {
+        "name": "browser authentication cookies PROD-SEC-001 reads only the requested cookie",
+        "status": "passed"
+      },
+      {
+        "name": "browser authentication cookies PROD-SEC-001 requires an explicit cookie transport header",
+        "status": "passed"
+      },
+      {
+        "name": "browser authentication cookies PROD-SEC-001 sets refresh cookie and clears ambient access cookie \u2014 never sets nexa_access",
+        "status": "passed"
+      },
+      {
+        "name": "browser authentication cookies PROD-SEC-001 production refresh cookie flags are HttpOnly Secure SameSite=Lax",
+        "status": "passed"
+      },
+      {
+        "name": "browser authentication cookies PROD-SEC-001 keeps dashboard refresh on a dedicated cookie",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/security/jwt-claims.spec.ts",
+    "assertions": [
+      {
+        "name": "JWT claims SEC-006 uses configured issuer and audience",
+        "status": "passed"
+      },
+      {
+        "name": "JWT claims SEC-006 requires issuer/audience in production",
+        "status": "passed"
+      },
+      {
+        "name": "JWT claims SEC-006 defaults issuer/audience in non-production",
+        "status": "passed"
+      },
+      {
+        "name": "JWT claims SEC-006 defaults admin TTL shorter than typical access",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/idempotency/canonical-request-hash.spec.ts",
+    "assertions": [
+      {
+        "name": "canonicalRequestHash matches for key reorder and drops idempotency_key from body",
+        "status": "passed"
+      },
+      {
+        "name": "canonicalRequestHash changes when a money field changes",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/rewards-program/cashback.calculator.spec.ts",
+    "assertions": [
+      {
+        "name": "calculateCashback returns 0 cashback for purchases below 10 MAD",
+        "status": "passed"
+      },
+      {
+        "name": "calculateCashback applies 1% universal rate when category is not selected",
+        "status": "passed"
+      },
+      {
+        "name": "calculateCashback applies category rate (2\u20135%) when category is in user selection",
+        "status": "passed"
+      },
+      {
+        "name": "calculateCashback caps cashback at Standard tier limit of 300 MAD",
+        "status": "passed"
+      },
+      {
+        "name": "calculateCashback caps cashback at Pro tier limit of 500 MAD",
+        "status": "passed"
+      },
+      {
+        "name": "calculateCashback caps cashback at Premium tier limit of 3000 MAD",
+        "status": "passed"
+      },
+      {
+        "name": "calculateCashback returns capReached=true when remaining cap is 0",
+        "status": "passed"
+      },
+      {
+        "name": "calculateCashback applies partial cashback when purchase would exceed remaining cap",
+        "status": "passed"
+      },
+      {
+        "name": "calculateCashback returns cashbackType=universal for uncategorized transactions",
+        "status": "passed"
+      },
+      {
+        "name": "calculateCashback returns cashbackType=category for transactions in selected categories",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/subscription/subscription-billing.utils.spec.ts",
+    "assertions": [
+      {
+        "name": "subscription billing utils derives anchor day from UTC date",
+        "status": "passed"
+      },
+      {
+        "name": "subscription billing utils monthly renewal keeps same day next month",
+        "status": "passed"
+      },
+      {
+        "name": "subscription billing utils monthly renewal clamps to last day of shorter month",
+        "status": "passed"
+      },
+      {
+        "name": "subscription billing utils yearly renewal adds one year",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/fraud/fraud.rules.spec.ts",
+    "assertions": [
+      {
+        "name": "Fraud Rules triggers velocity rule when transfers exceed threshold",
+        "status": "passed"
+      },
+      {
+        "name": "Fraud Rules triggers rapid balance drain rule when drain percent exceeded",
+        "status": "passed"
+      },
+      {
+        "name": "Fraud Rules triggers new device high amount rule",
+        "status": "passed"
+      },
+      {
+        "name": "Fraud Rules triggers tier violation rule when amount exceeds tier limit",
+        "status": "passed"
+      },
+      {
+        "name": "Fraud Rules triggers suspicious pattern rule after failed PIN attempts",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/security/twilio-env-naming.spec.ts",
+    "assertions": [
+      {
+        "name": "Twilio env naming Phase 1 recognizes TWILIO_PHONE_NUMBER as the runtime From number",
+        "status": "passed"
+      },
+      {
+        "name": "Twilio env naming Phase 1 deploy env examples no longer document TWILIO_FROM_NUMBER",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/security/pii-encryption.spec.ts",
+    "assertions": [
+      {
+        "name": "PII encryption round-trips with AES-256-GCM and does not expose plaintext",
+        "status": "passed"
+      },
+      {
+        "name": "PII encryption keeps legacy plaintext readable during migration",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/security/refresh-token-contract.spec.ts",
+    "assertions": [
+      {
+        "name": "Identity refresh token integrity (contract) rotated token hash must not match previous plaintext",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/modules/auth/security/bearer-access-token.spec.ts",
+    "assertions": [
+      {
+        "name": "Identity Bearer access extraction PROD-SEC-001 accepts Bearer and rejects ambient access cookie",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/legacy/modules/subscription-limits/subscription-limits.merge.spec.ts",
+    "assertions": [
+      {
+        "name": "mergeSubscriptionWithKycLimits takes minimum per axis when KYC caps are higher than Pro subscription",
+        "status": "passed"
+      },
+      {
+        "name": "mergeSubscriptionWithKycLimits standard policy caps match product table",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/security/release-metadata.spec.ts",
+    "assertions": [
+      {
+        "name": "getReleaseMetadata exposes sha/version without secrets",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "nexastays_backend/identity/src/common/identity-onboarding.spec.ts",
+    "assertions": [
+      {
+        "name": "deriveIdentityOnboardingState treats a bare consumer shell as not started",
+        "status": "passed"
+      },
+      {
+        "name": "deriveIdentityOnboardingState keeps persisted PENDING KYC in onboarding",
+        "status": "passed"
+      },
+      {
+        "name": "deriveIdentityOnboardingState keeps persisted UNDER_REVIEW KYC in onboarding",
+        "status": "passed"
+      },
+      {
+        "name": "deriveIdentityOnboardingState keeps persisted REJECTED KYC in onboarding",
+        "status": "passed"
+      },
+      {
+        "name": "deriveIdentityOnboardingState keeps persisted EXPIRED KYC in onboarding",
+        "status": "passed"
+      },
+      {
+        "name": "deriveIdentityOnboardingState marks persisted APPROVED KYC complete",
+        "status": "passed"
+      },
+      {
+        "name": "deriveIdentityOnboardingState marks persisted VERIFIED KYC complete",
+        "status": "passed"
+      },
+      {
+        "name": "deriveIdentityOnboardingState honors reusable approved Unified Identity without a local KYC row",
+        "status": "passed"
+      },
+      {
+        "name": "deriveIdentityOnboardingState treats verified users as approved when kyc_profiles row lags behind identity",
+        "status": "passed"
+      }
+    ]
+  }
+]

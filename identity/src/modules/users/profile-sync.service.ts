@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  ForbiddenException,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UnifiedIdentity } from './entities/unified-identity.entity';
@@ -108,7 +103,9 @@ export class ProfileSyncService {
       if (key === 'date_of_birth' && typeof value === 'string') {
         valueToStore = new Date(value);
       }
-      const currentValue = (identity as unknown as Record<string, unknown>)[key];
+      const currentValue = (identity as unknown as Record<string, unknown>)[
+        key
+      ];
       const strategy = this.resolveConflict(
         key,
         currentValue,
@@ -118,7 +115,10 @@ export class ProfileSyncService {
       );
       if (strategy === 'SKIP') {
         fieldsSkipped.push(`${key} (conflict: ${rule.conflict_strategy})`);
-        conflicts.push({ field: key, reason: `CONFLICT_${rule.conflict_strategy}` });
+        conflicts.push({
+          field: key,
+          reason: `CONFLICT_${rule.conflict_strategy}`,
+        });
         continue;
       }
 
@@ -179,7 +179,13 @@ export class ProfileSyncService {
     if (!identity) return 0;
 
     const payload: Partial<User> = {};
-    const userFields = ['full_name', 'email', 'city', 'date_of_birth', 'profile_photo_url'] as const;
+    const userFields = [
+      'full_name',
+      'email',
+      'city',
+      'date_of_birth',
+      'profile_photo_url',
+    ] as const;
     for (const f of userFields) {
       const idRec = identity as unknown as Record<string, unknown>;
       if (idRec[f] !== undefined) {
@@ -228,7 +234,13 @@ export class ProfileSyncService {
     payload: Partial<UnifiedIdentity> | Partial<User>,
   ): Promise<number> {
     const userPayload: Partial<User> = {};
-    const allowed = ['full_name', 'email', 'city', 'date_of_birth', 'profile_photo_url'];
+    const allowed = [
+      'full_name',
+      'email',
+      'city',
+      'date_of_birth',
+      'profile_photo_url',
+    ];
     for (const k of allowed) {
       const v = (payload as Record<string, unknown>)[k];
       if (v !== undefined) (userPayload as Record<string, unknown>)[k] = v;

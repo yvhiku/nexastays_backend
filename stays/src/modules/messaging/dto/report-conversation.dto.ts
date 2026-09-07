@@ -1,4 +1,11 @@
-import { IsArray, IsOptional, IsString, IsUUID, MaxLength, ArrayMaxSize } from 'class-validator';
+import {
+  IsArray,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ArrayMaxSize,
+} from 'class-validator';
 
 export class ReportConversationDto {
   @IsOptional()

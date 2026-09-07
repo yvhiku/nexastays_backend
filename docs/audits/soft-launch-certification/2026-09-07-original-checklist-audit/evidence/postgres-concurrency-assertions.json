@@ -1,0 +1,47 @@
+[
+  {
+    "file": "nexastays_backend/stays/src/modules/stays/payments/booking-pg-concurrency.prod-inv-001.spec.ts",
+    "assertions": [
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency constraint exists in live catalog with expected predicate",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency exact overlap: only one of two concurrent creates succeeds",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency partial overlap: only one succeeds",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency adjacent nights (checkout = next check-in): both succeed \u2014 half-open [)",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency different listings same dates: both succeed",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency failed transaction leaves no orphan booking row",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency same-row confirm vs cancel: exactly one wins with status predicate",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency same-row expire vs confirm: exactly one wins",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency stress: many concurrent exact overlaps \u2192 exactly one winner",
+        "status": "passed"
+      },
+      {
+        "name": "PROD-INV-001 real PostgreSQL concurrency COMPLETED bookings do not participate in exclusion (product rule)",
+        "status": "passed"
+      }
+    ]
+  }
+]

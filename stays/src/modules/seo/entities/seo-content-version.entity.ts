@@ -5,7 +5,11 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-export type ContentVersionStatus = 'draft' | 'review' | 'published' | 'archived';
+export type ContentVersionStatus =
+  | 'draft'
+  | 'review'
+  | 'published'
+  | 'archived';
 
 @Entity('seo_content_versions')
 export class SeoContentVersion {

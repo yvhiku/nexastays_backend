@@ -74,7 +74,9 @@ export class FaresController {
     const d = parseFloat(distanceKm);
     const t = parseFloat(durationMin);
     if (Number.isNaN(d) || Number.isNaN(t) || d < 0 || t < 0) {
-      throw new Error('distance_km and duration_min must be non-negative numbers');
+      throw new Error(
+        'distance_km and duration_min must be non-negative numbers',
+      );
     }
     const estimate = await this.goPricingService.estimateFare(
       vehicleType,

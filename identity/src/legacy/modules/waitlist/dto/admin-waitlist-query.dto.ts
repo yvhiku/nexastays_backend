@@ -1,4 +1,11 @@
-import { IsOptional, IsInt, Min, Max, IsString, MaxLength } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -27,7 +34,8 @@ export class AdminWaitlistQueryDto {
   source?: string;
 
   @ApiPropertyOptional({
-    description: 'Filter by user type (consumer, merchant, rider, driver_courier, merchant_partner)',
+    description:
+      'Filter by user type (consumer, merchant, rider, driver_courier, merchant_partner)',
   })
   @IsOptional()
   @IsString()

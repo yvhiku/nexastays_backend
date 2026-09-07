@@ -27,7 +27,6 @@ const IMPORT_PAST_DAYS = 30;
 const HORIZON_MONTHS = 18;
 const BATCH_LIMIT = 100;
 
-
 export type SyncSummary = {
   calendar_id: string;
   outcome: 'SUCCESS' | 'NOT_MODIFIED' | 'TIMEOUT' | 'ERROR';
@@ -123,7 +122,9 @@ export class CalendarSyncService {
     await this.calendarRepo.save(cal);
 
     const summary = await this.syncCalendar(cal.id, { force: true });
-    const fresh = await this.calendarRepo.findOneOrFail({ where: { id: cal.id } });
+    const fresh = await this.calendarRepo.findOneOrFail({
+      where: { id: cal.id },
+    });
     const history = await this.logRepo.find({
       where: { external_calendar_id: cal.id },
       order: { started_at: 'DESC' },
@@ -168,7 +169,9 @@ export class CalendarSyncService {
   async syncNow(listingId: string, calendarId: string, hostUserId: string) {
     const cal = await this.getOwnedCalendar(listingId, calendarId, hostUserId);
     if (cal.status === 'PAUSED') {
-      throw new BadRequestException('Calendar is paused — resume before syncing');
+      throw new BadRequestException(
+        'Calendar is paused — resume before syncing',
+      );
     }
     if (
       cal.last_attempt_at &&
@@ -218,7 +221,9 @@ export class CalendarSyncService {
     const bookings = await this.bookingRepo
       .createQueryBuilder('b')
       .where('b.listing_id = :listingId', { listingId: listing.id })
-      .andWhere('b.status IN (:...statuses)', { statuses: [...BOOKED_STATUSES] })
+      .andWhere('b.status IN (:...statuses)', {
+        statuses: [...BOOKED_STATUSES],
+      })
       .andWhere('b.checkin_date < :to', { to })
       .andWhere('b.checkout_date > :from', { from })
       .getMany();
@@ -254,9 +259,7 @@ export class CalendarSyncService {
     }
 
     // Collapse consecutive HOST/ADMIN nights into ranges for cleaner ICS
-    const nights = blocks
-      .map((b) => this.dateStr(b.date))
-      .sort();
+    const nights = blocks.map((b) => this.dateStr(b.date)).sort();
     for (const range of this.collapseNights(nights)) {
       lines.push(
         'BEGIN:VEVENT',
@@ -518,7 +521,10 @@ export class CalendarSyncService {
     await this.trimLogs(cal.id);
   }
 
-  private async finishFailure(cal: StaysExternalCalendar, summary: SyncSummary) {
+  private async finishFailure(
+    cal: StaysExternalCalendar,
+    summary: SyncSummary,
+  ) {
     const failures = (cal.consecutive_failures ?? 0) + 1;
     cal.status = 'ERROR';
     cal.locked_until = null;
@@ -668,7 +674,7 @@ export class CalendarSyncService {
       }
       const uid = String(vevent.uid ?? key);
       const recurrence_id = vevent.recurrenceid
-        ? this.toDateOnly(vevent.recurrenceid) ?? ''
+        ? (this.toDateOnly(vevent.recurrenceid) ?? '')
         : '';
       out.push({
         uid,

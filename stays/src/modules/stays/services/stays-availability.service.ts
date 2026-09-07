@@ -73,7 +73,9 @@ export class StaysAvailabilityService {
       .then((rows) =>
         rows
           .map((r) => r.listing_id)
-          .filter((id): id is string => typeof id === 'string' && id.length > 0),
+          .filter(
+            (id): id is string => typeof id === 'string' && id.length > 0,
+          ),
       );
 
     const blocksQb = availabilityRepo
@@ -92,7 +94,9 @@ export class StaysAvailabilityService {
       .then((rows) =>
         rows
           .map((r) => r.listing_id)
-          .filter((id): id is string => typeof id === 'string' && id.length > 0),
+          .filter(
+            (id): id is string => typeof id === 'string' && id.length > 0,
+          ),
       );
 
     return [...new Set([...unavailableFromBookings, ...unavailableFromBlocks])];
@@ -119,7 +123,9 @@ export class StaysAvailabilityService {
     const bookingQb = bookingRepo
       .createQueryBuilder('b')
       .where('b.listing_id = :listingId', { listingId })
-      .andWhere('b.status IN (:...statuses)', { statuses: [...BOOKED_STATUSES] })
+      .andWhere('b.status IN (:...statuses)', {
+        statuses: [...BOOKED_STATUSES],
+      })
       .andWhere('b.checkin_date < :checkout', { checkout })
       .andWhere('b.checkout_date > :checkin', { checkin });
 
@@ -159,7 +165,9 @@ export class StaysAvailabilityService {
       .createQueryBuilder('b')
       .select(['b.checkin_date', 'b.checkout_date'])
       .where('b.listing_id = :listingId', { listingId })
-      .andWhere('b.status IN (:...statuses)', { statuses: [...BOOKED_STATUSES] })
+      .andWhere('b.status IN (:...statuses)', {
+        statuses: [...BOOKED_STATUSES],
+      })
       .andWhere('b.checkin_date < :to', { to })
       .andWhere('b.checkout_date > :from', { from })
       .getMany();
@@ -215,7 +223,11 @@ export class StaysAvailabilityService {
   private addDays(isoDate: string, days: number): string {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
     if (!match) return isoDate;
-    const d = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    const d = new Date(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3]),
+    );
     d.setDate(d.getDate() + days);
     return this.formatLocalDate(d);
   }

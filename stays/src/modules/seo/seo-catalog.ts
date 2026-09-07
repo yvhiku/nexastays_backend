@@ -32,24 +32,52 @@ export interface SeoLandmarkConfig {
 }
 
 export const SEO_PROPERTY_TYPES: SeoPropertyTypeConfig[] = [
-  { slug: 'apartments', listingType: 'APARTMENT', label: 'Apartment', pluralLabel: 'Apartments' },
-  { slug: 'hotels', listingType: 'HOTEL', label: 'Hotel', pluralLabel: 'Hotels' },
+  {
+    slug: 'apartments',
+    listingType: 'APARTMENT',
+    label: 'Apartment',
+    pluralLabel: 'Apartments',
+  },
+  {
+    slug: 'hotels',
+    listingType: 'HOTEL',
+    label: 'Hotel',
+    pluralLabel: 'Hotels',
+  },
   { slug: 'riads', listingType: 'RIAD', label: 'Riad', pluralLabel: 'Riads' },
-  { slug: 'villas', listingType: 'VILLA', label: 'Villa', pluralLabel: 'Villas' },
-  { slug: 'hostels', listingType: 'HOSTEL', label: 'Hostel', pluralLabel: 'Hostels' },
+  {
+    slug: 'villas',
+    listingType: 'VILLA',
+    label: 'Villa',
+    pluralLabel: 'Villas',
+  },
+  {
+    slug: 'hostels',
+    listingType: 'HOSTEL',
+    label: 'Hostel',
+    pluralLabel: 'Hostels',
+  },
 ];
 
 export const SEO_AMENITIES: SeoAmenityConfig[] = [
   { slug: 'pool', filterKind: 'amenity', amenityTag: 'pool', label: 'Pool' },
   { slug: 'pet-friendly', filterKind: 'pets', label: 'Pet-friendly' },
-  { slug: 'free-parking', filterKind: 'amenity', amenityTag: 'parking', label: 'Free parking' },
+  {
+    slug: 'free-parking',
+    filterKind: 'amenity',
+    amenityTag: 'parking',
+    label: 'Free parking',
+  },
   { slug: 'wifi', filterKind: 'amenity', amenityTag: 'wifi', label: 'WiFi' },
   { slug: 'family', filterKind: 'family', label: 'Family-friendly' },
   { slug: 'luxury', filterKind: 'luxury', label: 'Luxury' },
 ];
 
 /** City slug → neighborhoods (mirrors explore catalog + migration 030). */
-export const SEO_NEIGHBORHOODS_BY_CITY: Record<string, SeoNeighborhoodConfig[]> = {
+export const SEO_NEIGHBORHOODS_BY_CITY: Record<
+  string,
+  SeoNeighborhoodConfig[]
+> = {
   marrakech: [
     { slug: 'medina', name: 'Medina', searchTerm: 'Medina' },
     { slug: 'gueliz', name: 'Gueliz', searchTerm: 'Gueliz' },
@@ -78,7 +106,11 @@ export const SEO_NEIGHBORHOODS_BY_CITY: Record<string, SeoNeighborhoodConfig[]> 
   ],
   fes: [
     { slug: 'fes-el-bali', name: 'Fes el-Bali', searchTerm: 'Fes el-Bali' },
-    { slug: 'ville-nouvelle', name: 'Ville Nouvelle', searchTerm: 'Ville Nouvelle' },
+    {
+      slug: 'ville-nouvelle',
+      name: 'Ville Nouvelle',
+      searchTerm: 'Ville Nouvelle',
+    },
     { slug: 'mellah', name: 'Mellah', searchTerm: 'Mellah' },
   ],
   tangier: [
@@ -99,23 +131,142 @@ export const SEO_NEIGHBORHOODS_BY_CITY: Record<string, SeoNeighborhoodConfig[]> 
     { slug: 'medina', name: 'Medina', searchTerm: 'Medina' },
     { slug: 'ensanche', name: 'Ensanche', searchTerm: 'Ensanche' },
   ],
-  ifrane: [{ slug: 'centre-ville', name: 'Centre-ville', searchTerm: 'Centre-ville' }],
+  ifrane: [
+    { slug: 'centre-ville', name: 'Centre-ville', searchTerm: 'Centre-ville' },
+  ],
 };
 
 export const SEO_LANDMARKS: SeoLandmarkConfig[] = [
-  { slug: 'jemaa-el-fnaa', urlSlug: 'near-jemaa-el-fnaa', name: 'Jemaa el-Fnaa', citySlug: 'marrakech', searchCity: 'Marrakech', latitude: 31.6258257, longitude: -7.9891608, radiusKm: 1.5 },
-  { slug: 'koutoubia', urlSlug: 'near-koutoubia', name: 'Koutoubia Mosque', citySlug: 'marrakech', searchCity: 'Marrakech', latitude: 31.6238889, longitude: -7.9938889, radiusKm: 1.0 },
-  { slug: 'bahia-palace', urlSlug: 'near-bahia-palace', name: 'Bahia Palace', citySlug: 'marrakech', searchCity: 'Marrakech', latitude: 31.6217, longitude: -7.9847, radiusKm: 1.0 },
-  { slug: 'hassan-ii-mosque', urlSlug: 'near-hassan-ii-mosque', name: 'Hassan II Mosque', citySlug: 'casablanca', searchCity: 'Casablanca', latitude: 33.6086, longitude: -7.6328, radiusKm: 2.0 },
-  { slug: 'mohammed-v-square', urlSlug: 'near-mohammed-v-square', name: 'Mohammed V Square', citySlug: 'casablanca', searchCity: 'Casablanca', latitude: 33.5933, longitude: -7.6167, radiusKm: 1.5 },
-  { slug: 'hassan-tower', urlSlug: 'near-hassan-tower', name: 'Hassan Tower', citySlug: 'rabat', searchCity: 'Rabat', latitude: 34.0244, longitude: -6.8225, radiusKm: 1.5 },
-  { slug: 'kasbah-oudayas', urlSlug: 'near-kasbah-oudayas', name: 'Kasbah of the Udayas', citySlug: 'rabat', searchCity: 'Rabat', latitude: 34.0311, longitude: -6.8367, radiusKm: 1.5 },
-  { slug: 'chouara-tannery', urlSlug: 'near-chouara-tannery', name: 'Chouara Tannery', citySlug: 'fes', searchCity: 'Fes', latitude: 34.0661, longitude: -4.9717, radiusKm: 1.0 },
-  { slug: 'bab-bou-jeloud', urlSlug: 'near-bab-bou-jeloud', name: 'Bab Bou Jeloud', citySlug: 'fes', searchCity: 'Fes', latitude: 34.0525, longitude: -4.9986, radiusKm: 1.0 },
-  { slug: 'tangier-medina', urlSlug: 'near-tangier-medina', name: 'Tangier Medina', citySlug: 'tangier', searchCity: 'Tangier', latitude: 35.7887531, longitude: -5.8134345, radiusKm: 1.5 },
-  { slug: 'essaouira-ramparts', urlSlug: 'near-essaouira-ramparts', name: 'Essaouira Ramparts', citySlug: 'essaouira', searchCity: 'Essaouira', latitude: 31.5145596, longitude: -9.7688948, radiusKm: 1.5 },
-  { slug: 'chefchaouen-medina', urlSlug: 'near-chefchaouen-medina', name: 'Chefchaouen Medina', citySlug: 'chefchaouen', searchCity: 'Chefchaouen', latitude: 35.1693741, longitude: -5.2612741, radiusKm: 1.5 },
-  { slug: 'agadir-beach', urlSlug: 'near-agadir-beach', name: 'Agadir Beach', citySlug: 'agadir', searchCity: 'Agadir', latitude: 30.4278, longitude: -9.5981, radiusKm: 2.5 },
+  {
+    slug: 'jemaa-el-fnaa',
+    urlSlug: 'near-jemaa-el-fnaa',
+    name: 'Jemaa el-Fnaa',
+    citySlug: 'marrakech',
+    searchCity: 'Marrakech',
+    latitude: 31.6258257,
+    longitude: -7.9891608,
+    radiusKm: 1.5,
+  },
+  {
+    slug: 'koutoubia',
+    urlSlug: 'near-koutoubia',
+    name: 'Koutoubia Mosque',
+    citySlug: 'marrakech',
+    searchCity: 'Marrakech',
+    latitude: 31.6238889,
+    longitude: -7.9938889,
+    radiusKm: 1.0,
+  },
+  {
+    slug: 'bahia-palace',
+    urlSlug: 'near-bahia-palace',
+    name: 'Bahia Palace',
+    citySlug: 'marrakech',
+    searchCity: 'Marrakech',
+    latitude: 31.6217,
+    longitude: -7.9847,
+    radiusKm: 1.0,
+  },
+  {
+    slug: 'hassan-ii-mosque',
+    urlSlug: 'near-hassan-ii-mosque',
+    name: 'Hassan II Mosque',
+    citySlug: 'casablanca',
+    searchCity: 'Casablanca',
+    latitude: 33.6086,
+    longitude: -7.6328,
+    radiusKm: 2.0,
+  },
+  {
+    slug: 'mohammed-v-square',
+    urlSlug: 'near-mohammed-v-square',
+    name: 'Mohammed V Square',
+    citySlug: 'casablanca',
+    searchCity: 'Casablanca',
+    latitude: 33.5933,
+    longitude: -7.6167,
+    radiusKm: 1.5,
+  },
+  {
+    slug: 'hassan-tower',
+    urlSlug: 'near-hassan-tower',
+    name: 'Hassan Tower',
+    citySlug: 'rabat',
+    searchCity: 'Rabat',
+    latitude: 34.0244,
+    longitude: -6.8225,
+    radiusKm: 1.5,
+  },
+  {
+    slug: 'kasbah-oudayas',
+    urlSlug: 'near-kasbah-oudayas',
+    name: 'Kasbah of the Udayas',
+    citySlug: 'rabat',
+    searchCity: 'Rabat',
+    latitude: 34.0311,
+    longitude: -6.8367,
+    radiusKm: 1.5,
+  },
+  {
+    slug: 'chouara-tannery',
+    urlSlug: 'near-chouara-tannery',
+    name: 'Chouara Tannery',
+    citySlug: 'fes',
+    searchCity: 'Fes',
+    latitude: 34.0661,
+    longitude: -4.9717,
+    radiusKm: 1.0,
+  },
+  {
+    slug: 'bab-bou-jeloud',
+    urlSlug: 'near-bab-bou-jeloud',
+    name: 'Bab Bou Jeloud',
+    citySlug: 'fes',
+    searchCity: 'Fes',
+    latitude: 34.0525,
+    longitude: -4.9986,
+    radiusKm: 1.0,
+  },
+  {
+    slug: 'tangier-medina',
+    urlSlug: 'near-tangier-medina',
+    name: 'Tangier Medina',
+    citySlug: 'tangier',
+    searchCity: 'Tangier',
+    latitude: 35.7887531,
+    longitude: -5.8134345,
+    radiusKm: 1.5,
+  },
+  {
+    slug: 'essaouira-ramparts',
+    urlSlug: 'near-essaouira-ramparts',
+    name: 'Essaouira Ramparts',
+    citySlug: 'essaouira',
+    searchCity: 'Essaouira',
+    latitude: 31.5145596,
+    longitude: -9.7688948,
+    radiusKm: 1.5,
+  },
+  {
+    slug: 'chefchaouen-medina',
+    urlSlug: 'near-chefchaouen-medina',
+    name: 'Chefchaouen Medina',
+    citySlug: 'chefchaouen',
+    searchCity: 'Chefchaouen',
+    latitude: 35.1693741,
+    longitude: -5.2612741,
+    radiusKm: 1.5,
+  },
+  {
+    slug: 'agadir-beach',
+    urlSlug: 'near-agadir-beach',
+    name: 'Agadir Beach',
+    citySlug: 'agadir',
+    searchCity: 'Agadir',
+    latitude: 30.4278,
+    longitude: -9.5981,
+    radiusKm: 2.5,
+  },
 ];
 
 export interface SeoExploreFilters {
@@ -143,14 +294,20 @@ export function neighborhoodBySlugs(
   citySlug: string,
   neighborhoodSlug: string,
 ): SeoNeighborhoodConfig | null {
-  return SEO_NEIGHBORHOODS_BY_CITY[citySlug]?.find((n) => n.slug === neighborhoodSlug) ?? null;
+  return (
+    SEO_NEIGHBORHOODS_BY_CITY[citySlug]?.find(
+      (n) => n.slug === neighborhoodSlug,
+    ) ?? null
+  );
 }
 
 export function landmarkByUrlSlug(urlSlug: string): SeoLandmarkConfig | null {
   return SEO_LANDMARKS.find((l) => l.urlSlug === urlSlug) ?? null;
 }
 
-export function amenityToExploreFilters(amenity: SeoAmenityConfig): SeoExploreFilters {
+export function amenityToExploreFilters(
+  amenity: SeoAmenityConfig,
+): SeoExploreFilters {
   switch (amenity.filterKind) {
     case 'amenity':
       return { amenity: amenity.amenityTag ?? amenity.slug };
@@ -172,7 +329,9 @@ export function neighborhoodToExploreFilters(
   return { city: citySearch, neighborhood: neighborhood.searchTerm };
 }
 
-export function landmarkToExploreFilters(landmark: SeoLandmarkConfig): SeoExploreFilters {
+export function landmarkToExploreFilters(
+  landmark: SeoLandmarkConfig,
+): SeoExploreFilters {
   return {
     city: landmark.searchCity,
     near_lat: landmark.latitude,
@@ -209,6 +368,11 @@ export function resolveSeoSegments(segments: string[]): ResolvedSeoPage | null {
   const am = amenityBySlug(b);
   if (am) return { kind: 'city_amenity', citySlug: a, amenitySlug: am.slug };
   const nb = neighborhoodBySlugs(a, b);
-  if (nb) return { kind: 'city_neighborhood', citySlug: a, neighborhoodSlug: nb.slug };
+  if (nb)
+    return {
+      kind: 'city_neighborhood',
+      citySlug: a,
+      neighborhoodSlug: nb.slug,
+    };
   return null;
 }

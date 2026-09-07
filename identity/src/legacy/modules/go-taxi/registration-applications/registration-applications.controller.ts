@@ -25,7 +25,9 @@ export class RegistrationApplicationsController {
 
   @Get('status')
   @Public()
-  @ApiOperation({ summary: 'Get application status by phone (for driver app polling)' })
+  @ApiOperation({
+    summary: 'Get application status by phone (for driver app polling)',
+  })
   async getStatusByPhone(@Query('phone') phone: string) {
     const result = await this.registrationService.getStatusByPhone(phone || '');
     if (!result) return { status: null, id: null, rejection_reason: null };
@@ -61,7 +63,10 @@ export class RegistrationApplicationsController {
         driversLicenseExpiry: { type: 'string', format: 'date' },
         vehicleRegistrationExpiry: { type: 'string', format: 'date' },
         insuranceExpiry: { type: 'string', format: 'date' },
-        vehiclePhotos: { type: 'string', description: 'JSON object of vehicle photo keys' },
+        vehiclePhotos: {
+          type: 'string',
+          description: 'JSON object of vehicle photo keys',
+        },
         identity_front: { type: 'string', format: 'binary' },
         identity_back: { type: 'string', format: 'binary' },
         selfie: { type: 'string', format: 'binary' },
@@ -69,7 +74,10 @@ export class RegistrationApplicationsController {
         vehicle_registration: { type: 'string', format: 'binary' },
         insurance: { type: 'string', format: 'binary' },
         background_check: { type: 'string', format: 'binary' },
-        vehicle_photos: { type: 'array', items: { type: 'string', format: 'binary' } },
+        vehicle_photos: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
       },
     },
   })
@@ -131,13 +139,18 @@ export class RegistrationApplicationsController {
     let vehiclePhotos: Record<string, string> = {};
     if (body.vehiclePhotos && typeof body.vehiclePhotos === 'string') {
       try {
-        vehiclePhotos = JSON.parse(body.vehiclePhotos) as Record<string, string>;
+        vehiclePhotos = JSON.parse(body.vehiclePhotos) as Record<
+          string,
+          string
+        >;
       } catch {
         // ignore
       }
     }
     const vehicleYear =
-      body.vehicleYear != null ? parseInt(String(body.vehicleYear), 10) : undefined;
+      body.vehicleYear != null
+        ? parseInt(String(body.vehicleYear), 10)
+        : undefined;
     return this.registrationService.submit(
       {
         role: body.role || 'driver',
@@ -160,7 +173,9 @@ export class RegistrationApplicationsController {
         driversLicenseExpiry: body.driversLicenseExpiry,
         vehicleRegistrationExpiry: body.vehicleRegistrationExpiry,
         insuranceExpiry: body.insuranceExpiry,
-        vehiclePhotos: Object.keys(vehiclePhotos).length ? vehiclePhotos : undefined,
+        vehiclePhotos: Object.keys(vehiclePhotos).length
+          ? vehiclePhotos
+          : undefined,
       },
       files || {},
     );

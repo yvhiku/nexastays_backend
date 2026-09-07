@@ -73,9 +73,7 @@ function normalizeContext(ctx: HostListCursorContext) {
 }
 
 function signBody(bodyB64: string): string {
-  const digest = createHmac('sha256', signingSecret())
-    .update(bodyB64)
-    .digest();
+  const digest = createHmac('sha256', signingSecret()).update(bodyB64).digest();
   return b64urlEncode(digest);
 }
 
@@ -119,7 +117,9 @@ export function decodeHostListCursor(
 
   let payload: HostListCursorPayload;
   try {
-    payload = JSON.parse(b64urlDecode(bodyB64).toString('utf8')) as HostListCursorPayload;
+    payload = JSON.parse(
+      b64urlDecode(bodyB64).toString('utf8'),
+    ) as HostListCursorPayload;
   } catch {
     throw new BadRequestException('Invalid cursor');
   }

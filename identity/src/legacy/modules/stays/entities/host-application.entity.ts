@@ -49,7 +49,11 @@ export class HostApplication {
   @Column({ type: 'boolean', name: 'identity_reused', default: false })
   identity_reused: boolean;
 
-  @Column({ type: 'timestamptz', name: 'hosting_policies_accepted_at', nullable: true })
+  @Column({
+    type: 'timestamptz',
+    name: 'hosting_policies_accepted_at',
+    nullable: true,
+  })
   hosting_policies_accepted_at: Date | null;
 
   @Column({ type: 'boolean', name: 'payout_setup_completed', default: false })

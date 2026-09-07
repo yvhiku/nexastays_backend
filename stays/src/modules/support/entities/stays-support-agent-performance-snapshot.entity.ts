@@ -8,9 +8,13 @@ import {
 } from 'typeorm';
 
 @Entity('stays_support_agent_performance_snapshots')
-@Index('stays_support_agent_perf_snap_unique', ['agent_user_id', 'snapshot_date'], {
-  unique: true,
-})
+@Index(
+  'stays_support_agent_perf_snap_unique',
+  ['agent_user_id', 'snapshot_date'],
+  {
+    unique: true,
+  },
+)
 export class StaysSupportAgentPerformanceSnapshot {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -93,7 +97,11 @@ export class StaysSupportAgentPerformanceSnapshot {
   })
   resolution_sla_rate: string | null;
 
-  @Column({ type: 'int', name: 'average_first_response_seconds', nullable: true })
+  @Column({
+    type: 'int',
+    name: 'average_first_response_seconds',
+    nullable: true,
+  })
   average_first_response_seconds: number | null;
 
   @Column({ type: 'int', name: 'average_resolution_seconds', nullable: true })

@@ -54,15 +54,16 @@ export class SupportAgentMetricsService {
       previousFrom: prevFrom.toISOString(),
       previousTo: window.from.toISOString(),
       items: items.map((row) =>
-        this.toMetricsRow(row, previous.get(row.agentId) ?? emptyMetrics(), sampleMin),
+        this.toMetricsRow(
+          row,
+          previous.get(row.agentId) ?? emptyMetrics(),
+          sampleMin,
+        ),
       ),
     };
   }
 
-  async forAgent(
-    agentId: string,
-    query: { from?: string; to?: string } = {},
-  ) {
+  async forAgent(agentId: string, query: { from?: string; to?: string } = {}) {
     const listed = await this.listForAdmin(query);
     const item =
       listed.items.find((row) => row.agentId === agentId) ??
@@ -84,7 +85,8 @@ export class SupportAgentMetricsService {
     const csatTrend =
       row.reviewCount >= sampleMin && prev.reviewCount >= sampleMin;
     const responseTrend =
-      row.firstResponseCount >= sampleMin && prev.firstResponseCount >= sampleMin;
+      row.firstResponseCount >= sampleMin &&
+      prev.firstResponseCount >= sampleMin;
     return {
       agentId: row.agentId,
       activeCount: row.activeCount,

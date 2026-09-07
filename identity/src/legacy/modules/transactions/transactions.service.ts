@@ -53,7 +53,9 @@ function toIso8601UtcInstant(value: unknown): string {
 
   if (/Z$/i.test(s)) {
     const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+    return Number.isNaN(d.getTime())
+      ? new Date().toISOString()
+      : d.toISOString();
   }
   if (
     /[+-]\d{2}:\d{2}(?::\d{2})?$/.test(s) ||
@@ -61,7 +63,9 @@ function toIso8601UtcInstant(value: unknown): string {
     /[+-]\d{2}$/.test(s)
   ) {
     const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+    return Number.isNaN(d.getTime())
+      ? new Date().toISOString()
+      : d.toISOString();
   }
 
   if (!s.includes('T')) {
@@ -284,10 +288,7 @@ export class TransactionsService {
       payload.reference ??
       `TXN-${Date.now()}-${Math.floor(Math.random() * 99)}`;
     let attempts = 0;
-    while (
-      (await txRepo.findOne({ where: { reference } })) &&
-      attempts < 3
-    ) {
+    while ((await txRepo.findOne({ where: { reference } })) && attempts < 3) {
       attempts += 1;
       reference = `${reference}-${Date.now()}`;
     }

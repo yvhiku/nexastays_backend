@@ -1,6 +1,5 @@
 import {
   Injectable,
-  NotFoundException,
   UnauthorizedException,
   BadRequestException,
   HttpException,
@@ -36,7 +35,10 @@ import {
   verifyPasswordSecret,
 } from '../../common/security/secret-crypto';
 import { SmsService } from '../sms/sms.service';
-import { normalizePhoneOrThrow, tryNormalizePhoneNumber, phoneLookupCandidates } from '../../common/phone/phone-normalizer';
+import {
+  normalizePhoneOrThrow,
+  phoneLookupCandidates,
+} from '../../common/phone/phone-normalizer';
 import { KycProfile } from '../compliance/entities/kyc-profile.entity';
 import {
   deriveIdentityOnboardingState,
@@ -65,7 +67,10 @@ type RefreshRotationResult = {
 @Injectable()
 export class AuthService {
   /** Coalesce concurrent refresh calls with the same token so the second does not hit reuse detection. */
-  private readonly refreshInFlight = new Map<string, Promise<RefreshRotationResult>>();
+  private readonly refreshInFlight = new Map<
+    string,
+    Promise<RefreshRotationResult>
+  >();
 
   constructor(
     @InjectRepository(User)
@@ -262,8 +267,7 @@ export class AuthService {
         account_type: user?.account_type ?? jwtUser.account_type,
         role: staff.role,
         roles: staff.roles,
-        staff_role:
-          user?.account_type === 'ADMIN' ? staff.role : undefined,
+        staff_role: user?.account_type === 'ADMIN' ? staff.role : undefined,
       },
     };
   }
@@ -361,11 +365,14 @@ export class AuthService {
     );
     let identityId = user.unified_identity_id ?? null;
     if (!identityId && user.phone_number) {
-      identityId = (await this.unifiedIdentityService.findOrCreateByPhone(user.phone_number))
-        .id;
+      identityId = (
+        await this.unifiedIdentityService.findOrCreateByPhone(user.phone_number)
+      ).id;
     }
     if (!identityId && user.account_type === 'ADMIN') {
-      identityId = await this.unifiedIdentityService.ensureIdentityForAdminUser(user.id);
+      identityId = await this.unifiedIdentityService.ensureIdentityForAdminUser(
+        user.id,
+      );
     }
     if (!identityId) {
       throw new UnauthorizedException('User identity not found');
@@ -400,9 +407,9 @@ export class AuthService {
    * Optionally resolve the caller from Authorization Bearer only (PROD-SEC-001).
    * Ambient access cookies are never accepted. Returns null when missing/invalid.
    */
-  async resolveAccessPrincipal(
-    req?: { headers?: Record<string, unknown> },
-  ): Promise<{ userId: string } | null> {
+  async resolveAccessPrincipal(req?: {
+    headers?: Record<string, unknown>;
+  }): Promise<{ userId: string } | null> {
     if (!req?.headers) return null;
     const authHeader = req.headers.authorization;
     let token: string | undefined;
@@ -411,10 +418,7 @@ export class AuthService {
     }
     if (!token) return null;
     try {
-      const payload = this.jwtService.verify(token) as {
-        sub?: string;
-        type?: string;
-      };
+      const payload = this.jwtService.verify(token);
       if (
         !payload?.sub ||
         payload.type === 'otp_session' ||
@@ -456,7 +460,9 @@ export class AuthService {
   ): Promise<void> {
     const reviewedBy = `admin:${adminEmail}`;
     const now = new Date();
-    let row = await this.kycProfileRepository.findOne({ where: { user_id: userId } });
+    let row = await this.kycProfileRepository.findOne({
+      where: { user_id: userId },
+    });
     if (!row) {
       row = this.kycProfileRepository.create({
         user_id: userId,
@@ -559,7 +565,11 @@ export class AuthService {
     const norm = normalizePhoneOrThrow(phoneNumber);
     const expiresAt = new Date(Date.now() + appConfig.otpExpirySeconds * 1000);
     const isDemoOtp = !!appConfig.demoOtpCode;
-    if (appConfig.env === 'production' && process.env.NEXA_ENV !== 'dogfood' && isDemoOtp) {
+    if (
+      appConfig.env === 'production' &&
+      process.env.NEXA_ENV !== 'dogfood' &&
+      isDemoOtp
+    ) {
       throw new BadRequestException('Demo OTP is allowed only in dogfood');
     }
     const otpCode = isDemoOtp
@@ -580,7 +590,9 @@ export class AuthService {
       }
       safeLogger.debug('OTP issued', { phoneNumber: norm, smsSent });
     } else {
-      safeLogger.debug('OTP issued (demo code, SMS skipped)', { phoneNumber: norm });
+      safeLogger.debug('OTP issued (demo code, SMS skipped)', {
+        phoneNumber: norm,
+      });
     }
   }
 
@@ -621,16 +633,15 @@ export class AuthService {
   }> {
     const norm = normalizePhoneOrThrow(phoneNumber);
     const submitted = (otp ?? '').trim();
-    const demoBypass =
+    // DEMO may match the configured code in dogfood/non-production, but never
+    // skips expiry, consumption, lockout, or missing-row rejection.
+    const demoAllowed =
       (appConfig.env !== 'production' || process.env.NEXA_ENV === 'dogfood') &&
-      !!appConfig.demoOtpCode &&
-      timingSafeEqualString(submitted, appConfig.demoOtpCode);
+      process.env.NEXA_ENV !== 'production' &&
+      !!appConfig.demoOtpCode;
 
-    // Dev: DEMO_OTP_CODE lets testers recover after lockout / consumed OTP / wrong stored code.
-    if (!demoBypass) {
-      if (await this.otpLockoutService.isLockedOut(norm, ip)) {
-        throw new BadRequestException('Too many attempts. Try again later.');
-      }
+    if (await this.otpLockoutService.isLockedOut(norm, ip)) {
+      throw new BadRequestException('Too many attempts. Try again later.');
     }
 
     const record = await this.otpRepository.findOne({
@@ -638,41 +649,41 @@ export class AuthService {
       order: { created_at: 'DESC' },
     });
     if (!record) {
-      if (!demoBypass) {
-        await this.otpLockoutService.recordFailure(norm, ip);
-      }
+      await this.otpLockoutService.recordFailure(norm, ip);
       return { verified: false };
     }
-    if (!demoBypass) {
-      if (record.consumed_at) {
-        await this.otpLockoutService.recordFailure(norm, ip);
-        return { verified: false };
+    if (record.consumed_at) {
+      await this.otpLockoutService.recordFailure(norm, ip);
+      return { verified: false };
+    }
+    if (record.expires_at.getTime() < Date.now()) {
+      return { verified: false };
+    }
+
+    const submittedHash = hmacSha256Hex(appConfig.otpPepper, submitted);
+    const storedCode = (record.code ?? '').trim();
+    // Support legacy plaintext OTP rows until they expire/rotate.
+    const matchesHashed = timingSafeEqualString(submittedHash, storedCode);
+    const matchesLegacyPlain =
+      storedCode.length <= 8 && timingSafeEqualString(submitted, storedCode);
+    const matchesDemo =
+      demoAllowed && timingSafeEqualString(submitted, appConfig.demoOtpCode);
+    if (!matchesHashed && !matchesLegacyPlain && !matchesDemo) {
+      await this.otpLockoutService.recordFailure(norm, ip);
+      record.attempts += 1;
+      if (record.attempts >= 5) {
+        record.consumed_at = new Date();
       }
-      if (record.expires_at.getTime() < Date.now()) {
-        return { verified: false };
-      }
-      const submittedHash = hmacSha256Hex(appConfig.otpPepper, submitted);
-      const storedCode = (record.code ?? '').trim();
-      // Support legacy plaintext OTP rows until they expire/rotate.
-      const matchesHashed = timingSafeEqualString(submittedHash, storedCode);
-      const matchesLegacyPlain =
-        storedCode.length <= 8 && timingSafeEqualString(submitted, storedCode);
-      if (!matchesHashed && !matchesLegacyPlain) {
-        await this.otpLockoutService.recordFailure(norm, ip);
-        record.attempts += 1;
-        if (record.attempts >= 5) {
-          record.consumed_at = new Date();
-        }
-        await this.otpRepository.save(record);
-        return { verified: false };
-      }
+      await this.otpRepository.save(record);
+      return { verified: false };
     }
 
     await this.otpLockoutService.recordSuccess(norm, ip);
     record.consumed_at = new Date();
     await this.otpRepository.save(record);
 
-    const identity = await this.unifiedIdentityService.findOrCreateByPhone(norm);
+    const identity =
+      await this.unifiedIdentityService.findOrCreateByPhone(norm);
     let accounts = await this.findAccountsByPhone(norm);
     // Nexa ecosystem: first verified OTP on a phone must yield a usable account for any consumer
     // app (Stays, Pay, Go) without forcing signup in another product first.
@@ -743,15 +754,18 @@ export class AuthService {
     const autoSelectDriverOrCourier =
       !targetAccountId &&
       accounts.length === 1 &&
-      (accounts[0].account_type === 'DRIVER' || accounts[0].account_type === 'COURIER');
+      (accounts[0].account_type === 'DRIVER' ||
+        accounts[0].account_type === 'COURIER');
 
-    const requestedRole = (options?.registration_role as string | undefined)?.toLowerCase();
+    const requestedRole = options?.registration_role?.toLowerCase();
     const preferredByRole =
       !targetAccountId &&
       (requestedRole === 'driver' || requestedRole === 'courier')
-        ? accounts.find(
-            (a) => a.account_type === (requestedRole === 'driver' ? 'DRIVER' : 'COURIER'),
-          ) ?? null
+        ? (accounts.find(
+            (a) =>
+              a.account_type ===
+              (requestedRole === 'driver' ? 'DRIVER' : 'COURIER'),
+          ) ?? null)
         : null;
 
     let selected =
@@ -759,7 +773,7 @@ export class AuthService {
       (autoSelectConsumer
         ? { id: accounts[0].id, account_type: 'CONSUMER' }
         : null) ??
-      (autoSelectDriverOrCourier ? accounts[0]! : null) ??
+      (autoSelectDriverOrCourier ? accounts[0] : null) ??
       preferredByRole;
 
     // Nexa Pay (and other consumer apps): when multiple role accounts share a phone
@@ -773,8 +787,7 @@ export class AuthService {
     ) {
       selected =
         accounts.find(
-          (a) =>
-            (a.account_type ?? 'CONSUMER').toUpperCase() === 'CONSUMER',
+          (a) => (a.account_type ?? 'CONSUMER').toUpperCase() === 'CONSUMER',
         ) ?? null;
     }
 
@@ -787,7 +800,10 @@ export class AuthService {
         undefined,
         await this.tokenProfileForUser(selected.id),
       );
-      const { refresh_token } = await this.issueRefreshToken(selected.id, ctx ?? { ip });
+      const { refresh_token } = await this.issueRefreshToken(
+        selected.id,
+        ctx ?? { ip },
+      );
       await this.upsertTrustedDevice({
         userId: selected.id,
         deviceId: ctx?.device_id,
@@ -808,18 +824,28 @@ export class AuthService {
       };
     }
 
-    let kycReuse: {
-      use_existing_kyc: boolean;
-      can_skip_identity_step: boolean;
-      can_prefill_identity_readonly: boolean;
-      require_step_up_verification: boolean;
-      identity_verified_banner: boolean;
-    } | undefined;
+    let kycReuse:
+      | {
+          use_existing_kyc: boolean;
+          can_skip_identity_step: boolean;
+          can_prefill_identity_readonly: boolean;
+          require_step_up_verification: boolean;
+          identity_verified_banner: boolean;
+        }
+      | undefined;
 
-    if (options?.registration_role && (options.registration_role === 'driver' || options.registration_role === 'courier')) {
+    if (
+      options?.registration_role &&
+      (options.registration_role === 'driver' ||
+        options.registration_role === 'courier')
+    ) {
       try {
-        const service = options.registration_role === 'driver' ? 'DRIVER' : 'COURIER';
-        const result = await this.kycReuseService.useExistingKyc(identity.id, service);
+        const service =
+          options.registration_role === 'driver' ? 'DRIVER' : 'COURIER';
+        const result = await this.kycReuseService.useExistingKyc(
+          identity.id,
+          service,
+        );
         kycReuse = {
           use_existing_kyc: result.useExistingKyc,
           can_skip_identity_step: result.canSkipIdentityStep,
@@ -868,11 +894,18 @@ export class AuthService {
     account_type: string;
     account_id: string;
   }> {
-    let payload: { sub?: string; type?: string; unified_identity_id?: string; phone_number?: string };
+    let payload: {
+      sub?: string;
+      type?: string;
+      unified_identity_id?: string;
+      phone_number?: string;
+    };
     try {
       payload = this.jwtService.verify(identitySessionToken);
     } catch {
-      throw new UnauthorizedException('Invalid or expired identity session token');
+      throw new UnauthorizedException(
+        'Invalid or expired identity session token',
+      );
     }
 
     if (payload.type !== 'identity_session' && payload.type !== 'otp_session') {
@@ -887,12 +920,16 @@ export class AuthService {
       session.consumed ||
       session.expires_at.getTime() < Date.now()
     ) {
-      throw new UnauthorizedException('Identity session expired or already used');
+      throw new UnauthorizedException(
+        'Identity session expired or already used',
+      );
     }
 
     const identityId = payload.unified_identity_id;
     if (!identityId) {
-      const identity = await this.unifiedIdentityService.findOrCreateByPhone(session.phone_number);
+      const identity = await this.unifiedIdentityService.findOrCreateByPhone(
+        session.phone_number,
+      );
       (payload as any).unified_identity_id = identity.id;
     }
 
@@ -907,7 +944,13 @@ export class AuthService {
     session.consumed = true;
     await this.otpSessionRepository.save(session);
 
-    const unifiedIdentityId = (payload.unified_identity_id ?? (await this.unifiedIdentityService.findOrCreateByPhone(session.phone_number)).id) as string;
+    const unifiedIdentityId =
+      payload.unified_identity_id ??
+      (
+        await this.unifiedIdentityService.findOrCreateByPhone(
+          session.phone_number,
+        )
+      ).id;
     const accessToken = this.issueAccountScopedToken(
       account.id,
       unifiedIdentityId,
@@ -916,7 +959,10 @@ export class AuthService {
       undefined,
       await this.tokenProfileForUser(account.id),
     );
-    const { refresh_token } = await this.issueRefreshToken(account.id, ctx ?? { ip: '0.0.0.0' });
+    const { refresh_token } = await this.issueRefreshToken(
+      account.id,
+      ctx ?? { ip: '0.0.0.0' },
+    );
     await this.upsertTrustedDevice({
       userId: account.id,
       deviceId: ctx?.device_id,
@@ -1118,7 +1164,9 @@ export class AuthService {
       { last_login_at: new Date() },
     );
 
-    const identityId = account?.unified_identity_id ?? (await this.unifiedIdentityService.findOrCreateByPhone(norm)).id;
+    const identityId =
+      account?.unified_identity_id ??
+      (await this.unifiedIdentityService.findOrCreateByPhone(norm)).id;
     const token = this.issueAccountScopedToken(
       selectedAccount.id,
       identityId,
@@ -1158,14 +1206,19 @@ export class AuthService {
   async completeRegistration(
     otpSessionToken: string,
     ctx?: RefreshTokenContext,
-  ): Promise<{ access_token: string; refresh_token: string; user_id: string } | null> {
+  ): Promise<{
+    access_token: string;
+    refresh_token: string;
+    user_id: string;
+  } | null> {
     let payload: { sub?: string; type?: string };
     try {
       payload = this.jwtService.verify(otpSessionToken);
     } catch {
       return null;
     }
-    if (payload.type !== 'otp_session' && payload.type !== 'identity_session') return null;
+    if (payload.type !== 'otp_session' && payload.type !== 'identity_session')
+      return null;
 
     const session = await this.otpSessionRepository.findOne({
       where: { session_token: payload.sub },
@@ -1181,7 +1234,9 @@ export class AuthService {
     const consumer = await this.findConsumerByPhone(session.phone_number);
     if (!consumer) return null;
 
-    const identity = await this.unifiedIdentityService.findOrCreateByPhone(session.phone_number);
+    const identity = await this.unifiedIdentityService.findOrCreateByPhone(
+      session.phone_number,
+    );
     session.consumed = true;
     await this.otpSessionRepository.save(session);
 
@@ -1208,7 +1263,11 @@ export class AuthService {
     email: string,
     password: string,
     ip: string = '0.0.0.0',
-  ): Promise<{ access_token: string; refresh_token: string; user: any } | null> {
+  ): Promise<{
+    access_token: string;
+    refresh_token: string;
+    user: any;
+  } | null> {
     const normalizedEmail = (email || '').trim().toLowerCase();
     const allowedEmails = appConfig.adminEmails;
     const isAdminEmail =
@@ -1295,15 +1354,15 @@ export class AuthService {
     password: string,
     lockKey: string,
     ip: string,
-  ): Promise<{ access_token: string; refresh_token: string; user: any } | null> {
+  ): Promise<{
+    access_token: string;
+    refresh_token: string;
+    user: any;
+  } | null> {
     const user = await this.userRepository.findOne({
       where: { email: normalizedEmail },
     });
-    if (
-      !user ||
-      user.account_type !== 'ADMIN' ||
-      !user.staff_password_hash
-    ) {
+    if (!user || user.account_type !== 'ADMIN' || !user.staff_password_hash) {
       await this.otpLockoutService.recordFailure(lockKey, ip);
       return null;
     }
@@ -1347,7 +1406,9 @@ export class AuthService {
       {
         role: profile?.role ?? staff.role,
         roles: profile?.roles ?? staff.roles,
-        authz_version: Number(profile?.authz_version ?? user.authz_version ?? 1),
+        authz_version: Number(
+          profile?.authz_version ?? user.authz_version ?? 1,
+        ),
       },
     );
 

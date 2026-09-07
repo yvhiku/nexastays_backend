@@ -41,7 +41,9 @@ export function assertPaymentProviderPolicy(
 ): void {
   const stage = resolveNexaStage(env);
   const provider = getStaysPaymentProvider(env);
-  const explicitProvider = (env.STAYS_PAYMENT_PROVIDER ?? '').trim().toLowerCase();
+  const explicitProvider = (env.STAYS_PAYMENT_PROVIDER ?? '')
+    .trim()
+    .toLowerCase();
 
   if (provider === 'cmi') {
     assertCmiCredentials(env);
@@ -110,7 +112,11 @@ function assertCmiCredentials(env: NodeJS.ProcessEnv): void {
   // Production stage must not rely on unset public URLs falling back to localhost helpers.
   const stage = resolveNexaStage(env);
   if (stage === 'production') {
-    for (const key of ['CMI_CALLBACK_URL', 'STAYS_PUBLIC_URL', 'STAYS_WEB_URL'] as const) {
+    for (const key of [
+      'CMI_CALLBACK_URL',
+      'STAYS_PUBLIC_URL',
+      'STAYS_WEB_URL',
+    ] as const) {
       if (!(env[key] ?? '').trim()) {
         throw new Error(
           `${key} is required when NEXA_ENV=production and STAYS_PAYMENT_PROVIDER=cmi.`,

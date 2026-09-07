@@ -15,7 +15,14 @@ import { isBypassAllLimitsEffective } from '../../compliance/kyc-policy/kyc-poli
 
 function parseCsvRoles(raw: string | undefined): string[] {
   if (!raw?.trim()) return [];
-  return [...new Set(raw.split(',').map((s) => s.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 export type AdminJwtPayload = {
@@ -49,7 +56,10 @@ export class AdminKycPolicyService {
       : ['ADMIN', 'SUPER_ADMIN'];
   }
 
-  private assertAdminHasAnyRole(admin: AdminJwtPayload, allowlist: string[]): void {
+  private assertAdminHasAnyRole(
+    admin: AdminJwtPayload,
+    allowlist: string[],
+  ): void {
     const ur: string[] = Array.isArray(admin.roles)
       ? admin.roles
       : admin.role
@@ -141,8 +151,8 @@ export class AdminKycPolicyService {
       boost_max_single_transfer_mad: dto.boost_max_single_transfer_mad ?? 0,
       boost_daily_withdrawal_mad: dto.boost_daily_withdrawal_mad ?? 0,
       boost_monthly_withdrawal_mad: dto.boost_monthly_withdrawal_mad ?? 0,
-      extra_allowed_country_codes: (dto.extra_allowed_country_codes ?? []).map((c) =>
-        c.trim().toUpperCase(),
+      extra_allowed_country_codes: (dto.extra_allowed_country_codes ?? []).map(
+        (c) => c.trim().toUpperCase(),
       ),
       reason: dto.reason.trim().slice(0, 2000),
       created_by_admin_user_id: admin.userId,
@@ -172,10 +182,14 @@ export class AdminKycPolicyService {
     const row = await this.overrideRepo.findOne({ where: { id: overrideId } });
     if (!row) throw new NotFoundException('Override not found');
     if (!row.bypass_all_limits) {
-      throw new BadRequestException('Override does not request bypass_all_limits');
+      throw new BadRequestException(
+        'Override does not request bypass_all_limits',
+      );
     }
     if (Number(row.bypass_limits_maker_version) !== 1) {
-      throw new BadRequestException('Maker-checker approval applies to new bypass requests only');
+      throw new BadRequestException(
+        'Maker-checker approval applies to new bypass requests only',
+      );
     }
     if (row.bypass_limits_second_approver_admin_id) {
       throw new BadRequestException('Bypass already second-approved');
@@ -194,7 +208,10 @@ export class AdminKycPolicyService {
       action: 'KYC_ADMIN_OVERRIDE_BYPASS_APPROVED',
       targetType: 'KYC_ADMIN_OVERRIDE',
       targetId: overrideId,
-      metadata: { user_id: row.user_id, maker_admin_id: row.created_by_admin_user_id },
+      metadata: {
+        user_id: row.user_id,
+        maker_admin_id: row.created_by_admin_user_id,
+      },
     });
     return row;
   }

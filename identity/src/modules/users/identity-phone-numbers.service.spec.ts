@@ -10,7 +10,13 @@ import { UnifiedIdentity } from './entities/unified-identity.entity';
 
 describe('IdentityPhoneNumbersService', () => {
   let service: IdentityPhoneNumbersService;
-  let repo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock; count: jest.Mock; update: jest.Mock };
+  let repo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    create: jest.Mock;
+    count: jest.Mock;
+    update: jest.Mock;
+  };
 
   const mockRepo = {
     findOne: jest.fn(),
@@ -26,8 +32,14 @@ describe('IdentityPhoneNumbersService', () => {
     const mod: TestingModule = await Test.createTestingModule({
       providers: [
         IdentityPhoneNumbersService,
-        { provide: getRepositoryToken(IdentityPhoneNumber), useValue: mockRepo },
-        { provide: getRepositoryToken(UnifiedIdentity), useValue: mockIdentityRepo },
+        {
+          provide: getRepositoryToken(IdentityPhoneNumber),
+          useValue: mockRepo,
+        },
+        {
+          provide: getRepositoryToken(UnifiedIdentity),
+          useValue: mockIdentityRepo,
+        },
       ],
     }).compile();
     service = mod.get(IdentityPhoneNumbersService);
@@ -47,11 +59,16 @@ describe('IdentityPhoneNumbersService', () => {
       mockIdentityRepo.findOne.mockResolvedValue({ id: identityId });
       mockRepo.findOne.mockResolvedValue(null);
       mockRepo.count.mockResolvedValue(0);
-      mockRepo.create.mockReturnValue({ identity_id: identityId, normalized_phone_number: '+212612345678' });
+      mockRepo.create.mockReturnValue({
+        identity_id: identityId,
+        normalized_phone_number: '+212612345678',
+      });
       mockRepo.save.mockRejectedValueOnce(
         Object.assign(new Error('duplicate key'), { code: '23505' }),
       );
-      mockRepo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(existingRow);
+      mockRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(existingRow);
 
       const result = await service.attachPhoneNumberToIdentity(
         identityId,
@@ -65,7 +82,10 @@ describe('IdentityPhoneNumbersService', () => {
       mockIdentityRepo.findOne.mockResolvedValue({ id: 'id-1' });
       mockRepo.findOne.mockResolvedValue(null);
       mockRepo.count.mockResolvedValue(0);
-      mockRepo.create.mockReturnValue({ identity_id: 'id-1', normalized_phone_number: '+212612345678' });
+      mockRepo.create.mockReturnValue({
+        identity_id: 'id-1',
+        normalized_phone_number: '+212612345678',
+      });
       mockRepo.save.mockRejectedValueOnce(
         Object.assign(new Error('duplicate key'), { code: '23505' }),
       );

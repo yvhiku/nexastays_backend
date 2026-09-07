@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
@@ -72,10 +69,7 @@ export class HostListingsService {
     }));
   }
 
-  async createListing(
-    userId: string,
-    dto: CreateHostListingDto,
-  ) {
+  async createListing(userId: string, dto: CreateHostListingDto) {
     const canList = await this.hostsService.canList(userId);
     if (!canList) {
       const profile = await this.hostsService.getHostProfileOrNull(userId);
@@ -95,7 +89,9 @@ export class HostListingsService {
       );
     }
 
-    const walkthroughCount = dto.media.filter((m) => m.kind === 'WALKTHROUGH').length;
+    const walkthroughCount = dto.media.filter(
+      (m) => m.kind === 'WALKTHROUGH',
+    ).length;
     if (walkthroughCount < 1) {
       throw new BadRequestException('A walkthrough video is required.');
     }
@@ -165,7 +161,8 @@ export class HostListingsService {
       return {
         id: listing.id,
         status: 'SUBMITTED',
-        message: 'Listing submitted for review. You will be notified once approved.',
+        message:
+          'Listing submitted for review. You will be notified once approved.',
       };
     });
   }
@@ -178,20 +175,20 @@ export class HostListingsService {
       throw new BadRequestException('No file uploaded');
     }
     if (file.size > MAX_PHOTO_SIZE) {
-      throw new BadRequestException(`Photo too large. Max ${MAX_PHOTO_SIZE / 1024 / 1024}MB`);
+      throw new BadRequestException(
+        `Photo too large. Max ${MAX_PHOTO_SIZE / 1024 / 1024}MB`,
+      );
     }
     const detected = detectImageType(file.buffer);
     if (!detected) {
       throw new BadRequestException('Invalid image. Use JPEG, PNG, or WebP');
     }
-    const ext = detected === 'png' ? '.png' : detected === 'webp' ? '.webp' : '.jpg';
+    const ext =
+      detected === 'png' ? '.png' : detected === 'webp' ? '.webp' : '.jpg';
     const assetId = randomUUID();
     const dir = path.join(LISTING_UPLOAD_DIR, userId, 'listing');
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(
-      path.join(dir, `photo_${assetId}${ext}`),
-      file.buffer,
-    );
+    await fs.writeFile(path.join(dir, `photo_${assetId}${ext}`), file.buffer);
     return { asset_id: assetId };
   }
 
@@ -203,7 +200,9 @@ export class HostListingsService {
       throw new BadRequestException('No file uploaded');
     }
     if (file.size > MAX_VIDEO_SIZE) {
-      throw new BadRequestException(`Video too large. Max ${MAX_VIDEO_SIZE / 1024 / 1024}MB`);
+      throw new BadRequestException(
+        `Video too large. Max ${MAX_VIDEO_SIZE / 1024 / 1024}MB`,
+      );
     }
     const assetId = randomUUID();
     const ext = '.mp4'; // Accept any; store as mp4 for simplicity

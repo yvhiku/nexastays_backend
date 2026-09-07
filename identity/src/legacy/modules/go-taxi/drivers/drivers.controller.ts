@@ -33,13 +33,21 @@ export class DriversController {
   @Get('me')
   async getMyProfile(@CurrentUser() user: any) {
     // Trace: prove this controller handles GET /go/drivers/me
-    console.log('[DriversController] GET /go/drivers/me hit, authUserId=', user?.userId);
-    const profile = await this.driversService.getDriverProfileForUser(user.userId);
+    console.log(
+      '[DriversController] GET /go/drivers/me hit, authUserId=',
+      user?.userId,
+    );
+    const profile = await this.driversService.getDriverProfileForUser(
+      user.userId,
+    );
     if (!profile) {
       console.log('[DriversController] GET /me returning null (not a driver)');
       return { data: null, message: 'Not a driver' };
     }
-    console.log('[DriversController] GET /me returning profile, vehicle_summary=', profile?.vehicle_summary);
+    console.log(
+      '[DriversController] GET /me returning profile, vehicle_summary=',
+      profile?.vehicle_summary,
+    );
     return { data: profile };
   }
 

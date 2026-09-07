@@ -1,0 +1,72 @@
+[
+  {
+    "path": "/",
+    "status": 307,
+    "bytes": 3,
+    "location": "/en",
+    "has_canonical": false,
+    "has_og": false,
+    "has_noindex": false,
+    "has_csp": true
+  },
+  {
+    "path": "/en",
+    "status": 200,
+    "bytes": 220000,
+    "location": null,
+    "has_canonical": true,
+    "has_og": true,
+    "has_noindex": false,
+    "has_csp": true
+  },
+  {
+    "path": "/fr",
+    "status": 200,
+    "bytes": 364838,
+    "location": null,
+    "has_canonical": true,
+    "has_og": true,
+    "has_noindex": false,
+    "has_csp": true
+  },
+  {
+    "path": "/ar",
+    "status": 200,
+    "bytes": 338243,
+    "location": null,
+    "has_canonical": true,
+    "has_og": true,
+    "has_noindex": false,
+    "has_csp": true
+  },
+  {
+    "path": "/en/not-a-real-page-audit",
+    "status": 404,
+    "bytes": 14803,
+    "location": null,
+    "has_canonical": false,
+    "has_og": true,
+    "has_noindex": true,
+    "has_csp": true
+  },
+  {
+    "path": "/robots.txt",
+    "status": 200,
+    "bytes": 809,
+    "location": null,
+    "has_canonical": false,
+    "has_og": false,
+    "has_noindex": false,
+    "has_csp": true
+  },
+  {
+    "path": "/sitemap.xml",
+    "status": 200,
+    "bytes": 15501,
+    "location": null,
+    "has_canonical": false,
+    "has_og": false,
+    "has_noindex": false,
+    "has_csp": true
+  }
+]

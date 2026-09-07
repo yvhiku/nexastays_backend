@@ -56,7 +56,12 @@ export class SeoDestination {
   @Column({ type: 'int', name: 'seo_score', default: 0 })
   seo_score: number;
 
-  @Column({ type: 'varchar', length: 20, name: 'content_status', default: 'published' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'content_status',
+    default: 'published',
+  })
   content_status: string;
 
   @Column({ type: 'boolean', default: false })

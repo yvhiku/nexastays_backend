@@ -32,10 +32,21 @@ export class GoPricingConfig {
   @Column({ type: 'decimal', precision: 10, scale: 2, name: 'booking_fee' })
   booking_fee: number;
 
-  @Column({ type: 'varchar', length: 20, name: 'commission_type', default: 'percentage' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'commission_type',
+    default: 'percentage',
+  })
   commission_type: string;
 
-  @Column({ type: 'decimal', precision: 5, scale: 4, name: 'commission_rate', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 4,
+    name: 'commission_rate',
+    nullable: true,
+  })
   commission_rate: number | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, name: 'commission_min' })
@@ -44,10 +55,22 @@ export class GoPricingConfig {
   @Column({ type: 'int', name: 'cancellation_window_secs', default: 120 })
   cancellation_window_secs: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'cancellation_fee', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'cancellation_fee',
+    default: 0,
+  })
   cancellation_fee: number;
 
-  @Column({ type: 'decimal', precision: 4, scale: 2, name: 'surge_multiplier', default: 1 })
+  @Column({
+    type: 'decimal',
+    precision: 4,
+    scale: 2,
+    name: 'surge_multiplier',
+    default: 1,
+  })
   surge_multiplier: number;
 
   @Column({ type: 'boolean', name: 'surge_active', default: false })

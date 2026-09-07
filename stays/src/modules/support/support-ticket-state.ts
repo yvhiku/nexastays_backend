@@ -33,8 +33,7 @@ export function nextStatusAfterCustomerMessage(input: {
   }
 }
 
-export const CLOSED_SUPPORT_TICKET_MESSAGE =
-  'This support ticket is closed.';
+export const CLOSED_SUPPORT_TICKET_MESSAGE = 'This support ticket is closed.';
 
 export const TICKET_MUST_BE_REOPENED_MESSAGE =
   'Ticket must be reopened using the reopen action';

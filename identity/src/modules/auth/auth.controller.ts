@@ -6,7 +6,6 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   UnauthorizedException,
   HttpException,
   UseInterceptors,
@@ -170,13 +169,10 @@ export class AuthController {
       ip,
     };
     const phone = normalizePhoneOrThrow(body.phone_number);
-    const result = await this.authService.verifyOtp(
-      phone,
-      body.otp,
-      ip,
-      ctx,
-      { registration_role: body.registration_role, account_id: body.account_id },
-    );
+    const result = await this.authService.verifyOtp(phone, body.otp, ip, ctx, {
+      registration_role: body.registration_role,
+      account_id: body.account_id,
+    });
     if (!result.verified) this.metricsService.incrementOtpVerifyFailure();
     return result;
   }
@@ -489,10 +485,7 @@ export class AuthController {
       const user = await this.authService.resolveAccessPrincipal(req);
       if (user) {
         actorUserId = user.userId;
-        await this.authService.revokeRefreshTokens(
-          user.userId,
-          body.device_id,
-        );
+        await this.authService.revokeRefreshTokens(user.userId, body.device_id);
       }
     }
 
@@ -505,7 +498,11 @@ export class AuthController {
         req: req ?? undefined,
       })
       .catch(() => {});
-    if (res) clearBrowserAuthCookies(res, req ? refreshCookieName(req) : REFRESH_COOKIE);
+    if (res)
+      clearBrowserAuthCookies(
+        res,
+        req ? refreshCookieName(req) : REFRESH_COOKIE,
+      );
     return { success: true };
   }
 
@@ -519,7 +516,11 @@ export class AuthController {
       (req as express.Request & { ip?: string }).ip ??
       req.socket?.remoteAddress ??
       '0.0.0.0';
-    const result = await this.authService.adminLogin(body.email, body.password, ip);
+    const result = await this.authService.adminLogin(
+      body.email,
+      body.password,
+      ip,
+    );
     if (!result) {
       noteAuthFailure(req, { reason: 'ADMIN_LOGIN_FAILURE' });
       safeLogger.info('security.admin_login_failure', {

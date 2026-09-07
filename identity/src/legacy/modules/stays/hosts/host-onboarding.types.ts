@@ -1,4 +1,8 @@
-export type HostApplicationStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
+export type HostApplicationStatus =
+  | 'DRAFT'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED';
 
 export type HostIdentityStatus =
   | 'NOT_STARTED'

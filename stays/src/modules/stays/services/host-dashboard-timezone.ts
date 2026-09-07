@@ -29,7 +29,9 @@ export type DashboardNow = {
  * Casablanca wall-clock bounds for host dashboard aggregation.
  * Pass `at` in tests to freeze time.
  */
-export function getDashboardNow(at: Date | DateTime = DateTime.utc()): DashboardNow {
+export function getDashboardNow(
+  at: Date | DateTime = DateTime.utc(),
+): DashboardNow {
   const dt =
     at instanceof DateTime
       ? at.setZone(DASHBOARD_TIMEZONE)
@@ -102,7 +104,11 @@ export function ymdCompare(a: string, b: string): number {
   return 0;
 }
 
-export function ymdInHalfOpen(ymd: string, start: string, endExclusive: string): boolean {
+export function ymdInHalfOpen(
+  ymd: string,
+  start: string,
+  endExclusive: string,
+): boolean {
   return ymdCompare(ymd, start) >= 0 && ymdCompare(ymd, endExclusive) < 0;
 }
 

@@ -24,7 +24,10 @@ export function evaluateKycMoneyMovementPolicy(
   const verified = input.normalizedKycStatus === 'VERIFIED';
   if (!override?.bypass_kyc_status_gate) {
     if (input.normalizedKycStatus === 'REJECTED') {
-      return deny('KYC_REJECTED', 'KYC rejected — money movement is not allowed.');
+      return deny(
+        'KYC_REJECTED',
+        'KYC rejected — money movement is not allowed.',
+      );
     }
     if (!verified) {
       return deny(
@@ -57,16 +60,25 @@ export function evaluateKycMoneyMovementPolicy(
   }
 
   const allowed = new Set(
-    [...L.allowedCountryCodes, ...(override?.extra_allowed_country_codes ?? [])].map(
-      (c) => c.trim().toUpperCase(),
-    ),
+    [
+      ...L.allowedCountryCodes,
+      ...(override?.extra_allowed_country_codes ?? []),
+    ].map((c) => c.trim().toUpperCase()),
   );
-  const blocked = new Set(L.blockedCountryCodes.map((c) => c.trim().toUpperCase()));
+  const blocked = new Set(
+    L.blockedCountryCodes.map((c) => c.trim().toUpperCase()),
+  );
   if (blocked.has(country)) {
-    return deny('KYC_COUNTRY_BLOCKED', 'Money movement is not allowed from this country.');
+    return deny(
+      'KYC_COUNTRY_BLOCKED',
+      'Money movement is not allowed from this country.',
+    );
   }
   if (allowed.size > 0 && !allowed.has(country)) {
-    return deny('KYC_COUNTRY_NOT_ALLOWED', 'Money movement is not allowed for this country tier.');
+    return deny(
+      'KYC_COUNTRY_NOT_ALLOWED',
+      'Money movement is not allowed for this country tier.',
+    );
   }
 
   // Platform subscription fee — verified users may pay even when P2P/withdraw caps are exhausted.
@@ -138,12 +150,23 @@ export function evaluateKycMoneyMovementPolicy(
   }
 
   // Receiver routing rules (merchant / P2P)
-  if (input.receiverUserId && L.blockedMerchantUserIds.includes(input.receiverUserId)) {
-    return deny('KYC_MERCHANT_BLOCKED', 'Transfers to this counterparty are blocked by policy.');
+  if (
+    input.receiverUserId &&
+    L.blockedMerchantUserIds.includes(input.receiverUserId)
+  ) {
+    return deny(
+      'KYC_MERCHANT_BLOCKED',
+      'Transfers to this counterparty are blocked by policy.',
+    );
   }
-  if (L.allowedReceiverAccountTypes != null && L.allowedReceiverAccountTypes.length > 0) {
+  if (
+    L.allowedReceiverAccountTypes != null &&
+    L.allowedReceiverAccountTypes.length > 0
+  ) {
     const rt = (input.receiverAccountType ?? '').toUpperCase();
-    const okType = L.allowedReceiverAccountTypes.some((x) => x.toUpperCase() === rt);
+    const okType = L.allowedReceiverAccountTypes.some(
+      (x) => x.toUpperCase() === rt,
+    );
     if (!okType) {
       return deny(
         'KYC_RECEIVER_TYPE_NOT_ALLOWED',
@@ -170,6 +193,8 @@ export function evaluateKycMoneyMovementPolicy(
   return { ok: true };
 }
 
-export function mergeDenialForAudit(denial: PolicyDenial): Record<string, string> {
+export function mergeDenialForAudit(
+  denial: PolicyDenial,
+): Record<string, string> {
   return { code: denial.code, message: denial.message };
 }

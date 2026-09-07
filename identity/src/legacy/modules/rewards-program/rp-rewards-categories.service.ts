@@ -109,7 +109,9 @@ export class RpRewardsCategoriesService {
     return this.getMySelectionsForActivePeriod(userId);
   }
 
-  async canReselect(userId: string): Promise<{ canReselect: boolean; reason?: string }> {
+  async canReselect(
+    userId: string,
+  ): Promise<{ canReselect: boolean; reason?: string }> {
     const period = await this.billingPeriods.getActivePeriod();
     if (!period) {
       return { canReselect: false, reason: 'No active billing period' };

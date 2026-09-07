@@ -96,7 +96,10 @@ export class AdminStaysController {
       status,
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
-      sort: sort === 'newest' || sort === 'oldest' || sort === 'priority' ? sort : undefined,
+      sort:
+        sort === 'newest' || sort === 'oldest' || sort === 'priority'
+          ? sort
+          : undefined,
       hostUserId: hostUserId || undefined,
     });
   }
@@ -370,7 +373,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.approveHost(id, user.userId, {
       ip,
@@ -385,7 +389,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.rejectHost(
       id,
@@ -401,7 +406,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.freezeHost(id, user.userId, {
       ip,
@@ -415,7 +421,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.unfreezeHost(id, user.userId, {
       ip,
@@ -429,7 +436,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.approveListing(id, user.userId, {
       ip,
@@ -444,7 +452,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.rejectListing(
       id,
@@ -510,7 +519,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.setListingLive(id, user.userId, {
       ip,
@@ -525,7 +535,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.pauseListing(id, user.userId, {
       ip,
@@ -540,7 +551,8 @@ export class AdminStaysController {
     @CurrentUser() user: { userId: string },
     @Req() req: Request,
   ) {
-    const ip = (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
+    const ip =
+      (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers?.['user-agent'];
     return this.adminStaysService.unpauseListing(id, user.userId, {
       ip,

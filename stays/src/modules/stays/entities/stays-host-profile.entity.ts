@@ -46,7 +46,12 @@ export class StaysHostProfile {
   @Column({ type: 'varchar', length: 20, name: 'source', default: 'UNKNOWN' })
   source: HostOnboardingSource;
 
-  @Column({ type: 'varchar', length: 64, name: 'submitted_from', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 64,
+    name: 'submitted_from',
+    nullable: true,
+  })
   submitted_from: string | null;
 
   @Column({
@@ -85,7 +90,12 @@ export class StaysHostProfile {
   @Column({ type: 'boolean', name: 'listing_frozen', default: false })
   listing_frozen: boolean;
 
-  @Column({ type: 'varchar', length: 20, name: 'document_type', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'document_type',
+    nullable: true,
+  })
   document_type: string | null;
 
   @Column({

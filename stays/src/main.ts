@@ -75,7 +75,10 @@ async function bootstrap() {
       );
     }
     if (process.env.STAYS_PAYMENT_PROVIDER === 'cmi') {
-      if (!process.env.CMI_STORE_KEY?.trim() || !process.env.CMI_CLIENT_ID?.trim()) {
+      if (
+        !process.env.CMI_STORE_KEY?.trim() ||
+        !process.env.CMI_CLIENT_ID?.trim()
+      ) {
         throw new Error(
           'CMI_CLIENT_ID and CMI_STORE_KEY are required when STAYS_PAYMENT_PROVIDER=cmi.',
         );
@@ -100,33 +103,39 @@ async function bootstrap() {
   applySecureHttp(app);
   app.use(json({ limit: appConfig.bodyLimit }));
   app.use(urlencoded({ extended: true, limit: appConfig.bodyLimit }));
-  app.use((req: Request & { requestId?: string }, res: Response, next: () => void) => {
-    const requestId = resolveRequestId(
-      req.headers as Record<string, string | string[] | undefined>,
-      () => randomUUID(),
-    );
-    req.requestId = requestId;
-    res.setHeader('X-Request-Id', requestId);
-    const start = Date.now();
-    runWithRequestContext({ requestId }, () => {
-      if (process.env.NODE_ENV !== 'test') {
-        safeLogger.info('http.request.start', {
-          method: req.method,
-          path: req.path,
-        });
-      }
-      res.on('finish', () => {
+  app.use(
+    (
+      req: Request & { requestId?: string },
+      res: Response,
+      next: () => void,
+    ) => {
+      const requestId = resolveRequestId(
+        req.headers as Record<string, string | string[] | undefined>,
+        () => randomUUID(),
+      );
+      req.requestId = requestId;
+      res.setHeader('X-Request-Id', requestId);
+      const start = Date.now();
+      runWithRequestContext({ requestId }, () => {
         if (process.env.NODE_ENV !== 'test') {
-          safeLogger.info('http.request.end', {
-            request_id: requestId,
-            statusCode: res.statusCode,
-            latencyMs: Date.now() - start,
+          safeLogger.info('http.request.start', {
+            method: req.method,
+            path: req.path,
           });
         }
+        res.on('finish', () => {
+          if (process.env.NODE_ENV !== 'test') {
+            safeLogger.info('http.request.end', {
+              request_id: requestId,
+              statusCode: res.statusCode,
+              latencyMs: Date.now() - start,
+            });
+          }
+        });
+        next();
       });
-      next();
-    });
-  });
+    },
+  );
   app.use(createHttpTelemetryMiddleware({ service: 'nexa-stays' }));
 
   app.setGlobalPrefix(appConfig.apiPrefix);
@@ -145,7 +154,9 @@ async function bootstrap() {
     const config = new DocumentBuilder()
       .setTitle('Nexa Stays API')
       .setVersion('1.0')
-      .setDescription('Independent Nexa Stays backend. Auth via Nexa Identity JWT (RS256/JWKS).')
+      .setDescription(
+        'Independent Nexa Stays backend. Auth via Nexa Identity JWT (RS256/JWKS).',
+      )
       .addBearerAuth()
       .build();
     const document = SwaggerModule.createDocument(app, config);
@@ -175,7 +186,10 @@ async function bootstrap() {
   const base = `http://0.0.0.0:${appConfig.port}/${appConfig.apiPrefix}`;
   safeLogger.info('Nexa Stays started', {
     base,
-    swagger: !isProd || process.env.ENABLE_SWAGGER === 'true' ? `${base}/docs` : 'disabled',
+    swagger:
+      !isProd || process.env.ENABLE_SWAGGER === 'true'
+        ? `${base}/docs`
+        : 'disabled',
   });
 }
 void bootstrap();

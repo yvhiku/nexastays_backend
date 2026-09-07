@@ -26,7 +26,13 @@ const FIRST_RESPONDER_LATERAL = `
   ) first_sender ON true
 `;
 
-function frHoursSql(alias: string, pLow: number, pNormal: number, pHigh: number, pUrgent: number) {
+function frHoursSql(
+  alias: string,
+  pLow: number,
+  pNormal: number,
+  pHigh: number,
+  pUrgent: number,
+) {
   return `CASE ${alias}.priority
     WHEN 'LOW' THEN $${pLow}::int
     WHEN 'HIGH' THEN $${pHigh}::int
@@ -35,7 +41,13 @@ function frHoursSql(alias: string, pLow: number, pNormal: number, pHigh: number,
   END`;
 }
 
-function resHoursSql(alias: string, pLow: number, pNormal: number, pHigh: number, pUrgent: number) {
+function resHoursSql(
+  alias: string,
+  pLow: number,
+  pNormal: number,
+  pHigh: number,
+  pUrgent: number,
+) {
   return `CASE ${alias}.priority
     WHEN 'LOW' THEN $${pLow}::int
     WHEN 'HIGH' THEN $${pHigh}::int
@@ -144,18 +156,22 @@ export class SupportPerformanceService {
     private readonly ops: OperationalIntelligenceService,
   ) {}
 
-  parseWindow(input: {
-    range?: string;
-    from?: string;
-    to?: string;
-  } = {}): PerformanceWindow {
+  parseWindow(
+    input: {
+      range?: string;
+      from?: string;
+      to?: string;
+    } = {},
+  ): PerformanceWindow {
     const range = this.normalizeRange(input.range);
     const now = new Date();
     if (input.from || input.to) {
       const from = input.from
         ? new Date(input.from)
         : new Date(now.getTime() - daysForPerformanceRange(range) * 86400000);
-      const toExclusive = input.to ? new Date(input.to) : new Date(now.getTime() + 1);
+      const toExclusive = input.to
+        ? new Date(input.to)
+        : new Date(now.getTime() + 1);
       this.assertWindow(from, toExclusive);
       return { from, toExclusive, range };
     }
@@ -198,10 +214,7 @@ export class SupportPerformanceService {
   ): Promise<AgentPerformanceRow[]> {
     const live = await this.ops.queryAssignedAgentWorkload();
     const liveById = new Map(live.map((row) => [row.agentId, row]));
-    const period = await this.queryAgentPeriod(
-      window.from,
-      window.toExclusive,
-    );
+    const period = await this.queryAgentPeriod(window.from, window.toExclusive);
     const ids = new Set<string>([...liveById.keys(), ...period.keys()]);
     const cap = maxActiveTicketsPerAgent();
     const items: AgentPerformanceRow[] = [];
@@ -265,7 +278,9 @@ export class SupportPerformanceService {
       from: from.toISOString(),
       to: to.toISOString(),
       averageAgentRating:
-        metrics.reviewCount >= min ? metrics.averageAgentRating : metrics.averageAgentRating,
+        metrics.reviewCount >= min
+          ? metrics.averageAgentRating
+          : metrics.averageAgentRating,
       problemSolvedRate: metrics.problemSolvedRate,
       firstResponseSlaRate: metrics.firstResponseSlaRate,
       resolutionSlaRate: metrics.resolutionSlaRate,
@@ -311,7 +326,7 @@ export class SupportPerformanceService {
     window: PerformanceWindow,
     limit = 20,
   ): Promise<AgentFeedbackItem[]> {
-    const rows = (await this.dataSource.query(
+    const rows = await this.dataSource.query(
       `
       SELECT c.ticket_id, t.category, c.agent_rating, c.problem_solved,
              c.comment, c.submitted_at
@@ -323,15 +338,13 @@ export class SupportPerformanceService {
       ORDER BY c.submitted_at DESC
       LIMIT $4
       `,
-      [agentId, window.from.toISOString(), window.toExclusive.toISOString(), limit],
-    )) as Array<{
-      ticket_id: string;
-      category: string;
-      agent_rating: number | string | null;
-      problem_solved: boolean | null;
-      comment: string | null;
-      submitted_at: Date | string;
-    }>;
+      [
+        agentId,
+        window.from.toISOString(),
+        window.toExclusive.toISOString(),
+        limit,
+      ],
+    );
     return rows.map((row) => ({
       ticketId: row.ticket_id,
       category: row.category,
@@ -346,7 +359,7 @@ export class SupportPerformanceService {
   }
 
   async firstResponseAgentId(ticketId: string): Promise<string | null> {
-    const rows = (await this.dataSource.query(
+    const rows = await this.dataSource.query(
       `
       SELECT first_sender.sender_id AS agent_id
       FROM stays_support_tickets t
@@ -355,7 +368,7 @@ export class SupportPerformanceService {
       LIMIT 1
       `,
       [ticketId],
-    )) as { agent_id: string | null }[];
+    );
     return rows[0]?.agent_id ?? null;
   }
 
@@ -376,7 +389,7 @@ export class SupportPerformanceService {
       SUPPORT_SLA.HIGH.resolutionHours,
       SUPPORT_SLA.URGENT.resolutionHours,
     ];
-    const assigned = (await this.dataSource.query(
+    const assigned = await this.dataSource.query(
       `
       SELECT metadata->>'toAdminId' AS agent_id, COUNT(*)::int AS assigned_count
       FROM stays_audit_logs
@@ -388,8 +401,8 @@ export class SupportPerformanceService {
       GROUP BY metadata->>'toAdminId'
       `,
       params,
-    )) as { agent_id: string; assigned_count: number }[];
-    const closed = (await this.dataSource.query(
+    );
+    const closed = await this.dataSource.query(
       `
       SELECT t.review_agent_id AS agent_id,
         COUNT(*)::int AS tickets_closed,
@@ -420,14 +433,8 @@ export class SupportPerformanceService {
       GROUP BY t.review_agent_id
       `,
       [...params, maturityDays],
-    )) as {
-      agent_id: string;
-      tickets_closed: number;
-      tickets_reopened: number;
-      matured_closed: number;
-      matured_reopened: number;
-    }[];
-    const followUp = (await this.dataSource.query(
+    );
+    const followUp = await this.dataSource.query(
       `
       SELECT t.review_agent_id AS agent_id, COUNT(*)::int AS follow_up_count
       FROM stays_support_operational_signals s
@@ -439,9 +446,9 @@ export class SupportPerformanceService {
       GROUP BY t.review_agent_id
       `,
       params,
-    )) as { agent_id: string; follow_up_count: number }[];
+    );
     const frHours = frHoursSql('t', 3, 4, 5, 6);
-    const response = (await this.dataSource.query(
+    const response = await this.dataSource.query(
       `
       SELECT first_sender.sender_id AS agent_id,
         COUNT(*)::int AS sample_count,
@@ -460,15 +467,9 @@ export class SupportPerformanceService {
       GROUP BY first_sender.sender_id
       `,
       slaParams.slice(0, 6),
-    )) as {
-      agent_id: string;
-      sample_count: number;
-      sla_met: number;
-      sla_breached: number;
-      avg_seconds: number | string | null;
-    }[];
+    );
     const resHours = resHoursSql('t', 3, 4, 5, 6);
-    const resolution = (await this.dataSource.query(
+    const resolution = await this.dataSource.query(
       `
       SELECT t.review_agent_id AS agent_id,
         COUNT(*)::int AS sample_count,
@@ -492,14 +493,8 @@ export class SupportPerformanceService {
         SUPPORT_SLA.HIGH.resolutionHours,
         SUPPORT_SLA.URGENT.resolutionHours,
       ],
-    )) as {
-      agent_id: string;
-      sample_count: number;
-      sla_met: number;
-      sla_breached: number;
-      avg_seconds: number | string | null;
-    }[];
-    const csat = (await this.dataSource.query(
+    );
+    const csat = await this.dataSource.query(
       `
       SELECT
         agent_id,
@@ -520,19 +515,7 @@ export class SupportPerformanceService {
       GROUP BY agent_id
       `,
       params,
-    )) as Array<{
-      agent_id: string;
-      review_count: number;
-      average_overall_rating: number | string | null;
-      average_agent_rating: number | string | null;
-      solved_count: number;
-      unsolved_count: number;
-      r1: number;
-      r2: number;
-      r3: number;
-      r4: number;
-      r5: number;
-    }>;
+    );
 
     const byId = new Map<string, AgentPerformanceMetrics>();
     const bump = (agentId: string) => {
@@ -562,7 +545,9 @@ export class SupportPerformanceService {
           : null;
     }
     for (const row of followUp) {
-      bump(row.agent_id).followUpRequiredCount = Number(row.follow_up_count ?? 0);
+      bump(row.agent_id).followUpRequiredCount = Number(
+        row.follow_up_count ?? 0,
+      );
     }
     for (const row of response) {
       const metrics = bump(row.agent_id);
@@ -624,7 +609,7 @@ export class SupportPerformanceService {
     const agentFilter = agentId
       ? `AND c.agent_id = $${params.push(agentId)}`
       : '';
-    const csat = (await this.dataSource.query(
+    const csat = await this.dataSource.query(
       `
       SELECT t.category,
         COUNT(*)::int AS review_count,
@@ -639,18 +624,15 @@ export class SupportPerformanceService {
       GROUP BY t.category
       `,
       params,
-    )) as Array<{
-      category: string;
-      review_count: number;
-      average_overall_rating: number | string | null;
-      average_agent_rating: number | string | null;
-      solved_count: number;
-    }>;
-    const volumeParams: unknown[] = [from.toISOString(), toExclusive.toISOString()];
+    );
+    const volumeParams: unknown[] = [
+      from.toISOString(),
+      toExclusive.toISOString(),
+    ];
     const volumeAgent = agentId
       ? `AND t.review_agent_id = $${volumeParams.push(agentId)}`
       : '';
-    const volume = (await this.dataSource.query(
+    const volume = await this.dataSource.query(
       `
       SELECT t.category,
         COUNT(*)::int AS ticket_volume,
@@ -672,13 +654,8 @@ export class SupportPerformanceService {
       GROUP BY t.category
       `,
       volumeParams,
-    )) as Array<{
-      category: string;
-      ticket_volume: number;
-      tickets_closed: number;
-      tickets_reopened: number;
-    }>;
-    const sla = (await this.dataSource.query(
+    );
+    const sla = await this.dataSource.query(
       `
       SELECT t.category,
         COUNT(*) FILTER (WHERE t.first_admin_response_at IS NOT NULL)::int AS fr_count,
@@ -714,13 +691,7 @@ export class SupportPerformanceService {
         SUPPORT_SLA.HIGH.resolutionHours,
         SUPPORT_SLA.URGENT.resolutionHours,
       ],
-    )) as Array<{
-      category: string;
-      fr_count: number;
-      fr_met: number;
-      res_count: number;
-      res_met: number;
-    }>;
+    );
     const keys = new Set([
       ...csat.map((row) => row.category),
       ...volume.map((row) => row.category),
@@ -745,7 +716,9 @@ export class SupportPerformanceService {
             ? null
             : Number(c.average_overall_rating),
         averageAgentRating:
-          c?.average_agent_rating == null ? null : Number(c.average_agent_rating),
+          c?.average_agent_rating == null
+            ? null
+            : Number(c.average_agent_rating),
         problemSolvedRate:
           reviews > 0 ? Number(c?.solved_count ?? 0) / reviews : null,
         ticketsClosed: Number(v?.tickets_closed ?? 0),
@@ -764,7 +737,7 @@ export class SupportPerformanceService {
     toExclusive: Date,
   ): Promise<LanguagePerformanceRow[]> {
     const params = [from.toISOString(), toExclusive.toISOString()];
-    const rows = (await this.dataSource.query(
+    const rows = await this.dataSource.query(
       `
       SELECT COALESCE(t.requester_language, 'unknown') AS language,
         COUNT(*)::int AS ticket_volume,
@@ -807,17 +780,7 @@ export class SupportPerformanceService {
         SUPPORT_SLA.HIGH.resolutionHours,
         SUPPORT_SLA.URGENT.resolutionHours,
       ],
-    )) as Array<{
-      language: string;
-      ticket_volume: number;
-      review_count: number;
-      average_overall_rating: number | string | null;
-      solved_count: number;
-      fr_count: number;
-      fr_met: number;
-      res_count: number;
-      res_met: number;
-    }>;
+    );
     return rows.map((row) => {
       const reviews = Number(row.review_count ?? 0);
       const frCount = Number(row.fr_count ?? 0);
@@ -844,7 +807,7 @@ export class SupportPerformanceService {
     from: Date,
     toExclusive: Date,
   ): Promise<CannedEffectivenessRow[]> {
-    const rows = (await this.dataSource.query(
+    const rows = await this.dataSource.query(
       `
       SELECT a.entity_id AS reply_id,
         r.title,
@@ -863,14 +826,7 @@ export class SupportPerformanceService {
       ORDER BY COUNT(*) DESC
       `,
       [from.toISOString(), toExclusive.toISOString()],
-    )) as Array<{
-      reply_id: string;
-      title: string | null;
-      usage_count: number;
-      reviewed_count: number;
-      average_overall_rating: number | string | null;
-      solved_count: number;
-    }>;
+    );
     return rows.map((row) => {
       const reviewed = Number(row.reviewed_count ?? 0);
       return {

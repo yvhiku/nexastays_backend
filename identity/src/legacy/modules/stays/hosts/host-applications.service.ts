@@ -52,11 +52,7 @@ export class HostApplicationsService {
     return this.hostOnboarding.getLegacyApplicationStatus(applicantUserId);
   }
 
-  async list(params?: {
-    status?: string;
-    limit?: number;
-    offset?: number;
-  }) {
+  async list(params?: { status?: string; limit?: number; offset?: number }) {
     return this.hostOnboarding.listForAdmin({
       application_status: params?.status,
       limit: params?.limit,
@@ -70,7 +66,8 @@ export class HostApplicationsService {
       relations: ['user'],
     });
     if (profile) return profile;
-    const legacy = await this.hostOnboarding.findProfileByLegacyApplicationId(id);
+    const legacy =
+      await this.hostOnboarding.findProfileByLegacyApplicationId(id);
     if (legacy) return legacy;
     throw new NotFoundException('Host application not found');
   }

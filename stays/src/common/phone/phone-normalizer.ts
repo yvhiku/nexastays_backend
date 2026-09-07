@@ -87,8 +87,10 @@ export function validatePhoneNumber(raw: string): ValidatePhoneResult {
   const s = String(raw ?? '').trim();
   if (!s) return { valid: false, error: 'Phone number is required' };
   const digits = s.replace(/\D/g, '');
-  if (digits.length < 9) return { valid: false, error: 'Phone number has too few digits' };
-  if (digits.length > 15) return { valid: false, error: 'Phone number has too many digits' };
+  if (digits.length < 9)
+    return { valid: false, error: 'Phone number has too few digits' };
+  if (digits.length > 15)
+    return { valid: false, error: 'Phone number has too many digits' };
   if (/^0+$/.test(digits) || /^0\d{0,5}$/.test(digits)) {
     return { valid: false, error: 'Phone number is invalid or ambiguous' };
   }
@@ -96,7 +98,10 @@ export function validatePhoneNumber(raw: string): ValidatePhoneResult {
     const normalized = normalizePhoneNumber(s);
     return { valid: true, normalized };
   } catch (e) {
-    return { valid: false, error: (e as Error).message ?? 'Invalid phone number' };
+    return {
+      valid: false,
+      error: (e as Error).message ?? 'Invalid phone number',
+    };
   }
 }
 

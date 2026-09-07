@@ -17,13 +17,14 @@ export class AdminNotificationsService {
   ) {}
 
   async getSummary() {
-    const [pendingKyc, openRiskAlerts, pendingHostApplications] = await Promise.all([
-      this.kycRepo.count({ where: { status: 'PENDING' } }),
-      this.riskRepo.count({ where: { status: 'OPEN' } }),
-      this.hostProfileRepo.count({
-        where: { application_status: 'PENDING' },
-      }),
-    ]);
+    const [pendingKyc, openRiskAlerts, pendingHostApplications] =
+      await Promise.all([
+        this.kycRepo.count({ where: { status: 'PENDING' } }),
+        this.riskRepo.count({ where: { status: 'OPEN' } }),
+        this.hostProfileRepo.count({
+          where: { application_status: 'PENDING' },
+        }),
+      ]);
 
     return {
       pendingKyc,
@@ -36,4 +37,3 @@ export class AdminNotificationsService {
     };
   }
 }
-

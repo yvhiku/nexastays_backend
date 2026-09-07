@@ -43,7 +43,7 @@ export class WaitlistService {
       qb.andWhere('waitlist.source = :source', { source });
     }
     if (rawUserType === '') {
-      qb.andWhere('(waitlist.user_type IS NULL OR waitlist.user_type = \'\')');
+      qb.andWhere("(waitlist.user_type IS NULL OR waitlist.user_type = '')");
     } else if (userType) {
       qb.andWhere('waitlist.user_type = :userType', { userType });
     }

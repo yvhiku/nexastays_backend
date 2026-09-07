@@ -26,7 +26,10 @@ describe('StaysAvailabilityService', () => {
       providers: [
         StaysAvailabilityService,
         { provide: getRepositoryToken(StaysBooking), useValue: bookingRepo },
-        { provide: getRepositoryToken(StaysAvailabilityBlock), useValue: availabilityRepo },
+        {
+          provide: getRepositoryToken(StaysAvailabilityBlock),
+          useValue: availabilityRepo,
+        },
       ],
     }).compile();
 
@@ -35,11 +38,12 @@ describe('StaysAvailabilityService', () => {
 
   it('should return listing IDs with overlapping CONFIRMED bookings', async () => {
     bookingRepo.createQueryBuilder.mockReturnValue(
-      mockQueryBuilder([{ listing_id: 'listing-1' }, { listing_id: 'listing-2' }]),
+      mockQueryBuilder([
+        { listing_id: 'listing-1' },
+        { listing_id: 'listing-2' },
+      ]),
     );
-    availabilityRepo.createQueryBuilder.mockReturnValue(
-      mockQueryBuilder([]),
-    );
+    availabilityRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder([]));
 
     const unavailable = await service.getUnavailableListingIds(
       new Date('2026-03-10'),
@@ -52,9 +56,7 @@ describe('StaysAvailabilityService', () => {
   });
 
   it('should return listing IDs with blocked dates in availability_blocks', async () => {
-    bookingRepo.createQueryBuilder.mockReturnValue(
-      mockQueryBuilder([]),
-    );
+    bookingRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder([]));
     availabilityRepo.createQueryBuilder.mockReturnValue(
       mockQueryBuilder([{ listing_id: 'listing-blocked' }]),
     );
@@ -103,12 +105,8 @@ describe('StaysAvailabilityService', () => {
   });
 
   it('should return true from isListingAvailable when listing is not unavailable', async () => {
-    bookingRepo.createQueryBuilder.mockReturnValue(
-      mockQueryBuilder([]),
-    );
-    availabilityRepo.createQueryBuilder.mockReturnValue(
-      mockQueryBuilder([]),
-    );
+    bookingRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder([]));
+    availabilityRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder([]));
 
     const available = await service.isListingAvailable(
       'listing-ok',
@@ -123,9 +121,7 @@ describe('StaysAvailabilityService', () => {
     bookingRepo.createQueryBuilder.mockReturnValue(
       mockQueryBuilder([{ listing_id: 'listing-ok' }]),
     );
-    availabilityRepo.createQueryBuilder.mockReturnValue(
-      mockQueryBuilder([]),
-    );
+    availabilityRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder([]));
 
     const available = await service.isListingAvailable(
       'listing-ok',

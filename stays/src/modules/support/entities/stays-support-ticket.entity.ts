@@ -52,7 +52,12 @@ export class StaysSupportTicket {
   category: SupportTicketCategory;
 
   /** Immutable snapshot at create. ar | fr | en, or null if unknown/unsupported. */
-  @Column({ type: 'varchar', length: 10, name: 'requester_language', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 10,
+    name: 'requester_language',
+    nullable: true,
+  })
   requester_language: string | null;
 
   @Column({ type: 'text' })
@@ -65,10 +70,20 @@ export class StaysSupportTicket {
   priority: SupportTicketPriority;
 
   /** Optional structured outcome. Not required on RESOLVED/CLOSED. Preserved on reopen. */
-  @Column({ type: 'varchar', length: 32, name: 'resolution_type', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 32,
+    name: 'resolution_type',
+    nullable: true,
+  })
   resolution_type: string | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'assigned_admin_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'assigned_admin_id',
+    nullable: true,
+  })
   assigned_admin_id: string | null;
 
   @Column({ type: 'uuid', name: 'conversation_id', unique: true })
@@ -92,17 +107,31 @@ export class StaysSupportTicket {
   @Column({ type: 'text', name: 'last_message_preview', nullable: true })
   last_message_preview: string | null;
 
-  @Column({ type: 'varchar', length: 256, name: 'customer_name', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 256,
+    name: 'customer_name',
+    nullable: true,
+  })
   customer_name: string | null;
 
-  @Column({ type: 'varchar', length: 256, name: 'requester_email', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 256,
+    name: 'requester_email',
+    nullable: true,
+  })
   requester_email: string | null;
 
   @Column({ type: 'timestamptz', name: 'resolved_at', nullable: true })
   resolved_at: Date | null;
 
   /** Set once on first successful admin SUPPORT message (never cleared). */
-  @Column({ type: 'timestamptz', name: 'first_admin_response_at', nullable: true })
+  @Column({
+    type: 'timestamptz',
+    name: 'first_admin_response_at',
+    nullable: true,
+  })
   first_admin_response_at: Date | null;
 
   /** Set on CLOSED. Cleared on reopen so a later close is a real second close. */
@@ -113,11 +142,21 @@ export class StaysSupportTicket {
    * Assignee at first CLOSED. Immutable attribution for CSAT agent rating.
    * Null when the ticket was unassigned at close.
    */
-  @Column({ type: 'varchar', length: 128, name: 'review_agent_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'review_agent_id',
+    nullable: true,
+  })
   review_agent_id: string | null;
 
   /** Display name snapshotted with review_agent_id on first CLOSED. */
-  @Column({ type: 'varchar', length: 256, name: 'review_agent_name', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 256,
+    name: 'review_agent_name',
+    nullable: true,
+  })
   review_agent_name: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })

@@ -48,7 +48,10 @@ export type OutboundHttpsFetchOptions = {
 export async function resolvePublicAddressesOnly(
   hostname: string,
 ): Promise<ResolvedAddress[]> {
-  const host = hostname.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  const host = hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '');
   const literalVersion = isIP(host);
   if (literalVersion === 4 || literalVersion === 6) {
     if (isBlockedIpAddress(host)) {
@@ -79,7 +82,7 @@ export async function resolvePublicAddressesOnly(
 
   return results.map((r) => ({
     address: r.address,
-    family: (r.family === 6 ? 6 : 4) as 4 | 6,
+    family: r.family === 6 ? 6 : 4,
   }));
 }
 

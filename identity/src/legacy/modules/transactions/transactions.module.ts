@@ -54,7 +54,11 @@ import { KycMoneyMovementMiddleware } from '../compliance/kyc-policy/kyc-money-m
     EMIModule.register(),
     KycPolicyModule,
   ],
-  controllers: [TransactionsController, TransfersController, RecipientsController],
+  controllers: [
+    TransactionsController,
+    TransfersController,
+    RecipientsController,
+  ],
   providers: [TransactionsService, RecipientsService],
   exports: [TransactionsService, TypeOrmModule],
 })

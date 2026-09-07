@@ -11,7 +11,10 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupportTicketsService } from './support-tickets.service';
-import { CreateSupportTicketDto, CreateSupportTicketCsatDto } from './dto/support-ticket.dto';
+import {
+  CreateSupportTicketDto,
+  CreateSupportTicketCsatDto,
+} from './dto/support-ticket.dto';
 
 @ApiTags('Support')
 @Controller('support')

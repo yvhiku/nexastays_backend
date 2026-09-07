@@ -194,7 +194,10 @@ export class UsersController {
   @ApiBearerAuth('bearer')
   @ApiOperation({ summary: 'Change phone number (OTP verification required)' })
   @ApiResponse({ status: 200, description: 'Phone updated' })
-  @ApiResponse({ status: 400, description: 'Invalid OTP or phone already in use' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid OTP or phone already in use',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async changePhone(
     @CurrentUser() user: { userId: string },

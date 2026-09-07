@@ -33,7 +33,10 @@ export class SupportQualitySignalsService {
     private readonly ops: OperationalIntelligenceService,
   ) {}
 
-  async evaluateAfterCsat(agentId: string | null | undefined, category: string) {
+  async evaluateAfterCsat(
+    agentId: string | null | undefined,
+    category: string,
+  ) {
     if (agentId) await this.evaluateAgentQuality(agentId);
     await this.evaluateCategoryOutcome(category);
   }
@@ -58,7 +61,11 @@ export class SupportQualitySignalsService {
     const metrics = await this.performance.forAgent(agentId, window);
     const min = supportMinReviewsForQualitySignal();
     const csatKey = signalDedupeKey('AGENT_LOW_CSAT_PATTERN', 'ADMIN', agentId);
-    const solvedKey = signalDedupeKey('AGENT_LOW_SOLVED_RATE', 'ADMIN', agentId);
+    const solvedKey = signalDedupeKey(
+      'AGENT_LOW_SOLVED_RATE',
+      'ADMIN',
+      agentId,
+    );
     const upserts: DesiredSignal[] = [];
     const resolveKeys: string[] = [];
     const resolveMetadata: Record<string, Record<string, unknown>> = {};
@@ -131,7 +138,9 @@ export class SupportQualitySignalsService {
     const baselineDays = supportSlaBaselineDays();
     const now = new Date();
     const recentFrom = new Date(now.getTime() - recentDays * 86400000);
-    const baselineFrom = new Date(recentFrom.getTime() - baselineDays * 86400000);
+    const baselineFrom = new Date(
+      recentFrom.getTime() - baselineDays * 86400000,
+    );
     const [recentMap, baselineMap] = await Promise.all([
       this.performance.queryAgentPeriod(recentFrom, now),
       this.performance.queryAgentPeriod(baselineFrom, recentFrom),
@@ -189,7 +198,9 @@ export class SupportQualitySignalsService {
     const baselineDays = supportCategoryBaselineDays();
     const now = new Date();
     const recentFrom = new Date(now.getTime() - recentDays * 86400000);
-    const baselineFrom = new Date(recentFrom.getTime() - baselineDays * 86400000);
+    const baselineFrom = new Date(
+      recentFrom.getTime() - baselineDays * 86400000,
+    );
     const recentWindow = {
       from: recentFrom,
       toExclusive: now,
@@ -206,7 +217,11 @@ export class SupportQualitySignalsService {
     ]);
     const recent = recentRows.find((row) => row.category === category);
     const previous = baselineRows.find((row) => row.category === category);
-    const key = signalDedupeKey('CATEGORY_OUTCOME_DECLINE', 'CATEGORY', category);
+    const key = signalDedupeKey(
+      'CATEGORY_OUTCOME_DECLINE',
+      'CATEGORY',
+      category,
+    );
     const min = supportMinReviewsForCategorySignal();
     const recentRate = recent?.problemSolvedRate ?? null;
     const prevRate = previous?.problemSolvedRate ?? null;

@@ -35,9 +35,7 @@ export function computeStableJournalPayloadHash(
       if (cmpType !== 0) return cmpType;
       return a.amount - b.amount;
     });
-  return createHash('sha256')
-    .update(JSON.stringify(normalized))
-    .digest('hex');
+  return createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
 }
 
 export function assertBalancedJournal(lines: JournalLineInput[]): void {

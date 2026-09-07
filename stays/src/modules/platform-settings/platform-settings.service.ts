@@ -60,8 +60,7 @@ export class PlatformSettingsService implements OnModuleInit {
       host_fee_pct: hostPct,
       guest_fee_percent: Math.round(guestPct * 1000) / 10,
       host_fee_percent: Math.round(hostPct * 1000) / 10,
-      total_commission_percent:
-        Math.round((guestPct + hostPct) * 1000) / 10,
+      total_commission_percent: Math.round((guestPct + hostPct) * 1000) / 10,
     };
   }
 

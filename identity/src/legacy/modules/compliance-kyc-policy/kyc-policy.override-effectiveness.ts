@@ -9,9 +9,5 @@ export function isBypassAllLimitsEffective(row: KycAdminOverride): boolean {
   if (version === 0) return true;
   const second = row.bypass_limits_second_approver_admin_id;
   const maker = row.created_by_admin_user_id;
-  return (
-    second != null &&
-    maker != null &&
-    second !== maker
-  );
+  return second != null && maker != null && second !== maker;
 }

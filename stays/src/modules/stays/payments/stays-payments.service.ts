@@ -204,7 +204,9 @@ export class StaysPaymentsService {
       throw new BadRequestException('Mock payment provider is not enabled');
     }
 
-    const booking = await this.bookingRepo.findOne({ where: { id: bookingId } });
+    const booking = await this.bookingRepo.findOne({
+      where: { id: bookingId },
+    });
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
@@ -511,7 +513,11 @@ export class StaysPaymentsService {
           amount,
           currency: booking.currency,
           status: 'SETTLED',
-          metadata: { provider, provider_intent_id: providerIntentId, ...metadata },
+          metadata: {
+            provider,
+            provider_intent_id: providerIntentId,
+            ...metadata,
+          },
         }),
         ledgerRepo.create({
           booking_id: booking.id,
@@ -629,7 +635,9 @@ export class StaysPaymentsService {
     context?: Record<string, unknown>,
   ): Promise<void> {
     if (!providerIntentId) return;
-    const result = await this.cmiProvider.voidAuthorization({ providerIntentId });
+    const result = await this.cmiProvider.voidAuthorization({
+      providerIntentId,
+    });
     const intent = await this.intentRepo.findOne({
       where: { provider: 'cmi', provider_intent_id: providerIntentId },
     });
@@ -669,7 +677,9 @@ export class StaysPaymentsService {
       order: { created_at: 'DESC' },
     });
     if (!intent?.provider_intent_id) {
-      this.logger.warn(`No SUCCEEDED CMI intent to refund for booking ${bookingId}`);
+      this.logger.warn(
+        `No SUCCEEDED CMI intent to refund for booking ${bookingId}`,
+      );
       return false;
     }
 
@@ -695,7 +705,8 @@ export class StaysPaymentsService {
       await this.alerting?.alert({
         key: ObsEvents.PAYMENT_REFUND_REQUIRED,
         severity: 'P1',
-        message: 'CMI Credit refund failed after cancellation ledger REFUND PENDING',
+        message:
+          'CMI Credit refund failed after cancellation ledger REFUND PENDING',
         fingerprint: `cmi-refund-failed:${bookingId}`,
         force: true,
         context: {
@@ -744,13 +755,10 @@ export class StaysPaymentsService {
     intentId: string,
     metadata: Record<string, unknown>,
   ): Promise<void> {
-    await this.intentRepo.update(
-      { id: intentId },
-      {
-        metadata,
-        updated_at: new Date(),
-      } as Parameters<Repository<StaysPaymentIntent>['update']>[1],
-    );
+    await this.intentRepo.update({ id: intentId }, {
+      metadata,
+      updated_at: new Date(),
+    } as Parameters<Repository<StaysPaymentIntent>['update']>[1]);
   }
 
   private async findMockIntentForBooking(

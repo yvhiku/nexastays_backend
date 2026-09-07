@@ -58,25 +58,60 @@ export class StaysBooking {
   @Column({ type: 'decimal', precision: 18, scale: 2, name: 'total_subtotal' })
   total_subtotal: number;
 
-  @Column({ type: 'decimal', precision: 18, scale: 2, name: 'guest_fee', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 18,
+    scale: 2,
+    name: 'guest_fee',
+    default: 0,
+  })
   guest_fee: number;
 
-  @Column({ type: 'decimal', precision: 18, scale: 2, name: 'host_fee', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 18,
+    scale: 2,
+    name: 'host_fee',
+    default: 0,
+  })
   host_fee: number;
 
-  @Column({ type: 'decimal', precision: 18, scale: 2, name: 'total_paid', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 18,
+    scale: 2,
+    name: 'total_paid',
+    nullable: true,
+  })
   total_paid: number | null;
 
-  @Column({ type: 'decimal', precision: 18, scale: 2, name: 'payout_amount', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 18,
+    scale: 2,
+    name: 'payout_amount',
+    nullable: true,
+  })
   payout_amount: number | null;
 
   @Column({ type: 'char', length: 3, default: 'MAD' })
   currency: string;
 
-  @Column({ type: 'varchar', length: 64, name: 'idempotency_key', nullable: true, unique: true })
+  @Column({
+    type: 'varchar',
+    length: 64,
+    name: 'idempotency_key',
+    nullable: true,
+    unique: true,
+  })
   idempotency_key: string | null;
 
-  @Column({ type: 'varchar', length: 128, name: 'payment_intent_id', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 128,
+    name: 'payment_intent_id',
+    nullable: true,
+  })
   payment_intent_id: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })

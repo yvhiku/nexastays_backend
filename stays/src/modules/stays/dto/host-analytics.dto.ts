@@ -104,14 +104,16 @@ export class HostAnalyticsPropertyHealthDto {
   @ApiProperty() completion_percentage: number;
   @ApiProperty() photos_complete: boolean;
   @ApiProperty({
-    description: 'Per-listing calendar readiness (NONE | ACTIVE | SYNCING | ERROR | PAUSED | MIXED)',
+    description:
+      'Per-listing calendar readiness (NONE | ACTIVE | SYNCING | ERROR | PAUSED | MIXED)',
   })
   calendar_status: string;
   @ApiProperty({ type: [HostAnalyticsHealthMissingDto] })
   missing: HostAnalyticsHealthMissingDto[];
   @ApiProperty({
     type: [String],
-    description: 'Attention flags derived from existing signals (no composite score)',
+    description:
+      'Attention flags derived from existing signals (no composite score)',
   })
   attention: string[];
 }

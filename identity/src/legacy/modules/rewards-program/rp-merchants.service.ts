@@ -115,15 +115,20 @@ export class RpMerchantsService {
     const o = await this.offerRepo.findOne({ where: { id } });
     if (!o) throw new NotFoundException('Offer not found');
     if (patch.merchant_name != null) o.merchant_name = patch.merchant_name;
-    if (patch.merchant_logo !== undefined) o.merchant_logo = patch.merchant_logo ?? null;
-    if (patch.category_id !== undefined) o.category_id = patch.category_id ?? null;
+    if (patch.merchant_logo !== undefined)
+      o.merchant_logo = patch.merchant_logo ?? null;
+    if (patch.category_id !== undefined)
+      o.category_id = patch.category_id ?? null;
     if (patch.offer_type != null) o.offer_type = patch.offer_type;
     if (patch.offer_title != null) o.offer_title = patch.offer_title;
     if (patch.offer_description !== undefined)
       o.offer_description = patch.offer_description ?? null;
     if (patch.boost_rate !== undefined && patch.boost_rate != null)
       o.boost_rate = String(patch.boost_rate);
-    if (patch.points_multiplier !== undefined && patch.points_multiplier != null)
+    if (
+      patch.points_multiplier !== undefined &&
+      patch.points_multiplier != null
+    )
       o.points_multiplier = String(patch.points_multiplier);
     if (patch.voucher_value !== undefined && patch.voucher_value != null)
       o.voucher_value = String(patch.voucher_value);

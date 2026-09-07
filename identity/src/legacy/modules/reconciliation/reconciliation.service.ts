@@ -343,8 +343,7 @@ export class ReconciliationService {
       residual_safeguarding_minus_customers_mad: Number(
         (safeguarding - customer).toFixed(2),
       ),
-      note:
-        'In the simple mirror model, safeguarding and customer-liability signed totals typically move together; drift indicates fees/rewards/manual journals — investigate with finance.',
+      note: 'In the simple mirror model, safeguarding and customer-liability signed totals typically move together; drift indicates fees/rewards/manual journals — investigate with finance.',
     };
   }
 

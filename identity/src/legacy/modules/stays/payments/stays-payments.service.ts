@@ -63,9 +63,7 @@ export class StaysPaymentsService {
     }
 
     if (booking.status !== 'PAYMENT_PENDING') {
-      throw new BadRequestException(
-        'Booking is not in PAYMENT_PENDING status',
-      );
+      throw new BadRequestException('Booking is not in PAYMENT_PENDING status');
     }
 
     if (idempotencyKey) {
@@ -114,15 +112,13 @@ export class StaysPaymentsService {
     }
 
     if (booking.status !== 'PAYMENT_PENDING') {
-      throw new BadRequestException(
-        'Booking is not in PAYMENT_PENDING status',
-      );
+      throw new BadRequestException('Booking is not in PAYMENT_PENDING status');
     }
 
     const listing = (await this.listingRepo.findOne({
       where: { id: booking.listing_id },
       relations: ['host'],
-    })) as StaysListing & { host: User } | null;
+    })) as (StaysListing & { host: User }) | null;
 
     if (!listing?.host) {
       throw new BadRequestException('Host not found for this listing');
@@ -269,14 +265,16 @@ export class StaysPaymentsService {
       const guest = confirmedBooking.guest as User | null;
       const guestName = guest?.full_name ?? 'A guest';
       const total = Number(confirmedBooking.total_paid ?? 0);
-      this.notificationsService.sendToUser(hostUserId, {
-        title: 'New booking',
-        body: `${guestName} booked your listing`,
-        reference: intent.booking_id,
-        amount: String(total),
-        direction: 'incoming',
-        event: 'STAYS_BOOKING',
-      }).catch(() => {});
+      this.notificationsService
+        .sendToUser(hostUserId, {
+          title: 'New booking',
+          body: `${guestName} booked your listing`,
+          reference: intent.booking_id,
+          amount: String(total),
+          direction: 'incoming',
+          event: 'STAYS_BOOKING',
+        })
+        .catch(() => {});
     }
   }
 

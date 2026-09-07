@@ -35,12 +35,19 @@ export class IdentitySnapshotClient {
   ): Promise<IdentitySnapshot | null> {
     if (!authorizationHeader?.startsWith('Bearer ')) return null;
     if (!userId?.trim()) {
-      this.logger.warn('Identity snapshot skipped — userId (JWT sub) is required');
+      this.logger.warn(
+        'Identity snapshot skipped — userId (JWT sub) is required',
+      );
       return null;
     }
-    const snapshot = await this.readModel.getSnapshot(userId.trim(), authorizationHeader);
+    const snapshot = await this.readModel.getSnapshot(
+      userId.trim(),
+      authorizationHeader,
+    );
     if (!snapshot) {
-      this.logger.warn('Identity snapshot unavailable (cache miss + API failure)');
+      this.logger.warn(
+        'Identity snapshot unavailable (cache miss + API failure)',
+      );
       return null;
     }
     return snapshot as unknown as IdentitySnapshot;

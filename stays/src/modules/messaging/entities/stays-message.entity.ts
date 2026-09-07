@@ -29,7 +29,12 @@ export type MessageType =
   | 'CARD'
   | 'CUSTOM';
 
-export type MessageStatus = 'PENDING' | 'PERSISTED' | 'DELIVERED' | 'READ' | 'FAILED';
+export type MessageStatus =
+  | 'PENDING'
+  | 'PERSISTED'
+  | 'DELIVERED'
+  | 'READ'
+  | 'FAILED';
 
 @Entity('stays_messages')
 export class StaysMessage {
@@ -39,7 +44,9 @@ export class StaysMessage {
   @Column({ type: 'uuid', name: 'conversation_id' })
   conversation_id: string;
 
-  @ManyToOne(() => StaysConversation, (c) => c.messages, { onDelete: 'CASCADE' })
+  @ManyToOne(() => StaysConversation, (c) => c.messages, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'conversation_id' })
   conversation: StaysConversation;
 

@@ -51,7 +51,8 @@ describe('CORS allowlist SEC-005', () => {
     expect(
       resolveCorsAllowlist({
         NEXA_ENV: 'staging',
-        CORS_ORIGINS: 'https://staging.example.com,https://admin.staging.example.com',
+        CORS_ORIGINS:
+          'https://staging.example.com,https://admin.staging.example.com',
       } as NodeJS.ProcessEnv),
     ).toEqual([
       'https://staging.example.com',

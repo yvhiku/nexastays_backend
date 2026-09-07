@@ -33,7 +33,9 @@ export function parseReviewSort(raw?: string | null): ReviewSort {
   return 'newest';
 }
 
-function reviewListOrder(sort: ReviewSort):
+function reviewListOrder(
+  sort: ReviewSort,
+):
   | { created_at: 'DESC' }
   | { rating: 'DESC'; created_at: 'DESC' }
   | { rating: 'ASC'; created_at: 'DESC' } {
@@ -74,7 +76,9 @@ export class StaysReviewsService {
   }
 
   async hasReviewForBooking(bookingId: string): Promise<boolean> {
-    const count = await this.reviewRepo.count({ where: { booking_id: bookingId } });
+    const count = await this.reviewRepo.count({
+      where: { booking_id: bookingId },
+    });
     return count > 0;
   }
 
@@ -123,7 +127,9 @@ export class StaysReviewsService {
     limit = 10,
     sort: ReviewSort = 'newest',
   ) {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId } });
+    const listing = await this.listingRepo.findOne({
+      where: { id: listingId },
+    });
     if (!listing || listing.status !== 'LIVE') {
       throw new NotFoundException('Listing not found');
     }
@@ -180,14 +186,20 @@ export class StaysReviewsService {
     const rating = this.validateRating(body.rating);
     const comment = (body.comment ?? '').trim();
     if (comment.length > 1000) {
-      throw new BadRequestException('Comment is too long (max 1000 characters)');
+      throw new BadRequestException(
+        'Comment is too long (max 1000 characters)',
+      );
     }
     const assetIds = (body.assetIds ?? []).slice(0, 5);
 
     return this.dataSource.transaction(async (manager) => {
-      const booking = await this.assertCanReview(manager, guestUserId, bookingId);
+      const booking = await this.assertCanReview(
+        manager,
+        guestUserId,
+        bookingId,
+      );
 
-      const listing = booking.listing as StaysListing;
+      const listing = booking.listing;
       const reviewRepo = manager.getRepository(StaysListingReview);
       const mediaRepo = manager.getRepository(StaysReviewMedia);
 
@@ -397,7 +409,7 @@ export class StaysReviewsService {
 
     return {
       reviews: rows.map((r) => {
-        const listing = r.listing as StaysListing;
+        const listing = r.listing;
         const media = (r.media ?? [])
           .sort((a, b) => a.display_order - b.display_order)
           .map((m) => ({
@@ -467,8 +479,14 @@ export class StaysReviewsService {
     return this.resolveReviewMediaPath(assetId, { publishedOnly: true });
   }
 
-  async getAdminReviewMediaPath(reviewId: string, assetId: string): Promise<string> {
-    return this.resolveReviewMediaPath(assetId, { publishedOnly: false, reviewId });
+  async getAdminReviewMediaPath(
+    reviewId: string,
+    assetId: string,
+  ): Promise<string> {
+    return this.resolveReviewMediaPath(assetId, {
+      publishedOnly: false,
+      reviewId,
+    });
   }
 
   private async resolveReviewMediaPath(
@@ -480,7 +498,7 @@ export class StaysReviewsService {
       relations: ['review'],
     });
     if (!media) throw new NotFoundException('Media not found');
-    const review = media.review as StaysListingReview;
+    const review = media.review;
     if (opts.reviewId && review.id !== opts.reviewId) {
       throw new NotFoundException('Media not found');
     }
@@ -504,7 +522,9 @@ export class StaysReviewsService {
     manager: EntityManager,
     guestUserId: string,
     bookingId: string,
-  ): Promise<StaysBooking & { listing: StaysListing; occupants?: StaysBookingOccupant[] }> {
+  ): Promise<
+    StaysBooking & { listing: StaysListing; occupants?: StaysBookingOccupant[] }
+  > {
     const bookingRepo = manager.getRepository(StaysBooking);
     const reviewRepo = manager.getRepository(StaysListingReview);
 
@@ -541,7 +561,7 @@ export class StaysReviewsService {
       booking.completed_at = completedAt;
     }
 
-    const listing = booking.listing as StaysListing;
+    const listing = booking.listing;
     const reviewableListingStatuses: StaysListing['status'][] = [
       'LIVE',
       'PAUSED',

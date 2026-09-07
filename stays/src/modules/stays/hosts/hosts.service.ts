@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
@@ -98,13 +95,16 @@ export class HostsService {
       throw new BadRequestException('No file uploaded');
     }
     if (file.size > MAX_DOC_SIZE) {
-      throw new BadRequestException(`File too large. Max ${MAX_DOC_SIZE / 1024 / 1024}MB`);
+      throw new BadRequestException(
+        `File too large. Max ${MAX_DOC_SIZE / 1024 / 1024}MB`,
+      );
     }
     const detected = detectImageType(file.buffer);
     if (!detected) {
       throw new BadRequestException('Invalid image. Use JPEG, PNG, or WebP');
     }
-    const ext = detected === 'png' ? '.png' : detected === 'webp' ? '.webp' : '.jpg';
+    const ext =
+      detected === 'png' ? '.png' : detected === 'webp' ? '.webp' : '.jpg';
     const mime =
       detected === 'png'
         ? 'image/png'

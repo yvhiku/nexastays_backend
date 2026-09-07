@@ -80,7 +80,11 @@ export class RidesService {
     if (dto.ride_type && (dto.distance_km != null || dto.pickup_lat != null)) {
       let distanceKm = dto.distance_km;
       let durationMin = dto.duration_min;
-      if (distanceKm == null && dto.pickup_lat != null && dto.dropoff_lat != null) {
+      if (
+        distanceKm == null &&
+        dto.pickup_lat != null &&
+        dto.dropoff_lat != null
+      ) {
         distanceKm = this.goPricingService.calculateDistance(
           dto.pickup_lat,
           dto.pickup_lng!,
@@ -162,8 +166,14 @@ export class RidesService {
     ride.status = 'ACCEPTED';
     ride.accepted_at = new Date();
 
-    const existingEstimate = ride.fare_estimate as { passengerTotal?: number; bookingFee?: number } | null;
-    if (existingEstimate?.passengerTotal != null && existingEstimate?.bookingFee != null) {
+    const existingEstimate = ride.fare_estimate as {
+      passengerTotal?: number;
+      bookingFee?: number;
+    } | null;
+    if (
+      existingEstimate?.passengerTotal != null &&
+      existingEstimate?.bookingFee != null
+    ) {
       await this.rideLedger.holdFunds(
         ride.rider_user_id,
         existingEstimate.passengerTotal,
@@ -251,9 +261,7 @@ export class RidesService {
 
     const vehicleType = ride.vehicle_type ?? ride.ride_type;
     const useConfigPricing =
-      vehicleType &&
-      finalDistanceKm != null &&
-      finalDurationMin != null;
+      vehicleType && finalDistanceKm != null && finalDurationMin != null;
 
     if (useConfigPricing) {
       const finalFare = await this.goPricingService.getFinalFare(
@@ -375,24 +383,21 @@ export class RidesService {
                 },
               ];
 
-        const ledgerTxn = await this.ledgerPostingService.postJournal(
-          manager,
-          {
-            idempotencyKey: `go_ride:legacy_complete:${rideId}`,
-            reference: ref,
-            description: `Nexa Go ride fare completion - Ride ${rideId}`,
-            metadata: {
-              service: 'GO_RIDE',
-              ride_id: rideId,
-              fare,
-              commission_rate: commissionRate,
-              commission_amount: commission,
-              driver_earnings: driverAmount,
-              path: 'legacy_fare_completion',
-            },
-            lines,
+        const ledgerTxn = await this.ledgerPostingService.postJournal(manager, {
+          idempotencyKey: `go_ride:legacy_complete:${rideId}`,
+          reference: ref,
+          description: `Nexa Go ride fare completion - Ride ${rideId}`,
+          metadata: {
+            service: 'GO_RIDE',
+            ride_id: rideId,
+            fare,
+            commission_rate: commissionRate,
+            commission_amount: commission,
+            driver_earnings: driverAmount,
+            path: 'legacy_fare_completion',
           },
-        );
+          lines,
+        });
 
         const appTxReference = `TAXI-${rideId}-${Date.now()}`;
         await manager.getRepository(AppTransaction).save({
@@ -409,8 +414,10 @@ export class RidesService {
       ride.fare_final = fare;
       ride.commission = commission;
       ride.driver_payout = driverAmount;
-      ride.platform_take = (ride.booking_fee != null ? Number(ride.booking_fee) : 0) + commission;
-      ride.passenger_total = fare + (ride.booking_fee != null ? Number(ride.booking_fee) : 0);
+      ride.platform_take =
+        (ride.booking_fee != null ? Number(ride.booking_fee) : 0) + commission;
+      ride.passenger_total =
+        fare + (ride.booking_fee != null ? Number(ride.booking_fee) : 0);
     }
 
     ride.status = 'COMPLETED';

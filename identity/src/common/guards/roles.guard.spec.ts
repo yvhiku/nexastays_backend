@@ -52,6 +52,27 @@ describe('RolesGuard SEC-003', () => {
     expect(authzVersions.getAuthzState).not.toHaveBeenCalled();
   });
 
+  it('Gate3 042 — host-like consumer JWT cannot access ADMIN routes', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['ADMIN']);
+    await expect(
+      guard.canActivate(
+        ctx({ userId: 'host-a', account_type: 'CONSUMER', roles: [] }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('Gate3 047 — SUSPENDED admin fails live authz (status or av mismatch)', async () => {
+    reflector.getAllAndOverride.mockReturnValue(['ADMIN']);
+    authzVersions.getAuthzState.mockResolvedValue({
+      authz_version: 7,
+      status: 'SUSPENDED',
+      account_type: 'ADMIN',
+    });
+    await expect(
+      guard.canActivate(ctx({ userId: 'u1', roles: ['ADMIN'], av: 3 })),
+    ).rejects.toThrow(/revoked/i);
+  });
+
   it('denies ADMIN JWT after demotion (DB account_type != ADMIN)', async () => {
     reflector.getAllAndOverride.mockReturnValue(['ADMIN']);
     authzVersions.getAuthzState.mockResolvedValue({
@@ -60,9 +81,7 @@ describe('RolesGuard SEC-003', () => {
       account_type: 'CONSUMER',
     });
     await expect(
-      guard.canActivate(
-        ctx({ userId: 'u1', roles: ['ADMIN'], av: 3 }),
-      ),
+      guard.canActivate(ctx({ userId: 'u1', roles: ['ADMIN'], av: 3 })),
     ).rejects.toThrow(/revoked/i);
   });
 
@@ -74,9 +93,7 @@ describe('RolesGuard SEC-003', () => {
       account_type: 'ADMIN',
     });
     await expect(
-      guard.canActivate(
-        ctx({ userId: 'u1', roles: ['ADMIN'], av: 3 }),
-      ),
+      guard.canActivate(ctx({ userId: 'u1', roles: ['ADMIN'], av: 3 })),
     ).rejects.toThrow(/revoked/i);
   });
 
@@ -88,9 +105,7 @@ describe('RolesGuard SEC-003', () => {
       account_type: 'ADMIN',
     });
     await expect(
-      guard.canActivate(
-        ctx({ userId: 'u1', roles: ['ADMIN'], av: 3 }),
-      ),
+      guard.canActivate(ctx({ userId: 'u1', roles: ['ADMIN'], av: 3 })),
     ).rejects.toThrow(/revoked/i);
   });
 

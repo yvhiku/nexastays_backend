@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -439,5 +440,32 @@ describe('StaysCancellationService', () => {
     expect(ledgerRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'REFUND' }),
     );
+  });
+
+  it('Gate3 045 — foreign host cancel is NotFound and does not mutate booking/ledger', async () => {
+    const booking = mockBooking({
+      listing: {
+        host_user_id: 'host-a',
+        rules: { cancellation_policy: 'FLEXIBLE' },
+      },
+    });
+    bookingRepo.findOne.mockResolvedValue(booking);
+
+    await expect(
+      service.cancel('booking-1', 'host-b', 'host', undefined, {}),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(bookingRepo.update).not.toHaveBeenCalled();
+    expect(ledgerRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('Gate3 045 — foreign guest cancel is NotFound and does not mutate', async () => {
+    const booking = mockBooking();
+    bookingRepo.findOne.mockResolvedValue(booking);
+
+    await expect(
+      service.cancel('booking-1', 'guest-2', 'guest', undefined, {}),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(bookingRepo.update).not.toHaveBeenCalled();
+    expect(ledgerRepo.save).not.toHaveBeenCalled();
   });
 });

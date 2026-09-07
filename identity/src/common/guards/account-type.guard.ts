@@ -31,7 +31,8 @@ export class AccountTypeGuard implements CanActivate {
     // OTP/identity session tokens lack account_type - resolve to real user when UsersService is available
     if (
       !accountType &&
-      (request.user?.type === 'otp_session' || request.user?.type === 'identity_session') &&
+      (request.user?.type === 'otp_session' ||
+        request.user?.type === 'identity_session') &&
       request.user?.phone_number &&
       this.usersService
     ) {

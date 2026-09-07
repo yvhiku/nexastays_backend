@@ -46,7 +46,10 @@ export class SeoGuideService {
     return rows.map((g) => this.toSummary(g, locale));
   }
 
-  async getGuidePage(slug: string, locale: SeoLocale): Promise<SeoGuidePagePayload> {
+  async getGuidePage(
+    slug: string,
+    locale: SeoLocale,
+  ): Promise<SeoGuidePagePayload> {
     const guide = await this.guideRepo.findOne({
       where: { slug, locale, content_status: 'published' },
       relations: ['destination'],
@@ -75,7 +78,8 @@ export class SeoGuideService {
           }
         : null;
 
-    const h1 = guide.seo_title?.replace(/\s*\|\s*Nexa Stays$/i, '') ?? guide.slug;
+    const h1 =
+      guide.seo_title?.replace(/\s*\|\s*Nexa Stays$/i, '') ?? guide.slug;
 
     return {
       pageType: 'guide',
@@ -105,7 +109,11 @@ export class SeoGuideService {
       ],
       indexable,
       seoScore: guide.seo_score,
-      lastmod: (guide.updated_at ?? guide.published_at ?? new Date()).toISOString(),
+      lastmod: (
+        guide.updated_at ??
+        guide.published_at ??
+        new Date()
+      ).toISOString(),
     };
   }
 
@@ -141,8 +149,11 @@ export class SeoGuideService {
       couplesArea: null,
       nomadArea: null,
       topAmenities: intel?.topAmenities ?? [],
-      bestMonth: page.destination?.bestTimeToVisit?.split(';')[0]?.trim() ?? null,
-      safety: page.geoBlocks.find((b) => b.question.toLowerCase().includes('safe'))?.answer ?? null,
+      bestMonth:
+        page.destination?.bestTimeToVisit?.split(';')[0]?.trim() ?? null,
+      safety:
+        page.geoBlocks.find((b) => b.question.toLowerCase().includes('safe'))
+          ?.answer ?? null,
       transport: null,
       snippets: [],
       canonicalUrl: `${siteUrl.replace(/\/$/, '')}${page.canonical}`,
@@ -194,7 +205,9 @@ export class SeoGuideService {
 
   private parseGeoBlocks(
     raw: unknown,
-    intel: Awaited<ReturnType<DestinationIntelligenceService['compute']>> | null,
+    intel: Awaited<
+      ReturnType<DestinationIntelligenceService['compute']>
+    > | null,
   ): GeoBlockDto[] {
     const blocks: GeoBlockDto[] = [];
     if (Array.isArray(raw)) {

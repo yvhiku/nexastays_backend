@@ -26,7 +26,13 @@ export class AdminSearchService {
     const [users, transactions, rides] = await Promise.all([
       this.userRepo
         .createQueryBuilder('u')
-        .select(['u.id', 'u.phone_number', 'u.full_name', 'u.email', 'u.account_type'])
+        .select([
+          'u.id',
+          'u.phone_number',
+          'u.full_name',
+          'u.email',
+          'u.account_type',
+        ])
         .where(
           '(u.phone_number ILIKE :search OR u.full_name ILIKE :search OR u.email ILIKE :search OR u.id::text = :exact)',
           { search, exact: (q || '').trim() },
@@ -35,7 +41,14 @@ export class AdminSearchService {
         .getMany(),
       this.txRepo
         .createQueryBuilder('t')
-        .select(['t.id', 't.reference', 't.amount', 't.status', 't.type', 't.created_at'])
+        .select([
+          't.id',
+          't.reference',
+          't.amount',
+          't.status',
+          't.type',
+          't.created_at',
+        ])
         .where('t.reference ILIKE :search OR t.id::text = :exact', {
           search,
           exact: (q || '').trim(),

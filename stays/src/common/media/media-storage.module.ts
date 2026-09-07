@@ -2,7 +2,10 @@ import { Global, Injectable, Logger, Module } from '@nestjs/common';
 import { LocalMediaStorageBackend } from './local-media-storage';
 import { RemoteMediaStorageBackend } from './remote-media-storage';
 import { S3MediaStorageBackend } from './s3-media-storage';
-import type { MediaStorageBackend, StoredMediaObject } from './media-storage.interface';
+import type {
+  MediaStorageBackend,
+  StoredMediaObject,
+} from './media-storage.interface';
 import {
   assertProductionMediaStorageConfigured,
   hasMediaServiceUrl,

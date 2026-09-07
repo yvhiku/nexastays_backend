@@ -1,6 +1,9 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { MediaStorageBackend, StoredMediaObject } from './media-storage.interface';
+import type {
+  MediaStorageBackend,
+  StoredMediaObject,
+} from './media-storage.interface';
 import {
   assertSafeRelativeStorageKey,
   normalizeRelativeMediaKey,
@@ -8,7 +11,9 @@ import {
 
 /** Local disk — development / explicitly allowed non-production only. */
 export class LocalMediaStorageBackend implements MediaStorageBackend {
-  constructor(private readonly rootDir = process.env.MEDIA_STORAGE_ROOT ?? 'uploads') {}
+  constructor(
+    private readonly rootDir = process.env.MEDIA_STORAGE_ROOT ?? 'uploads',
+  ) {}
 
   async store(params: {
     buffer: Buffer;

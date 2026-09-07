@@ -1,0 +1,133 @@
+[
+  {
+    "name": "identity readiness and DB probe",
+    "result": "PASS",
+    "details": {
+      "status": 200
+    }
+  },
+  {
+    "name": "identity anonymous admin denied",
+    "result": "PASS",
+    "details": {
+      "status": 401
+    }
+  },
+  {
+    "name": "identity forged bearer denied",
+    "result": "PASS",
+    "details": {
+      "status": 401
+    }
+  },
+  {
+    "name": "identity disallowed CORS origin",
+    "result": "PASS",
+    "details": {
+      "status": 200,
+      "allow_origin_present": false
+    }
+  },
+  {
+    "name": "stays readiness and DB probe",
+    "result": "PASS",
+    "details": {
+      "status": 200
+    }
+  },
+  {
+    "name": "stays anonymous admin denied",
+    "result": "PASS",
+    "details": {
+      "status": 401
+    }
+  },
+  {
+    "name": "stays forged bearer denied",
+    "result": "PASS",
+    "details": {
+      "status": 401
+    }
+  },
+  {
+    "name": "stays disallowed CORS origin",
+    "result": "PASS",
+    "details": {
+      "status": 200,
+      "allow_origin_present": false
+    }
+  },
+  {
+    "name": "DEMO OTP send",
+    "result": "PASS",
+    "details": {
+      "status": 200
+    }
+  },
+  {
+    "name": "incorrect OTP rejected",
+    "result": "PASS",
+    "details": {
+      "status": 200,
+      "verified": false
+    }
+  },
+  {
+    "name": "DEMO OTP verifies and creates consumer",
+    "result": "PASS",
+    "details": {
+      "status": 200,
+      "verified": true,
+      "account_count": 1,
+      "has_access_token": true,
+      "has_refresh_cookie": false
+    }
+  },
+  {
+    "name": "expired or consumed DEMO OTP rejected (original checklist requirement)",
+    "result": "FAIL",
+    "details": {
+      "status": 200,
+      "verified": true,
+      "frozen_exception": "DEMO bypass intentionally preserves expiry and consumed-code bypass; not changed"
+    }
+  },
+  {
+    "name": "Sumsub unsigned",
+    "result": "PASS",
+    "details": {
+      "status": 400
+    }
+  },
+  {
+    "name": "Sumsub valid digest",
+    "result": "PASS",
+    "details": {
+      "status": 201
+    }
+  },
+  {
+    "name": "public search/SEO /api/v1/stays/explore",
+    "result": "PASS",
+    "details": {
+      "status": 200,
+      "response_type": "dict"
+    }
+  },
+  {
+    "name": "public search/SEO /api/v1/stays/explore?city=%27%20OR%201%3D1--",
+    "result": "FAIL",
+    "details": {
+      "status": 400,
+      "response_type": "dict"
+    }
+  },
+  {
+    "name": "public search/SEO /api/v1/stays/seo/registry/sitemap",
+    "result": "PASS",
+    "details": {
+      "status": 200,
+      "response_type": "list"
+    }
+  }
+]
