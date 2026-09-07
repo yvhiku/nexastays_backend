@@ -1,0 +1,124 @@
+=== 011/012 env presence (names only, no values) ===
+-rw------- 6383 .env
+-rw------- 6205 .env.bak
+-rw------- 6234 .env.bak.messaging-media-20260906T190626Z
+-rw------- 135 .env.consumers
+-rw------- 329 .env.identity
+-rw------- 5268 .env.jwt-repair.20260901T163559Z
+-rw------- 323 .env.media
+-rw------- 351 .env.notifications
+-rw------- 5792 .env.pre-ghcr.20260902T194437Z
+-rw------- 399 .env.stays
+-rw------- 5494 .env.sumsub-backup.20260901T180007Z
+-- .env keys --
+ADMIN_EMAILS
+ADMIN_PASSWORD_HASH
+API_PREFIX
+AUTH_COOKIE_DOMAIN
+BACKEND_IMAGE_TAG
+BUILD_TIME
+BUILD_VERSION
+CORS_ORIGINS
+DASHBOARD_IMAGE_TAG
+DB_SSL
+DB_SSL_REJECT_UNAUTHORIZED
+DB_SYNCHRONIZE
+DEMO_OTP_CODE
+ENABLE_SWAGGER
+ENVOISMS_API_KEY
+IDENTITY_BASE_URL
+IDENTITY_DATABASE_URL
+IDENTITY_HOST_PORT
+IDENTITY_JWKS_URL
+IMAGE_REGISTRY
+IMAGE_TAG
+INTERNAL_SERVICE_KEY
+JWT_ADMIN_EXPIRES_IN
+JWT_AUDIENCE
+JWT_EXPIRES_IN
+JWT_ISSUER
+JWT_KEY_ID
+JWT_PRIVATE_KEY
+JWT_PUBLIC_KEY
+KYC_HASH_PEPPER
+MEDIA_HOST_PORT
+MEDIA_SERVICE_URL
+MESSAGING_MEDIA_SECRET
+NEXA_ENV
+NODE_ENV
+NOTIFICATIONS_HOST_PORT
+NOTIFICATIONS_SERVICE_URL
+OTP_PEPPER
+PII_ENCRYPTION_KEY
+PLATFORM_IMAGE_TAG
+PUSH_DISABLED
+QR_NFC_HMAC_SECRET
+REDIS_URL
+REFRESH_TOKEN_PEPPER
+SMS_PROVIDER
+STAYS_DATABASE_URL
+STAYS_HOST_PORT
+STAYS_PAYMENT_PROVIDER
+STAYS_PUBLIC_URL
+STAYS_WEB_URL
+SUMSUB_APP_TOKEN
+SUMSUB_BASE_URL
+SUMSUB_LEVEL_NAME
+SUMSUB_MODE
+SUMSUB_SECRET_KEY
+SUMSUB_TOKEN_TTL_SECONDS
+SUMSUB_WEBHOOK_SECRET
+TRUST_PROXY
+TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN
+TWILIO_PHONE_NUMBER
+WEB_IMAGE_TAG
+-- localhost upstream hits --
+# Host Redis published on 127.0.0.1:6379 — containers reach via host-gateway
+# Host-published app ports (compose binds 127.0.0.1 only)
+# Host-side migrate URLs (psql on the VPS → localhost published DB ports).
+IDENTITY_DATABASE_URL
+STAYS_DATABASE_URL
+-- .env.identity localhost keys --
+-- .env.stays localhost keys --
+-- .env.media localhost keys --
+=== 013/014 HTTPS public endpoints ===
+https://nexastays.com -> 301|https://nexastays.com/ location: http://nexastays.co.uk
+https://www.nexastays.com -> 301|https://www.nexastays.com/ location: http://nexastays.co.uk
+https://api.nexastays.com -> 000|https://api.nexastays.com/ location: http://nexastays.co.uk
+https://app.nexastays.com -> 000|https://app.nexastays.com/ location: http://nexastays.co.uk
+=== HTTP->HTTPS redirect sample ===
+http://nexastays.com -> 301 Location: https://nexastays.com/
+http://www.nexastays.com -> 301 location: https://www.nexastays.com/
+=== 015 Cloudflare headers ===
+server: hcdn
+=== 016 nginx/proxy listening ===
+LISTEN 0      4096       127.0.0.1:3001       0.0.0.0:*          
+LISTEN 0      4096       127.0.0.1:3002       0.0.0.0:*          
+LISTEN 0      511          0.0.0.0:443        0.0.0.0:*          
+LISTEN 0      511          0.0.0.0:80         0.0.0.0:*          
+LISTEN 0      511             [::]:443           [::]:*          
+LISTEN 0      511             [::]:80            [::]:*          
+=== 017/018 PG/Redis public bind ===
+LISTEN 0      4096       127.0.0.1:5433       0.0.0.0:*          
+LISTEN 0      4096       127.0.0.1:5434       0.0.0.0:*          
+LISTEN 0      4096       127.0.0.1:6379       0.0.0.0:*          
+nexastays_db-identity-db-1 127.0.0.1:5433->5432/tcp
+nexastays_db-stays-db-1 127.0.0.1:5434->5432/tcp
+nexastays_db-redis-1 127.0.0.1:6379->6379/tcp
+=== 019 firewall ===
+=== 020 container restart policy ===
+/nexa-apps-identity-1 RestartPolicy=unless-stopped Status=running
+/nexa-apps-stays-1 RestartPolicy=unless-stopped Status=running
+/nexastays_db-identity-db-1 RestartPolicy=no Status=running
+/nexastays_db-stays-db-1 RestartPolicy=no Status=running
+=== 021 migration markers (file counts) ===
+41
+59
+=== 022-024 schema probes via docker exec (read-only) ===
+30
+54
+25
+49
+190
+150

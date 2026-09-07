@@ -1,0 +1,10 @@
+phone +212688784409
+send (200, {'sent': True})
+wrong#1 200 False ['verified']
+wrong#2 200 False ['verified']
+wrong#3 200 False ['verified']
+wrong#4 200 False ['verified']
+wrong#5 200 False ['verified']
+wrong#6 400 None Too many attempts. Try again later.
+wrong#7 400 None Too many attempts. Try again later.
+demo_after_lock 400 None Too many attempts. Try again later.

@@ -1,0 +1,22 @@
+=== .ma HTTPS endpoints ===
+https://nexastays.ma -> 307 | server: cloudflare | location: /en | strict-transport-security: max-age=31536000; includeSubDomains; preload
+https://www.nexastays.ma -> 307 | server: cloudflare | location: /en | strict-transport-security: max-age=31536000; includeSubDomains; preload
+https://api.nexastays.ma -> 404 | server: cloudflare |  | strict-transport-security: max-age=31536000; includeSubDomains; preload
+https://identity.nexastays.ma -> 404 | server: cloudflare |  | strict-transport-security: max-age=31536000; includeSubDomains; preload
+https://dashboard.nexastays.ma -> 000 | server: cloudflare |  | strict-transport-security: max-age=31536000; includeSubDomains; preload
+=== HTTP redirect .ma ===
+http://nexastays.ma -> 301 Location: https://nexastays.ma/
+http://www.nexastays.ma -> 301 Location: https://www.nexastays.ma/
+http://api.nexastays.ma -> 301 Location: https://api.nexastays.ma/
+=== identity health public ===
+{"ok":true,"status":"ok","check":"ready","timestamp":"2026-09-07T12:35:21.503Z","uptime":61636.530612496,"db":"connected","service":"nexa-identity"}
+{"ok":true,"status":"ok","check":"ready","timestamp":"2026-09-07T12:35:21.567Z","uptime":60868.478843591,"db":"connected","service":"nexa-stays"}
+=== nginx server_names (grep conf without sudo if readable) ===
+/etc/nginx/sites-enabled/nexastays:    server_name nexastays.ma;
+/etc/nginx/sites-enabled/nexastays:    server_name admin.nexastays.ma;
+/etc/nginx/sites-enabled/nexastays:    server_name identity.nexastays.ma;
+/etc/nginx/sites-enabled/nexastays:    server_name api.nexastays.ma;
+/etc/nginx/sites-enabled/nexastays:    server_name nexastays.ma;
+/etc/nginx/sites-enabled/nexastays:    server_name admin.nexastays.ma;
+/etc/nginx/sites-enabled/nexastays:    server_name identity.nexastays.ma;
+/etc/nginx/sites-enabled/nexastays:    server_name api.nexastays.ma;

@@ -1,0 +1,63 @@
+=== container env hostnames (values redacted to host patterns) ===
+-- nexa-apps-identity-1 --
+NODE_ENV=production
+NEXA_ENV=dogfood
+SUMSUB_MODE=sandbox
+-- nexa-apps-stays-1 --
+NEXA_ENV=dogfood
+NODE_ENV=production
+SUMSUB_MODE=sandbox
+-- nexa-apps-web-1 --
+NODE_ENV=production
+=== follow HTTPS redirects carefully ===
+HTTP/2 301 
+date: Mon, 07 Sep 2026 12:34:57 GMT
+content-type: text/html
+content-length: 795
+location: http://nexastays.co.uk
+platform: hostinger
+panel: hpanel
+content-security-policy: upgrade-insecure-requests
+age: 40
+server: hcdn
+alt-svc: h3=":443"; ma=86400
+x-hcdn-request-id: 49e33db4a89dc81538ee943f0f6f166e-fra-edge4
+x-hcdn-cache-status: HIT
+
+HTTP/2 301 
+date: Mon, 07 Sep 2026 12:34:57 GMT
+content-type: text/html
+content-length: 795
+location: http://nexastays.co.uk
+platform: hostinger
+panel: hpanel
+content-security-policy: upgrade-insecure-requests
+server: hcdn
+alt-svc: h3=":443"; ma=86400
+x-hcdn-request-id: 0bda2cfdff7a404ddbd6b3000311a845-fra-edge5
+x-hcdn-cache-status: MISS
+x-hcdn-upstream-rt: 0.063
+
+HTTP/1.1 404 Not Found
+Server: nginx/1.24.0 (Ubuntu)
+Date: Mon, 07 Sep 2026 12:34:57 GMT
+Content-Type: text/html; charset=utf-8
+Connection: keep-alive
+Content-Security-Policy: default-src 'self'; script-src 'self' https://static.sumsub.com  'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.unsplash.com https://*.tile.openstreetmap.org https://staticmap.openstreetmap.de https://*.basemaps.cartocdn.com https://api.nexastays.ma; font-src 'self' data:; media-src 'self' https://api.nexastays.ma; connect-src 'self' https://nexastays.ma https://identity.nexastays.ma https://api.nexastays.ma https://api.sumsub.com; frame-src 'self' https://api.sumsub.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: no-referrer
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(self "https://api.sumsub.com"), microphone=(self "https://api.sumsub.com"), geolocation=(self)
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+link: </_next/static/media/0b664db7d0c34e73-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/26655915f363546e-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/2b52b515fe0776cc-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/9781e609aab30c9c-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/bfe8c811ed1df969-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/e399f3e068a97f0c-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2", </_next/static/media/fbf4c1a63780e158-s.p.woff2>; rel=preload; as="font"; crossorigin=""; type="font/woff2"
+{"ok":true,"status":"ok","check":"ready","timestamp":"2026-09-07T12:34:57.881Z","uptime":61612.907887244,"db":"connected","service":"nexa-identity"}
+=== public health via nginx ===
+<!DOCTYPE html><html lang="en" dir="ltr" class="__variable_71020d __variable_1d2406"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover
+=== nginx sites ===
+nexastays
+cloudflare-real-ip.conf
+=== ufw without sudo? ===
+ERROR: You need to be root to run this script

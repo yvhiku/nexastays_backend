@@ -4,10 +4,11 @@ Frozen posture: **mock payments**, **DEMO OTP (dogfood)**, **Sumsub sandbox** �
 
 ## Original attachment audit — current for the requested 150 requirements
 
-- **R3 hardening (current):** [2026-09-07 original-checklist R3 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R3.md) — **48 PASS / 0 FAIL / 102 UNVERIFIED**. R3 Gates 1–4 **CLEARED** (incl. VPS encrypted R2 restore). Broader soft-launch matrix still incomplete; production **NOT READY / NOT CERTIFIED**.
-- Baseline original report (pre-R3): [REPORT.md](./2026-09-07-original-checklist-audit/REPORT.md) — was 38 PASS / 2 FAIL / 110 UNVERIFIED.
-- [Exact original 001–150 matrix](./2026-09-07-original-checklist-audit/CHECKLIST.md) (R3-updated rows) and [validation ledger](./2026-09-07-original-checklist-audit/VALIDATION.md).
-- R3 evidence: [evidence/r3/](./2026-09-07-original-checklist-audit/evidence/r3/).
+- **R4 conversion (current):** [2026-09-07 original-checklist R4 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R4.md) — **62 PASS / 0 FAIL / 88 UNVERIFIED**. R3 Gates 1–4 remain cleared. Production **NOT READY / NOT CERTIFIED**.
+- **R3 hardening:** [R3 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R3.md) — Gates 1–4 cleared (lint/OTP/authz/R2 restore).
+- Baseline original report (pre-R3): [REPORT.md](./2026-09-07-original-checklist-audit/REPORT.md).
+- [Exact original 001–150 matrix](./2026-09-07-original-checklist-audit/CHECKLIST.md) (R4-updated rows) and [validation ledger](./2026-09-07-original-checklist-audit/VALIDATION.md).
+- Evidence: [evidence/r3/](./2026-09-07-original-checklist-audit/evidence/r3/), [evidence/r4/](./2026-09-07-original-checklist-audit/evidence/r4/).
 - This matrix retains the requirements from the user's attachment. The R1/R2 checklist below uses **different** requirements for the same numbers and is preserved as a separate historical audit; its results must not be substituted into the original matrix.
 
 ## Alternate-numbered R1/R2 audit (retained history — different IDs)

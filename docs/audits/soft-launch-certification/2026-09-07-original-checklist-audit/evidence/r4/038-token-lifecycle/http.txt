@@ -1,0 +1,10 @@
+ID:038 phone +212788784455
+send (200, {'sent': True})
+otp/verify 200 verified True keys ['access_token', 'account', 'accounts', 'expires_in', 'identity_session_token', 'nexa_profile', 'onboarding', 'otp_session_token', 'refresh_token', 'verified']
+has_access True has_refresh True
+refresh1 200 new_refresh True new_access True
+replay_old_refresh 401 Refresh token was reused; all sessions revoked
+refresh2_new 401 False
+logout 200 {'success': True}
+refresh_after_logout 401 Refresh token was reused; all sessions revoked
+RESULT PASS

@@ -14,6 +14,17 @@
 | Local `restore-encrypted-local-drill.sh` (age) | PASS — [evidence/r3/restore/encrypted-local-drill.txt](evidence/r3/restore/encrypted-local-drill.txt) |
 | VPS `restore-r2-drill.sh` set `2026-09-07_02-15-51_srv1894430` | **PASS** — [evidence/r3/restore/r2-drill-vps.txt](evidence/r3/restore/r2-drill-vps.txt); alerts email+webhook success |
 
+## R4 delta (2026-09-07)
+
+| Activity | Outcome |
+|---|---|
+| 036 OTP attempt lockout HTTP + Jest | PASS — [evidence/r4/036-otp-attempts/](evidence/r4/036-otp-attempts/) |
+| 038 refresh lifecycle HTTP + Jest | PASS — [evidence/r4/038-token-lifecycle/](evidence/r4/038-token-lifecycle/) |
+| 058/062 host verification + upload reject | PASS — [evidence/r4/058-062-host-upload/](evidence/r4/058-062-host-upload/) |
+| VPS infra/HTTPS/schema probes 012–021/024 | PASS subset — [evidence/r4/011-024-vps/](evidence/r4/011-024-vps/) |
+| 065–067, 073 search/lock journeys | remain UNVERIFIED |
+| Matrix after R4 | **62 PASS / 0 FAIL / 88 UNVERIFIED** — [R4 report](reports/2026-09-07_RELEASE_HARDENING_R4.md) |
+
 Full R3 narrative: [reports/2026-09-07_RELEASE_HARDENING_R3.md](reports/2026-09-07_RELEASE_HARDENING_R3.md).
 
 ## Final selected test executions

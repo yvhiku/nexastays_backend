@@ -1,0 +1,14 @@
+PASS src/modules/stays/explore-filter-forwarding.spec.ts
+PASS src/modules/stays/hosts/hosts.upload-oversize.spec.ts
+PASS src/modules/stays/services/host-listings.canlist.spec.ts
+PASS src/modules/stays/services/booking-lifecycle-scheduler.service.spec.ts
+PASS src/modules/stays/services/stays-availability.service.spec.ts
+PASS src/modules/stays/hosts/host-onboarding.service.spec.ts
+PASS src/common/media/media-storage-policy.spec.ts
+
+Test Suites: 7 passed, 7 total
+Tests:       39 passed, 39 total
+Snapshots:   0 total
+Time:        1.441 s
+Ran all test suites matching host-listings.canlist|hosts.upload-oversize|media-storage-policy|explore-filter-forwarding|stays-availability.service.spec|booking-lifecycle-scheduler|host-onboarding.service.spec.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

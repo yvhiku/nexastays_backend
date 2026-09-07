@@ -7,7 +7,9 @@
 
 ## R3 update (same day)
 
-Hardening round **R3** converted original **005** and **034** FAIL→PASS, **041–048** UNVERIFIED→PASS, and completed VPS encrypted R2 restore (Gate 4). Current totals: **48 PASS · 0 FAIL · 102 UNVERIFIED**. R3 Gates 1–4 **CLEARED**; broader soft-launch matrix still incomplete; production **NOT READY**.
+Hardening **R4** converted 14 more original UNVERIFIED→PASS (auth 036/038, host 058/062, VPS infra subset). Current totals: **62 PASS · 0 FAIL · 88 UNVERIFIED**. R3 Gates 1–4 remain cleared; production **NOT READY**. See [R4 report](reports/2026-09-07_RELEASE_HARDENING_R4.md).
+
+Hardening round **R3** converted original **005** and **034** FAIL→PASS, **041–048** UNVERIFIED→PASS, and completed VPS encrypted R2 restore (Gate 4).
 
 Authoritative R3 write-up: [reports/2026-09-07_RELEASE_HARDENING_R3.md](reports/2026-09-07_RELEASE_HARDENING_R3.md). Evidence: [evidence/r3/](evidence/r3/).
 

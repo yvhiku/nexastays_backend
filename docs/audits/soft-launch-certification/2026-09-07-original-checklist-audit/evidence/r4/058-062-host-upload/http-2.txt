@@ -1,0 +1,5 @@
+058 create 400 property title should not exist, property city should not exist, property country should not exist
+058 onboarding_submit 404 Cannot POST /api/v1/stays/host/onboarding/submit
+062 svg_photo 400 Invalid image. Use JPEG, PNG, or WebP
+062 exe_photo 400 Invalid image. Use JPEG, PNG, or WebP
+058 draft_create 400 Host verification required. Your host application must be approved before creating listings.

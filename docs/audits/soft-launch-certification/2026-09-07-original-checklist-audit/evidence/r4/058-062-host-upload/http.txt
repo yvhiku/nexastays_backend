@@ -1,0 +1,4 @@
+auth 200 True
+065 explore 200 count 5
+058 create_listing 400 property title should not exist, property property_type should not exist, listing_type must be one of the following values: APARTMENT, HOTEL, RIAD, VILLA, HOSTEL
+062 svg_upload 404 {"statusCode":404,"timestamp":"2026-09-07T12:34:58.082Z","path":"/api/v1/stays/host/listings/media","message":"Cannot POST /api/v1/stays/host/listings/media","code":"Not Found"}
