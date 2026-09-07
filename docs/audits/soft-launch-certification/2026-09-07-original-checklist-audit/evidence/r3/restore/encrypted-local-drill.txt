@@ -1,0 +1,19 @@
+==> Generating ephemeral age key
+Public key: age1jypjzgd7e2w56p3kfad9vzpvf6k49snjya979gnqdsqnszaru3ks6qmvvm
+==> Recording production container identity (must stay unchanged)
+==> Creating isolated docker network + source/target Postgres 16
+==> Seeding synthetic source data
+CREATE TABLE
+INSERT 0 7
+CREATE TABLE
+INSERT 0 11
+==> pg_dump + age encrypt
+encrypted identity: bytes=2994 sha256=bb50f7d4b7e2…
+encrypted stays: bytes=3066 sha256=d493987c9090…
+==> Decrypt + restore into disposable targets
+PASS restore identity rows=7
+PASS restore stays rows=11
+==> Confirm app DB containers unchanged
+PASS production containers unchanged
+PASS local encrypted restore drill (age) RTO_seconds=4
+NOTE: Cloudflare R2 retrieve still requires restore-r2-drill.sh + /etc/nexa/backup.env

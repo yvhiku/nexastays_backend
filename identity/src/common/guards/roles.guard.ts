@@ -60,7 +60,11 @@ export class RolesGuard implements CanActivate {
       if (state.account_type !== 'ADMIN') {
         throw new ForbiddenException('Administrator privilege revoked');
       }
-      if (state.status === 'FROZEN') {
+      if (
+        state.status === 'FROZEN' ||
+        state.status === 'SUSPENDED' ||
+        state.status === 'BANNED'
+      ) {
         throw new ForbiddenException('Administrator privilege revoked');
       }
       const tokenVersion = Number(user.authz_version ?? user.av);

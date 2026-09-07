@@ -4,7 +4,7 @@ Frozen posture: **mock payments**, **DEMO OTP (dogfood)**, **Sumsub sandbox** �
 
 ## Original attachment audit — current for the requested 150 requirements
 
-- **R3 hardening (current):** [2026-09-07 original-checklist R3 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R3.md) — **47 PASS / 0 FAIL / 103 UNVERIFIED / 0 N/A**. Soft-launch **NOT CERTIFIED** (Gate 4 encrypted restore open; **047** UNVERIFIED). Production **NOT READY / NOT CERTIFIED**.
+- **R3 hardening (current):** [2026-09-07 original-checklist R3 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R3.md) — **48 PASS / 0 FAIL / 102 UNVERIFIED / 0 N/A**. Soft-launch **NOT CERTIFIED** (production R2 restore still open). Production **NOT READY / NOT CERTIFIED**.
 - Baseline original report (pre-R3): [REPORT.md](./2026-09-07-original-checklist-audit/REPORT.md) — was 38 PASS / 2 FAIL / 110 UNVERIFIED.
 - [Exact original 001–150 matrix](./2026-09-07-original-checklist-audit/CHECKLIST.md) (R3-updated rows) and [validation ledger](./2026-09-07-original-checklist-audit/VALIDATION.md).
 - R3 evidence: [evidence/r3/](./2026-09-07-original-checklist-audit/evidence/r3/).

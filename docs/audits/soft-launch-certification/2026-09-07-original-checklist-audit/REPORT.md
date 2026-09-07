@@ -7,7 +7,7 @@
 
 ## R3 update (same day)
 
-Hardening round **R3** converted original **005** and **034** FAIL→PASS, and **041–046 / 048** UNVERIFIED→PASS. **047** and encrypted R2 restore remain open. Current totals: **47 PASS · 0 FAIL · 103 UNVERIFIED**. Soft-launch still **NOT CERTIFIED**; production **NOT READY**.
+Hardening round **R3** converted original **005** and **034** FAIL→PASS, and **041–048** UNVERIFIED→PASS (047 via `AccountStatusGuard`). Gate 4 local age drill PASS; production R2 retrieve still UNVERIFIED. Current totals: **48 PASS · 0 FAIL · 102 UNVERIFIED**. Soft-launch still **NOT CERTIFIED**; production **NOT READY**.
 
 Authoritative R3 write-up: [reports/2026-09-07_RELEASE_HARDENING_R3.md](reports/2026-09-07_RELEASE_HARDENING_R3.md). Evidence: [evidence/r3/](evidence/r3/).
 

@@ -57,7 +57,12 @@ export class RolesGuard implements CanActivate {
       requiredRoles.some(isStaffRole) || userRoles.some(isStaffRole);
     if (staffContext) {
       const state = await this.authzClient.getAuthzState(user.userId);
-      if (state.account_type !== 'ADMIN' || state.status === 'FROZEN') {
+      if (
+        state.account_type !== 'ADMIN' ||
+        state.status === 'FROZEN' ||
+        state.status === 'SUSPENDED' ||
+        state.status === 'BANNED'
+      ) {
         throw new ForbiddenException('Administrator privilege revoked');
       }
       const tokenVersion = Number(user.authz_version ?? user.av);

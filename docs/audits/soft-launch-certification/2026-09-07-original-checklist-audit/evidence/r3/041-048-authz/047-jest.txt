@@ -1,0 +1,19 @@
+PASS src/modules/stays/security/bola-multi-actor-matrix.spec.ts
+PASS src/common/guards/roles.guard.spec.ts
+PASS src/common/guards/account-status.guard.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       19 passed, 19 total
+Snapshots:   0 total
+Time:        0.381 s, estimated 1 s
+Ran all test suites matching src/modules/stays/security/bola-multi-actor-matrix.spec.ts|src/common/guards/account-status.guard.spec.ts|src/common/guards/roles.guard.spec.ts.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+PASS src/common/guards/account-status.guard.spec.ts
+PASS src/common/guards/roles.guard.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       19 passed, 19 total
+Snapshots:   0 total
+Time:        0.677 s, estimated 1 s
+Ran all test suites matching src/common/guards/account-status.guard.spec.ts|src/common/guards/roles.guard.spec.ts.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

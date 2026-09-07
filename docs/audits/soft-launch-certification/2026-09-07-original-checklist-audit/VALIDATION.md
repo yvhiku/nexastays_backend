@@ -9,9 +9,10 @@
 | Land KYC / lint overrides / restore-failure | Committed; regressions retained |
 | Identity + Stays `npm run lint:check` (certified surface) | exit 0; 0 errors — [evidence/r3/005-lint/](evidence/r3/005-lint/) |
 | OTP expiry/consumed unit + dogfood HTTP | PASS — [evidence/r3/034-otp/](evidence/r3/034-otp/) |
-| BOLA / multi-actor authz Jest + HTTP | 041–046, 048 PASS; 047 UNVERIFIED — [evidence/r3/041-048-authz/](evidence/r3/041-048-authz/) |
+| BOLA / multi-actor authz Jest + HTTP | 041–048 PASS (047 AccountStatusGuard) — [evidence/r3/041-048-authz/](evidence/r3/041-048-authz/) |
 | `scripts/test-restore-failure.sh` | PASS |
-| Encrypted `restore-r2-drill.sh` | **not run** (age/rclone/R2 env missing) — [evidence/r3/restore/](evidence/r3/restore/) |
+| Local `restore-encrypted-local-drill.sh` (age) | PASS — [evidence/r3/restore/encrypted-local-drill.txt](evidence/r3/restore/encrypted-local-drill.txt) |
+| Encrypted `restore-r2-drill.sh` | **not run** (rclone/R2 env missing) — [evidence/r3/restore/](evidence/r3/restore/) |
 
 Full R3 narrative: [reports/2026-09-07_RELEASE_HARDENING_R3.md](reports/2026-09-07_RELEASE_HARDENING_R3.md).
 

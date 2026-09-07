@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { DatabaseModule } from './common/database/database.module';
 import { ThrottlerKeyGuard } from './common/guards/throttler-key.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { AccountStatusGuard } from './common/guards/account-status.guard';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { MetricsInterceptor } from './common/metrics';
 import { StaysModule } from './modules/stays/stays.module';
@@ -52,6 +53,7 @@ import { HttpExceptionFilter } from './common/filters';
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_GUARD, useClass: ThrottlerKeyGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: AccountStatusGuard },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
   ],
 })

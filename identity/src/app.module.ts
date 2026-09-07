@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { DatabaseModule } from './common/database/database.module';
 import { ThrottlerKeyGuard } from './common/guards/throttler-key.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { AccountStatusGuard } from './common/guards/account-status.guard';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { MetricsInterceptor } from './common/metrics';
 import { IdentityCoreModule } from './domains/identity-core/identity-core.module';
@@ -14,6 +15,7 @@ import { IdentityComplianceModule } from './domains/identity-compliance/identity
 import { IdentitySecurityModule } from './domains/identity-security/identity-security.module';
 import { DomainEventsModule } from './common/events/domain-events.module';
 import { AdminCoreModule } from './modules/admin/admin-core.module';
+import { AuthzModule } from './modules/authz/authz.module';
 import {
   THROTTLE_DEFAULT,
   THROTTLE_SHORT,
@@ -33,6 +35,7 @@ import { HttpExceptionFilter } from './common/filters';
     IdentitySecurityModule,
     DomainEventsModule,
     AdminCoreModule,
+    AuthzModule,
   ],
   controllers: [AppController],
   providers: [
@@ -40,6 +43,7 @@ import { HttpExceptionFilter } from './common/filters';
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_GUARD, useClass: ThrottlerKeyGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: AccountStatusGuard },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
   ],
 })

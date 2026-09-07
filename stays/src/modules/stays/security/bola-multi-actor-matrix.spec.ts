@@ -1,5 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { AccountStatusGuard } from '../../../common/guards/account-status.guard';
 import { IdentityAuthzClient } from '../../../common/identity/identity-authz.client';
 
 /**
@@ -102,10 +103,10 @@ describe('BOLA multi-actor matrix (041–048)', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
-    it('SUSPENDED staff with stale av after bump is denied (047)', async () => {
+    it('SUSPENDED staff with matching av is denied by status (047)', async () => {
       reflector.getAllAndOverride.mockReturnValue(['ADMIN']);
       authzClient.getAuthzState.mockResolvedValue({
-        authz_version: 9,
+        authz_version: 2,
         status: 'SUSPENDED',
         account_type: 'ADMIN',
         staff_role: 'ADMIN',
@@ -113,6 +114,22 @@ describe('BOLA multi-actor matrix (041–048)', () => {
       await expect(
         guard.canActivate(ctx({ ...actors.admin, av: 2 })),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('SUSPENDED consumer is denied by AccountStatusGuard contract (047)', async () => {
+      reflector.getAllAndOverride.mockReturnValue(false);
+      const statusGuard = new AccountStatusGuard(
+        reflector as never,
+        authzClient as unknown as IdentityAuthzClient,
+      );
+      authzClient.getAuthzState.mockResolvedValue({
+        authz_version: 1,
+        status: 'SUSPENDED',
+        account_type: 'CONSUMER',
+      });
+      await expect(
+        statusGuard.canActivate(ctx(actors.guest)),
+      ).rejects.toThrow(/revoked/i);
     });
   });
 
