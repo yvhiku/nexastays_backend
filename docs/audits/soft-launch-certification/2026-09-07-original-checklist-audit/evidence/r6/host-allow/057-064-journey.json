@@ -1,0 +1,241 @@
+[
+  {
+    "step": "admin_login",
+    "status": 200,
+    "body": {
+      "ok": true,
+      "user_id": "2ca786c3-18df-4b49-a027-f724d0d2f43d"
+    }
+  },
+  {
+    "step": "otp_send",
+    "status": 200,
+    "body": {
+      "sent": true
+    }
+  },
+  {
+    "step": "otp_verify",
+    "status": 200,
+    "body": {
+      "verified": true,
+      "has_access_token": true,
+      "account_id": "55520e09-f027-467b-bbbd-cfb16567f5f7",
+      "onboarding": {
+        "required": true,
+        "status": "NOT_STARTED",
+        "next": "REGISTRATION"
+      },
+      "kyc_status_profile": "PENDING"
+    }
+  },
+  {
+    "step": "kyc_db_seed",
+    "status": 200,
+    "body": "UPDATE 1\nINSERT 0 1\n                  id                  | kyc_status | level |  status  \n--------------------------------------+------------+-------+----------\n 55520e09-f027-467b-bbbd-cfb16567f5f7 | VERIFIED   | BASIC | VERIFIED\n(1 row)\n\nCACHE_CLEARED"
+  },
+  {
+    "step": "057_onboarding_submit",
+    "status": 201,
+    "body": {
+      "id": "7e9db278-2a4a-4377-8361-f3899b2ce590",
+      "application_status": "PENDING",
+      "host_verification_status": null,
+      "identity_status": "VERIFIED",
+      "message": "Host onboarding submitted. Your application will be reviewed shortly.",
+      "statusCode": null
+    }
+  },
+  {
+    "step": "host_me_after_submit",
+    "status": 200,
+    "body": {
+      "is_host": false,
+      "profile_id": "7e9db278-2a4a-4377-8361-f3899b2ce590",
+      "application_status": "PENDING",
+      "host_verification_status": "PENDING",
+      "can_create_listing": false,
+      "kyc_verified": true,
+      "identity_status": "VERIFIED"
+    }
+  },
+  {
+    "step": "admin_host_applications",
+    "status": 200,
+    "body": {
+      "total": 1,
+      "match_count": 1,
+      "profile_id": "7e9db278-2a4a-4377-8361-f3899b2ce590"
+    }
+  },
+  {
+    "step": "057_admin_approve_host",
+    "status": 201,
+    "body": {
+      "id": "7e9db278-2a4a-4377-8361-f3899b2ce590",
+      "status": "APPROVED",
+      "application_status": "APPROVED",
+      "host_user_id": "55520e09-f027-467b-bbbd-cfb16567f5f7",
+      "message": "Host approved"
+    }
+  },
+  {
+    "step": "host_me_after_approve",
+    "status": 200,
+    "body": {
+      "is_host": true,
+      "profile_id": "7e9db278-2a4a-4377-8361-f3899b2ce590",
+      "application_status": "APPROVED",
+      "host_verification_status": "APPROVED",
+      "can_create_listing": true,
+      "can_publish_listing": true,
+      "kyc_verified": true
+    }
+  },
+  {
+    "step": "060_invalid_listing_type",
+    "status": 400,
+    "body": {
+      "statusCode": 400,
+      "timestamp": "2026-09-07T14:03:05.438Z",
+      "path": "/api/v1/stays/host/listings",
+      "message": "listing_type must be one of the following values: APARTMENT, HOTEL, RIAD, VILLA, HOSTEL",
+      "code": "Bad Request"
+    }
+  },
+  {
+    "step": "060_missing_listing_type",
+    "status": 400,
+    "body": {
+      "statusCode": 400,
+      "timestamp": "2026-09-07T14:03:05.748Z",
+      "path": "/api/v1/stays/host/listings",
+      "message": "listing_type must be one of the following values: APARTMENT, HOTEL, RIAD, VILLA, HOSTEL",
+      "code": "Bad Request"
+    }
+  },
+  {
+    "step": "059_create_listing",
+    "status": 201,
+    "body": {
+      "id": "89563d40-4b2f-4b4e-8f52-4905878db359",
+      "status": "DRAFT",
+      "listing_type": null
+    }
+  },
+  {
+    "step": "059_patch_listing",
+    "status": 200,
+    "body": {
+      "id": "89563d40-4b2f-4b4e-8f52-4905878db359",
+      "title": "R6 Soft Launch Probe Apartment",
+      "city": "Casablanca",
+      "status": "DRAFT"
+    }
+  },
+  {
+    "step": "061_upload_photo_1",
+    "status": 201,
+    "body": {
+      "asset_id": "da87d2e2-78d5-4b46-9fff-4ad89962cb66"
+    }
+  },
+  {
+    "step": "061_upload_photo_2",
+    "status": 201,
+    "body": {
+      "asset_id": "39b203cb-7d1a-4634-ad3e-d9440e7eed7e"
+    }
+  },
+  {
+    "step": "061_upload_photo_3",
+    "status": 201,
+    "body": {
+      "asset_id": "0ceff7eb-e095-430b-8eea-74770049b770"
+    }
+  },
+  {
+    "step": "061_upload_photo_4",
+    "status": 201,
+    "body": {
+      "asset_id": "a3921dc9-7dd1-4d1d-b67e-c71069560c4d"
+    }
+  },
+  {
+    "step": "061_upload_photo_5",
+    "status": 201,
+    "body": {
+      "asset_id": "18cc7643-17ad-412e-8605-d7ced2223108"
+    }
+  },
+  {
+    "step": "061_replace_media",
+    "status": 200,
+    "body": {
+      "id": "89563d40-4b2f-4b4e-8f52-4905878db359",
+      "media_len": 5
+    }
+  },
+  {
+    "step": "063_submit_listing",
+    "status": 200,
+    "body": {
+      "id": "89563d40-4b2f-4b4e-8f52-4905878db359",
+      "status": "SUBMITTED",
+      "message": "Listing submitted for review. Our team will review it within 1\u20132 business days.",
+      "completion_percentage": 93
+    }
+  },
+  {
+    "step": "105_admin_get_listing",
+    "status": 200,
+    "body": {
+      "id": "89563d40-4b2f-4b4e-8f52-4905878db359",
+      "status": "SUBMITTED",
+      "title": "R6 Soft Launch Probe Apartment"
+    }
+  },
+  {
+    "step": "063_106_approve_listing",
+    "status": 201,
+    "body": {
+      "status": "APPROVED",
+      "message": "Listing approved"
+    }
+  },
+  {
+    "step": "063_106_set_live",
+    "status": 201,
+    "body": {
+      "status": "LIVE",
+      "message": "Listing is now live"
+    }
+  },
+  {
+    "step": "064_explore_visibility",
+    "status": 200,
+    "body": {
+      "found": true,
+      "note": "Retried with limit=20 (max 48). See 064-explore-ok.json",
+      "listing_id": "89563d40-4b2f-4b4e-8f52-4905878db359"
+    }
+  },
+  {
+    "step": "064_public_listing_get",
+    "status": 200,
+    "body": {
+      "id": "89563d40-4b2f-4b4e-8f52-4905878db359",
+      "status": "LIVE",
+      "title": "R6 Soft Launch Probe Apartment"
+    }
+  },
+  {
+    "step": "064_explore_recheck",
+    "status": 200,
+    "body": {
+      "found": true,
+      "limit": 20,
+      "max_limit": 48
+    }
+  }
+]

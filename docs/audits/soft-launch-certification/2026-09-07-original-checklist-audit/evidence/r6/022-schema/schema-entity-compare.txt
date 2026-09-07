@@ -1,0 +1,7 @@
+=== IDENTITY ===
+missing_entire_tables=[]
+missing_cols_on_deployed=[]
+=== STAYS ===
+missing_entire_tables=[]
+missing_cols_on_deployed=[]
+RESULT PASS

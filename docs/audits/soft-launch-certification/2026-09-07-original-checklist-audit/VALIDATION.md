@@ -31,12 +31,23 @@
 |---|---|
 | 011 env key-name completeness (dogfood) | PASS — [evidence/r5/011-019-infra/](evidence/r5/011-019-infra/) |
 | 019 listen inventory (ufw sudo blocked) | PASS — same |
-| 022 entity↔VPS schema equality | **UNVERIFIED** (Identity missing mapped columns) — [evidence/r5/022-023-schema/](evidence/r5/022-023-schema/) |
-| 023 FK + orphan probes | PASS — same |
+| 022 entity↔VPS schema equality | **UNVERIFIED** after R5; fixed in R6 |
+| 023 FK + orphan probes | PASS — [evidence/r5/022-023-schema/](evidence/r5/022-023-schema/) |
 | 065–067 seeded explore/filters/availability | PASS — [evidence/r5/065-073-search-booking/](evidence/r5/065-073-search-booking/) |
 | 073 lock expire → rebook | PASS — Nest `expirePendingPayments` + HTTP |
 | DB compose `restart: unless-stopped` | Aligned on VPS + repo — [evidence/r5/db-restart/](evidence/r5/db-restart/) |
 | Matrix after R5 | **69 PASS / 0 FAIL / 81 UNVERIFIED** — [R5 report](reports/2026-09-07_RELEASE_HARDENING_R5.md) |
+
+## R6 delta (2026-09-07)
+
+| Activity | Outcome |
+|---|---|
+| 022 Identity/Stays schema migrations + compare | PASS — [evidence/r6/022-schema/](evidence/r6/022-schema/) |
+| 057/059–061/063–064 host allow journey | PASS — [evidence/r6/host-allow/](evidence/r6/host-allow/) |
+| 101–106/108 admin/support | PASS — [evidence/r6/admin-support/](evidence/r6/admin-support/) |
+| 107 guest report | UNVERIFIED (needs conversation) |
+| 129/131–134 live SEO | PASS — [evidence/r6/seo/](evidence/r6/seo/) |
+| Matrix after R6 | **88 PASS / 0 FAIL / 62 UNVERIFIED** — [R6 report](reports/2026-09-07_RELEASE_HARDENING_R6.md) |
 
 Full R3 narrative: [reports/2026-09-07_RELEASE_HARDENING_R3.md](reports/2026-09-07_RELEASE_HARDENING_R3.md).
 

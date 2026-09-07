@@ -1,0 +1,13 @@
+<link rel="canonical" href="https://nexastays.ma/en/listings/89563d40-4b2f-4b4e-8f52-4905878db359"/>
+<meta property="og:title" content="R6 Soft Launch Probe Apartment in Casablanca | Nexa Stays"/>
+<meta property="og:description" content="Book R6 Soft Launch Probe Apartment — a apartment in Casablanca. From 400 MAD/night. Secure booking on Nexa Stays."/>
+<meta property="og:url" content="https://nexastays.ma/en/listings/89563d40-4b2f-4b4e-8f52-4905878db359"/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:image" content="http://127.0.0.1:3002/api/v1/stays/listings/89563d40-4b2f-4b4e-8f52-4905878db359/media/da87d2e2-78d5-4b46-9fff-4ad89962cb66"/>
+<meta property="og:locale:alternate" content="fr_FR"/>
+<meta property="og:locale:alternate" content="ar_MA"/>
+<meta property="og:type" content="website"/>
+<meta name="robots" content="noindex, follow"/>
+<title>R6 Soft Launch Probe Apartment in Casablanca | Nexa Stays</title>
+html_len=186306
+noindex_count=2

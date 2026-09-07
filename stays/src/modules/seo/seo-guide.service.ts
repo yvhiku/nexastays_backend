@@ -1,3 +1,4 @@
+import { isGuideIndexable } from './seo-guide-indexability';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
@@ -13,9 +14,10 @@ import type {
   SeoGuideType,
   SeoLocale,
   DestinationIntelligence,
+  SitemapEntryDto,
 } from './seo.types';
 
-const LOCALES: SeoLocale[] = ['en', 'fr', 'ar'];
+
 
 @Injectable()
 export class SeoGuideService {
@@ -43,7 +45,7 @@ export class SeoGuideService {
       order: { seo_score: 'DESC', slug: 'ASC' },
     });
 
-    return rows.map((g) => this.toSummary(g, locale));
+    return rows.filter(isGuideIndexable).map((g) => this.toSummary(g, locale));
   }
 
   async getGuidePage(
@@ -66,17 +68,14 @@ export class SeoGuideService {
 
     const geoBlocks = this.parseGeoBlocks(guide.geo_blocks_json, intel);
     const path = `/${locale}/guides/${guide.slug}`;
-    const indexable = guide.indexable && guide.seo_score >= 75;
+    const indexable = isGuideIndexable(guide);
+    const translations = await this.guideRepo.find({ where: { slug, content_status: 'published' } });
 
     const relatedGuides = await this.loadRelatedGuides(guide, locale);
-    const cityGuideLink =
-      dest && guide.guide_type !== 'travel'
-        ? {
-            slug: `${dest.slug}-travel-guide`,
-            href: `/${locale}/guides/${dest.slug}-travel-guide`,
-            label: `${dest.name} travel guide`,
-          }
-        : null;
+    const travelGuide = relatedGuides.find((g) => g.guideType === 'travel');
+    const cityGuideLink = travelGuide
+      ? { slug: travelGuide.slug, href: travelGuide.href, label: travelGuide.title }
+      : null;
 
     const h1 =
       guide.seo_title?.replace(/\s*\|\s*Nexa Stays$/i, '') ?? guide.slug;
@@ -92,7 +91,7 @@ export class SeoGuideService {
       h1,
       canonical: path,
       hreflang: Object.fromEntries(
-        LOCALES.map((loc) => [loc, `/${loc}/guides/${guide.slug}`]),
+        translations.filter(isGuideIndexable).map((g) => [g.locale, `/${g.locale}/guides/${guide.slug}`]),
       ),
       robots: indexable ? 'index,follow' : 'noindex,follow',
       bodyHtml: guide.body_html ?? '',
@@ -117,6 +116,16 @@ export class SeoGuideService {
     };
   }
 
+  async listIndexableForSitemap(): Promise<SitemapEntryDto[]> {
+    const guides = await this.guideRepo.find({ where: { content_status: 'published', indexable: true } });
+    return guides.filter(isGuideIndexable).map((g) => ({
+      path: `/${g.locale}/guides/${g.slug}`,
+      locale: g.locale,
+      lastmod: g.updated_at.toISOString(),
+      priority: 0.72,
+    }));
+  }
+
   async buildAiContext(
     slug: string,
     locale: SeoLocale,
@@ -126,7 +135,7 @@ export class SeoGuideService {
     const intel = page.intelligence;
     const summary =
       intel && intel.listingCount > 0
-        ? `${page.h1}: ${intel.listingCount} verified stays on Nexa Stays` +
+        ? `${page.h1}: ${intel.listingCount} live listings on Nexa Stays` +
           (intel.avgNightlyPrice != null
             ? `, average ${intel.avgNightlyPrice} ${intel.currency}/night.`
             : '.')
@@ -177,7 +186,7 @@ export class SeoGuideService {
         take: 6,
       });
       return siblings
-        .filter((g) => g.id !== guide.id)
+        .filter((g) => g.id !== guide.id && isGuideIndexable(g))
         .map((g) => this.toSummary(g, locale));
     }
 
@@ -186,7 +195,7 @@ export class SeoGuideService {
       take: 4,
     });
     return countryGuides
-      .filter((g) => g.id !== guide.id)
+      .filter((g) => g.id !== guide.id && isGuideIndexable(g))
       .map((g) => this.toSummary(g, locale));
   }
 

@@ -134,6 +134,10 @@ export class SeoListingService {
     const apiBase = (
       process.env.STAYS_API_PUBLIC_URL ||
       process.env.NEXT_PUBLIC_STAYS_API_BASE_URL ||
+      // Dogfood/VPS often set STAYS_PUBLIC_URL without /api/v1 — normalize.
+      (process.env.STAYS_PUBLIC_URL
+        ? `${process.env.STAYS_PUBLIC_URL.replace(/\/$/, '')}/api/v1`
+        : '') ||
       'http://127.0.0.1:3002/api/v1'
     ).replace(/\/$/, '');
     const ogImageUrl =

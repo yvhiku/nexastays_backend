@@ -1,0 +1,2 @@
+<meta property="og:image" content="https://api.nexastays.ma/api/v1/stays/listings/89563d40-4b2f-4b4e-8f52-4905878db359/media/da87d2e2-78d5-4b46-9fff-4ad89962cb66"/>
+<meta name="robots" content="noindex, follow"/>

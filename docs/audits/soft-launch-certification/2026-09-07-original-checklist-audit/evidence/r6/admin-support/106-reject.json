@@ -1,0 +1,9 @@
+{
+  "listing_id": "200232cb-3f44-423f-89e0-ab886f447ba9",
+  "submit_status": "see above",
+  "reject_status": 200,
+  "body": {
+    "status": "REJECTED",
+    "message": "Listing rejected"
+  }
+}

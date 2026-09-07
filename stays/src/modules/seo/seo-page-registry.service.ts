@@ -1,3 +1,4 @@
+import { SeoGuideService } from './seo-guide.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,6 +10,7 @@ export class SeoPageRegistryService {
   constructor(
     @InjectRepository(SeoPageRegistry)
     private readonly registryRepo: Repository<SeoPageRegistry>,
+    private readonly guides: SeoGuideService,
   ) {}
 
   async listIndexableForSitemap(): Promise<SitemapEntryDto[]> {
@@ -16,12 +18,13 @@ export class SeoPageRegistryService {
       where: { indexable: true, status: 'published' },
       order: { priority: 'DESC', slug: 'ASC' },
     });
-    return rows.map((r) => ({
+    const guideEntries = await this.guides.listIndexableForSitemap();
+    return [...rows.filter((r) => r.page_type !== 'guide').map((r) => ({
       path: r.path,
       locale: r.locale,
       lastmod: r.lastmod.toISOString(),
       priority: Number(r.priority),
-    }));
+    })), ...guideEntries];
   }
 
   async syncPageEntry(args: {

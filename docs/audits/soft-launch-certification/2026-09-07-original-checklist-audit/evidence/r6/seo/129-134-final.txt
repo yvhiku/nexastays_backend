@@ -1,0 +1,64 @@
+=== robots.txt ===
+HTTP 200
+Content-Signal: search=yes,ai-train=no,use=reference
+Allow: /
+Disallow: /
+Disallow: /
+Disallow: /
+Disallow: /
+Disallow: /
+Disallow: /
+Disallow: /
+Disallow: /
+Disallow: /
+User-Agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /en/bookings
+Disallow: /en/my-bookings
+Disallow: /en/profile
+Disallow: /en/inbox
+Disallow: /en/login
+Disallow: /en/registration
+Disallow: /en/saved-listings
+Disallow: /en/host/dashboard
+Disallow: /en/host/listings
+Disallow: /fr/bookings
+Disallow: /fr/my-bookings
+Disallow: /fr/profile
+Disallow: /fr/inbox
+Disallow: /fr/login
+Disallow: /fr/registration
+Disallow: /fr/saved-listings
+Disallow: /fr/host/dashboard
+Disallow: /fr/host/listings
+Disallow: /ar/bookings
+Disallow: /ar/my-bookings
+Disallow: /ar/profile
+Disallow: /ar/inbox
+Disallow: /ar/login
+Disallow: /ar/registration
+Disallow: /ar/saved-listings
+
+=== homepage /en ===
+HTTP 200 len=221226
+<link rel="canonical" href="https://nexastays.ma/en"/>
+<meta name="robots" content="index, follow"/>
+<meta property="og:title" content="Nexa Stays | Verified Stays in Morocco"/>
+<meta property="og:url" content="https://nexastays.ma/en"/>
+<title>Nexa Stays | Verified Stays in Morocco</title>
+noindex 0
+
+=== listing 89563d40-4b2f-4b4e-8f52-4905878db359 ===
+HTTP 200 len=185417
+<link rel="canonical" href="https://nexastays.ma/en/listings/89563d40-4b2f-4b4e-8f52-4905878db359"/>
+<meta name="robots" content="noindex, follow"/>
+<meta property="og:title" content="R6 Soft Launch Probe Apartment in Casablanca | Nexa Stays"/>
+<meta property="og:image" content="https://api.nexastays.ma/api/v1/stays/listings/89563d40-4b2f-4b4e-8f52-4905878db359/media/da87d2e2-78d5-4b46-9fff-4ad89962cb66"/>
+<meta property="og:url" content="https://nexastays.ma/en/listings/89563d40-4b2f-4b4e-8f52-4905878db359"/>
+<title>R6 Soft Launch Probe Apartment in Casablanca | Nexa Stays</title>
+localhost_og 0
+
+=== stays SEO API ===
+{'robots': 'noindex,follow', 'indexable': False, 'seoScore': 59, 'ogImageUrl': 'https://api.nexastays.ma/api/v1/stays/listings/89563d40-4b2f-4b4e-8f52-4905878db359/media/da87d2e2-78d5-4b46-9fff-4ad89962cb66', 'canonical': '/en/listings/89563d40-4b2f-4b4e-8f52-4905878db359', 'title': 'R6 Soft Launch Probe Apartment in Casablanca | Nexa Stays'}

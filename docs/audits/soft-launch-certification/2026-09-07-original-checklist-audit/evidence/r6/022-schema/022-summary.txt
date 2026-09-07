@@ -1,0 +1,3 @@
+Applied Identity 067 + 068 and Stays 057 on dogfood VPS.
+Entity↔information_schema compare: Identity missing=0, Stays missing=0.
+RESULT PASS

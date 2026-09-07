@@ -1,0 +1,55 @@
+{
+  "listing_id": "89563d40-4b2f-4b4e-8f52-4905878db359",
+  "probes": [
+    {
+      "url": "https://api.nexastays.ma/api/v1/stays/explore?limit=50",
+      "status": 400,
+      "found": false,
+      "count": 0,
+      "body_snip": "{\"statusCode\":400,\"timestamp\":\"2026-09-07T14:03:40.897Z\",\"path\":\"/api/v1/stays/explore?limit=50\",\"message\":\"limit must not be greater than 48\",\"code\":\"Bad Request\"}"
+    },
+    {
+      "url": "https://api.nexastays.ma/api/v1/stays/explore?city=Casablanca&limit=50",
+      "status": 400,
+      "found": false,
+      "count": 0,
+      "body_snip": "{\"statusCode\":400,\"timestamp\":\"2026-09-07T14:03:41.378Z\",\"path\":\"/api/v1/stays/explore?city=Casablanca&limit=50\",\"message\":\"limit must not be greater than 48\",\"code\":\"Bad Request\"}"
+    },
+    {
+      "url": "https://api.nexastays.ma/api/v1/stays/explore?q=R6&limit=20",
+      "status": 400,
+      "found": false,
+      "count": 0,
+      "body_snip": "{\"statusCode\":400,\"timestamp\":\"2026-09-07T14:03:41.744Z\",\"path\":\"/api/v1/stays/explore?q=R6&limit=20\",\"message\":\"property q should not exist\",\"code\":\"Bad Request\"}"
+    },
+    {
+      "url": "https://api.nexastays.ma/api/v1/stays/listings?limit=50",
+      "status": 404,
+      "found": false,
+      "count": 0,
+      "body_snip": "{\"statusCode\":404,\"timestamp\":\"2026-09-07T14:03:42.078Z\",\"path\":\"/api/v1/stays/listings?limit=50\",\"message\":\"Cannot GET /api/v1/stays/listings?limit=50\",\"code\":\"Not Found\"}"
+    }
+  ],
+  "detail_status": "LIVE",
+  "detail_keys": [
+    "id",
+    "title",
+    "listing_type",
+    "city",
+    "avg_rating",
+    "review_count",
+    "geo_lat",
+    "geo_lng",
+    "address",
+    "neighborhood",
+    "status",
+    "checkin_time",
+    "checkout_time",
+    "description",
+    "instant_booking",
+    "rate_plan",
+    "rules",
+    "host",
+    "media"
+  ]
+}

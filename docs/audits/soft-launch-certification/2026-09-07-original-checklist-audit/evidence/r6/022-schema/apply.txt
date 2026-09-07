@@ -1,0 +1,61 @@
+APPLY 067_kyc_provider_event_order.sql
+BEGIN
+ALTER TABLE
+COMMENT
+COMMIT
+INSERT 0 1
+OK 067_kyc_provider_event_order.sql
+068_exists=
+BEGIN
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+COMMIT
+INSERT 0 1
+OK_068
+057_exists=
+BEGIN
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+COMMIT
+INSERT 0 1
+OK_057
+                 filename                 
+------------------------------------------
+ 060_kyc_pii_encryption_columns.sql
+ 061_users_authz_version.sql
+ 062_users_staff_role.sql
+ 063_users_staff_password_hash.sql
+ 064_kyc_provider_dossier.sql
+ 065_kyc_pii_comments_and_text_harden.sql
+ 066_user_notifications_event_id.sql
+ 067_kyc_provider_event_order.sql
+ 068_identity_entity_schema_alignment.sql
+(9 rows)
+
+                  filename                   
+---------------------------------------------
+ 050_support_quality_signals.sql
+ 051_support_agent_performance_snapshots.sql
+ 052_support_agent_coaching_notes.sql
+ 053_seo_locale_fr_ar_content.sql
+ 054_listing_status_paused.sql
+ 055_listing_paused_from_status.sql
+ 056_listing_pause_constraints_harden.sql
+ 057_money_movement_idempotency.sql
+(8 rows)
+

@@ -1,0 +1,190 @@
+=== 129 robots.txt ===
+URL: https://nexastays.ma/robots.txt
+HTTP/2 200 
+date: Mon, 07 Sep 2026 13:57:47 GMT
+content-type: text/plain; charset=utf-8
+content-length: 2635
+server: cloudflare
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=OaeGj1l%2BxA8FPIjwd7AzdKs0dA7hwa28D22AVjEzgkyFzFWyiUaGSs%2FpsKvB%2FGCyEacyCvufrt%2BVO8s%2BM4c%2BdWyg6sRHxxqY%2BQGzMaBZUq0usk%2BRBTpozcBz%2BDWum3Q%3D"}]}
+content-security-policy: default-src 'self'; script-src 'self' https://static.sumsub.com  'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.unsplash.com https://*.tile.openstreetmap.org https://staticmap.openstreetmap.de https://*.basemaps.cartocdn.com https://api.nexastays.ma; font-src 'self' data:; media-src 'self' https://api.nexastays.ma; connect-src 'self' https://nexastays.ma https://identity.nexastays.ma https://api.nexastays.ma https://api.sumsub.com; frame-src 'self' https://api.sumsub.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+x-content-type-options: nosniff
+x-frame-options: DENY
+referrer-policy: no-referrer
+cross-origin-opener-policy: same-origin
+permissions-policy: camera=(self "https://api.sumsub.com"), microphone=(self "https://api.sumsub.com"), geolocation=(self)
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+x-nextjs-cache: HIT
+cache-control: public, max-age=14400, must-revalidate
+cf-cache-status: EXPIRED
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+speculation-rules: "/cdn-cgi/speculation"
+cf-ray: a3763978ed7fc534-LIS
+alt-svc: h3=":443"; ma=86400
+
+--- body ---
+# As a condition of accessing this website, you agree to abide by the following
+# content signals:
+
+# (a)  If a Content-Signal = yes, you may collect content for the corresponding
+#      use.
+# (b)  If a Content-Signal = no, you may not collect content for the
+#      corresponding use.
+# (c)  If the website operator does not include a Content-Signal for a
+#      corresponding use, the website operator neither grants nor restricts
+#      permission via Content-Signal with respect to the corresponding use.
+
+# The content signals and their meanings are:
+
+# search:   building a search index and providing search results (e.g., returning
+#           hyperlinks and short excerpts from your website's contents). Search does not
+#           include providing AI-generated search summaries.
+# ai-input: inputting content into one or more AI models (e.g., retrieval
+#           augmented generation, grounding, or other real-time taking of content for
+#           generative AI search answers).
+# ai-train: training or fine-tuning AI models.
+# use:      how AI systems may consume the content (immediate, reference, or full).
+
+# ANY RESTRICTIONS EXPRESSED VIA CONTENT SIGNALS ARE EXPRESS RESERVATIONS OF
+# RIGHTS UNDER ARTICLE 4 OF THE EUROPEAN UNION DIRECTIVE 2019/790 ON COPYRIGHT
+# AND RELATED RIGHTS IN THE DIGITAL SINGLE MARKET.
+
+# BEGIN Cloudflare Managed content
+
+User-agent: *
+Content-Signal: search=yes,ai-train=no,use=reference
+Allow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CloudflareBrowserRenderingCrawler
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+# END Cloudflare Managed Content
+
+User-Agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /en/bookings
+Disallow: /en/my-bookings
+Disallow: /en/profile
+Disallow: /en/inbox
+Disallow: /en/login
+Disallow: /en/registration
+Disallow: /en/saved-listings
+Disallow: /en/host/dashboard
+Disallow: /en/host/listings
+Disallow: /fr/bookings
+Disallow: /fr/my-bookings
+Disallow: /fr/profile
+Disallow: /fr/inbox
+Disallow: /fr/login
+Disallow: /fr/registration
+Disallow: /fr/saved-listings
+Disallow: /fr/host/dashboard
+Disallow: /fr/host/listings
+Disallow: /ar/bookings
+Disallow: /ar/my-bookings
+Disallow: /ar/profile
+Disallow: /ar/inbox
+Disallow: /ar/login
+Disallow: /ar/registration
+Disallow: /ar/saved-listings
+Disallow: /ar/host/dashboard
+Disallow: /ar/host/listings
+
+Host: https://nexastays.ma
+Sitemap: https://nexastays.ma/sitemap.xml
+
+=== homepage headers+meta sample ===
+HTTP/2 307 
+date: Mon, 07 Sep 2026 13:57:47 GMT
+server: cloudflare
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+content-security-policy: default-src 'self'; script-src 'self' https://static.sumsub.com  'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.unsplash.com https://*.tile.openstreetmap.org https://staticmap.openstreetmap.de https://*.basemaps.cartocdn.com https://api.nexastays.ma; font-src 'self' data:; media-src 'self' https://api.nexastays.ma; connect-src 'self' https://nexastays.ma https://identity.nexastays.ma https://api.nexastays.ma https://api.sumsub.com; frame-src 'self' https://api.sumsub.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+x-content-type-options: nosniff
+x-frame-options: DENY
+referrer-policy: no-referrer
+cross-origin-opener-policy: same-origin
+permissions-policy: camera=(self "https://api.sumsub.com"), microphone=(self "https://api.sumsub.com"), geolocation=(self)
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+location: /en
+set-cookie: nexa_locale=en; Path=/; Expires=Tue, 07 Sep 2027 13:57:47 GMT; Max-Age=31536000
+cf-cache-status: DYNAMIC
+speculation-rules: "/cdn-cgi/speculation"
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=CQBs4tGUY%2FbNRaQ%2FSjztqQbNszKq3XEsnpeHhNlCN4k4J%2BDmX1gvMmn0pv8Cam4kN603XOmImKeSDZ8enQbpz9wnV81A8pFleZohSs%2BsQuh4FzCX5m2k4TrrGnoEKeI%3D"}]}
+cf-ray: a376397aafcd4afd-LIS
+alt-svc: h3=":443"; ma=86400
+
+--- status line ---
+HTTP/2 307 
+--- SEO tags ---
+html_len 3
+noindex_count 0
+=== explore API for a listing id ===
+dict
+keys ['items', 'pagination', 'meta']
+count 3
+[
+  {
+    "id": "b2222222-2222-4222-8222-222222222202",
+    "title": "R5 Seed Villa Blocked Luxury",
+    "city": "Marrakech",
+    "neighborhood": "Hivernage",
+    "listing_type": "VILLA",
+    "geo_lat": 31.6295,
+    "geo_lng": -7.9811,
+    "avg_rating": null,
+    "review_count": 0,
+    "instant_booking": false,
+    "has_walkthrough": false,
+    "placement": "organic",
+    "price": {
+      "base_price": 1800,
+      "currency": "MAD"
+    },
+    "cover": null
+  },
+  {
+    "id": "a1111111-1111-4111-8111-111111111101",
+    "title": "R5 Seed Apartment Available",
+    "city": "Casablanca",
+    "neighborhood": "Maarif",
+    "listing_type": "APARTMENT",
+    "geo_lat": 33.5731,
+    "geo_lng": -7.5898,
+    "avg_rating": null,
+    "review_count": 0,
+    "instant_booking": true,
+    "has_walkthrough": false,
+    "placement": "organic",
+    "price": {
+      "base_price": 450,
+      "currency": "MAD"
+    },
+    "cover": null
+  }
+]

@@ -138,7 +138,7 @@ export class SeoEngineService {
     const geoBlocks = page.geoBlocks;
     const summary =
       page.intelligence.listingCount > 0
-        ? `${page.h1}: ${page.intelligence.listingCount} verified stays on Nexa Stays` +
+        ? `${page.h1}: ${page.intelligence.listingCount} live listings on Nexa Stays` +
           (page.intelligence.avgNightlyPrice != null
             ? `, average ${page.intelligence.avgNightlyPrice} ${page.intelligence.currency}/night.`
             : '.')
@@ -628,7 +628,7 @@ export class SeoEngineService {
     } else if (intel.listingCount > 0) {
       snippets.push({
         type: 'summary',
-        content: `${label}: ${intel.listingCount} verified stays on Nexa Stays.`,
+        content: `${label}: ${intel.listingCount} live listings on Nexa Stays.`,
         confidence: 1,
         source: 'marketplace',
       });

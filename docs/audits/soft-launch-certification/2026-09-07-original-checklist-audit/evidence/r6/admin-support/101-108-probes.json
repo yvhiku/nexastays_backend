@@ -1,0 +1,162 @@
+[
+  {
+    "step": "admin_login",
+    "status": 200,
+    "body": {
+      "ok": true,
+      "method": "POST /auth/admin/login staff_password_hash provisioned",
+      "allowlist_env": "ADMIN_EMAILS+ADMIN_PASSWORD_HASH present on VPS"
+    }
+  },
+  {
+    "step": "101_find_user_by_id",
+    "status": 200,
+    "body": {
+      "total": 0,
+      "count": 0,
+      "ids": []
+    }
+  },
+  {
+    "step": "101_find_user_by_phone",
+    "status": 200,
+    "body": {
+      "total": 1,
+      "found_host": true
+    }
+  },
+  {
+    "step": "102_user_detail",
+    "status": 200,
+    "body": {
+      "id": "55520e09-f027-467b-bbbd-cfb16567f5f7",
+      "kyc_status": "VERIFIED",
+      "account_type": "CONSUMER",
+      "status": null,
+      "phone_number": "+212589789779"
+    }
+  },
+  {
+    "step": "102_user_kyc",
+    "status": 200,
+    "body": {
+      "id": "cd750e0e-d60f-46f4-8d9d-6a5b0a4d7151",
+      "user_id": "55520e09-f027-467b-bbbd-cfb16567f5f7",
+      "level": "BASIC",
+      "status": "VERIFIED",
+      "provider": "manual-r6-seed",
+      "source": "ADMIN",
+      "reference": null,
+      "last_webhook_event_type": null,
+      "last_webhook_received_at": null,
+      "reviewed_at": "2026-09-07T14:03:03.002Z",
+      "reviewed_by": null,
+      "rejection_reason": null,
+      "documents": null,
+      "id_document_url": null,
+      "selfie_url": null
+    }
+  },
+  {
+    "step": "102_kyc_debug",
+    "status": 404,
+    "body": {
+      "statusCode": 404,
+      "timestamp": "2026-09-07T14:03:13.840Z",
+      "path": "/api/v1/admin/kyc/debug/user/55520e09-f027-467b-bbbd-cfb16567f5f7",
+      "message": "Not found",
+      "code": "Not Found"
+    }
+  },
+  {
+    "step": "103_find_booking",
+    "status": 200,
+    "body": {
+      "total": 3,
+      "count": 3
+    }
+  },
+  {
+    "step": "104_booking_detail",
+    "status": 200,
+    "body": {
+      "id": "605645a0-76db-471f-823e-1e4410646d5f",
+      "status": "EXPIRED",
+      "payment_status": null,
+      "listing_id": "a1111111-1111-4111-8111-111111111101",
+      "guest_user_id": "2f7c1945-55b1-4a94-a5db-47b4d558591d",
+      "total_amount": null,
+      "amount_total": null,
+      "payments": null,
+      "payment_history": null
+    }
+  },
+  {
+    "step": "105_review_listings",
+    "status": 200,
+    "body": {
+      "total": 4,
+      "statuses": [
+        "LIVE"
+      ],
+      "has_probe": true
+    }
+  },
+  {
+    "step": "106_approve_listing",
+    "status": 201,
+    "body": {
+      "set_live": 201,
+      "listing_id": "89563d40-4b2f-4b4e-8f52-4905878db359"
+    }
+  },
+  {
+    "step": "106_reject_listing",
+    "status": 400,
+    "body": {
+      "statusCode": 400,
+      "timestamp": "2026-09-07T14:03:16.702Z",
+      "path": "/api/v1/admin/stays/listings/b8c0e71e-dea8-45ff-b797-9b0596f27f0c/reject",
+      "message": "Only SUBMITTED listings can be rejected",
+      "code": "Bad Request"
+    }
+  },
+  {
+    "step": "108_support_ticket_create",
+    "status": 201,
+    "body": {
+      "id": "44326bc5-dcfe-4b89-9ef8-87f200f3c165",
+      "ticket_number": "SUP-2026-000002",
+      "status": "OPEN",
+      "category": "OTHER"
+    }
+  },
+  {
+    "step": "108_admin_list_tickets",
+    "status": 200,
+    "body": {
+      "total": 2,
+      "count": 2
+    }
+  },
+  {
+    "step": "107_list_conversations",
+    "status": 200,
+    "body": []
+  },
+  {
+    "step": "107_admin_reports_list",
+    "status": 200,
+    "body": {
+      "total": 0,
+      "count": 0
+    }
+  },
+  {
+    "step": "107_guest_report",
+    "status": 0,
+    "body": {
+      "blocker": "No messaging conversation available for guest report POST; guest report is conversation-scoped. Admin reports list probed."
+    }
+  }
+]
