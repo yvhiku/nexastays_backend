@@ -1,40 +1,47 @@
-# Gate 4 update — encrypted restore (post-047 work)
+# Gate 4 — Encrypted R2 restore (PASS)
 
-## Local encrypted age drill — PASS
+Date: 2026-09-07  
+Host: `srv1894430` (production VPS)  
+Operator: `nexa` + sudo  
+Set: `2026-09-07_02-15-51_srv1894430`
 
-Command:
+## Command (secrets not logged)
 
 ```bash
-bash scripts/restore-encrypted-local-drill.sh
+sudo /opt/nexa/backup-tools/scripts/restore-r2-drill.sh \
+  --backup-set '2026-09-07_02-15-51_srv1894430' \
+  --age-key-file /run/nexa-recovery/age-key.txt
+# age key removed after drill
 ```
 
-Evidence: [encrypted-local-drill.txt](./encrypted-local-drill.txt)
+## Result (redacted operator log)
 
-Proved on disposable Postgres 16 containers only:
+```text
+{"level":"SUCCESS","msg":"restore.database.ok","detail":"database=identity schema=true data=true queries=true"}
+{"level":"SUCCESS","msg":"restore.database.ok","detail":"database=stays schema=true data=true queries=true"}
+{"level":"SUCCESS","msg":"restore.roles.validated","detail":"database=identity applied=false"}
+{"level":"SUCCESS","msg":"restore.roles.validated","detail":"database=stays applied=false"}
+{"level":"SUCCESS","msg":"restore_drill.passed","detail":"set=2026-09-07_02-15-51_srv1894430 postgres=16 isolated_network=true host_ports=none production_unchanged=true"}
+{"ok":true,"accepted":true}
+{"level":"SUCCESS","msg":"backup.alerts.sent","detail":"email=true webhook=true status=success"}
+```
 
-1. Ephemeral age keygen  
-2. `pg_dump` → `age` encrypt → SHA-256 manifest  
-3. Manifest/byte verification  
-4. `age --decrypt` → `pg_restore --exit-on-error`  
-5. Representative row counts match (Identity 7 / Stays 11)  
-6. App compose DB containers (`5433`/`5434` services) identity unchanged  
-7. Local RTO ≈ 4s (not production RTO)
+## Proven
 
-New script: `nexastays_db/scripts/restore-encrypted-local-drill.sh`
+- R2 retrieve of encrypted age objects for Identity + Stays  
+- Encrypted checksum verification + age decrypt  
+- Isolated Postgres 16 restore (no host ports)  
+- Schema/data/query checks  
+- Roles artifacts validated (not applied)  
+- Production DB containers/volumes unchanged  
+- Success alert path (email + webhook)  
 
-## Production R2 operator drill — still UNVERIFIED
+## Also retained
 
-`restore-r2-drill.sh` still blocked:
+- Local workstation age drill: [encrypted-local-drill.txt](./encrypted-local-drill.txt)  
+- `pg_restore` failure-closed: [failure-regression.txt](./failure-regression.txt)  
 
-| Prerequisite | Status |
-|--------------|--------|
-| `rclone` | MISSING |
-| `/etc/nexa/backup.env` | missing |
-| Approved R2 backup set + off-server age private key | unavailable |
-| `sudo` operator drill on backup host | not authorized here |
+## Notes
 
-Do **not** treat the local age drill as Cloudflare R2 retrieve certification.
-
-## Alert path
-
-Backup failure alert receipt: UNVERIFIED (no `ALERT_*` config in this environment).
+- Temporary age private key was used from `/run/nexa-recovery/` and removed after the drill.  
+- Local RTO for this VPS drill was on the order of ~7s wall between first and last SUCCESS lines in the paste (not a formal production RTO SLA measurement).

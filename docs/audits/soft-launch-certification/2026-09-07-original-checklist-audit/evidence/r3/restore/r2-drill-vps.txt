@@ -1,0 +1,10 @@
+ID: Gate4 R2 restore drill
+Host: srv1894430
+Set: 2026-09-07_02-15-51_srv1894430
+{"ts":"2026-09-07T12:05:35Z","level":"SUCCESS","msg":"restore.database.ok","detail":"database=identity schema=true data=true queries=true"}
+{"ts":"2026-09-07T12:05:39Z","level":"SUCCESS","msg":"restore.database.ok","detail":"database=stays schema=true data=true queries=true"}
+{"ts":"2026-09-07T12:05:40Z","level":"SUCCESS","msg":"restore.roles.validated","detail":"database=identity applied=false"}
+{"ts":"2026-09-07T12:05:41Z","level":"SUCCESS","msg":"restore.roles.validated","detail":"database=stays applied=false"}
+{"ts":"2026-09-07T12:05:41Z","level":"SUCCESS","msg":"restore_drill.passed","detail":"set=2026-09-07_02-15-51_srv1894430 postgres=16 isolated_network=true host_ports=none production_unchanged=true"}
+{"ok":true,"accepted":true}
+{"ts":"2026-09-07T12:05:42Z","level":"SUCCESS","msg":"backup.alerts.sent","detail":"email=true webhook=true status=success"}

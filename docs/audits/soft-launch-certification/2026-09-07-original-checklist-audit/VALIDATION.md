@@ -12,7 +12,7 @@
 | BOLA / multi-actor authz Jest + HTTP | 041–048 PASS (047 AccountStatusGuard) — [evidence/r3/041-048-authz/](evidence/r3/041-048-authz/) |
 | `scripts/test-restore-failure.sh` | PASS |
 | Local `restore-encrypted-local-drill.sh` (age) | PASS — [evidence/r3/restore/encrypted-local-drill.txt](evidence/r3/restore/encrypted-local-drill.txt) |
-| Encrypted `restore-r2-drill.sh` | **not run** (rclone/R2 env missing) — [evidence/r3/restore/](evidence/r3/restore/) |
+| VPS `restore-r2-drill.sh` set `2026-09-07_02-15-51_srv1894430` | **PASS** — [evidence/r3/restore/r2-drill-vps.txt](evidence/r3/restore/r2-drill-vps.txt); alerts email+webhook success |
 
 Full R3 narrative: [reports/2026-09-07_RELEASE_HARDENING_R3.md](reports/2026-09-07_RELEASE_HARDENING_R3.md).
 
