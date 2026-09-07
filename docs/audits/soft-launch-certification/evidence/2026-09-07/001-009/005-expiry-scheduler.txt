@@ -1,0 +1,12 @@
+ID: 005 R2
+PASS src/modules/stays/services/booking-lifecycle-scheduler.service.spec.ts
+  BookingLifecycleSchedulerService — payment expiration guards
+    ✓ Test 6 — expiration updates PAYMENT_PENDING → EXPIRED and cancels pending intents (4 ms)
+    ✓ Test 7 — expiration skips event and intent cancel when guarded update affects zero rows (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        0.542 s, estimated 1 s
+Ran all test suites matching booking-lifecycle-scheduler.
+EXIT:0

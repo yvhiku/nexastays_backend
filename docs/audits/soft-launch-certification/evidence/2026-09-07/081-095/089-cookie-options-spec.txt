@@ -1,0 +1,14 @@
+PASS src/modules/auth/security/browser-auth-cookies.spec.ts
+  browser authentication cookies PROD-SEC-001
+    ✓ reads only the requested cookie (1 ms)
+    ✓ requires an explicit cookie transport header
+    ✓ sets refresh cookie and clears ambient access cookie — never sets nexa_access (1 ms)
+    ✓ production refresh cookie flags are HttpOnly Secure SameSite=Lax
+    ✓ keeps dashboard refresh on a dedicated cookie
+
+Test Suites: 1 passed, 1 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        0.166 s, estimated 1 s
+Ran all test suites matching browser-auth-cookies.spec.
+EXIT:0

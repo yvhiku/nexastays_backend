@@ -1,0 +1,51 @@
+=== R2 baseline 2026-09-07T01:08:04Z ===
+--- nexastays_backend ---
+f4248a6
+## main...origin/main
+ M identity/package-lock.json
+ M identity/package.json
+ M identity/src/modules/auth/otp-lockout.service.spec.ts
+ M identity/src/modules/compliance/compliance.service.spec.ts
+ M identity/src/modules/compliance/compliance.service.ts
+ M identity/src/modules/compliance/entities/kyc-profile.entity.ts
+ M stays/package-lock.json
+ M stays/package.json
+?? docs/audits/soft-launch-certification/evidence/2026-09-07/baseline/
+?? identity/src/modules/compliance/sumsub-webhook-auth.spec.ts
+ M identity/package-lock.json
+ M identity/package.json
+ M identity/src/modules/auth/otp-lockout.service.spec.ts
+ M identity/src/modules/compliance/compliance.service.spec.ts
+ M identity/src/modules/compliance/compliance.service.ts
+ M identity/src/modules/compliance/entities/kyc-profile.entity.ts
+ M stays/package-lock.json
+ M stays/package.json
+?? docs/audits/soft-launch-certification/evidence/2026-09-07/baseline/
+?? identity/src/modules/compliance/sumsub-webhook-auth.spec.ts
+--- nexastays_web ---
+9fab15b
+## main...origin/main
+ M components/navbar/NavBar.tsx
+ M lib/__tests__/sec-008-otp-binder-storage.test.ts
+ M components/navbar/NavBar.tsx
+ M lib/__tests__/sec-008-otp-binder-storage.test.ts
+--- nexastays_dashboard ---
+e498a5c
+## main...origin/main
+ M next-env.d.ts
+ M next-env.d.ts
+--- nexastays_db ---
+802ba70
+## main...origin/main
+ M scripts/restore-postgres.sh
+?? identity/migrations/067_kyc_provider_event_order.sql
+?? scripts/test-restore-failure.sh
+ M scripts/restore-postgres.sh
+?? identity/migrations/067_kyc_provider_event_order.sql
+?? scripts/test-restore-failure.sh
+--- nexastays_platform ---
+7724f98
+## main...origin/main
+--- nexastays_mobile ---
+597852c
+## main...origin/main

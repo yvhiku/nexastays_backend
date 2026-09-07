@@ -1,0 +1,10 @@
+PASS src/modules/stays/hosts/hosts.upload-oversize.spec.ts
+  HostsService upload size gate (audit 092)
+    ✓ rejects oversize host verification photo (>5MB)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        0.587 s
+Ran all test suites matching hosts.upload-oversize.
+EXIT:0

@@ -1,0 +1,23 @@
+PASS src/modules/sms/sms.service.spec.ts
+  SEC-002 SMS / OTP logging
+    assertProductionSmsConfigured
+      ✓ allows production when EnvoiSMS is configured
+      ✓ allows production when Twilio is fully configured
+      ✓ fails closed in production when no SMS provider is set (3 ms)
+      ✓ does not require SMS outside production
+    resolveSmsProvider
+      ✓ prefers EnvoiSMS when API key is present (1 ms)
+      ✓ honors explicit SMS_PROVIDER=twilio
+    SmsService.sendOtp logging
+      ✓ non-production mock does not log the OTP value
+      ✓ production without provider refuses delivery and does not log OTP
+      ✓ EnvoiSMS path posts OTP metadata and logs success without OTP
+      ✓ Twilio path logs success without OTP
+      ✓ provider failure logs do not include OTP
+
+Test Suites: 1 passed, 1 total
+Tests:       11 passed, 11 total
+Snapshots:   0 total
+Time:        0.333 s, estimated 1 s
+Ran all test suites matching sms.service.
+EXIT:0

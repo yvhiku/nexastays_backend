@@ -1,0 +1,21 @@
+PASS src/modules/stays/services/host-dashboard.service.spec.ts
+  HostDashboardService.getHostDashboard
+    ✓ returns empty aggregate for host with no listings (7 ms)
+    ✓ aggregates multi-listing KPIs and money split (gross/net/fees) (2 ms)
+    ✓ counts check-in/out today/tomorrow and currently staying (2 ms)
+    ✓ excludes non-earning statuses from money KPIs (2 ms)
+    ✓ computes MoM on net host earnings across Casablanca months (1 ms)
+    ✓ sums pending HOST_PAYOUT and keeps available/paid_out at contract defaults when none settled (1 ms)
+    ✓ counts settled HOST_PAYOUT in paid_out when present (1 ms)
+    ✓ isolates host A from host B listings and bookings (1 ms)
+    ✓ uses Africa/Casablanca day boundary for new_bookings_today (1 ms)
+    ✓ getDashboardNow exposes Casablanca bounds (1 ms)
+    ✓ does not invent messaging unread counts (1 ms)
+    ✓ documents JwtAuthGuard at controller — service trusts hostUserId arg
+
+Test Suites: 1 passed, 1 total
+Tests:       12 passed, 12 total
+Snapshots:   0 total
+Time:        0.439 s, estimated 1 s
+Ran all test suites matching host-dashboard.service.
+EXIT:0

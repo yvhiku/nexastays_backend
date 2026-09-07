@@ -1,0 +1,14 @@
+ID: 031 R2 explore paths
+/en 200
+/en/explore 404
+/explore 307
+/en/search 404
+/fr/explore 404
+{"items":[{"id":"dd7328f2-bdb4-4c74-9dc2-54f3bef7bdb3","title":"Seed · Hostel in Casablanca #1","city":"Casablanca","neighborhood":"Ville Nouvelle","listing_type":"HOSTEL","geo_lat":33.594381,"geo_lng":-7.6097881,"avg_rating":null,"review_count":0,"instant_booking":true,"has_walkthrough":false,"placement":"organic","price":{"base_price":2163.36,"currency":"MAD"},"cover":null},{"id":"bf6a1b83-6920
+home:200
+explore 32
+search 83
+where 26
+destination 44
+listing 183
+casablanca 25

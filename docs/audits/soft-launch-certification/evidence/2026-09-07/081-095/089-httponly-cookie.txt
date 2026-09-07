@@ -1,0 +1,15 @@
+ID: 089 R2 cookie transport
+verify:200
+--- Set-Cookie ---
+Set-Cookie: nexa_access=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax
+Set-Cookie: nexa_refresh=***REDACTED***; Max-Age=604800; Path=/; Expires=Mon, 14 Sep 2026 01:12:16 GMT; HttpOnly; SameSite=Lax
+{"verified":true,"otp_session_token":"***","identity_session_token":"***","accounts":[{"id":"8862a0db-ec92-40e9-9872-dbbe2f8a1f0a","account_type":"CONSUMER"}],"account":{"id":"8862a0db-ec92-40e9-9872-dbbe2f8a1f0a","type":"CONSUMER"},"onboarding":{"required":true,"status":"NOT_STARTED","next":"REGISTRATION"},"nexa_profile":{"exists":true,"full_name":null,"email":null,"date_of_birth":null,"city":null,"address":null,"kyc_status":"PENDING","identity_verified":false,"linked_services":["CONSUMER"]},"access_token":"***","expires_in":"15m"}
+
+---
+ID: 089
+Previous: UNVERIFIED
+New: PASS
+Acceptance: Cookie HttpOnly → Not readable by JS
+Exact command: Dogfood POST /api/v1/auth/otp/verify with X-Auth-Transport: cookie
+Actual result: Set-Cookie nexa_refresh=...; HttpOnly; SameSite=Lax
+Why objectively verified: HTTP response Set-Cookie for nexa_refresh includes HttpOnly flag on running dogfood Identity.

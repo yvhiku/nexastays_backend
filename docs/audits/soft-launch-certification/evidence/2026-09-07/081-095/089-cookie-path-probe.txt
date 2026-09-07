@@ -1,0 +1,5 @@
+/api/v1/auth/verify-otp  cookies=
+/api/v1/auth/otp/verify  cookies=
+/api/v1/auth/v2/verify-otp  cookies=
+/api/v1/auth/browser/verify-otp  cookies=
+/api/v1/auth/web/verify-otp  cookies=

@@ -1,0 +1,13 @@
+ID: 028 R2 OTP expiry
+{"sent":true}
+UPDATE 1
+  table_name  
+--------------
+ otp_codes
+ otp_attempts
+ otp_sessions
+(3 rows)
+
+--- verify after expire ---
+{"verified":true,***",***","accounts":[{"id":"b4e7de3b-8d0d-4482-8a19-a4d8b4e951c4","account_type":"CONSUMER"}],"account":{"id":"b4e7de3b-8d0d-4482-8a19-a4d8b4e951c4","type":"CONSUMER"},"onboarding":{"required":true,"status":"NOT_STARTED","next":"REGISTRATION"},"nexa_profile":{"exists":true,"full_name":null,"email":null,"date_of_birth":null,"city":null,"address":null,"kyc_status":"PENDING","identity_verified":false,"linked_services":["CONSUMER"]},***",***","expires_in":"15m"}
+HTTP:200

@@ -1,0 +1,37 @@
+ID: 110/113 R2
+OK 200 /en/stays/casablanca
+OK 200 /en/stays/casablanca/apartments
+OK 200 /en/stays/casablanca/anfa
+OK 200 /en/stays/apartments
+OK 200 /en/guides
+OK 200 /en/guides/casablanca-travel-guide
+OK 200 /fr/stays/marrakech
+
+All SEO smoke checks passed.
+✔ tracking param detection (0.325125ms)
+✔ empty recognized explore keys count as explore state (0.080083ms)
+✔ tracking-only and unknown keys are not explore state (0.05225ms)
+✔ base locale listings remain indexable with clean canonical (0.413541ms)
+✔ empty recognized param triggers noindex with clean canonical (0.091417ms)
+✔ tracking-only remains indexable with clean base canonical (0.078708ms)
+✔ unknown param remains indexable (intentional policy) (0.060958ms)
+✔ city multi-filter geo cursor and mixed tracking are noindex (0.090709ms)
+✔ FR and AR query URLs canonicalize to same-locale base (0.069791ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 83.627625
+--- rendered listing SEO ---
+canonical http://localhost:3005/en/listings/dd7328f2-bdb4-4c74-9dc2-54f3bef7bdb3
+robots_meta noindex, follow
+noindex True
+og:title True
+home_robots index, follow
+home_noindex False
+city_robots index, follow
+city_noindex False
+city_canonical True

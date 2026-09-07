@@ -1,0 +1,23 @@
+{
+  "htmlBytes": 228444,
+  "scriptCount": 9,
+  "jsGzipKb": 5442,
+  "ttfbMs": {
+    "min": 51,
+    "avg": 58,
+    "samples": [
+      63,
+      61,
+      59,
+      58,
+      51
+    ]
+  },
+  "cacheControl": "no-cache, must-revalidate",
+  "targets": {
+    "ttfbMs": 150,
+    "jsGzipKb": 180,
+    "htmlKb": 200
+  }
+}
+Wrote /var/folders/_5/jrk_8ld11136_41kb18n2w600000gn/T/nexa-homepage-metrics.json

@@ -1,0 +1,18 @@
+✔ file validation rejects wrong type and oversize, accepts JPEG/PNG/WebP under 5 MB (0.322459ms)
+✔ enqueuePhotos adds pending tiles with client ids and reports rejections (0.527333ms)
+✔ markUploaded applies by id and is a no-op when the tile was removed (0.201583ms)
+✔ remove revokes the blob preview and drops the tile (0.080917ms)
+✔ reorder and move preserve upload status and ignore unknown ids (0.124667ms)
+✔ cover falls back to the first tile and setCover is exclusive (0.11675ms)
+✔ retryPhoto re-queues a failed tile only when it still has its file (0.074708ms)
+✔ mediaBodyFromPhotos sends only uploaded tiles, in order, with sort_order = index (0.088542ms)
+✔ hasUnfinishedUploads reflects pending/uploading only (0.076167ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 58.4985
+EXIT:0

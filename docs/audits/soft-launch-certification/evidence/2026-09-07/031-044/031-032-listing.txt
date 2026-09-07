@@ -1,0 +1,15 @@
+LID=dd7328f2-bdb4-4c74-9dc2-54f3bef7bdb3
+/en/stays/dd7328f2-bdb4-4c74-9dc2-54f3bef7bdb3 404
+/en/listings/dd7328f2-bdb4-4c74-9dc2-54f3bef7bdb3 200
+guest 261
+check-in 59
+checkin 52
+check-out 13
+checkout 31
+adult 8
+date 108
+book 333
+nights 30
+lazy_count 1 0
+canonical True
+len 187316

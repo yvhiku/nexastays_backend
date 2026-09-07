@@ -1,0 +1,12 @@
+=== freeze check (examples only; no secret values) ===
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.stays.env.example:12:STAYS_PAYMENT_PROVIDER=mock
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:6:#   NODE_ENV=production  +  NEXA_ENV=dogfood  +  STAYS_PAYMENT_PROVIDER=mock
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:10:NEXA_ENV=dogfood
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:53:# Dogfood may set DEMO_OTP_CODE for soft-launch OTP (forbidden when NEXA_ENV=production).
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:54:# DEMO_OTP_CODE=123456
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:64:# Sumsub KYC — dogfood uses sandbox intentionally (production requires SUMSUB_MODE=live).
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:65:SUMSUB_MODE=sandbox
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:73:# Wallet top-up — mock allowed in dogfood (rejected when NEXA_ENV=production).
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:84:STAYS_PAYMENT_PROVIDER=mock
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:99:# Observability — optional for dogfood (required only when NEXA_ENV=production)
+/Users/apple/nexa/nexastays/nexastays_backend/deploy/env/dogfood.env.example:106:# Do NOT set MEDIA_ALLOW_LOCAL_STORAGE when NEXA_ENV=production.

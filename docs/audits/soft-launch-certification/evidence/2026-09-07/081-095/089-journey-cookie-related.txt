@@ -1,0 +1,25 @@
+✔ search journeys preserve dates, guest parts, property type, and extras in shareable URLs (1.091458ms)
+✔ mobile listings use the shared step-by-step search flow (0.457709ms)
+✔ mobile center FAB adapts from search to map and list (1.321791ms)
+✔ mobile listing booking bar sits safely below the upper navigation (0.763875ms)
+✔ guest chrome uses shared nexa-guest-main; incomplete 72px-only top pad is banned (1.304958ms)
+✔ mobile listing gallery supports native swipe navigation (0.186083ms)
+✔ explore personalization cannot change the first hydration tree (0.097084ms)
+✔ invalid deep-linked date ranges never reach discovery or booking state (0.240041ms)
+✔ authentication uses HttpOnly refresh cookies and synchronizes session changes across tabs (0.3585ms)
+✔ authenticated polling waits for stored JWT validation and refresh (0.486916ms)
+✔ saved listings synchronize silently across tabs for the active user (0.209042ms)
+✔ only the latest map viewport request can replace discovery pins (0.127666ms)
+✔ booking confirmation has an immediate duplicate-submission lock (0.112125ms)
+✔ book flow immediately starts payment intent and routes to checkout (0.353542ms)
+✔ welcome completion forces search spotlight past the normal cooldown (0.391875ms)
+✔ host draft autosaves are serialized so stale snapshots cannot arrive last (0.369958ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 71.089583
+EXIT:0

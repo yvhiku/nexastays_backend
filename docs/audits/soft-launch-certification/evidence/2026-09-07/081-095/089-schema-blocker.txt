@@ -1,0 +1,12 @@
+=== apply 067 additive column for dogfood identity (audit 089 blocker) ===
+nexa-cert-20260906-identity-db-1	127.0.0.1:53156->5432/tcp
+nexastays_db-identity-db-1	127.0.0.1:5433->5432/tcp
+(eval):9: command not found: psql
+NOTICE:  column "last_provider_event_at" of relation "kyc_profiles" already exists, skipping
+ALTER TABLE
+ALTER TABLE
+      column_name       
+------------------------
+ last_provider_event_at
+(1 row)
+

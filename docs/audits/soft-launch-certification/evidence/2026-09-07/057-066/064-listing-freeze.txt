@@ -1,0 +1,10 @@
+PASS src/modules/admin/admin-stays.listing-lifecycle.spec.ts
+PASS src/modules/stays/services/host-listings.h17-authz.spec.ts
+PASS src/modules/stays/services/host-listings.canlist.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       28 passed, 28 total
+Snapshots:   0 total
+Time:        0.644 s, estimated 1 s
+Ran all test suites matching admin-stays.listing-lifecycle|host-listings.canlist|host-listings.h17.
+EXIT:0

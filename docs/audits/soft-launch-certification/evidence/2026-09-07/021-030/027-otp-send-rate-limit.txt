@@ -1,0 +1,11 @@
+PASS src/modules/auth/otp-send-rate-limit.service.spec.ts
+  OtpSendRateLimitService
+    ✓ allows sends under the per-minute limit then rejects (1 ms)
+    ✓ isolates limits per phone+ip key
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        0.283 s
+Ran all test suites matching otp-send-rate-limit.service.spec.
+EXIT:0

@@ -1,0 +1,17 @@
+✔ bookingNights — 1 night (0.3155ms)
+✔ bookingNights — 2 nights (0.043917ms)
+✔ bookingNights — 7 nights (0.033958ms)
+✔ bookingNights — same-day invalid (0.053167ms)
+✔ bookingNights — checkout before check-in (0.0425ms)
+✔ bookingNights — DST fall-back / spring-forward calendar nights (0.035333ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60.701084
+EXIT:0
+--- listing book widget HTML ---
+listing_path=

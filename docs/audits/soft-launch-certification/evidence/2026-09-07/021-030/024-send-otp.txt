@@ -1,0 +1,15 @@
+ID: 024 R2
+Acceptance: Send OTP → session created; DEMO path
+Command: Dogfood POST /api/v1/auth/send-otp using DEMO OTP configuration
+--- POST /api/v1/auth/send-otp ---
+{"sent":true}
+HTTP:200
+
+--- POST /api/v1/auth/otp/send ---
+{"sent":true}
+HTTP:200
+
+--- POST /api/v1/auth/otp ---
+{"statusCode":404,"timestamp":"2026-09-07T01:09:10.675Z","path":"/api/v1/auth/otp","message":"Cannot POST /api/v1/auth/otp","code":"Not Found"}
+HTTP:404
+

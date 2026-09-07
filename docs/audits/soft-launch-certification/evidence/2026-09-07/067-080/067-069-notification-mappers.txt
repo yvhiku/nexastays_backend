@@ -1,0 +1,11 @@
+PASS src/fcm-data.spec.ts
+PASS src/notification-mapper.spec.ts
+PASS src/notification-orchestrator.service.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        1.381 s, estimated 2 s
+Ran all test suites.
+[Nest] 59066  - 09/07/2026, 2:13:28 AM   DEBUG [NotificationOrchestratorService] Skip push for existing notification n-1 type=BOOKING_CONFIRMED
+EXIT:0

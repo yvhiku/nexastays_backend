@@ -1,0 +1,4 @@
+ID: 050 R2 host bookings
+{"items":[],"pagination":{"limit":20,"has_next":false,"next_cursor":null}}
+HTTP:200
+

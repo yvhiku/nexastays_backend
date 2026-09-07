@@ -1,0 +1,27 @@
+ID: 120 R2
+Acceptance: Latency p95 → Record baseline
+Metric: explore API GET /api/v1/stays/explore?limit=20 p95 over 30 samples
+ID: 122 R2 scale
+keys dict_keys(['items', 'pagination', 'meta'])
+total {'query_ms': 18, 'sort': 'newest', 'cache': 'miss', 'total_estimate': None}
+items 1
+sample_items 20
+payload_bytes 7450
+meta {'query_ms': 11, 'sort': 'newest', 'cache': 'miss', 'total_estimate': None}
+n 30
+p50_ms 0.36799999999999333
+p95_ms 0.7546250000000088
+p99_ms 17.622417000000002
+max_ms 17.622417000000002
+NOTE: catalog size unknown; scale threshold not defined in checklist — record actual size only
+
+> nexa-stays-landing@0.1.0 validate:explore-catalog
+> npx --yes tsx scripts/validate-explore-catalog.ts
+
+Validating Explore catalog 1.0.0…
+WARN: City agadir/sonaba: missing osmId
+WARN: City tangier/marshan: missing osmId
+WARN: City rabat/medina: missing osmId
+WARN: City fes/mellah: missing osmId
+WARN: City tetouan/ensanche: missing osmId
+OK — 10 cities, catalog 1.0.0
