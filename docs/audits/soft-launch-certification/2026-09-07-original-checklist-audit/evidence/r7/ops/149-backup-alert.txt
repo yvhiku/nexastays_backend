@@ -1,0 +1,10 @@
+=== 149 Backup failure alert ===
+Date: 2026-09-07
+
+Findings:
+- Script exists: /opt/nexa/backup-tools/scripts/backup-alert.sh (requires ALERT_SMTP_* + ALERT_WEBHOOK_URL)
+- /etc/nexa/backup.env is mode-restricted; nexa user cannot read (Permission denied); sudo password required — cannot source env non-interactively
+- No safe public test webhook available in this session to set OPS_ALERT_WEBHOOK_URL / ALERT_WEBHOOK_URL
+- Therefore failure-path alert delivery was NOT executed
+
+VERDICT: UNVERIFIED — cannot prove backup failure alert delivery without readable backup.env + configured webhook/SMTP

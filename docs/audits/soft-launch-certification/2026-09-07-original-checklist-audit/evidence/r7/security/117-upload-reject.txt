@@ -1,17 +1,10 @@
-=== 117 host/listings/media/photo ===
---- svg as file field ---
-{"statusCode":401,"timestamp":"2026-09-07T14:28:12.244Z","path":"/api/v1/stays/host/listings/media/photo","message":"Invalid authorization header format","code":"Unauthorized"}
-HTTP 401
+=== 117 POST /api/v1/stays/host/listings/media/photo ===
+host_user=55520e09-f027-467b-bbbd-cfb16567f5f7 auth=yes
+--- svg ---
+{"statusCode":400,"timestamp":"2026-09-07T14:29:02.487Z","path":"/api/v1/stays/host/listings/media/photo","message":"Invalid image. Use JPEG, PNG, or WebP","code":"Bad Request"}
+HTTP 400
 
---- svg as photo field ---
-{"statusCode":401,"timestamp":"2026-09-07T14:28:12.544Z","path":"/api/v1/stays/host/listings/media/photo","message":"Invalid authorization header format","code":"Unauthorized"}
-HTTP 401
-
---- exe as file field ---
-{"statusCode":401,"timestamp":"2026-09-07T14:28:13.027Z","path":"/api/v1/stays/host/listings/media/photo","message":"Invalid authorization header format","code":"Unauthorized"}
-HTTP 401
-
---- exe as photo field ---
-{"statusCode":401,"timestamp":"2026-09-07T14:28:13.290Z","path":"/api/v1/stays/host/listings/media/photo","message":"Invalid authorization header format","code":"Unauthorized"}
-HTTP 401
+--- exe ---
+{"statusCode":400,"timestamp":"2026-09-07T14:29:02.795Z","path":"/api/v1/stays/host/listings/media/photo","message":"Invalid image. Use JPEG, PNG, or WebP","code":"Bad Request"}
+HTTP 400
 

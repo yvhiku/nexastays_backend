@@ -1,0 +1,85 @@
+=== user_notifications schema/counts ===
+                        Table "public.user_notifications"
+   Column   |           Type           | Collation | Nullable |      Default      
+------------+--------------------------+-----------+----------+-------------------
+ id         | uuid                     |           | not null | gen_random_uuid()
+ user_id    | uuid                     |           | not null | 
+ type       | character varying(64)    |           | not null | 
+ title      | text                     |           | not null | 
+ body       | text                     |           | not null | 
+ data       | jsonb                    |           | not null | '{}'::jsonb
+ is_read    | boolean                  |           | not null | false
+ created_at | timestamp with time zone |           | not null | now()
+ read_at    | timestamp with time zone |           |          | 
+ event_id   | uuid                     |           |          | 
+Indexes:
+    "user_notifications_pkey" PRIMARY KEY, btree (id)
+    "idx_user_notifications_user_created" btree (user_id, created_at DESC)
+    "idx_user_notifications_user_type_event" UNIQUE, btree (user_id, type, event_id) WHERE event_id IS NOT NULL
+    "idx_user_notifications_user_unread" btree (user_id) WHERE is_read = false
+Foreign-key constraints:
+    "fk_user_notifications_user" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+
+ERROR:  column "channel" does not exist
+LINE 2: SELECT type, channel, status, count(*) FROM user_notificatio...
+                     ^
+ total | last_7d 
+-------+---------
+     0 |       0
+(1 row)
+
+=== stays bookings sample / payment provider ===
+  status   | count 
+-----------+-------
+ EXPIRED   |     2
+ COMPLETED |     1
+(2 rows)
+
+    column_name    
+-------------------
+ id
+ listing_id
+ guest_user_id
+ status
+ checkin_date
+ checkout_date
+ guest_count
+ total_subtotal
+ guest_fee
+ host_fee
+ total_paid
+ payout_amount
+ currency
+ idempotency_key
+ payment_intent_id
+ created_at
+ updated_at
+ confirmed_at
+ completed_at
+ paid_at
+ booking_reference
+(21 rows)
+
+=== messaging outbox ===
+                             Table "public.stays_messaging_outbox"
+    Column     |           Type           | Collation | Nullable |           Default            
+---------------+--------------------------+-----------+----------+------------------------------
+ id            | uuid                     |           | not null | gen_random_uuid()
+ event_type    | character varying(64)    |           | not null | 
+ payload       | jsonb                    |           | not null | 
+ status        | character varying(20)    |           | not null | 'PENDING'::character varying
+ attempts      | integer                  |           | not null | 0
+ next_retry_at | timestamp with time zone |           | not null | now()
+ created_at    | timestamp with time zone |           | not null | now()
+ processed_at  | timestamp with time zone |           |          | 
+Indexes:
+    "stays_messaging_outbox_pkey" PRIMARY KEY, btree (id)
+    "idx_stays_messaging_outbox_pending" btree (status, next_retry_at) WHERE status::text = ANY (ARRAY['PENDING'::character varying, 'FAILED'::character varying]::text[])
+Check constraints:
+    "stays_messaging_outbox_status_check" CHECK (status::text = ANY (ARRAY['PENDING'::character varying, 'PROCESSING'::character varying, 'DONE'::character varying, 'FAILED'::character varying]::text[]))
+
+ status | count 
+--------+-------
+ DONE   |    66
+(1 row)
+

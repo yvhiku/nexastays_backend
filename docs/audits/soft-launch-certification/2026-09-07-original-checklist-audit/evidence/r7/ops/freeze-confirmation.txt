@@ -1,0 +1,6 @@
+VPS /opt/nexa/nexastays_backend/deploy/.env (2026-09-07):
+NEXA_ENV=dogfood
+STAYS_PAYMENT_PROVIDER=mock
+DEMO_OTP_CODE=[REDACTED]
+SUMSUB_MODE=sandbox
+No HOST_PAYOUT / payouts provider flipped during R7 (payouts remain off / out of scope).

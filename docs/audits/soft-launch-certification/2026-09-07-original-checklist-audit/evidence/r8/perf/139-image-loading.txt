@@ -1,0 +1,44 @@
+=== 139 image loading optimized ===
+Date: 2026-09-07T15:26:22Z
+Page: https://nexastays.ma/en/listings/89563d40-4b2f-4b4e-8f52-4905878db359
+Budget: lazy and/or next/image and/or width/height/srcset present; media Cache-Control/CDN documented
+
+--- HTML signals ---
+  29 width=
+  16 _next/image
+  14 height=
+   8 sizes=
+   1 srcSet=
+   1 loading="lazy"
+   1 data-nimg
+
+--- next/image brand asset sample ---
+<img alt="" loading="lazy" decoding="async" data-nimg="fill" class="object-cover" style="position:absolute;height:100%;width:100%;left:0;top:0;right:0;bottom:0;color:transparent" sizes="36px" srcSet="/_next/image?url=%2Fimages%2Fnexastays.png&amp;w=32&amp;q=75 32w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=48&amp;q=75 48w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=64&amp;q=75 64w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=96&amp;q=75 96w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=128&amp;q=75 128w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=256&amp;q=75 256w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=384&amp;q=75 384w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=640&amp;q=75 640w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=750&amp;q=75 750w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=828&amp;q=75 828w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=1080&amp;q=75 1080w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=1200&amp;q=75 1200w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=1920&amp;q=75 1920w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=2048&amp;q=75 2048w, /_next/image?url=%2Fimages%2Fnexastays.png&amp;w=3840&amp;q=75 3840w" src="/_next/image?url=%2Fimages%2Fnexastays.png&amp;w=3840&amp;q=75"/>
+
+--- listing media URL helper (source) ---
+getListingMediaUrl -> ${API_BASE}/stays/listings/{id}/media/{assetId}
+isListingMediaUrl -> unoptimized bypass for signed storage redirects
+
+--- HEAD listing media https://api.nexastays.ma/api/v1/stays/listings/89563d40-4b2f-4b4e-8f52-4905878db359/media/da87d2e2-78d5-4b46-9fff-4ad89962cb66 ---
+HTTP/2 200 
+content-type: image/jpeg
+x-content-type-options: nosniff
+access-control-expose-headers: Content-Type,Authorization,X-Request-Id
+cache-control: public, max-age=3600
+cf-cache-status: DYNAMIC
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=AxyCSqfmveqyrn3RfYT0n7mSvJ4nkhPVk6Ic%2F1MkRrFKzyhgbQkZfsqlePXPixPhBCV%2F8INEbil1EcYnMG6upa3zTFABeRXwdMxv5e4hEB1lwIJjbg7ZGsuqi7pmv%2Fc5oUHo"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+cf-ray: a376bb4a8f1d372e-FRA
+
+--- brand image Cache-Control ---
+HTTP/2 200 
+content-type: image/png
+content-length: 485803
+x-content-type-options: nosniff
+cache-control: public, max-age=86400
+cf-cache-status: MISS
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=1woJOi0kv3gu%2FG15hMMWICtXBzl1RJXm3sdQwnLaDxuSljfgXoQcP%2BWIBSUWIox%2B71ME5RuoaYWkNlXIF5%2Be1MkxdCfqh%2FVPZuGDav7w%2FAOFLXwfh%2FxACRPxheJcF%2Fg%3D"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+cf-ray: a376bb4da97dd2e7-FRA
+
+VERDICT_HINT: listing page uses next/image (srcSet/sizes/data-nimg) + loading=lazy; listing photos via API media endpoint returning image/jpeg

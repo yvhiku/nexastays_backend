@@ -1,0 +1,14 @@
+
+> @nexa/notifications-service@0.1.0 test
+> jest --ci --forceExit
+
+PASS src/notification-mapper.spec.ts (5.116 s)
+PASS src/fcm-data.spec.ts
+PASS src/notification-orchestrator.service.spec.ts (5.093 s)
+
+Test Suites: 3 passed, 3 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        6.074 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

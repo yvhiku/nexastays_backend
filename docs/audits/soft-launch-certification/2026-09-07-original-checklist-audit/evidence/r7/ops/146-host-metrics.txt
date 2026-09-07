@@ -1,0 +1,12 @@
+=== 146 Disk/CPU/RAM monitoring ===
+Date: 2026-09-07
+
+Inventory:
+- node_exporter: inactive / missing (systemctl)
+- monitoring containers matching prom|grafana|node.exporter|cadvisor|netdata: 0
+- user crontab: no disk/cpu/mem monitor entries
+- No dedicated host metrics stack observed on VPS
+
+Capacity snapshot (not monitoring): df 23% used; free ~13Gi available; load ~0.25
+
+VERDICT: UNVERIFIED — host Disk/CPU/RAM monitoring does not exist on dogfood VPS

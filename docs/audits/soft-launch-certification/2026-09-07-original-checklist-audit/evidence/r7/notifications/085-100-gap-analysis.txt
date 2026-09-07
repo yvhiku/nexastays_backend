@@ -1,0 +1,137 @@
+=== booking status after cancel ===
+                  id                  |       status       
+--------------------------------------+--------------------
+ 3a74502c-6fe6-4acd-9ee9-0a7eec636ae1 | CANCELLED_BY_GUEST
+(1 row)
+
+=== outbox after cancel ===
+      event_type      | status |          created_at           
+----------------------+--------+-------------------------------
+ booking.confirmed.v1 | DONE   | 2026-09-07 14:30:30.045201+00
+ payment.succeeded.v1 | DONE   | 2026-09-07 14:30:30.045201+00
+(2 rows)
+
+=== user_notifications still ===
+ total 
+-------
+     0
+(1 row)
+
+ type | title | created_at 
+------+-------+------------
+(0 rows)
+
+=== notifications-service recent errors ===
+{"level":"error","service":"event-bus","event":"event.dead_letter","eventType":"review.reminder.v1","eventId":"[REDACTED]","attempts":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1","ts":"2026-09-07T14:01:16.755Z"}
+=== DLQ length ===
+7
+1788789676755-0
+envelope
+{"event":{"id":"2d9b0650-b670-482a-bf84-c36c88e8d973","type":"review.reminder.v1","source":"stays","occurredAt":"2026-09-07T14:00:00.084Z","payload":{"bookingId":"63abb83e-e3e7-48a0-9356-6e12498b8a9d","listingId":"2f0683fb-bf64-4c94-b0e5-53b30b45a04e","guestUserId":"2f7c1945-55b1-4a94-a5db-47b4d558591d","listingTitle":"2 bed room apartment in maarif","reminderStage":"1h"}},"attempt":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1"}
+1788778874839-0
+envelope
+{"event":{"id":"6ce9bdcd-5525-41df-8d15-d219bdf0834f","type":"booking.checkout_reminder.v1","source":"stays","occurredAt":"2026-09-07T11:00:00.238Z","payload":{"bookingId":"63abb83e-e3e7-48a0-9356-6e12498b8a9d","listingId":"2f0683fb-bf64-4c94-b0e5-53b30b45a04e","guestUserId":"2f7c1945-55b1-4a94-a5db-47b4d558591d","listingTitle":"2 bed room apartment in maarif","checkoutAt":"2026-09-07T12:00:00.000Z"}},"attempt":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1"}
+1788777976983-0
+envelope
+{"event":{"id":"b8d6ff7f-200a-4c3f-a012-efda21136c1c","type":"booking.checkout_reminder.v1","source":"stays","occurredAt":"2026-09-07T10:45:00.027Z","payload":{"bookingId":"63abb83e-e3e7-48a0-9356-6e12498b8a9d","listingId":"2f0683fb-bf64-4c94-b0e5-53b30b45a04e","guestUserId":"2f7c1945-55b1-4a94-a5db-47b4d558591d","listingTitle":"2 bed room apartment in maarif","checkoutAt":"2026-09-07T12:00:00.000Z"}},"attempt":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1"}
+1788727516365-0
+envelope
+{"event":{"id":"999286ae-ad3d-4f3d-b23f-c9a1e5fc88d7","type":"message.received.v1","source":"stays","occurredAt":"2026-09-06T20:44:05.008Z","payload":{"preview":"wach frr","bookingId":"63abb83e-e3e7-48a0-9356-6e12498b8a9d","messageId":"fbc60519-9c23-4179-aa20-d76381ac557a","senderName":"mohamed fikri","listingTitle":"2 bed room apartment in maarif","senderUserI
+=== notifications DB host / uuid bug hint ===
+DB_PORT=5432
+IDENTITY_JWKS_URL=[REDACTED]
+STAYS_PUBLIC_URL=[REDACTED]
+DB_SSL_REJECT_UNAUTHORIZED=false
+IDENTITY_HOST_PORT=3001
+STAYS_HOST_PORT=3002
+DB_SYNCHRONIZE=false
+STAYS_WEB_URL=[REDACTED]
+DB_SSL=true
+IDENTITY_BASE_URL=[REDACTED]
+STAYS_PAYMENT_PROVIDER=mock
+DB_PASSWORD=[REDACTED]
+IDENTITY_DATABASE_URL=[REDACTED]
+STAYS_DATABASE_URL=[REDACTED]
+DB_HOST=identity-db
+DB_NAME=nexa_identity
+DB_USERNAME=nexa_identity
+=== all outbox event types ===
+      event_type      | status | count 
+----------------------+--------+-------
+ booking.confirmed.v1 | DONE   |     2
+ message.read.v1      | DONE   |    60
+ message.received.v1  | DONE   |     2
+ message.sent.v1      | DONE   |     2
+ payment.succeeded.v1 | DONE   |     2
+(5 rows)
+
+=== cancel-related rows ===
+      event_type      | status |          created_at           |                                                           left                                                           
+----------------------+--------+-------------------------------+--------------------------------------------------------------------------------------------------------------------------
+ booking.confirmed.v1 | DONE   | 2026-09-07 14:30:30.045201+00 | {"amount": "840", "currency": "MAD", "bookingId": "3a74502c-6fe6-4acd-9ee9-0a7eec636ae1", "listingId": "89563d40-4b2f-4b
+ payment.succeeded.v1 | DONE   | 2026-09-07 14:30:30.045201+00 | {"amount": "840", "currency": "MAD", "provider": "mock", "bookingId": "3a74502c-6fe6-4acd-9ee9-0a7eec636ae1", "guestUser
+(2 rows)
+
+=== consumer group / pending ===
+name
+nexa-consumers
+consumers
+1
+pending
+0
+last-delivered-id
+1788791460876-0
+entries-read
+80
+lag
+0
+name
+nexa-notifications
+consumers
+1
+pending
+0
+last-delivered-id
+1788791460876-0
+entries-read
+80
+lag
+0
+80
+=== notifications container health / restart ===
+status=running health=healthy started=2026-09-06T18:03:43.753911946Z
+3
+3
+=== retry stream ===
+0
+
+
+=== recent stream events types ===
+1788791460876-0
+event
+{"id":"0b46fb00-bd53-4486-9921-28577d2e2c2c","type":"booking.cancelled.v1","source":"stays","occurredAt":"2026-09-07T14:31:00.876Z","payload":{"bookingId":"3a74502c-6fe6-4acd-9ee9-0a7eec636ae1","listingId":"89563d40-4b2f-4b4e-8f52-4905878db359","guestUserId":"aeaffe51-ab0f-4b6e-bb34-4300c51d6b9b","hostUserId":"55520e09-f027-467b-bbbd-cfb16567f5f7","cancelledBy":"guest"}}
+1788791435012-0
+event
+{"id":"ec3d2c85-87ec-49ce-bcf8-883840e5ca8a","type":"payment.succeeded.v1","source":"stays","occurredAt":"2026-09-07T14:30:35.011Z","payload":{"amount":"840","currency":"MAD","provider":"mock","bookingId":"3a74502c-6fe6-4acd-9ee9-0a7eec636ae1","guestUserId":"aeaffe51-ab0f-4b6e-bb34-4300c51d6b9b","providerIntentId":"mock_1788791429726_nel8lqovtk"}}
+1788791435008-0
+event
+{"id":"bbc7baee-3fa3-4b50-81c0-504040d32b23","type":"booking.confirmed.v1","source":"stays","occurredAt":"2026-09-07T14:30:35.007Z","payload":{"amount":"840","currency":"MAD","bookingId":"3a74502c-6fe6-4acd-9ee9-0a7eec636ae1","listingId":"89563d40-4b2f-4b4e-8f52-4905878db359","hostUserId":"55520e09-f027-467b-bbbd-cfb16567f5f7","guestUserId":"aeaffe51-ab0f-4b6e-bb34-4300c51d6b9b","conversationId":"e6a7a833-725f-47ce-997d-d8cf30ae543c"}}
+1788791429401-0
+event
+{"id":"83db0e18-a993-4fb7-b9e1-33477af79504","type":"booking.created.v1","source":"stays","occurredAt":"2026-09-07T14:30:29.400Z","payload":{"bookingId":"3a74502c-6fe6-4acd-9ee9-0a7eec636ae1","listingId":"89563d40-4b2f-4b4e-8f52-4905878db359","guestUserId":"aeaffe51-ab0f-4b6e-bb34-4300c51d6b9b"}}
+1788789791122-0
+event
+{"id":"a28ccd37-c11c-4d26-95c3-590197a3f75d","type":"listing.published.v1","source":"stays","occurredAt":"2026-09-07T14:03:11.122Z","payload":{"listingId":"89563d40-4b2f-4b4e-8f52-4905878db359","hostUserId":"55520e09-f027-467b-bbbd-cfb16567f5f7"}}
+1788789600084-0
+event
+{"id":"2d9b0650-b670-482a-bf84-c36c88e8d973","type":"review.reminder.v1","source":"stays","occurredAt":"2026-09-07T14:00:00.084Z","payload":{"bookingId":"63abb83e-e3e7-48a0-9356-6e12498b8a9d","listingId":"2f0683fb-bf64-4c94-b0e5-53b30b45a04e","guestUserId":"2f7c1945-55b1-4a94-a5db-47b4d558591d","listingTitle":"2 bed room apartment in maarif","reminderStage":"1h"}}
+1788787783605-0
+event
+{"id":"793f604c-e5c8-4996-b99d-fa782f1c96fc","type":"booking.created.v1","source":"stays","occurredAt":"2026-09-07T13:29:43.605Z","payload":{"bookingId":"605645a0-76db-471f-823e-1e4410646d5f","listingId":"a1111111-1111-4111-8111-111111111101","guestUserId":"2f7c1945-55b1-4a94-a5db-47b4d558591d"}}
+1788787601206-0
+event
+{"id":"ad43b44d-1097-4eee-a514-4a67d1b6a23d","type":"payment.expired.v1","source":"stays","occurredAt":"2026-09-07T13:26:41.204Z","payload":{"bookingId":"9f5c4579-fd17-45a1-9286-82462263230f","listingId":"a1111111-1111-4111-8111-111111111101","guestUserId":"2f7c1945-55b1-4a94-a5db-47b4d558591d"}}
+
+=== notifications logs around booking confirm time ===
+{"level":"error","service":"event-bus","event":"event.dead_letter","eventType":"booking.confirmed.v1","eventId":"[REDACTED]","attempts":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1","ts":"2026-09-07T14:31:53.297Z"}
+{"level":"error","service":"event-bus","event":"event.dead_letter","eventType":"payment.succeeded.v1","eventId":"[REDACTED]","attempts":5,"lastError":"operator does not exist: text = uuid","consumerGroup":"nexa-notifications:notifications-1","ts":"2026-09-07T14:31:55.311Z"}

@@ -1,0 +1,2 @@
+Lighthouse CLI: NOT_FOUND on audit host (2026-09-07).
+R8 uses documented curl TTFB/HTML budgets for 136/137 (TTFB<2s).

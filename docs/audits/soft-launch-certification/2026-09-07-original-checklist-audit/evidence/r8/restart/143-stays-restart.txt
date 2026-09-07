@@ -1,0 +1,40 @@
+=== 143 recovers after container restart ===
+Date: 2026-09-07T15:26:24Z
+Health endpoint (compose healthcheck): http://127.0.0.1:3002/api/v1/health/ready
+
+=== FREEZE pre-restart (unchanged) ===
+.env:NEXA_ENV=dogfood
+.env:STAYS_PAYMENT_PROVIDER=mock
+.env:DEMO_OTP_CODE=[REDACTED_PRESENT]
+.env:SUMSUB_MODE=sandbox
+.env.stays:STAYS_PAYMENT_PROVIDER=mock
+HOST_PAYOUTS: not flipped (frozen off)
+=== before ===
+ts=2026-09-07T15:26:24Z
+name=/nexa-apps-stays-1 status=running health=healthy started=2026-09-07T15:24:32.365686181Z restart=unless-stopped
+health_local http=200 t=0.005208s
+{"ok":true,"status":"ok","check":"ready","timestamp":"2026-09-07T15:26:24.595Z","uptime":111.939582565,"db":"connected","service":"nexa-stays"}
+=== DB restart policy (unchanged; do not restart DB) ===
+name=/nexastays_db-stays-db-1 restart=unless-stopped status=running
+name=/nexastays_db-identity-db-1 restart=unless-stopped status=running
+=== docker compose restart stays ===
+restart_start=2026-09-07T15:26:24Z
+restart_compose_finished=2026-09-07T15:26:55Z
+=== wait health 200 ===
+attempt=1 http=000000
+attempt=2 http=200
+{"ok":true,"status":"ok","check":"ready","timestamp":"2026-09-07T15:26:57.390Z","uptime":2.050016114,"db":"connected","service":"nexa-stays"}
+recovered_after_sec=33
+=== after ===
+ts=2026-09-07T15:26:57Z
+name=/nexa-apps-stays-1 status=running health=starting started=2026-09-07T15:26:55.041114208Z
+health_local http=200 t=0.006382s
+{"ok":true,"status":"ok","check":"ready","timestamp":"2026-09-07T15:26:57.445Z","uptime":2.105407489,"db":"connected","service":"nexa-stays"}
+explore_smoke http=200 t=0.106795s
+=== FREEZE post-restart ===
+.env:NEXA_ENV=dogfood
+.env:STAYS_PAYMENT_PROVIDER=mock
+.env:DEMO_OTP_CODE=[REDACTED_PRESENT]
+.env:SUMSUB_MODE=sandbox
+.env.stays:STAYS_PAYMENT_PROVIDER=mock
+VERDICT: stays restarted; /api/v1/health/ready=200; DB left running; freeze unchanged

@@ -1,0 +1,10 @@
+=== 141 dogfood EXPLAIN summary ===
+Dataset: LIVE listings=4 (tiny dogfood). Seq scans expected at this cardinality; growth indexes present:
+- idx_stays_listings_live_created (partial LIVE)
+- idx_stays_listings_city / city_status / city_lower
+- stays_listings_pkey
+- stays_bookings: ex_stays_bookings_active_overlap + listing/date indexes
+Execution times observed: explore-like ~0.07ms, PK lookup ~0.01ms, media ~0.07ms, city filter ~0.04ms.
+No multi-second plans; no obvious dogfood bottleneck.
+NOT production-scale certification (see 138).
+VERDICT: PASS for dogfood soft-launch.

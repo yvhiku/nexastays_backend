@@ -1,0 +1,120 @@
+=== 141 EXPLAIN hot explore/listing queries (stays-db) ===
+Date: 2026-09-07T15:23:33Z
+Host: nexa@72.60.133.228
+Container: nexastays_db-stays-db-1
+Note: secrets redacted; read-only EXPLAIN ANALYZE
+
+db_user=nexa_stays db_name=nexa_stays
+
+--- LIVE listing count ---
+  status  | count 
+----------+-------
+ DRAFT    |     1
+ LIVE     |     4
+ REJECTED |     1
+(3 rows)
+
+--- indexes on stays_listings ---
+                indexname                |                                                                                             indexdef                                                                                             
+-----------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ idx_stays_listings_city                 | CREATE INDEX idx_stays_listings_city ON public.stays_listings USING btree (city)
+ idx_stays_listings_city_lower           | CREATE INDEX idx_stays_listings_city_lower ON public.stays_listings USING btree (lower((city)::text))
+ idx_stays_listings_city_status          | CREATE INDEX idx_stays_listings_city_status ON public.stays_listings USING btree (city, status)
+ idx_stays_listings_draft_lifecycle      | CREATE INDEX idx_stays_listings_draft_lifecycle ON public.stays_listings USING btree (status, last_edited_at) WHERE (((status)::text = 'DRAFT'::text) AND (archived_at IS NULL))
+ idx_stays_listings_geo                  | CREATE INDEX idx_stays_listings_geo ON public.stays_listings USING btree (geo_lat, geo_lng)
+ idx_stays_listings_host                 | CREATE INDEX idx_stays_listings_host ON public.stays_listings USING btree (host_user_id)
+ idx_stays_listings_host_created_id      | CREATE INDEX idx_stays_listings_host_created_id ON public.stays_listings USING btree (host_user_id, created_at DESC, id DESC)
+ idx_stays_listings_live_created         | CREATE INDEX idx_stays_listings_live_created ON public.stays_listings USING btree (created_at DESC, id DESC) WHERE ((status)::text = 'LIVE'::text)
+ idx_stays_listings_live_rating          | CREATE INDEX idx_stays_listings_live_rating ON public.stays_listings USING btree (avg_rating DESC NULLS LAST, review_count DESC, created_at DESC, id DESC) WHERE ((status)::text = 'LIVE'::text)
+ idx_stays_listings_status               | CREATE INDEX idx_stays_listings_status ON public.stays_listings USING btree (status)
+ stays_listings_pkey                     | CREATE UNIQUE INDEX stays_listings_pkey ON public.stays_listings USING btree (id)
+ uq_stays_listings_calendar_export_token | CREATE UNIQUE INDEX uq_stays_listings_calendar_export_token ON public.stays_listings USING btree (calendar_export_token) WHERE (calendar_export_token IS NOT NULL)
+(12 rows)
+
+--- indexes on stays_bookings (overlap-related) ---
+                 indexname                 
+-------------------------------------------
+ ex_stays_bookings_active_overlap
+ idx_stays_bookings_dates
+ idx_stays_bookings_guest
+ idx_stays_bookings_idempotency_guest
+ idx_stays_bookings_idempotency_key_unique
+ idx_stays_bookings_listing
+ idx_stays_bookings_listing_created_id
+ idx_stays_bookings_listing_dates_status
+ idx_stays_bookings_status
+ stays_bookings_pkey
+ uq_stays_bookings_booking_reference
+(11 rows)
+
+--- EXPLAIN explore-ish LIVE listings ORDER BY created_at LIMIT 24 ---
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=4.02..4.03 rows=1 width=40) (actual time=0.046..0.047 rows=4 loops=1)
+   Buffers: shared hit=7
+   ->  Sort  (cost=4.02..4.03 rows=1 width=40) (actual time=0.045..0.046 rows=4 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=7
+         ->  Seq Scan on stays_listings  (cost=0.00..4.01 rows=1 width=40) (actual time=0.006..0.011 rows=4 loops=1)
+               Filter: ((status)::text = 'LIVE'::text)
+               Rows Removed by Filter: 2
+               Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=25
+ Planning Time: 0.520 ms
+ Execution Time: 0.073 ms
+(14 rows)
+
+--- EXPLAIN listing by primary key ---
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Seq Scan on stays_listings  (cost=0.00..4.01 rows=1 width=63) (actual time=0.003..0.005 rows=1 loops=1)
+   Filter: (id = '89563d40-4b2f-4b4e-8f52-4905878db359'::uuid)
+   Rows Removed by Filter: 5
+   Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=9
+ Planning Time: 0.121 ms
+ Execution Time: 0.010 ms
+(8 rows)
+
+--- EXPLAIN listing media join ---
+                                                      QUERY PLAN                                                      
+----------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=1.18..1.20 rows=5 width=42) (actual time=0.053..0.054 rows=5 loops=1)
+   Sort Key: sort_order
+   Sort Method: quicksort  Memory: 25kB
+   Buffers: shared hit=4
+   ->  Seq Scan on stays_listing_media m  (cost=0.00..1.12 rows=5 width=42) (actual time=0.016..0.017 rows=5 loops=1)
+         Filter: (listing_id = '89563d40-4b2f-4b4e-8f52-4905878db359'::uuid)
+         Rows Removed by Filter: 10
+         Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=68
+ Planning Time: 0.688 ms
+ Execution Time: 0.070 ms
+(12 rows)
+
+--- EXPLAIN city filter explore ---
+                                                  QUERY PLAN                                                   
+---------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..4.01 rows=1 width=32) (actual time=0.016..0.021 rows=3 loops=1)
+   Buffers: shared hit=4
+   ->  Seq Scan on stays_listings  (cost=0.00..4.01 rows=1 width=32) (actual time=0.015..0.020 rows=3 loops=1)
+         Filter: (((city)::text ~~* 'Casablanca'::text) AND ((status)::text = 'LIVE'::text))
+         Rows Removed by Filter: 3
+         Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=6
+ Planning Time: 0.115 ms
+ Execution Time: 0.043 ms
+(10 rows)
+
+--- EXPLAIN booking active overlap probe (daterange) if column exists ---
+ column_name |     data_type     
+-------------+-------------------
+ listing_id  | uuid
+ status      | character varying
+(2 rows)
+

@@ -1,0 +1,22 @@
+
+> nexa-stays-admin-dashboard@0.1.0 test:csp
+> node --test lib/csp.test.cjs lib/rbac.test.cjs
+
+✔ originOf extracts scheme+host+port (0.410125ms)
+✔ production CSP: core directives and no unsafe-eval (0.372ms)
+✔ production CSP rejects consumer-web third parties (0.09525ms)
+✔ dev CSP may include unsafe-eval and ws loopback (0.155208ms)
+✔ dev CSP allows localhost aliases for loopback APIs (0.429875ms)
+✔ connect-src only includes configured API origins (0.082916ms)
+✔ assertDashboardCspInvariants rejects wildcards (0.133583ms)
+✔ assertDashboardCspInvariants rejects script unsafe-inline (0.06075ms)
+✔ agents may access exact /support, /support/reviews, and /login only (0.309375ms)
+✔ /support does not stay active on operations, analytics, or reviews (0.060375ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42.681625

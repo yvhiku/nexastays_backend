@@ -1,0 +1,18 @@
+=== 145 Database health monitoring ===
+Date: 2026-09-07 (VPS nexa@72.60.133.228)
+
+App container healthchecks (compose):
+- nexa-apps-identity-1: healthy — CMD hits http://127.0.0.1:3001/api/v1/health/ready
+- nexa-apps-stays-1: healthy — CMD hits http://127.0.0.1:3002/api/v1/health/ready
+
+HTTP /health/ready (localhost):
+- identity: {"ok":true,"check":"ready","db":"connected","service":"nexa-identity"}
+- stays: {"ok":true,"check":"ready","db":"connected","service":"nexa-stays"}
+
+pg_isready inside DB containers:
+- identity-db (nexa_identity): accepting connections
+- stays-db (nexa_stays): accepting connections
+
+Note: DB containers themselves have Healthcheck=null; DB liveness is monitored via app ready probes that include db:"connected".
+
+VERDICT: PASS

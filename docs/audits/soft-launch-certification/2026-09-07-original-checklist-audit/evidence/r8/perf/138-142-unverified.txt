@@ -1,0 +1,4 @@
+=== 138 / 142 honest UNVERIFIED ===
+Date: 2026-09-07
+138 production-scale search: dogfood has only 4 LIVE listings; no production-scale search dataset or load profile executed. Do not invent PASS.
+142 concurrent booking traffic at production scale: no controlled concurrent booking harness with stated N and pass criteria. Unit/PG concurrency specs ≠ this checklist ID. Do not invent PASS.

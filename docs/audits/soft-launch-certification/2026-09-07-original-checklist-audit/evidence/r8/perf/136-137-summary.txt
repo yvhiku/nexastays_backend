@@ -1,0 +1,23 @@
+=== 136/137 dogfood curl summary ===
+Date: 2026-09-07T15:19:45Z (homepage) / 15:19:53Z (listing)
+UA: Chrome-like browser
+Budgets: homepage TTFB<2000ms total<3000ms; listing TTFB<2000ms total<4000ms
+Lighthouse: NOT_FOUND (see 136-lighthouse-note.txt) — curl budgets authoritative
+
+Homepage primary URL: https://nexastays.ma/en
+  n=5 status_all_200=True
+  ttfb_ms median=157.6 min=140.4 max=204.1
+  total_ms median=425.1 min=382.2 max=503.2
+  budget_ttfb_2000: PASS
+  budget_total_3000: PASS
+Note: https://nexastays.ma/ returns 307 locale redirect (documented; not primary HTML).
+
+LIVE listing: https://nexastays.ma/en/listings/89563d40-4b2f-4b4e-8f52-4905878db359
+  n=5 status_all_200=True
+  ttfb_ms median=191.0 min=177.1 max=206.2
+  total_ms median=446.9 min=395.6 max=447.4
+  budget_ttfb_2000: PASS
+  budget_total_4000: PASS
+
+VERDICT 136: PASS
+VERDICT 137: PASS

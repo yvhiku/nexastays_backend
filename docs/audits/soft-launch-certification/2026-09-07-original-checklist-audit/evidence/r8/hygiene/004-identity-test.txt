@@ -1,0 +1,164 @@
+
+> @nexa/identity@0.0.1 test
+> jest --ci --forceExit
+
+PASS src/modules/auth/auth.otp-attempt-limits.spec.ts
+PASS src/modules/compliance/compliance.service.spec.ts
+  ● Console
+
+    console.log
+      {"ts":"2026-09-07T15:20:25.939Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC submit received","data":{"userId":"user-123","hasFullName":false,"hasDob":false,"hasNationality":false,"hasNationalId":"[REDACTED]"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:25.981Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC user resolved"}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:25.987Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC submit received","data":{"userId":"user-123","hasFullName":false,"hasDob":false,"hasNationality":false,"hasNationalId":"[REDACTED]"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:25.987Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC user resolved"}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:25.989Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC submit received","data":{"userId":"user-123","hasFullName":false,"hasDob":false,"hasNationality":false,"hasNationalId":"[REDACTED]"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:25.990Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC user resolved"}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:25.993Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC submit received","data":{"userId":"user-123","hasFullName":false,"hasDob":false,"hasNationality":false,"hasNationalId":"[REDACTED]"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:25.994Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC user resolved"}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:25.996Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC submit received","data":{"userId":"user-123","hasFullName":false,"hasDob":false,"hasNationality":true,"hasNationalId":"[REDACTED]"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:25.996Z","level":"debug","service":"nexa-identity","environment":"development","event":"KYC user resolved"}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:26.005Z","level":"debug","service":"nexa-identity","environment":"development","event":"Sumsub applicant identity fetch skipped","data":{"hasApplicantId":true}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.error
+      {"ts":"2026-09-07T15:20:26.097Z","level":"error","service":"nexa-identity","environment":"development","event":"Sumsub webhook status apply failed","error":{"eventType":"applicantReviewed"}}
+
+      35 |     }),
+      36 |   );
+    > 37 |   if (level === 'error') console.error(line);
+         |                                  ^
+      38 |   else if (level === 'warn') console.warn(line);
+      39 |   else console.log(line);
+      40 | }
+
+      at emit (common/logging/safe-logger.ts:37:34)
+      at Object.error (common/logging/safe-logger.ts:53:5)
+      at ComplianceService.processSumsubWebhook (modules/compliance/compliance.service.ts:1370:18)
+      at Object.<anonymous> (modules/compliance/compliance.service.spec.ts:893:7)
+
+PASS src/modules/admin/services/admin-kyc.service.spec.ts
+PASS src/common/guards/account-status.guard.spec.ts
+PASS src/modules/auth/logout-refresh-revoke.spec.ts
+PASS src/common/security/cors-origins.spec.ts
+PASS src/modules/sms/sms.service.spec.ts
+PASS src/modules/users/users.service.spec.ts
+PASS src/legacy/modules/compliance-kyc-policy/kyc-policy.engine.spec.ts
+PASS src/modules/auth/admin-login.spec.ts
+PASS src/legacy/modules/reconciliation/reconciliation.service.spec.ts
+PASS src/modules/auth/logout.controller.spec.ts
+PASS src/modules/auth/auth.login-enumeration.spec.ts
+  ● Console
+
+    console.log
+      {"ts":"2026-09-07T15:20:26.886Z","level":"info","service":"nexa-identity","environment":"development","event":"security.auth_failure","data":{"ip":"127.0.0.1","burstCount":1,"reason":"USER_NOT_FOUND"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+    console.log
+      {"ts":"2026-09-07T15:20:26.945Z","level":"info","service":"nexa-identity","environment":"development","event":"security.auth_failure","data":{"ip":"127.0.0.1","burstCount":2,"reason":"USER_NOT_FOUND"}}
+
+      at emit (common/logging/safe-logger.ts:39:16)
+
+PASS src/common/security/production-env-policy.spec.ts
+PASS src/modules/auth/auth.otp-contract.spec.ts
+PASS src/legacy/modules/stays/services/stays-availability.service.spec.ts
+PASS src/legacy/modules/subscription/subscription-billing.utils.spec.ts
+PASS src/modules/users/internal-users.controller.spec.ts
+PASS src/modules/auth/security/bearer-access-token.spec.ts
+PASS src/modules/auth/security/refresh-token-contract.spec.ts
+PASS src/common/security/upload-storage-policy.spec.ts
+PASS src/legacy/modules/stays/services/stays-cancellation.service.spec.ts
+PASS src/legacy/modules/stays/hosts/host-onboarding.service.spec.ts
+PASS src/modules/users/identity-phone-numbers.service.spec.ts
+PASS src/modules/compliance/sumsub-webhook-auth.spec.ts
+PASS src/app.health.spec.ts
+PASS src/modules/admin/services/admin-users.service.spec.ts
+PASS src/modules/auth/otp-lockout.service.spec.ts
+PASS src/legacy/modules/rewards-program/cashback.calculator.spec.ts
+PASS src/app.controller.spec.ts
+PASS src/legacy/modules/go-taxi/pricing/fare-calculator.service.spec.ts
+PASS src/modules/auth/pin-lockout.service.spec.ts
+PASS src/legacy/modules/compliance-kyc-policy/kyc-policy.override-effectiveness.spec.ts
+PASS src/common/phone/phone-normalizer.spec.ts
+PASS src/common/observability/observability.spec.ts
+  ● Console
+
+    console.error
+      {"level":"error","event":"UNHANDLED_REJECTION","service":"test","reason":{"name":"Error","message":"boom"},"ts":"2026-09-07T15:20:28.154Z"}
+
+      33 |     });
+      34 |     process.on('unhandledRejection', (reason) => {
+    > 35 |         console.error(JSON.stringify({
+         |                 ^
+      36 |             level: 'error',
+      37 |             event: severity_1.ObsEvents.UNHANDLED_REJECTION,
+      38 |             service: options.service,
+
+      at process.<anonymous> (../../../nexastays_platform/telemetry/dist/fatal-handlers.js:35:17)
+      at Object.<anonymous> (common/observability/observability.spec.ts:132:13)
+
+PASS src/legacy/modules/subscription-limits/subscription-limits.merge.spec.ts
+PASS src/legacy/modules/ledger/ledger-validation.spec.ts
+PASS src/modules/auth/otp-send-rate-limit.service.spec.ts
+PASS src/common/security/cookie-csrf.spec.ts
+PASS src/legacy/modules/go-taxi/pricing/go-pricing.service.spec.ts
+PASS src/common/security/twilio-env-naming.spec.ts
+PASS src/common/idempotency/canonical-request-hash.spec.ts
+PASS src/modules/users/entities/staff-jwt-claims.spec.ts
+PASS src/modules/fraud/fraud.rules.spec.ts
+PASS src/modules/auth/security/browser-auth-cookies.spec.ts
+PASS src/common/security/release-metadata.spec.ts
+PASS src/common/guards/roles.guard.spec.ts
+PASS src/modules/auth/auth.otp-expiry-invariants.spec.ts
+PASS src/common/security/jwt-claims.spec.ts
+PASS src/common/identity-onboarding.spec.ts
+PASS src/common/security/pii-encryption.spec.ts
+PASS src/common/security/jwt-iss-aud.spec.ts
+
+Test Suites: 52 passed, 52 total
+Tests:       306 passed, 306 total
+Snapshots:   0 total
+Time:        5.317 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

@@ -1,0 +1,6 @@
+=== 140 API latency summary ===
+20 sequential GETs (16 explore + 2 listing + 2 explore?city=Casablanca), browser UA.
+n=20 ok_200=20/20
+p50_ms=267.2 p95_ms=366.1 (budget p95<800ms) PASS
+See 140-api-p95.txt.
+VERDICT: PASS under dogfood normal-load budget.

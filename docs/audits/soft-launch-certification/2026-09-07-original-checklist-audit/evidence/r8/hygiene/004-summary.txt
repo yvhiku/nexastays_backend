@@ -1,0 +1,25 @@
+=== R8-004 test matrix ===
+Date: 2026-09-07
+Freeze unchanged (tests do not flip mock payments / DEMO OTP / Sumsub sandbox / payouts).
+
+| Package | Command | Suites | Tests | Exit |
+|---|---|---|---|---|
+| identity | npm test -- --ci --forceExit | 52 passed, 52 total | 306 passed, 306 total | 0 |
+| stays | npm test -- --ci --forceExit | 1 skipped, 81 passed, 81 of 82 total | 10 skipped, 584 passed, 594 total | 0 |
+| nexastays_web | check:locales + tsx --test | n/a | 332 passed / 0 fail (total 332) | 0 |
+| nexastays_dashboard | npm run test:csp | n/a | 10 passed / 0 fail (total 10) | 0 |
+| notifications-service | npm test -- --ci --forceExit | 3 passed, 3 total | 8 passed, 8 total | 0 |
+| telemetry | npm test (node --test) | SCOPED OUT | 0 tests (empty suite) | 0 |
+
+Selected release suite pass counts:
+- identity: 306 passed
+- stays: 584 passed (10 skipped, not failures)
+- web: 332 passed
+- dashboard: 10 passed
+- notifications: 8 passed
+- TOTAL PASSED: 1240
+- telemetry: empty suite noted; not counted as release coverage
+
+Raw logs: hygiene/004-*-test.txt, hygiene/004-telemetry-scoped-out.txt
+
+VERDICT: PASS (selected soft-launch suites; telemetry scoped out)

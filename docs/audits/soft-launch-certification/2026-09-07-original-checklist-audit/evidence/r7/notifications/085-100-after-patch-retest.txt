@@ -1,0 +1,12 @@
+=== notifications status ===
+ n 
+---
+ 0
+(1 row)
+
+                  List of relations
+ Schema |          Name          | Type  |   Owner    
+--------+------------------------+-------+------------
+ public | stays_messaging_outbox | table | nexa_stays
+(1 row)
+

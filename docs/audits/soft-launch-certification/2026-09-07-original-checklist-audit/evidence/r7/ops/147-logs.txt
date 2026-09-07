@@ -1,0 +1,13 @@
+=== 147 Production logs accessible ===
+Date: 2026-09-07
+
+`docker logs` works for nexa user on:
+- nexa-apps-identity-1
+- nexa-apps-stays-1
+- nexa-apps-notifications-1
+(and other nexa-apps_* containers)
+
+Structured JSON logs include request_id/traceId, path, status, latency, security.auth_failure events.
+Sample (redacted) in ssh-ops-probes.txt.
+
+VERDICT: PASS

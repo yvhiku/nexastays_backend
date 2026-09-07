@@ -1,0 +1,10 @@
+=== 137 listing page curl timing ===
+Date: 2026-09-07T15:19:53Z
+URL: https://nexastays.ma/en/listings/89563d40-4b2f-4b4e-8f52-4905878db359
+Budgets: TTFB<2000ms HTML_total<4000ms status=200
+
+sample=1 http_code=200 ttfb=0.177133s total=0.446953s size=185417
+sample=2 http_code=200 ttfb=0.191027s total=0.447393s size=185417
+sample=3 http_code=200 ttfb=0.191333s total=0.395594s size=185417
+sample=4 http_code=200 ttfb=0.179611s total=0.406923s size=185417
+sample=5 http_code=200 ttfb=0.206206s total=0.446862s size=185417

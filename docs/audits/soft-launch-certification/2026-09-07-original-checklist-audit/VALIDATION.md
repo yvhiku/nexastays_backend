@@ -44,10 +44,20 @@
 |---|---|
 | 022 Identity/Stays schema migrations + compare | PASS — [evidence/r6/022-schema/](evidence/r6/022-schema/) |
 | 057/059–061/063–064 host allow journey | PASS — [evidence/r6/host-allow/](evidence/r6/host-allow/) |
-| 101–106/108 admin/support | PASS — [evidence/r6/admin-support/](evidence/r6/admin-support/) |
-| 107 guest report | UNVERIFIED (needs conversation) |
+| 101–108 admin/support (107 after messaging report) | PASS — [evidence/r6/admin-support/](evidence/r6/admin-support/) |
 | 129/131–134 live SEO | PASS — [evidence/r6/seo/](evidence/r6/seo/) |
-| Matrix after R6 | **88 PASS / 0 FAIL / 62 UNVERIFIED** — [R6 report](reports/2026-09-07_RELEASE_HARDENING_R6.md) |
+| Matrix after R6 (pre R7) | **88 PASS / 0 FAIL / 62 UNVERIFIED** — [R6 report](reports/2026-09-07_RELEASE_HARDENING_R6.md) |
+
+## R7–R9 delta (2026-09-07)
+
+| Activity | Outcome |
+|---|---|
+| 111–119 live security probes | PASS — [evidence/r7/security/](evidence/r7/security/) |
+| 085–086 / 096–100 mock notifications | PASS after inbox cast fix — [evidence/r7/notifications/](evidence/r7/notifications/) |
+| 145/147/148 ops | PASS; 146/149 UNVERIFIED — [evidence/r7/ops/](evidence/r7/ops/) |
+| 004/008/136–137/139–141/143 | PASS; 138/142 UNVERIFIED — [evidence/r8/](evidence/r8/) |
+| 121–128 physical mobile | UNVERIFIED (no devices) — [evidence/r9/](evidence/r9/) |
+| Matrix after R9 | **116 PASS / 0 FAIL / 34 UNVERIFIED** |
 
 Full R3 narrative: [reports/2026-09-07_RELEASE_HARDENING_R3.md](reports/2026-09-07_RELEASE_HARDENING_R3.md).
 

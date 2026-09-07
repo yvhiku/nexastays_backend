@@ -1,0 +1,20 @@
+
+
+==== R8-008 hygiene verdict ====
+debugger: 0 hits in scoped production paths
+TODO HACK / FIXME HACK / temporary bypass / auth bypass: 0 hits
+console.log residuals (quarantine list — not soft-launch blockers):
+  - identity/src/common/logger.ts + safe-logger.ts: intentional structured logger sinks
+  - identity/src/legacy/modules/go-delivery/** + go-taxi/** + wallets/**: legacy debug logs (not soft-launch surface)
+  - identity/src/scripts/seed-*: seed/ops scripts only
+  - stays/src/common/logger.ts + safe-logger.ts: intentional logger sinks
+  - stays/src/scripts/seed-*: seed/ops scripts only
+  - stays ...prod-inv-001.spec.ts: test file residual (excluded from prod path intent)
+  - notifications-service/src/main.ts: startup listen log (benign)
+  - app.config.ts: comment false-positive (argon2 example mentioning console.log)
+web app/components/lib + dashboard app/lib/components: 0 console.log / debugger / HACK
+
+No clear dangerous leftovers requiring emergency code fix for soft-launch.
+No freeze flips. Residuals listed for backlog (legacy go-delivery cleanup).
+
+VERDICT: PASS

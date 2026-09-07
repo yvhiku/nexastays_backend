@@ -1,0 +1,6 @@
+=== 139 image loading summary ===
+LIVE listing HTML shows next/image (_next/image ×16, srcSet, sizes, data-nimg) and loading="lazy".
+Listing photos served via GET/HEAD /api/v1/stays/listings/{id}/media/{asset} → image/jpeg, Cache-Control: public, max-age=3600, Cloudflare.
+Brand asset /images/nexastays.png Cache-Control: public, max-age=86400.
+Source: getListingMediaUrl + isListingMediaUrl (unoptimized for signed redirects).
+VERDICT: PASS (dogfood soft-launch image loading evidence).

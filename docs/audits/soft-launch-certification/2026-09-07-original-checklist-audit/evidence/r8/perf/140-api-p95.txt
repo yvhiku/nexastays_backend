@@ -1,0 +1,30 @@
+=== 140 API response times (20 sequential explore + booking-ish GETs) ===
+Date: 2026-09-07T15:19:57Z
+Budgets: p95<800ms under dogfood normal load; status mostly 200
+
+sample=1 kind=explore http_code=200 time_total=0.394515
+sample=2 kind=explore http_code=200 time_total=0.366090
+sample=3 kind=explore http_code=200 time_total=0.234410
+sample=4 kind=explore http_code=200 time_total=0.278671
+sample=5 kind=explore http_code=200 time_total=0.350263
+sample=6 kind=explore http_code=200 time_total=0.259740
+sample=7 kind=explore http_code=200 time_total=0.234619
+sample=8 kind=explore http_code=200 time_total=0.221904
+sample=9 kind=explore http_code=200 time_total=0.243073
+sample=10 kind=explore http_code=200 time_total=0.244580
+sample=11 kind=explore http_code=200 time_total=0.269795
+sample=12 kind=explore http_code=200 time_total=0.273559
+sample=13 kind=explore http_code=200 time_total=0.238092
+sample=14 kind=explore http_code=200 time_total=0.281399
+sample=15 kind=explore http_code=200 time_total=0.224771
+sample=16 kind=explore http_code=200 time_total=0.276618
+sample=17 kind=listing http_code=200 time_total=0.266763
+sample=18 kind=listing http_code=200 time_total=0.274795
+sample=19 kind=explore_city http_code=200 time_total=0.267212
+sample=20 kind=explore_city http_code=200 time_total=0.239254
+
+n=20 ok_200=20/20
+min_ms=221.9 max_ms=394.5
+p50_ms=267.2 p95_ms=366.1 mean_ms=272.0
+budget_p95_800: PASS
+budget_status: PASS

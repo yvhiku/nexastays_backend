@@ -1,0 +1,94 @@
+
+> @nexa/stays@0.0.1 test
+> jest --ci --forceExit
+
+PASS src/modules/stays/services/host-listings.h17-authz.spec.ts
+PASS src/modules/stays/services/stays-cancellation.service.spec.ts
+PASS src/modules/admin/admin-stays.listing-lifecycle.spec.ts
+PASS src/modules/stays/payments/payment-provider.config.spec.ts
+PASS src/modules/support/admin-support.controller.spec.ts
+PASS src/modules/messaging/conversations.service.spec.ts
+PASS src/modules/stays/services/booking-lifecycle-scheduler.service.spec.ts
+PASS src/modules/messaging/messages.service.spec.ts
+PASS src/modules/stays/security/bola-multi-actor-matrix.spec.ts
+PASS src/modules/stays/payments/mock-payment-confirm.spec.ts
+PASS src/modules/support/support-assignment-race.spec.ts
+PASS src/modules/stays/services/host-dashboard.service.spec.ts
+PASS src/modules/stays/hosts/host-onboarding.service.spec.ts
+PASS src/modules/stays/services/host-listings.canlist.spec.ts
+PASS src/modules/stays/services/host-analytics.service.spec.ts
+PASS src/modules/stays/explore-filter-forwarding.spec.ts
+PASS src/modules/support/support-tickets.service.spec.ts
+PASS src/modules/stays/payments/stays-payments-cmi-lifecycle.spec.ts
+PASS src/modules/seo/seo-listing.sitemap.spec.ts
+PASS src/modules/stays/hosts/hosts.upload-oversize.spec.ts
+PASS src/modules/stays/stays.controller.h3-routes.spec.ts
+PASS src/modules/messaging/outbox.worker.spec.ts
+PASS src/modules/support/support-quality-signals.service.spec.ts
+PASS src/modules/stays/services/stays-reviews.service.spec.ts
+PASS src/modules/stays/services/host-listings.pagination.spec.ts
+PASS src/modules/support/operational-intelligence.service.spec.ts
+PASS src/modules/stays/security/bola-payments.spec.ts
+PASS src/modules/platform-settings/platform-settings.service.spec.ts
+PASS src/modules/support/support-performance.service.spec.ts
+PASS src/modules/support/support-performance-snapshot.service.spec.ts
+PASS src/modules/stays/services/booked-statuses.alignment.spec.ts
+PASS src/app.controller.spec.ts
+PASS src/modules/messaging/conversation-presentation.service.spec.ts
+PASS src/modules/stays/security/cleaning-fee-removal.spec.ts
+PASS src/modules/support/support-agent-skills.service.spec.ts
+PASS src/modules/support/support-agent-metrics.service.spec.ts
+PASS src/modules/stays/services/stays-availability.service.spec.ts
+PASS src/modules/stays/hosts/hosts.service.spec.ts
+PASS src/modules/stays/payments/booking-state-concurrency.spec.ts
+PASS src/modules/support/support-coaching-notes.service.spec.ts
+PASS src/modules/support/support-canned-replies.service.spec.ts
+PASS src/modules/messaging/conversation-provision.service.spec.ts
+PASS src/common/guards/roles.guard.spec.ts
+PASS src/common/guards/account-status.guard.spec.ts
+PASS src/modules/messaging/timeline-seeder.service.spec.ts
+PASS src/app.health.spec.ts
+PASS src/modules/messaging/messaging-state.service.spec.ts
+PASS src/modules/support/support-assignment.service.spec.ts
+PASS src/common/security/outbound-url.spec.ts
+PASS src/common/observability/observability-internal.controller.spec.ts
+PASS src/common/security/jwt-iss-aud.spec.ts
+PASS src/modules/stays/utils/host-list-cursor.util.spec.ts
+PASS src/common/phone/phone-normalizer.spec.ts
+PASS src/modules/stays/payments/cmi-payment.provider.spec.ts
+PASS src/modules/stays/utils/booking-date.util.spec.ts
+PASS src/modules/support/support-staff-access.spec.ts
+PASS src/modules/stays/security/bola-bookings.spec.ts
+[Nest] 73530  - 09/07/2026, 4:20:28 PM    WARN [SupportAssignmentService] auto-assign skipped for ticket-1: Error: identity down
+[Nest] 73525  - 09/07/2026, 4:20:29 PM    WARN [CmiPaymentProvider] CMI Credit failed for STAYS-r-1: HTTP 200 code=99
+PASS src/modules/support/support-routing.config.spec.ts
+PASS src/common/media/media-storage-policy.spec.ts
+PASS src/common/security/outbound-https-fetch.spec.ts
+PASS src/modules/stays/security/financial-integrity.spec.ts
+PASS src/modules/messaging/messaging-qa.spec.ts
+PASS src/modules/stays/security/mass-assignment.spec.ts
+PASS src/common/security/release-metadata.spec.ts
+PASS src/common/security/cors-origins.spec.ts
+PASS src/common/idempotency/canonical-request-hash.spec.ts
+PASS src/common/security/cookie-csrf.spec.ts
+PASS src/common/identity/identity-authz.client.spec.ts
+PASS src/modules/support/support-sla.config.spec.ts
+PASS src/modules/messaging/permissions.service.spec.ts
+PASS src/common/security/pii-encryption.spec.ts
+PASS src/modules/messaging/message-preview.util.spec.ts
+PASS src/modules/support/support-language.spec.ts
+PASS src/modules/stays/security/bola-listings.spec.ts
+PASS src/modules/stays/utils/host-bookings-list-sql.util.spec.ts
+PASS src/modules/messaging/messaging-realtime.service.spec.ts
+PASS src/modules/support/support-ticket-state.spec.ts
+PASS src/common/security/production-env-policy.spec.ts
+PASS src/modules/identity-auth/bearer-access-token.spec.ts
+PASS src/modules/support/support-canned-render.spec.ts
+PASS src/common/observability/financial-observability.spec.ts
+
+Test Suites: 1 skipped, 81 passed, 81 of 82 total
+Tests:       10 skipped, 584 passed, 594 total
+Snapshots:   0 total
+Time:        5.708 s, estimated 19 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

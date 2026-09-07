@@ -1,0 +1,17 @@
+=== 136 homepage curl timing ===
+Date: 2026-09-07T15:19:45Z
+UA: Chrome-like browser
+Budgets: TTFB<2000ms HTML_total<3000ms status=200 on /en (primary); / noted as locale redirect
+
+--- https://nexastays.ma/ ---
+sample=1 http_code=307 ttfb=0.274266s total=0.276400s size=3
+sample=2 http_code=307 ttfb=0.384404s total=0.386684s size=3
+sample=3 http_code=307 ttfb=0.258047s total=0.260058s size=3
+sample=4 http_code=307 ttfb=0.267278s total=0.269457s size=3
+sample=5 http_code=307 ttfb=0.212483s total=0.214452s size=3
+--- https://nexastays.ma/en ---
+sample=1 http_code=200 ttfb=0.204084s total=0.503230s size=221226
+sample=2 http_code=200 ttfb=0.140367s total=0.414315s size=221226
+sample=3 http_code=200 ttfb=0.157642s total=0.425123s size=221226
+sample=4 http_code=200 ttfb=0.156968s total=0.382238s size=221226
+sample=5 http_code=200 ttfb=0.201740s total=0.435612s size=221226

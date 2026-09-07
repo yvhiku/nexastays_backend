@@ -1,0 +1,32 @@
+=== booking row ===
+                  id                  |  status   |          paid_at           |        confirmed_at        
+--------------------------------------+-----------+----------------------------+----------------------------
+ 3a74502c-6fe6-4acd-9ee9-0a7eec636ae1 | CONFIRMED | 2026-09-07 14:30:30.065+00 | 2026-09-07 14:30:30.065+00
+(1 row)
+
+=== user_notifications count/types ===
+ type | count 
+------+-------
+(0 rows)
+
+ total 
+-------
+     0
+(1 row)
+
+=== recent outbox event types (messaging) ===
+      event_type      | status | count 
+----------------------+--------+-------
+ booking.confirmed.v1 | DONE   |     2
+ message.read.v1      | DONE   |    60
+ message.received.v1  | DONE   |     2
+ message.sent.v1      | DONE   |     2
+ payment.succeeded.v1 | DONE   |     2
+(5 rows)
+
+=== notifications dead letters since journey start ===
+=== redis stream / consumer hint ===
+nexa:events:retry:nexa-notifications:notifications-1
+nexa:events:retry:nexa-notifications:notifications-1
+nexa:events
+nexa:events:dlq

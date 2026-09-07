@@ -1,0 +1,136 @@
+=== R8-008 hygiene audit (console.log / TODO HACK / bypass / debugger) ===
+Date: 2026-09-07T15:21:08Z
+Scope: identity/stays/web/dashboard/notifications production src (exclude tests/specs/node_modules/dist/.next)
+
+#### debugger
+--- identity_debugger ---
+
+--- stays_debugger ---
+
+--- web_debugger ---
+
+--- dash_debugger ---
+
+--- notif_debugger ---
+
+#### TODO HACK / FIXME HACK / temporary bypass
+--- identity_hack ---
+
+--- stays_hack ---
+
+--- web_hack ---
+
+--- dash_hack ---
+
+--- notif_hack ---
+
+#### console.log (production paths)
+--- identity_clog ---
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-taxi-test-data.ts:205:  console.log('Taxi test data seeded.');
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-taxi-test-data.ts:206:  console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-taxi-test-data.ts:209:  console.log(`  Test Driver (DRIVER): ${TEST_DRIVER_PHONE}, PIN ${PIN}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-test-users.ts:244:  console.log('Seeded test users successfully.');
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:52:    console.log(`✅ Created user and wallet for driver: ${driverPhone}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:54:    console.log(`ℹ️  User already exists: ${driverPhone}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:70:    console.log(`✅ Created driver profile: ${driver.id}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:80:    console.log(`✅ Created driver availability record`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:82:    console.log(`ℹ️  Driver profile already exists for user: ${user.id}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:91:    console.log('📦 Seeding Nexa Go test data...\n');
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:95:    console.log('\n✅ Nexa Go seed completed successfully!');
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:96:    console.log(`\nTest Driver Account:`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:97:    console.log(`  Phone: ${user.phone_number}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:98:    console.log(`  PIN: 123456`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:99:    console.log(`  Driver ID: ${driver.id}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:100:    console.log(`  Vehicle: ${driver.vehicle_type} - ${driver.vehicle_plate}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:101:    console.log(`  Status: ${driver.status}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:102:    console.log(`\n💡 Use this account to test driver endpoints.`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-go-test-data.ts:103:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-food-test-data.ts:218:  console.log('Food order test data seeded.');
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-food-test-data.ts:219:  console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-food-test-data.ts:222:  console.log(`  Test Restaurant (MERCHANT): ${RESTAURANT_PHONE}, PIN ${PIN}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/scripts/seed-food-test-data.ts:223:  console.log(`  Test Courier (CONSUMER): ${COURIER_PHONE}, PIN ${PIN}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/common/logging/safe-logger.ts:39:  else console.log(line);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:249:      console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:423:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:442:    console.log(`[GoDelivery][ConsumerOrders] count=${orders.length}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:451:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:470:    console.log(`[GoDelivery][MerchantOrders] count=${orders.length}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:475:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:493:    console.log(`[GoDelivery][CourierAvailable] count=${orders.length}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:502:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:521:    console.log(`[GoDelivery][CourierAssigned] count=${orders.length}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:581:    console.log(`[GoDelivery][CourierHistory] courierId=${courierId}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:597:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:601:      console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:632:    console.log('[OrdersService][acceptOrder] Request:', {
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:638:    console.log('[OrdersService][acceptOrder] Order found:', {
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:659:    console.log('[OrdersService][acceptOrder] Order updated:', {
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.service.ts:669:      console.log('[OrdersService][acceptOrder] Event created');
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.controller.ts:96:    console.log('[OrdersController][getMerchantOrders] user:', {
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.controller.ts:103:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.controller.ts:275:    console.log('[OrdersController][acceptOrder] Request:', {
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.controller.ts:286:      console.log('[OrdersController][acceptOrder] Courier verified:', {
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.controller.ts:292:      console.log('[OrdersController][acceptOrder] Order accepted:', {
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.controller.ts:318:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.controller.ts:336:        console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-delivery/orders/orders.controller.ts:347:      console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/common/logger.ts:39:    console.log(JSON.stringify(payload));
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/wallets/wallets.service.ts:224:      console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/wallets/wallets.service.ts:229:    console.log(`[WalletsService] Creating new wallet for user ${userId}`);
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/wallets/wallets.service.ts:235:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/wallets/wallets.service.ts:239:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.service.ts:197:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.service.ts:236:      console.log('[DriversService] No driver found, returning null');
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.service.ts:239:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.service.ts:268:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.service.ts:364:      console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.service.ts:373:      console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.service.ts:382:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.service.ts:469:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.controller.ts:36:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.controller.ts:44:      console.log('[DriversController] GET /me returning null (not a driver)');
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/legacy/modules/go-taxi/drivers/drivers.controller.ts:47:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/identity/src/common/config/app.config.ts:66:   * Generate with: node -e "require('argon2').hash('your-password').then(console.log)"
+
+--- stays_clog ---
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-random-bookings.ts:122:      console.log(`Cleaned ${del.rowCount ?? 0} previous seed bookings.`);
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-random-bookings.ts:157:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-random-bookings.ts:280:          console.log(`  … ${created}/${count}`);
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-random-bookings.ts:302:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-morocco-listings.ts:215:  console.log('Provisioned APPROVED seed host profile from bootstrap env');
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-morocco-listings.ts:251:        console.log(`Cleaned ${del.rowCount ?? 0} previous seed listings.`);
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-morocco-listings.ts:260:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-morocco-listings.ts:496:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/scripts/seed-morocco-listings.ts:499:    console.log(
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/logger.ts:39:    console.log(JSON.stringify(payload));
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/common/logging/safe-logger.ts:34:  else console.log(line);
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/payments/booking-pg-concurrency.prod-inv-001.spec.ts:257:    console.log('[PROD-INV-001] PostgreSQL:', ver.rows[0]?.version);
+/Users/apple/nexa/nexastays/nexastays_backend/stays/src/modules/stays/payments/booking-pg-concurrency.prod-inv-001.spec.ts:267:    console.log('[PROD-INV-001] Constraint:', constraint.rows[0]?.def);
+
+--- web_clog ---
+
+--- dash_clog ---
+
+--- notif_clog ---
+/Users/apple/nexa/nexastays/nexastays_platform/notifications-service/src/main.ts:62:  console.log(`Notifications service listening on :${port}`);
+
+
+
+==== R8-008 hygiene verdict ====
+debugger: 0 hits in scoped production paths
+TODO HACK / FIXME HACK / temporary bypass / auth bypass: 0 hits
+console.log residuals (quarantine list — not soft-launch blockers):
+  - identity/src/common/logger.ts + safe-logger.ts: intentional structured logger sinks
+  - identity/src/legacy/modules/go-delivery/** + go-taxi/** + wallets/**: legacy debug logs (not soft-launch surface)
+  - identity/src/scripts/seed-*: seed/ops scripts only
+  - stays/src/common/logger.ts + safe-logger.ts: intentional logger sinks
+  - stays/src/scripts/seed-*: seed/ops scripts only
+  - stays ...prod-inv-001.spec.ts: test file residual (excluded from prod path intent)
+  - notifications-service/src/main.ts: startup listen log (benign)
+  - app.config.ts: comment false-positive (argon2 example mentioning console.log)
+web app/components/lib + dashboard app/lib/components: 0 console.log / debugger / HACK
+
+No clear dangerous leftovers requiring emergency code fix for soft-launch.
+No freeze flips. Residuals listed for backlog (legacy go-delivery cleanup).
+
+VERDICT: PASS

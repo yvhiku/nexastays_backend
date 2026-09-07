@@ -1,0 +1,19 @@
+=== mock booking journey ===
+--- create booking ---
+{"id":"3a74502c-6fe6-4acd-9ee9-0a7eec636ae1","booking_reference":"NST-2026-000004","listing_id":"89563d40-4b2f-4b4e-8f52-4905878db359","status":"PAYMENT_PENDING","booking_lifecycle":"PENDING_PAYMENT","checkin_date":"2026-11-10","checkout_date":"2026-11-12","guest_count":2,"total_subtotal":800,"guest_fee":40,"total_paid":840,"currency":"MAD","created_at":"2026-09-07T14:30:29.365Z","completed_at":null,"payment_expires_at":"2026-09-07T15:30:29.365Z","payment_failed":false,"can_review":false,"can_complain":false,"can_cancel":true,"has_reviewed":false,"review_status":"NONE","listing":{"id":"89563d40-4b2f-4b4e-8f52-4905878db359","title":"R6 Soft Launch Probe Apartment","city":"Casablanca","checkin_time":"14:00:00","checkout_time":"11:00:00","address":null,"check_in_instructions":null,"check_in_contact":null,"media":[{"asset_id":"da87d2e2-78d5-4b46-9fff-4ad89962cb66","kind":"PHOTO","sort_order":0},{"asset_id":"39b203cb-7d1a-4634-ad3e-d9440e7eed7e","kind":"PHOTO","sort_order":1},{"asset_id":"0ceff7eb-e095-430b-8eea-74770049b770","kind":"PHOTO","sort_order":2},{"asset_id":"a3921dc9-7dd1-4d1d-b67e-c71069560c4d","kind":"PHOTO","sort_order":3},{"asset_id":"18cc7643-17ad-412e-8605-d7ced2223108"
+--- payment intent ---
+{"id":"321efe0f-b53e-44b8-bada-f7baa5abe074","booking_id":"3a74502c-6fe6-4acd-9ee9-0a7eec636ae1","provider":"mock","provider_intent_id":"mock_1788791429726_nel8lqovtk","amount":840,"currency":"MAD","status":"PENDING"}
+HTTP 201
+
+--- mock confirm ---
+{"status":"CONFIRMED","booking_id":"3a74502c-6fe6-4acd-9ee9-0a7eec636ae1","payment_intent_id":"321efe0f-b53e-44b8-bada-f7baa5abe074","provider_intent_id":"mock_1788791429726_nel8lqovtk","amount":840,"currency":"MAD"}
+HTTP 200
+
+--- cancel ---
+{"statusCode":400,"timestamp":"2026-09-07T14:30:33.453Z","path":"/api/v1/stays/bookings/3a74502c-6fe6-4acd-9ee9-0a7eec636ae1/cancel","message":"cancelled_by must be one of the following values: guest, host","code":"Bad Request"}
+HTTP 400
+
+--- cancel retry cancelled_by=guest ---
+{"id":"3a74502c-6fe6-4acd-9ee9-0a7eec636ae1","status":"CANCELLED_BY_GUEST","refund_amount":840}
+HTTP 200
+

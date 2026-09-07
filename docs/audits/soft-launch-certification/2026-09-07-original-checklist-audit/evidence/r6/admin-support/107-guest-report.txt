@@ -1,0 +1,1 @@
+POST /messaging/conversations/:id/report {"reason":"SPAM"} -> ok reportId+ticket SUP-2026-000003

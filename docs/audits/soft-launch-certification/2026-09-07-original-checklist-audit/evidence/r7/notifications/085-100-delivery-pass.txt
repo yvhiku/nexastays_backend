@@ -1,0 +1,26 @@
+=== inbox types ===
+       type        | count 
+-------------------+-------
+ BOOKING_CONFIRMED |     1
+ HOST_NEW_BOOKING  |     1
+ PAYMENT_RECEIVED  |     1
+(3 rows)
+
+[32m[Nest] 1  - [39m09/07/2026, 3:29:35 PM [32m    LOG[39m [38;5;3m[NotificationInboxService] [39m[32m{"event":"notification_received","notificationId":"20057355-3219-4146-9719-83a398ee1728","userId":"2f7c1945-55b1-4a94-a5db-47b4d558591d","type":"BOOKING_CONFIRMED","eventId":"10b20010-cead-475e-9980-04dc82861286"}[39m
+[32m[Nest] 1  - [39m09/07/2026, 3:29:35 PM [32m    LOG[39m [38;5;3m[NotificationInboxService] [39m[32m{"event":"notification_received","notificationId":"0c9d40f2-0355-4d47-8baa-3543f6e6fe3f","userId":"55520e09-f027-467b-bbbd-cfb16567f5f7","type":"HOST_NEW_BOOKING","eventId":"10b20010-cead-475e-9980-04dc82861286"}[39m
+[32m[Nest] 1  - [39m09/07/2026, 3:29:35 PM [32m    LOG[39m [38;5;3m[NotificationInboxService] [39m[32m{"event":"notification_received","notificationId":"2eff1f34-fcc6-4c06-8437-7ff65b4d99a4","userId":"2f7c1945-55b1-4a94-a5db-47b4d558591d","type":"PAYMENT_RECEIVED","eventId":"b454bbaf-ed27-4760-b279-b9b47a50f19c"}[39m
+=== after cancel ===
+          type          | count 
+------------------------+-------
+ BOOKING_CANCELLED      |     1
+ BOOKING_CONFIRMED      |     1
+ HOST_BOOKING_CANCELLED |     1
+ HOST_NEW_BOOKING       |     1
+ PAYMENT_RECEIVED       |     1
+(5 rows)
+
+[32m[Nest] 1  - [39m09/07/2026, 3:29:35 PM [32m    LOG[39m [38;5;3m[NotificationInboxService] [39m[32m{"event":"notification_received","notificationId":"20057355-3219-4146-9719-83a398ee1728","userId":"2f7c1945-55b1-4a94-a5db-47b4d558591d","type":"BOOKING_CONFIRMED","eventId":"10b20010-cead-475e-9980-04dc82861286"}[39m
+[32m[Nest] 1  - [39m09/07/2026, 3:29:35 PM [32m    LOG[39m [38;5;3m[NotificationInboxService] [39m[32m{"event":"notification_received","notificationId":"0c9d40f2-0355-4d47-8baa-3543f6e6fe3f","userId":"55520e09-f027-467b-bbbd-cfb16567f5f7","type":"HOST_NEW_BOOKING","eventId":"10b20010-cead-475e-9980-04dc82861286"}[39m
+[32m[Nest] 1  - [39m09/07/2026, 3:29:35 PM [32m    LOG[39m [38;5;3m[NotificationInboxService] [39m[32m{"event":"notification_received","notificationId":"2eff1f34-fcc6-4c06-8437-7ff65b4d99a4","userId":"2f7c1945-55b1-4a94-a5db-47b4d558591d","type":"PAYMENT_RECEIVED","eventId":"b454bbaf-ed27-4760-b279-b9b47a50f19c"}[39m
+[32m[Nest] 1  - [39m09/07/2026, 3:30:16 PM [32m    LOG[39m [38;5;3m[NotificationInboxService] [39m[32m{"event":"notification_received","notificationId":"e7733c6b-3d48-4e24-84c4-307b1b9f7206","userId":"55520e09-f027-467b-bbbd-cfb16567f5f7","type":"HOST_BOOKING_CANCELLED","eventId":"8bc38786-da9e-4aef-9229-05bdfa524b35"}[39m
+[32m[Nest] 1  - [39m09/07/2026, 3:30:16 PM [32m    LOG[39m [38;5;3m[NotificationInboxService] [39m[32m{"event":"notification_received","notificationId":"eb7ea22c-ea16-48de-9055-b09023ef2517","userId":"2f7c1945-55b1-4a94-a5db-47b4d558591d","type":"BOOKING_CANCELLED","eventId":"8bc38786-da9e-4aef-9229-05bdfa524b35"}[39m

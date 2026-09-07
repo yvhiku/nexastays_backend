@@ -1,0 +1,7 @@
+=== R8 freeze confirmation (pre/post 143) ===
+NEXA_ENV=dogfood
+STAYS_PAYMENT_PROVIDER=mock
+SUMSUB_MODE=sandbox
+DEMO_OTP_CODE=[REDACTED_PRESENT]
+HOST_PAYOUTS: frozen off (not flipped)
+No CMI / live SMS / Sumsub-prod flips during R8.

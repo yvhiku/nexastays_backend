@@ -4,13 +4,16 @@ Frozen posture: **mock payments**, **DEMO OTP (dogfood)**, **Sumsub sandbox** �
 
 ## Original attachment audit — current for the requested 150 requirements
 
-- **R6 conversion (current):** [2026-09-07 original-checklist R6 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R6.md) — **88 PASS / 0 FAIL / 62 UNVERIFIED**. Soft-launch leave-behind (CMI/SMS/Sumsub-prod/payouts) unchanged. Production **NOT READY / NOT CERTIFIED**.
-- **R5 conversion:** [R5 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R5.md) — 69 PASS / 0 FAIL / 81 UNVERIFIED.
-- **R4 conversion:** [R4 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R4.md) — 62 PASS / 0 FAIL / 88 UNVERIFIED.
-- **R3 hardening:** [R3 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R3.md) — Gates 1–4 cleared (lint/OTP/authz/R2 restore).
-- Baseline original report (pre-R3): [REPORT.md](./2026-09-07-original-checklist-audit/REPORT.md).
-- [Exact original 001–150 matrix](./2026-09-07-original-checklist-audit/CHECKLIST.md) (R6-updated rows) and [validation ledger](./2026-09-07-original-checklist-audit/VALIDATION.md).
-- Evidence: [evidence/r3/](./2026-09-07-original-checklist-audit/evidence/r3/), [evidence/r4/](./2026-09-07-original-checklist-audit/evidence/r4/), [evidence/r5/](./2026-09-07-original-checklist-audit/evidence/r5/), [evidence/r6/](./2026-09-07-original-checklist-audit/evidence/r6/).
+- **R9 (current):** [R9 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R9.md) — physical mobile deferred (no devices). Matrix **116 PASS / 0 FAIL / 34 UNVERIFIED**. Soft-launch leave-behind (CMI/SMS/Sumsub-prod/payouts) unchanged; plus honest holds 138/142/146/149/121–128.
+- **R8:** [R8 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R8.md) — dogfood perf/restart + hygiene.
+- **R7:** [R7 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R7.md) — security + mock notifications + ops subset.
+- **R6:** [R6 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R6.md) — schema/host/admin/SEO.
+- **R5:** [R5 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R5.md).
+- **R4:** [R4 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R4.md).
+- **R3:** [R3 report](./2026-09-07-original-checklist-audit/reports/2026-09-07_RELEASE_HARDENING_R3.md) — Gates 1–4 cleared.
+- Baseline: [REPORT.md](./2026-09-07-original-checklist-audit/REPORT.md).
+- [Exact original 001–150 matrix](./2026-09-07-original-checklist-audit/CHECKLIST.md) and [validation ledger](./2026-09-07-original-checklist-audit/VALIDATION.md).
+- Evidence: [r3](./2026-09-07-original-checklist-audit/evidence/r3/) … [r9](./2026-09-07-original-checklist-audit/evidence/r9/).
 - This matrix retains the requirements from the user's attachment. The R1/R2 checklist below uses **different** requirements for the same numbers and is preserved as a separate historical audit; its results must not be substituted into the original matrix.
 
 ## Alternate-numbered R1/R2 audit (retained history — different IDs)

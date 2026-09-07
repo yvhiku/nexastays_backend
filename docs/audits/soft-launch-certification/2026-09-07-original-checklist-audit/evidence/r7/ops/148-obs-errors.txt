@@ -1,0 +1,13 @@
+=== 148 Critical payment/booking errors observable ===
+Date: 2026-09-07
+
+Evidence:
+- Structured stays logs contain payment/booking related lines (21 hits in last ~3000 log lines during probes)
+- `emit-obs-event.sh` present at /opt/nexa/nexastays_backend/deploy/scripts/emit-obs-event.sh
+- Dry invoke without webhook: emits JSON ops channel line to stdout
+  {"channel":"ops","event":"PAYMENT_FAILED_TEST","severity":"P1",...}
+- deploy/.env: OPS_ALERT_WEBHOOK_URL / PAYMENT_ALERT_WEBHOOK_URL not set (empty) — alert webhook delivery not configured
+- createBooking controller logs errors via Nest logger on failure
+
+VERDICT: PASS for log observability of critical payment/booking paths on dogfood.
+Note: external webhook paging not configured (dogfood-optional); do not treat as production on-call proof.
