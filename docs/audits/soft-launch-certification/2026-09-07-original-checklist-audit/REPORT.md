@@ -7,13 +7,15 @@
 
 ## R3 update (same day)
 
-Hardening **R4** converted 14 more original UNVERIFIED→PASS (auth 036/038, host 058/062, VPS infra subset). Current totals: **62 PASS · 0 FAIL · 88 UNVERIFIED**. R3 Gates 1–4 remain cleared; production **NOT READY**. See [R4 report](reports/2026-09-07_RELEASE_HARDENING_R4.md).
+Hardening **R5** converted 7 more original UNVERIFIED→PASS (011, 019, 023, 065–067, 073); **022** stays UNVERIFIED. Current totals: **69 PASS · 0 FAIL · 81 UNVERIFIED**. R3 Gates 1–4 remain cleared; production **NOT READY**. See [R5 report](reports/2026-09-07_RELEASE_HARDENING_R5.md).
+
+Hardening **R4** converted 14 original UNVERIFIED→PASS (auth 036/038, host 058/062, VPS infra subset). See [R4 report](reports/2026-09-07_RELEASE_HARDENING_R4.md).
 
 Hardening round **R3** converted original **005** and **034** FAIL→PASS, **041–048** UNVERIFIED→PASS, and completed VPS encrypted R2 restore (Gate 4).
 
 Authoritative R3 write-up: [reports/2026-09-07_RELEASE_HARDENING_R3.md](reports/2026-09-07_RELEASE_HARDENING_R3.md). Evidence: [evidence/r3/](evidence/r3/).
 
-The sections below preserve the **pre-R3 baseline** narrative (38 PASS / 2 FAIL / 110 UNVERIFIED). Prefer the R3 report and updated CHECKLIST rows for current status.
+The sections below preserve the **pre-R3 baseline** narrative (38 PASS / 2 FAIL / 110 UNVERIFIED). Prefer the R5 report and updated CHECKLIST rows for current status.
 
 ## Executive verdict
 

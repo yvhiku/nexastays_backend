@@ -1,0 +1,1 @@
+{"statusCode": 400, "timestamp": "2026-09-07T13:24:34.688Z", "path": "/api/v1/auth/otp/verify", "message": "property code should not exist, OTP must be 6 digits, otp must be a string", "code": "Bad Request"}

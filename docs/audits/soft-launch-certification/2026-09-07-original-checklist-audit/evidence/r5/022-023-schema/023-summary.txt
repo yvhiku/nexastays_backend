@@ -1,0 +1,4 @@
+FK counts: Identity 25, Stays 49 (from prior probe)
+Orphan LEFT JOIN counts: bookings→listings 0; payment_intents→bookings 0; ledger→bookings 0
+FK reject: INSERT orphan payment_intent → violates stays_payment_intents_booking_id_fkey
+RESULT: PASS (constraints present; zero orphans; reject works)

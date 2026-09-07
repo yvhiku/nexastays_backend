@@ -1,0 +1,25 @@
+=== IDENTITY ===
+entity_tables=32 db_tables=30
+missing_entire_tables=5: ['feature_flags', 'money_movement_idempotency', 'reconciliation_issues', 'refund_requests', 'support_tickets']
+missing_cols_on_deployed_tables=12
+  app_transactions.failure_reason
+  app_transactions.idempotency_key
+  app_transactions.ledger_transaction_id
+  kyc_profiles.last_provider_event_at
+  ledger_accounts.allow_negative
+  ledger_accounts.currency
+  ledger_accounts.normal_balance
+  ledger_entries.line_number
+  ledger_transactions.idempotency_key
+  ledger_transactions.idempotency_payload_hash
+  ledger_transactions.metadata
+  ledger_transactions.reverses_ledger_transaction_id
+deployed_surface_ok=False strict_all_entities_ok=False
+=== STAYS ===
+entity_tables=49 db_tables=54
+missing_entire_tables=1: ['money_movement_idempotency']
+missing_cols_on_deployed_tables=0
+deployed_surface_ok=True strict_all_entities_ok=False
+RESULT_DEPLOYED_SURFACE FAIL
+RESULT_STRICT UNVERIFIED
+CHECKLIST_022 FAIL_or_UNVERIFIED

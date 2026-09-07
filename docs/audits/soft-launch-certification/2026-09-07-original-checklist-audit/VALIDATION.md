@@ -22,8 +22,21 @@
 | 038 refresh lifecycle HTTP + Jest | PASS — [evidence/r4/038-token-lifecycle/](evidence/r4/038-token-lifecycle/) |
 | 058/062 host verification + upload reject | PASS — [evidence/r4/058-062-host-upload/](evidence/r4/058-062-host-upload/) |
 | VPS infra/HTTPS/schema probes 012–021/024 | PASS subset — [evidence/r4/011-024-vps/](evidence/r4/011-024-vps/) |
-| 065–067, 073 search/lock journeys | remain UNVERIFIED |
+| 065–067, 073 search/lock journeys | remain UNVERIFIED after R4 |
 | Matrix after R4 | **62 PASS / 0 FAIL / 88 UNVERIFIED** — [R4 report](reports/2026-09-07_RELEASE_HARDENING_R4.md) |
+
+## R5 delta (2026-09-07)
+
+| Activity | Outcome |
+|---|---|
+| 011 env key-name completeness (dogfood) | PASS — [evidence/r5/011-019-infra/](evidence/r5/011-019-infra/) |
+| 019 listen inventory (ufw sudo blocked) | PASS — same |
+| 022 entity↔VPS schema equality | **UNVERIFIED** (Identity missing mapped columns) — [evidence/r5/022-023-schema/](evidence/r5/022-023-schema/) |
+| 023 FK + orphan probes | PASS — same |
+| 065–067 seeded explore/filters/availability | PASS — [evidence/r5/065-073-search-booking/](evidence/r5/065-073-search-booking/) |
+| 073 lock expire → rebook | PASS — Nest `expirePendingPayments` + HTTP |
+| DB compose `restart: unless-stopped` | Aligned on VPS + repo — [evidence/r5/db-restart/](evidence/r5/db-restart/) |
+| Matrix after R5 | **69 PASS / 0 FAIL / 81 UNVERIFIED** — [R5 report](reports/2026-09-07_RELEASE_HARDENING_R5.md) |
 
 Full R3 narrative: [reports/2026-09-07_RELEASE_HARDENING_R3.md](reports/2026-09-07_RELEASE_HARDENING_R3.md).
 

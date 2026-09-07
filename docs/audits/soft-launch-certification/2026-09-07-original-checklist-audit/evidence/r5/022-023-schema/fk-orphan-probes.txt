@@ -1,0 +1,12 @@
+=== orphan counts ===
+0
+0
+0
+=== FK reject orphan payment_intent ===
+ERROR:  insert or update on table "stays_payment_intents" violates foreign key constraint "stays_payment_intents_booking_id_fkey"
+DETAIL:  Key (booking_id)=(00000000-0000-4000-8000-000000000098) is not present in table "stays_bookings".
+PASS: orphan insert rejected
+=== dump public columns for compare ===
+  311 /tmp/id-cols.txt
+  648 /tmp/st-cols.txt
+  959 total

@@ -1,0 +1,40 @@
+=== compose restart lines ===
+2:  identity-db:
+3:    image: postgres:16-alpine
+4:    restart: unless-stopped
+24:  stays-db:
+25:    image: postgres:16-alpine
+26:    restart: unless-stopped
+44:  redis:
+45:    image: redis:7-alpine
+46:    restart: unless-stopped
+=== BEFORE update/recreate ===
+/nexastays_db-identity-db-1 RestartPolicy=no
+/nexastays_db-stays-db-1 RestartPolicy=no
+/nexastays_db-redis-1 RestartPolicy=no
+=== AFTER compose recreate ===
+/nexastays_db-identity-db-1 RestartPolicy=unless-stopped Status=running
+/nexastays_db-stays-db-1 RestartPolicy=unless-stopped Status=running
+/nexastays_db-redis-1 RestartPolicy=unless-stopped Status=running
+nexastays_db-identity-db-1
+nexastays_db-stays-db-1
+nexastays_db-redis-1
+=== AFTER docker update ===
+/nexastays_db-identity-db-1 RestartPolicy=unless-stopped Status=running
+/nexastays_db-stays-db-1 RestartPolicy=unless-stopped Status=running
+/nexastays_db-redis-1 RestartPolicy=unless-stopped Status=running
+/var/run/postgresql:5432 - accepting connections
+/var/run/postgresql:5432 - accepting connections
+PONG
+  identity-db:
+    command:
+      - postgres
+--
+  redis:
+    image: redis:7-alpine
+    networks:
+      default: null
+--
+  stays-db:
+    command:
+      - postgres

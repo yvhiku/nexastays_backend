@@ -1,0 +1,6 @@
+hold_id=9f5c4579-fd17-45a1-9286-82462263230f
+hold_status_after_expire=EXPIRED
+expire_log=Expired pending payment booking 9f5c4579-fd17-45a1-9286-82462263230f (Nest BookingLifecycleSchedulerService.expirePendingPayments)
+rebook={'id': '605645a0-76db-471f-823e-1e4410646d5f', 'status': 'PAYMENT_PENDING', 'booking_reference': 'NST-2026-000003', 'statusCode': None, 'message': None}
+RESULT PASS
+EXPIRE_INVOKED_OK via Nest application context

@@ -1,0 +1,8 @@
+vps_key_count 62
+soft_required_count 53
+missing_count 2
+missing ['EMI_PROVIDER_TYPE', 'ENVOISMS_BASE_URL']
+freeze_keys_present ['DEMO_OTP_CODE', 'NEXA_ENV', 'STAYS_PAYMENT_PROVIDER', 'SUMSUB_MODE']
+core_missing []
+RESULT PASS
+019_listen PASS public=22,80,443 sensitive=127.0.0.1 only; ufw status needs interactive sudo

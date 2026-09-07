@@ -1,0 +1,16 @@
+PASS 065_dated_includes_A: status=200 has_A=True count=2
+PASS 065_dated_excludes_B: has_B=False
+PASS 066_city_Casa_has_A_not_B: casa=True b_in_casa=False
+PASS 066_city_Marrakech_has_B_not_A: marr=True a_in_marr=False
+PASS 066_type_VILLA_has_B_not_A: B=True A=False
+PASS 066_type_APT_has_A: A=True B=False
+PASS 066_pets_has_A_not_B: A=True B=False
+PASS 066_luxury_has_B_not_A: B=True A=False
+PASS 066_amenity_wifi_casa_has_A: A=True
+PASS 066_neighborhood_has_B: B=True A=False
+067_avail_A {"listing_id": "a1111111-1111-4111-8111-111111111101", "from": "2026-11-10", "to": "2026-11-14", "blocked_ranges": []}
+067_avail_B {"listing_id": "b2222222-2222-4222-8222-222222222202", "from": "2026-11-10", "to": "2026-11-14", "blocked_ranges": [{"checkin_date": "2026-11-10", "checkout_date": "2026-11-11", "source": "BLOCK"}, {"checkin_date": "2026-11-11", "checkout_date": "2026-11-12", "source": "BLOCK"}, {"checkin_date": "2026-11-12", "checkout_date": "2026-11-13", "source": "BLOCK"}, {"checkin_date": "2026-11-13", "checkout_date": "2026-11-14", "source": "BLOCK"}]}
+PASS 067_A_no_blocks: A_blocks=[]
+PASS 067_B_has_blocks: B_blocks=[{'checkin_date': '2026-11-10', 'checkout_date': '2026-11-11', 'source': 'BLOCK'}, {'checkin_date': '2026-11-11', 'checkout_date': '2026-11-12', 'source': 'BLOCK'}, {'checkin_date': '2026-11-12', 'checkout_date': '2026-11-13', 'source': 'BLOCK'}, {'checkin_date': '2026-11-13', 'checkout_date': '2026-11-14', 'source': 'BLOCK'}]
+SUMMARY 065-067 fails=0 total=12
+RESULT PASS

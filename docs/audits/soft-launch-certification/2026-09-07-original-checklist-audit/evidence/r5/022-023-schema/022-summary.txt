@@ -1,0 +1,14 @@
+VPS TypeORM entity column compare vs information_schema (Identity + Stays)
+
+Stays deployed tables: zero missing mapped columns (entity-only table money_movement_idempotency absent on VPS).
+Identity deployed tables: 12 missing mapped columns on existing tables
+  (app_transactions.failure_reason, idempotency_key, ledger_transaction_id;
+   kyc_profiles.last_provider_event_at;
+   ledger_accounts.allow_negative, currency, normal_balance;
+   ledger_entries.line_number;
+   ledger_transactions.idempotency_key, idempotency_payload_hash, metadata, reverses_ledger_transaction_id)
+Identity entity-only tables absent on VPS: feature_flags, money_movement_idempotency, reconciliation_issues, refund_requests, support_tickets
+
+RESULT: UNVERIFIED (fail-closed — not zero missing mapped columns on Identity dogfood schema)
+
+See schema-entity-compare.txt

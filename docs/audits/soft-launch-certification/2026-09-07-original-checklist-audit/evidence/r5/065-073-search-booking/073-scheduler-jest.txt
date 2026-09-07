@@ -1,0 +1,6 @@
+PASS src/modules/stays/services/booking-lifecycle-scheduler.service.spec.ts
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        0.535 s, estimated 1 s
