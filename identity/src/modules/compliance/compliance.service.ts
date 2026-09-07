@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -618,14 +619,17 @@ export class ComplianceService {
     providerDateOfBirth?: string | null;
     /** Raw Sumsub applicant object (webhook `applicant` / sync GET) for identity backfill. */
     providerApplicant?: Record<string, unknown> | null;
+  }, repositories: { kyc: Repository<KycProfile>; user: Repository<User> } = {
+    kyc: this.kycRepository,
+    user: this.userRepository,
   }) {
     const reviewAnswer = params.reviewResult?.reviewAnswer as string | undefined;
     const rejectLabels = params.reviewResult?.rejectLabels as unknown;
-    let kyc = await this.kycRepository.findOne({
+    let kyc = await repositories.kyc.findOne({
       where: { user_id: params.userId },
     });
     if (!kyc) {
-      kyc = this.kycRepository.create({
+      kyc = repositories.kyc.create({
         user_id: params.userId,
         provider: 'SUMSUB',
         source: params.source,
@@ -655,7 +659,7 @@ export class ComplianceService {
     this.applyProviderIdentityToKyc(kyc, providerIdentity);
     this.applyProviderMetaToKyc(kyc, providerIdentity);
 
-    const user = await this.userRepository.findOne({ where: { id: params.userId } });
+    const user = await repositories.user.findOne({ where: { id: params.userId } });
 
     let profileStatus =
       userKycStatus === 'APPROVED' ? 'VERIFIED' : userKycStatus;
@@ -691,7 +695,7 @@ export class ComplianceService {
     } else if (userKycStatus === 'APPROVED') {
       kyc.rejection_reason = null;
     }
-    await this.kycRepository.save(kyc);
+    await repositories.kyc.save(kyc);
 
     if (user) {
       user.kyc_status = userRowKycStatus;
@@ -721,7 +725,7 @@ export class ComplianceService {
       ) {
         user.profile_locked_at = new Date();
       }
-      await this.userRepository.save(user);
+      await repositories.user.save(user);
 
       if (
         user.unified_identity_id &&
@@ -734,7 +738,7 @@ export class ComplianceService {
               ? user.date_of_birth.toISOString().slice(0, 10)
               : this.normalizeIsoDob(String(user.date_of_birth))
             : null);
-        await this.userRepository.manager.query(
+        await repositories.user.manager.query(
           `UPDATE unified_identities
            SET identity_verified = true,
                identity_verification_status = 'APPROVED',
@@ -968,6 +972,7 @@ export class ComplianceService {
   private async persistSumsubDossierArtifacts(params: {
     userId: string;
     applicantId: string;
+    providerEventAt?: Date;
     applicant?: Record<string, unknown> | null;
     reviewStatus?: string | null;
     reviewResult?: Record<string, unknown> | null;
@@ -1020,7 +1025,22 @@ export class ComplianceService {
     if (/^[a-f0-9]{24}$/i.test(applicantId)) {
       kyc.reference = applicantId;
     }
-    await this.kycRepository.save(kyc);
+    await this.kycRepository.update(
+      {
+        user_id: userId,
+        ...(params.providerEventAt ? { last_provider_event_at: params.providerEventAt } : {}),
+      },
+      {
+        documents: kyc.documents,
+        document_front_url: kyc.document_front_url,
+        document_back_url: kyc.document_back_url,
+        id_document_url: kyc.id_document_url,
+        selfie_url: kyc.selfie_url,
+        reference: kyc.reference,
+        provider_snapshot: kyc.provider_snapshot,
+        provider_synced_at: kyc.provider_synced_at,
+      },
+    );
   }
 
   private buildProviderSnapshot(
@@ -1227,29 +1247,66 @@ export class ComplianceService {
     }
 
     const source = this.extractSourceFromExternalId(externalUserId);
+    const rawEventTime = payload.createdAtMs ?? payload.createdAt;
+    const eventTime =
+      typeof rawEventTime === 'string'
+        ? rawEventTime.trim().replace(' ', 'T')
+        : '';
+    const providerEventAt = new Date(
+      /(?:Z|[+-]\d{2}:?\d{2})$/.test(eventTime) ? eventTime : `${eventTime}Z`,
+    );
+    if (!eventTime || !Number.isFinite(providerEventAt.getTime())) {
+      throw new BadRequestException('Missing or invalid Sumsub event timestamp');
+    }
     let result: Record<string, unknown> = { updated: false };
     try {
-      result = await this.applySumsubReviewStatus({
-        userId,
-        source,
-        applicantId,
-        externalUserId,
-        eventType,
-        reviewStatus,
-        reviewResult: reviewResult ?? null,
-        providerDateOfBirth: this.extractSumsubIsoDob(
-          hasProviderApplicantKeys ? providerApplicant : null,
-        ),
-        providerApplicant: hasProviderApplicantKeys ? providerApplicant : null,
+      result = await this.kycRepository.manager.transaction(async (manager) => {
+        // Serialize even first-time profiles; a row lock alone cannot lock a missing row.
+        await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
+          `sumsub-kyc:${userId}`,
+        ]);
+        const kycRepository = manager.getRepository(KycProfile);
+        const previous = await kycRepository.findOne({ where: { user_id: userId } });
+        if (
+          previous?.last_provider_event_at &&
+          providerEventAt.getTime() <=
+            new Date(previous.last_provider_event_at).getTime()
+        ) {
+          return { updated: false, reason: 'duplicate_or_stale_event' };
+        }
+        const applied = await this.applySumsubReviewStatus(
+          {
+            userId,
+            source,
+            applicantId,
+            externalUserId,
+            eventType,
+            reviewStatus,
+            reviewResult: reviewResult ?? null,
+            providerDateOfBirth: this.extractSumsubIsoDob(
+              hasProviderApplicantKeys ? providerApplicant : null,
+            ),
+            providerApplicant: hasProviderApplicantKeys ? providerApplicant : null,
+          },
+          { kyc: kycRepository, user: manager.getRepository(User) },
+        );
+        await kycRepository.update(
+          { user_id: userId },
+          { last_provider_event_at: providerEventAt },
+        );
+        return applied;
       });
-    } catch (err) {
-      // Ack webhook (200) so Sumsub does not retry forever on persistent failures;
-      // admin Re-sync / next event can repair. Digest already verified above.
+    } catch {
+      // Do not acknowledge an event whose status was not persisted. A transient
+      // response lets Sumsub retry; never expose database errors or applicant PII.
       safeLogger.error('Sumsub webhook status apply failed', {
         eventType: eventType ?? null,
-        err: String((err as Error)?.message ?? err),
       });
-      result = { updated: false, reason: 'status_apply_failed' };
+      throw new ServiceUnavailableException('KYC status update temporarily unavailable');
+    }
+
+    if (result.updated === false) {
+      return { received: true, eventType: eventType ?? null, ...result };
     }
 
     // Same dossier/media path as admin Re-sync — so the drawer is populated without a click
@@ -1262,6 +1319,7 @@ export class ComplianceService {
         await this.persistSumsubDossierArtifacts({
           userId,
           applicantId,
+          providerEventAt,
           applicant: hasProviderApplicantKeys ? providerApplicant : applicantPayload,
           reviewStatus: reviewStatus ?? null,
           reviewResult: reviewResult ?? null,

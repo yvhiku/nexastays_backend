@@ -53,6 +53,10 @@ export class KycProfile {
   })
   last_webhook_received_at: Date | null;
 
+  /** Provider event time, committed atomically with webhook status changes. */
+  @Column({ type: 'timestamptz', nullable: true })
+  last_provider_event_at: Date | null;
+
   @Column({ type: 'timestamp', name: 'reviewed_at', nullable: true })
   reviewed_at: Date | null;
 
